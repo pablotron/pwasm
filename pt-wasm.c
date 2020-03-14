@@ -149,12 +149,294 @@ pt_wasm_decode_i64(
   return 0;
 }
 
+#define NAME_FAIL(msg) do { \
+  if (cbs && cbs->on_error) { \
+    cbs->on_error(msg, cb_data); \
+  } \
+  return 0; \
+} while (0)
+
+static size_t
+pt_wasm_parse_name(
+  pt_wasm_buf_t * ret_buf,
+  const pt_wasm_parse_cbs_t * const cbs,
+  const uint8_t * const src,
+  const size_t src_len,
+  void * const cb_data
+) {
+  // check source length
+  if (!src_len) {
+    NAME_FAIL("empty custom section name");
+  }
+
+  // decode name length, check for error
+  uint32_t len = 0;
+  const size_t len_ofs = pt_wasm_decode_u32(&len, src, src_len);
+  if (!len_ofs) {
+    NAME_FAIL("bad custom section name length");
+  }
+
+  // calculate total length, check for error
+  const size_t sec_len = len_ofs + len;
+  if (sec_len > src_len) {
+    NAME_FAIL("custom section name too long");
+  }
+
+  // build result
+  const pt_wasm_buf_t buf = {
+    .ptr = src + len_ofs,
+    .len = len,
+  };
+
+  if (ret_buf) {
+    // save to result
+    *ret_buf = buf;
+  }
+
+  // return section length, in bytes
+  return sec_len;
+}
+
+/**
+ * Is this value a valid value type?
+ *
+ * From section 5.3.1 of the WebAssembly documentation.
+ */
+static inline bool
+pt_wasm_is_valid_value_type(
+  const uint8_t v
+) {
+  return ((v == 0x7F) || (v == 0x7E) || (v == 0x7D) || (v == 0x7C));
+}
+
+/**
+ * Is this value a valid result type?
+ *
+ * From section 5.3.2 of the WebAssembly documentation.
+ */
+static inline bool
+pt_wasm_is_valid_result_type(
+  const uint8_t v
+) {
+  return ((v == 0x40) || pt_wasm_is_valid_value_type(v));
+}
+
+#define VALUE_TYPE_LIST_FAIL(msg) do { \
+  if (cbs && cbs->on_error) { \
+    cbs->on_error(msg, cb_data); \
+  } \
+  return 0; \
+} while (0)
+
+static size_t
+pt_wasm_parse_value_type_list(
+  pt_wasm_buf_t * ret_buf,
+  const pt_wasm_parse_cbs_t * const cbs,
+  const uint8_t * const src,
+  const size_t src_len,
+  void * const cb_data
+) {
+  // check source length
+  if (!src_len) {
+    VALUE_TYPE_LIST_FAIL("empty value type list");
+  }
+
+  // decode buffer length, check for error
+  uint32_t len = 0;
+  const size_t len_ofs = pt_wasm_decode_u32(&len, src, src_len);
+  if (!len_ofs) {
+    VALUE_TYPE_LIST_FAIL("bad value type list length");
+  }
+
+  // calculate total number of bytes, check for error
+  const size_t num_bytes = len_ofs + len;
+  if (num_bytes > src_len) {
+    VALUE_TYPE_LIST_FAIL("value type list length too long");
+  }
+
+  // build result
+  const pt_wasm_buf_t buf = {
+    .ptr = src + len_ofs,
+    .len = len,
+  };
+
+  // check value types
+  for (size_t i = 0; i < buf.len; i++) {
+    if (!pt_wasm_is_valid_value_type(buf.ptr[i])) {
+      // invalid value type, return error
+      VALUE_TYPE_LIST_FAIL("bad value type list entry");
+    }
+  }
+
+  if (ret_buf) {
+    // save to result
+    *ret_buf = buf;
+  }
+
+  // return section length, in bytes
+  return num_bytes;
+}
+
 #define FAIL(msg) do { \
   if (cbs && cbs->on_error) { \
     cbs->on_error(msg, cb_data); \
   } \
   return false; \
 } while (0)
+
+static bool
+pt_wasm_parse_custom_section(
+  const pt_wasm_parse_cbs_t * const cbs,
+  const uint8_t * const src,
+  const size_t src_len,
+  void * const cb_data
+) {
+  // parse name, check for error
+  pt_wasm_buf_t name;
+  const size_t ofs = pt_wasm_parse_name(&name, cbs, src, src_len, cb_data);
+  if (!ofs) {
+    return false;
+  }
+
+  // build custom section
+  const pt_wasm_custom_section_t section = {
+    .name = {
+      .ptr = name.ptr,
+      .len = name.len,
+    },
+
+    .data = {
+      .ptr = src + ofs,
+      .len = src_len - ofs,
+    },
+  };
+
+  if (cbs && cbs->on_custom_section) {
+    // pass to callback
+    cbs->on_custom_section(&section, cb_data);
+  }
+
+  // return success
+  return true;
+}
+
+/**
+ * Parse function type declaration into +dst_func_type+ from source
+ * buffer +src+, consuming a maximum of +src_len+ bytes.
+ *
+ * Returns number of bytes consumed, or 0 on error.
+ */
+static size_t
+pt_wasm_parse_function_type(
+  pt_wasm_function_type_t * const dst_func_type,
+  const pt_wasm_parse_cbs_t * const cbs,
+  const uint8_t * const src,
+  const size_t src_len,
+  void * const cb_data
+) {
+  // check length
+  if (!src_len) {
+    FAIL("empty function type");
+  }
+
+  // check leading byte
+  if (src[0] != 0x60) {
+    FAIL("invalid function type header");
+  }
+
+  // parse params, check for error
+  pt_wasm_buf_t params;
+  const size_t params_len = pt_wasm_parse_value_type_list(&params, cbs, src + 1, src_len - 1, cb_data);
+  if (!params_len) {
+    return 0;
+  }
+
+  // calculate offset to result type, check for error
+  const size_t result_ofs = 1 + params_len;
+  if (result_ofs > src_len) {
+    FAIL("function parameter types too long");
+  }
+
+  // get result type, check for error
+  const uint8_t result_type = src[result_ofs];
+  if (!pt_wasm_is_valid_result_type(result_type)) {
+    FAIL("invalid function result type");
+  }
+
+  // build result
+  const pt_wasm_function_type_t src_func_type = {
+    .params = {
+      .ptr = params.ptr,
+      .len = params.len,
+    },
+
+    .result = result_type,
+  };
+
+  // save result
+  *dst_func_type = src_func_type;
+
+  // return total number of bytes
+  return result_ofs + 1;
+}
+
+// number of function types (NOTE: must be power of two)
+#define PT_WASM_FUNCTION_TYPE_SET_SIZE 128
+
+static bool
+pt_wasm_parse_type_section(
+  const pt_wasm_parse_cbs_t * const cbs,
+  const uint8_t * const src,
+  const size_t src_len,
+  void * const cb_data
+) {
+  // get number of types, check for error
+  uint32_t num_types = 0;
+  const size_t len_ofs = pt_wasm_decode_u32(&num_types, src, src_len);
+  if (!len_ofs) {
+    FAIL("invalid type section vector length");
+  }
+
+  pt_wasm_function_type_t types[PT_WASM_FUNCTION_TYPE_SET_SIZE];
+
+  for (size_t i = 0, ofs = len_ofs; i < num_types; i++) {
+    const size_t types_ofs = (i & (PT_WASM_FUNCTION_TYPE_SET_SIZE - 1));
+    // parse function type, check for error
+    const size_t type_len = pt_wasm_parse_function_type(
+      types + types_ofs,
+      cbs,
+      src + ofs,
+      src_len - ofs,
+      cb_data
+    );
+
+    if (!type_len) {
+      // return failure
+      return false;
+    }
+
+    // increment offset, check for error
+    ofs += type_len;
+    if (ofs > src_len) {
+      FAIL("type section length overflow");
+    }
+
+    if (types_ofs == (sizeof(types) - sizeof(types[0]))) {
+      if (cbs && cbs->on_function_types) {
+        cbs->on_function_types(types, types_ofs, cb_data);
+      }
+    }
+  }
+
+  // flush remaining function types
+  const size_t num_left = num_types % PT_WASM_FUNCTION_TYPE_SET_SIZE;
+  if (num_left && cbs && cbs->on_function_types) {
+    cbs->on_function_types(types, num_left, cb_data);
+  }
+
+  // return success
+  return true;
+}
 
 static bool
 pt_wasm_parse_section(
@@ -169,6 +451,17 @@ pt_wasm_parse_section(
   (void) src;
   (void) src_len;
   (void) cb_data;
+
+  switch (sec_type) {
+  case PT_WASM_SECTION_TYPE_CUSTOM:
+    return pt_wasm_parse_custom_section(cbs, src, src_len, cb_data);
+    break;
+  case PT_WASM_SECTION_TYPE_TYPE:
+    return pt_wasm_parse_type_section(cbs, src, src_len, cb_data);
+    break;
+  default:
+    break;
+  }
 
   // return success
   return true;

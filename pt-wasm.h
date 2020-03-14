@@ -28,11 +28,34 @@ PT_WASM_SECTION_TYPES
 } pt_wasm_section_type_t;
 #undef PT_WASM_SECTION_TYPE
 
-const char *pt_wasm_section_type_get_name(
-  const pt_wasm_section_type_t
-);
+/**
+ * Get name of section type.
+ *
+ * Returns a pointer to the null-terminated name of a section, or the
+ * string "unknown section" if the given section type is unknown.
+ *
+ * Note: The strings returned by this function should not be freed.
+ */
+const char *pt_wasm_section_type_get_name(const pt_wasm_section_type_t);
 
 typedef struct {
+  const uint8_t *ptr;
+  size_t len;
+} pt_wasm_buf_t;
+
+typedef struct {
+  pt_wasm_buf_t name;
+  pt_wasm_buf_t data;
+} pt_wasm_custom_section_t;
+
+typedef struct {
+  pt_wasm_buf_t params;
+  uint8_t result;
+} pt_wasm_function_type_t;
+
+typedef struct {
+  void (*on_custom_section)(const pt_wasm_custom_section_t *, void *);
+  void (*on_function_types)(const pt_wasm_function_type_t *, const size_t, void *);
   void (*on_error)(const char *, void *);
 } pt_wasm_parse_cbs_t;
 
