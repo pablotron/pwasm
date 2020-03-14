@@ -18,5 +18,8 @@ $(APP): $(OBJS)
 # bf.c: bf.c.dasm
 # 	$(LUA) $(LUAJIT_DIR)/dynasm/dynasm.lua -D X64 -o bf.c bf.c.dasm
 
+test: $(APP)
+	./$(APP)
+
 clean:
 	$(RM) -f $(APP) $(OBJS)

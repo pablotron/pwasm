@@ -510,13 +510,16 @@ pt_wasm_parse(
 
     // is the on_section cb defined?
     // build section data pointer
-    const uint8_t * const data_ptr = src + ofs + len_ofs;
+    const uint8_t * const data_ptr = src + ofs + 1 + len_ofs;
 
     // parse section, check for error
     if (!pt_wasm_parse_section(cbs, sec_type, data_ptr, data_len, cb_data)) {
       // return failure
       return false;
     }
+
+    // increment source offset
+    ofs += 1 + len_ofs + data_len;
   }
 
   // return success

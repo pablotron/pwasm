@@ -10,11 +10,19 @@
 
 static const uint8_t
 TEST_DATA[] = {
-  // bad header
+  // bad header (fail, ofs: 0, len: 8)
   0x01, 0x61, 0x73, 0x6d, 0x01, 0x00, 0x00, 0x00,
 
-  // good header
+  // good header (pass, ofs: 8, len: 8)
   0x00, 0x61, 0x73, 0x6d, 0x01, 0x00, 0x00, 0x00,
+
+  // custom section: empty name (pass, ofs: 16, len: 11)
+  0x00, 0x61, 0x73, 0x6d, 0x01, 0x00, 0x00, 0x00,
+  0x00, 0x01, 0x00,
+
+  // custom section: short (fail, ofs: 27, len: 9)
+  0x00, 0x61, 0x73, 0x6d, 0x01, 0x00, 0x00, 0x00,
+  0x00,
 };
 
 typedef struct {
@@ -24,22 +32,13 @@ typedef struct {
   size_t len;
 } test_t;
 
-static const test_t TESTS[] = {{
-  .name = "short length",
-  .want = false,
-  .ofs  = 0,
-  .len  = 0,
-}, {
-  .name = "bad header",
-  .want = false,
-  .ofs  = 0,
-  .len  = 8,
-}, {
-  .name = "good header",
-  .want = true,
-  .ofs  = 8,
-  .len  = 8,
-}};
+static const test_t TESTS[] = {
+  { "short length",                 false,    0,    0 },
+  { "bad header",                   false,    0,    8 },
+  { "good header",                  true,     8,    8 },
+  { "custom section: empty name",   true,    16,   10 },
+  { "custom section: short",        false,   26,    9 },
+};
 
 static char *
 read_file(
@@ -103,7 +102,7 @@ read_file(
 static void
 on_test_error(const char * const text, void * const data) {
   const test_t * const test = data;
-  warnx("%s: %s", test->name, text);
+  warnx("test = \"%s\", error = \"%s\"", test->name, text);
 
 }
 
