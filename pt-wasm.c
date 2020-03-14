@@ -177,9 +177,9 @@ pt_wasm_parse_name(
   }
 
   // calculate total length, check for error
-  const size_t sec_len = len_ofs + len;
-  if (sec_len > src_len) {
-    NAME_FAIL("custom section name too long");
+  const size_t num_bytes = len_ofs + len;
+  if (num_bytes > src_len) {
+    NAME_FAIL("truncated custom section name");
   }
 
   // build result
@@ -194,7 +194,7 @@ pt_wasm_parse_name(
   }
 
   // return section length, in bytes
-  return sec_len;
+  return num_bytes;
 }
 
 /**

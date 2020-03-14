@@ -16,13 +16,17 @@ TEST_DATA[] = {
   // good header (pass, ofs: 8, len: 8)
   0x00, 0x61, 0x73, 0x6d, 0x01, 0x00, 0x00, 0x00,
 
-  // custom section: empty name (pass, ofs: 16, len: 11)
+  // custom section: blank (pass, ofs: 16, len: 11)
   0x00, 0x61, 0x73, 0x6d, 0x01, 0x00, 0x00, 0x00,
   0x00, 0x01, 0x00,
 
-  // custom section: short (fail, ofs: 27, len: 9)
+  // custom section: no length (fail, ofs: 27, len: 9)
   0x00, 0x61, 0x73, 0x6d, 0x01, 0x00, 0x00, 0x00,
   0x00,
+
+  // custom section: name truncated (fail, ofs: 36, len: 11)
+  0x00, 0x61, 0x73, 0x6d, 0x01, 0x00, 0x00, 0x00,
+  0x00, 0x02, 0x01,
 };
 
 typedef struct {
@@ -33,11 +37,12 @@ typedef struct {
 } test_t;
 
 static const test_t TESTS[] = {
-  { "short length",                 false,    0,    0 },
-  { "bad header",                   false,    0,    8 },
-  { "good header",                  true,     8,    8 },
-  { "custom section: empty name",   true,    16,   10 },
-  { "custom section: short",        false,   26,    9 },
+  { "short length",                       false,    0,    0 },
+  { "bad header",                         false,    0,    8 },
+  { "good header",                        true,     8,    8 },
+  { "custom section: blank",              true,    16,   11 },
+  { "custom section: no length",          false,   27,    9 },
+  { "custom section: name truncated",     false,   36,   11 },
 };
 
 static char *
