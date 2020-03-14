@@ -81,73 +81,73 @@ pt_wasm_decode_u64(
   return 0;
 }
 
-static size_t
-pt_wasm_decode_i32(
-  int32_t * const dst,
-  void * const src_ptr,
-  const size_t src_len
-) {
-  const size_t num_bits = sizeof(int32_t) * 8;
-  const uint8_t * const src = src_ptr;
-  uint64_t shift = 0;
-  int64_t val = 0;
-
-  for (size_t i = 0; i < MIN(5, src_len); i++, shift += 7) {
-    const uint64_t b = src[i];
-    val |= (b & 0x7F) << shift;
-
-    if (!(b & 0x80)) {
-      if ((shift < num_bits) && (b & 0x40)) {
-        val |= ~((((uint64_t) 1) << (shift + 7)) - 1);
-      }
-
-      if (dst) {
-        // write result
-        *dst = val;
-      }
-
-      // return length (success)
-      return i + 1;
-    }
-  }
-
-  // return zero (failure)
-  return 0;
-}
-
-static size_t
-pt_wasm_decode_i64(
-  int64_t * const dst,
-  void * const src_ptr,
-  const size_t src_len
-) {
-  const size_t num_bits = sizeof(int64_t) * 8;
-  const uint8_t * const src = src_ptr;
-  uint64_t shift = 0;
-  int64_t val = 0;
-
-  for (size_t i = 0; i < MIN(10, src_len); i++, shift += 7) {
-    const uint64_t b = src[i];
-    val |= (b & 0x7F) << shift;
-
-    if (!(b & 0x80)) {
-      if ((shift < num_bits) && (b & 0x40)) {
-        val |= ~((((uint64_t) 1) << (shift + 7)) - 1);
-      }
-
-      if (dst) {
-        // write result
-        *dst = val;
-      }
-
-      // return length (success)
-      return i + 1;
-    }
-  }
-
-  // return zero (failure)
-  return 0;
-}
+// static size_t
+// pt_wasm_decode_i32(
+//   int32_t * const dst,
+//   void * const src_ptr,
+//   const size_t src_len
+// ) {
+//   const size_t num_bits = sizeof(int32_t) * 8;
+//   const uint8_t * const src = src_ptr;
+//   uint64_t shift = 0;
+//   int64_t val = 0;
+// 
+//   for (size_t i = 0; i < MIN(5, src_len); i++, shift += 7) {
+//     const uint64_t b = src[i];
+//     val |= (b & 0x7F) << shift;
+// 
+//     if (!(b & 0x80)) {
+//       if ((shift < num_bits) && (b & 0x40)) {
+//         val |= ~((((uint64_t) 1) << (shift + 7)) - 1);
+//       }
+// 
+//       if (dst) {
+//         // write result
+//         *dst = val;
+//       }
+// 
+//       // return length (success)
+//       return i + 1;
+//     }
+//   }
+// 
+//   // return zero (failure)
+//   return 0;
+// }
+// 
+// static size_t
+// pt_wasm_decode_i64(
+//   int64_t * const dst,
+//   void * const src_ptr,
+//   const size_t src_len
+// ) {
+//   const size_t num_bits = sizeof(int64_t) * 8;
+//   const uint8_t * const src = src_ptr;
+//   uint64_t shift = 0;
+//   int64_t val = 0;
+// 
+//   for (size_t i = 0; i < MIN(10, src_len); i++, shift += 7) {
+//     const uint64_t b = src[i];
+//     val |= (b & 0x7F) << shift;
+// 
+//     if (!(b & 0x80)) {
+//       if ((shift < num_bits) && (b & 0x40)) {
+//         val |= ~((((uint64_t) 1) << (shift + 7)) - 1);
+//       }
+// 
+//       if (dst) {
+//         // write result
+//         *dst = val;
+//       }
+// 
+//       // return length (success)
+//       return i + 1;
+//     }
+//   }
+// 
+//   // return zero (failure)
+//   return 0;
+// }
 
 #define NAME_FAIL(msg) do { \
   if (cbs && cbs->on_error) { \
