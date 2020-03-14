@@ -239,7 +239,7 @@ pt_wasm_is_valid_result_type(
 
 static size_t
 pt_wasm_parse_value_type_list(
-  pt_wasm_buf_t * ret_buf,
+  pt_wasm_buf_t * const ret_buf,
   const pt_wasm_parse_cbs_t * const cbs,
   const uint8_t * const src,
   const size_t src_len,
@@ -271,6 +271,7 @@ pt_wasm_parse_value_type_list(
 
   // check value types
   for (size_t i = 0; i < buf.len; i++) {
+    // D("buf[%zu] = %02x", i, buf.ptr[i]);
     if (!pt_wasm_is_valid_value_type(buf.ptr[i])) {
       // invalid value type, return error
       VALUE_TYPE_LIST_FAIL("bad value type list entry");
@@ -353,6 +354,11 @@ pt_wasm_parse_function_type(
     FAIL("invalid function type header");
   }
 
+  // check function type has space for parameters
+  if (src_len < 2) {
+    FAIL("bad function type: missing parameters");
+  }
+
   // parse params, check for error
   pt_wasm_buf_t params;
   const size_t params_len = pt_wasm_parse_value_type_list(&params, cbs, src + 1, src_len - 1, cb_data);
@@ -360,16 +366,17 @@ pt_wasm_parse_function_type(
     return 0;
   }
 
-  // calculate offset to result type, check for error
-  const size_t result_ofs = 1 + params_len;
-  if (result_ofs > src_len) {
-    FAIL("function parameter types too long");
+  // build results offset, check for error
+  const size_t results_ofs = 1 + params_len;
+  if (results_ofs >= src_len) {
+    FAIL("bad function type: missing results");
   }
 
-  // get result type, check for error
-  const uint8_t result_type = src[result_ofs];
-  if (!pt_wasm_is_valid_result_type(result_type)) {
-    FAIL("invalid function result type");
+  // parse params, check for error
+  pt_wasm_buf_t results;
+  const size_t results_len = pt_wasm_parse_value_type_list(&results, cbs, src + results_ofs, src_len - results_ofs, cb_data);
+  if (!results_len) {
+    return 0;
   }
 
   // build result
@@ -379,14 +386,17 @@ pt_wasm_parse_function_type(
       .len = params.len,
     },
 
-    .result = result_type,
+    .results = {
+      .ptr = results.ptr,
+      .len = results.len,
+    },
   };
 
   // save result
   *dst_func_type = src_func_type;
 
   // return total number of bytes
-  return result_ofs + 1;
+  return results_ofs + results_len;
 }
 
 // number of function types (NOTE: must be power of two)

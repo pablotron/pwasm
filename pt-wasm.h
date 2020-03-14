@@ -50,7 +50,7 @@ typedef struct {
 
 typedef struct {
   pt_wasm_buf_t params;
-  uint8_t result;
+  pt_wasm_buf_t results;
 } pt_wasm_function_type_t;
 
 typedef struct {
