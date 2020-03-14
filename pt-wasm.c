@@ -1,7 +1,6 @@
 #include <stdbool.h> // bool
 #include <stdint.h>  // uint32_t, int32_t, etc
 #include <string.h> // memcmp()
-#include <stdio.h> // fprintf()
 #include "pt-wasm.h"
 
 #define MIN(a, b) (((a) < (b)) ? (a) : (b))
@@ -11,6 +10,14 @@ static const char *PT_WASM_SECTION_TYPE_NAMES[] = {
 PT_WASM_SECTION_TYPES
 };
 #undef PT_WASM_SECTION_TYPE
+
+// FIXME: limit to DEBUG
+#include <stdio.h>
+#define D(fmt, ...) fprintf( \
+  stderr, \
+  "%s:%d:%s(): " fmt "\n", \
+  __FILE__, __LINE__, __func__, __VA_ARGS__ \
+)
 
 const char *
 pt_wasm_section_type_get_name(
@@ -175,6 +182,8 @@ pt_wasm_parse_name(
   if (!len_ofs) {
     NAME_FAIL("bad custom section name length");
   }
+
+  // D("src: %p, src_len = %zu, len = %u, len_ofs = %zu", src, src_len, len, len_ofs);
 
   // calculate total length, check for error
   const size_t num_bytes = len_ofs + len;
@@ -497,6 +506,11 @@ pt_wasm_parse(
       FAIL("invalid section type");
     }
 
+    // check to make sure u32 ptr doesn't exceed input size
+    if (ofs + 1 >= src_len) {
+      FAIL("truncated section size");
+    }
+
     // calculate u32 offset and maximum length
     const uint8_t * const u32_ptr = src + ofs + 1;
     const size_t u32_len = src_len - ofs - 1;
@@ -506,6 +520,11 @@ pt_wasm_parse(
     const size_t len_ofs = pt_wasm_decode_u32(&data_len, u32_ptr, u32_len);
     if (!len_ofs) {
       FAIL("invalid section length");
+    }
+
+    // check total length to make sure it doesn't exceed size
+    if (ofs + 1 + len_ofs + data_len > src_len) {
+      FAIL("truncated section");
     }
 
     // is the on_section cb defined?
