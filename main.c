@@ -27,6 +27,15 @@ TEST_DATA[] = {
   // custom section: name truncated (fail, ofs: 36, len: 11)
   0x00, 0x61, 0x73, 0x6d, 0x01, 0x00, 0x00, 0x00,
   0x00, 0x02, 0x01,
+
+  // custom section: hello (pass, ofs: 47, len: 16)
+  0x00, 0x61, 0x73, 0x6d, 0x01, 0x00, 0x00, 0x00,
+  0x00, 0x06, 0x05, 'h',  'e',  'l',  'l',  'o',
+
+  // custom section: hello, there (pass, ofs: 63, len: 21)
+  0x00, 0x61, 0x73, 0x6d, 0x01, 0x00, 0x00, 0x00,
+  0x00, 0x0b, 0x05, 'h',  'e',  'l',  'l',  'o',
+  't',  'h',  'e',  'r',  'e',
 };
 
 typedef struct {
@@ -43,6 +52,8 @@ static const test_t TESTS[] = {
   { "custom section: blank",              true,    16,   11 },
   { "custom section: no length",          false,   27,    9 },
   { "custom section: name truncated",     false,   36,   11 },
+  { "custom section: hello",              true,    47,   16 },
+  { "custom section: hello, there",       true,    63,   21 },
 };
 
 static char *
@@ -105,14 +116,38 @@ read_file(
 }
 
 static void
+dump_custom_section(
+  FILE * fh,
+  const pt_wasm_custom_section_t * const s
+) {
+  fprintf(fh, "name(%zu) = \"", s->name.len);
+  fwrite(s->name.ptr, s->name.len, 1, fh);
+  fprintf(fh, "\", data(%zu) = {", s->data.len);
+  for (size_t j = 0; j < s->data.len; j++) {
+    fprintf(fh, "%s%02x", ((j > 0) ? ", " : ""), s->data.ptr[j]);
+  }
+  fputs("}\n", fh);
+}
+
+static void
+on_test_custom_section(
+  const pt_wasm_custom_section_t * const s,
+  void * const data
+) {
+  (void) data;
+
+  dump_custom_section(stderr, s);
+}
+
+static void
 on_test_error(const char * const text, void * const data) {
   const test_t * const test = data;
   warnx("test = \"%s\", error = \"%s\"", test->name, text);
-
 }
 
 static const pt_wasm_parse_cbs_t GOOD_TEST_CBS = {
-  .on_error = on_test_error,
+  .on_custom_section  = on_test_custom_section,
+  .on_error           = on_test_error,
 };
 
 static bool
