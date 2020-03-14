@@ -101,26 +101,52 @@ read_file(
 }
 
 static void
+on_test_error(const char * const text, void * const data) {
+  const test_t * const test = data;
+  warnx("%s: %s", test->name, text);
+
+}
+
+static const pt_wasm_parse_cbs_t GOOD_TEST_CBS = {
+  .on_error = on_test_error,
+};
+
+static bool
 run_tests(void) {
   const size_t NUM_TESTS = NUM_ITEMS(TESTS);
   size_t num_fails = 0;
+
   for (size_t i = 0; i < NUM_TESTS; i++) {
+    // get test, run it, and get result
     const test_t * const test = TESTS + i;
-    const bool ok = (test->want == pt_wasm_parse(TEST_DATA + test->ofs, test->len, NULL, NULL));
+    const bool r = pt_wasm_parse(
+      TEST_DATA + test->ofs,
+      test->len,
+      test->want ? &GOOD_TEST_CBS : NULL,
+      (void*) test
+    );
+
+    // check result, increment failure count
+    const bool ok = (r == test->want);
     num_fails += ok ? 0 : 1;
+
     if (!ok) {
+      // warn on failure
       warnx("FAIL: %s", test->name);
     }
   }
 
+  // print results, return number of failures
   printf("Tests: %zu/%zu\n", NUM_TESTS - num_fails, NUM_TESTS);
-  if (num_fails > 0) {
-    exit(EXIT_FAILURE);
-  }
+  return num_fails;
 }
 
 int main(int argc, char *argv[]) {
-  run_tests();
+  if (run_tests()) {
+    // return failure
+    return EXIT_FAILURE;
+  }
+
   // loop through files
   for (int i = 1; i < argc; i++) {
     // read file contents

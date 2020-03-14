@@ -1,6 +1,7 @@
 #include <stdbool.h> // bool
 #include <stdint.h>  // uint32_t, int32_t, etc
 #include <string.h> // memcmp()
+#include <stdio.h> // fprintf()
 #include "pt-wasm.h"
 
 #define MIN(a, b) (((a) < (b)) ? (a) : (b))
@@ -173,7 +174,7 @@ pt_wasm_parse_section(
   return true;
 }
 
-static const uint8_t WASM_HEADER[] = "\0asm\1\0\0\0";
+static const uint8_t WASM_HEADER[] = { 0, 0x61, 0x73, 0x6d, 1, 0, 0, 0 };
 
 bool
 pt_wasm_parse(
@@ -185,10 +186,11 @@ pt_wasm_parse(
   const uint8_t * const src = src_ptr;
 
   // check length
-  if (src_len < 5) {
+  if (src_len < 8) {
     FAIL("module too small");
   }
 
+  // fprintf(stderr," sizeof(WASM_HEADER) = %zu\n", sizeof(WASM_HEADER));
   // check magic and version
   if (memcmp(src, WASM_HEADER, sizeof(WASM_HEADER))) {
     FAIL("invalid module header");
