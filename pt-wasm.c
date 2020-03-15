@@ -741,6 +741,8 @@ pt_wasm_parse_function_section(
     FAIL("invalid function section vector length");
   }
 
+  D("num_fns = %u", num_fns);
+
   uint32_t fns[PT_WASM_BATCH_SIZE];
 
   for (size_t i = 0, ofs = len_ofs; i < num_fns; i++) {
@@ -749,9 +751,10 @@ pt_wasm_parse_function_section(
     // parse fn, check for error
     const size_t fn_len = pt_wasm_decode_u32(fns + fns_ofs, src + ofs, src_len - ofs);
     if (!fn_len) {
-      // return failure
-      return false;
+      FAIL("invalid function index");
     }
+
+    D("fns[%zu] = %u", fns_ofs, fns[fns_ofs]);
 
     // increment offset, check for error
     ofs += fn_len;
@@ -766,7 +769,7 @@ pt_wasm_parse_function_section(
   }
 
   // count remaining entries
-  const size_t num_left = num_fns % PT_WASM_BATCH_SIZE;
+  const size_t num_left = num_fns & (PT_WASM_BATCH_SIZE - 1);
   if (num_left && cbs && cbs->on_functions) {
     // flush remaining entries
     cbs->on_functions(fns, num_left, cb_data);

@@ -112,6 +112,24 @@ TEST_DATA[] = {
   0x02, 0x16, 0x03, 0x01, 'z',  0x01, 'a',  0x03,
   0x7F, 0x00, 0x01, 'z',  0x01, 'b',  0x03, 0x7E,
   0x01, 0x01, 'z',  0x01, 'c',  0x03, 0x7D, 0x00,
+
+  // function section: blank (pass, ofs: 379, len: 11)
+  0x00, 0x61, 0x73, 0x6d, 0x01, 0x00, 0x00, 0x00,
+  0x03, 0x01, 0x00,
+
+  // function section: 1 (pass, ofs: 390, len: 12)
+  0x00, 0x61, 0x73, 0x6d, 0x01, 0x00, 0x00, 0x00,
+  0x03, 0x02, 0x01, 0x00,
+
+  // function section: 3 long (pass, ofs: 402, len: 26)
+  0x00, 0x61, 0x73, 0x6d, 0x01, 0x00, 0x00, 0x00,
+  0x03, 0x10, 0x03, 0x80, 0x80, 0x80, 0x80, 0x01,
+  0x81, 0x80, 0x80, 0x80, 0x01, 0x82, 0x80, 0x80,
+  0x80, 0x01,
+
+  // function section: bad long (fail, ofs: 428, len: 16)
+  0x00, 0x61, 0x73, 0x6d, 0x01, 0x00, 0x00, 0x00,
+  0x03, 0x06, 0x01, 0x80, 0x80, 0x80, 0x80, 0x81,
 };
 
 typedef struct {
@@ -147,6 +165,10 @@ static const test_t TESTS[] = {
   { "import table: \".\", min: 0",        true,   308,   17 },
   { "import mem: uh.oh, 10-20",           true,   325,   22 },
   { "import globals: z.a, z.b, z.c",      true,   347,   32 },
+  { "function section: blank",            true,   379,   11 },
+  { "function section: 1",                true,   390,   12 },
+  { "function section: 3 long",           true,   402,   26 },
+  { "function section: bad long",         false,  428,   16 },
 };
 
 static char *
@@ -215,6 +237,21 @@ dump_limits(
 ) {
   const char c = lim->has_max ? 't' : 'f';
   fprintf(fh, "(has_max = %c, min = %u, max = %u)", c, lim->min, lim->max);
+}
+
+static void
+on_test_functions(
+  const uint32_t * const fns,
+  const size_t num_fns,
+  void * const data
+) {
+  (void) data;
+
+  fprintf(stderr, "functions(%zu) = {", num_fns);
+  for (size_t i = 0; i < num_fns; i++) {
+    fprintf(stderr, "%s%u", (i > 0) ? ", " : "", fns[i]);
+  }
+  fputs("}\n", stderr);
 }
 
 static void
@@ -300,6 +337,7 @@ on_test_error(const char * const text, void * const data) {
 static const pt_wasm_parse_cbs_t GOOD_TEST_CBS = {
   .on_custom_section  = on_test_custom_section,
   .on_imports         = on_test_imports,
+  .on_functions       = on_test_functions,
   .on_error           = on_test_error,
 };
 
