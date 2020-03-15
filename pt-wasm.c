@@ -569,7 +569,7 @@ pt_wasm_parse_import(
     {
       const size_t len = pt_wasm_decode_u32(&(tmp.func.type), data_ptr, data_len);
       if (!len) {
-        FAIL("invalid import descriptor function type");
+        FAIL("invalid function import type");
       }
 
       // add length to result
@@ -579,10 +579,14 @@ pt_wasm_parse_import(
     break;
   case PT_WASM_IMPORT_DESC_TABLE:
     {
+      if (data_len < 3) {
+        FAIL("incomplete table import");
+      }
+
       // check table element type
       // NOTE: at the moment only one table element type is supported
       if (data_ptr[0] != 0x70) {
-        FAIL("invalid import descriptor table type");
+        FAIL("invalid table import type");
       }
 
       // parse table limits, check for error

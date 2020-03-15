@@ -77,6 +77,25 @@ TEST_DATA[] = {
   0x00, 0x61, 0x73, 0x6d, 0x01, 0x00, 0x00, 0x00,
   0x01, 0x08, 0x01, 0x60, 0x02, 0X7F, 0x7E, 0x02,
   0x7D, 0x7C,
+
+  // import section: blank (pass, ofs: 229, len: 11)
+  0x00, 0x61, 0x73, 0x6d, 0x01, 0x00, 0x00, 0x00,
+  0x02, 0x01, 0x00,
+
+  // import func: ".", id: 0 (pass, ofs: 240, len: 15)
+  0x00, 0x61, 0x73, 0x6d, 0x01, 0x00, 0x00, 0x00,
+  0x02, 0x05, 0x01, 0x00, 0x00, 0x00, 0x00,
+
+  // import func: "foo.bar", id: 1 (pass, ofs: 255, len: 21)
+  0x00, 0x61, 0x73, 0x6d, 0x01, 0x00, 0x00, 0x00,
+  0x02, 0x0b, 0x01, 0x03, 'f',  'o',  'o',  0x03,
+  'b',  'a',  'r',  0x00, 0x01,
+
+  // import funcs: foo.bar, bar.blum (pass, ofs: 276, len: 32)
+  0x00, 0x61, 0x73, 0x6d, 0x01, 0x00, 0x00, 0x00,
+  0x02, 0x16, 0x02, 0x03, 'f',  'o',  'o',  0x03,
+  'b',  'a',  'r',  0x00, 0x00, 0x02, 'h',  'i',
+  0x05, 't',  'h',  'e', 'r',   'e',  0x00, 0x01,
 };
 
 typedef struct {
@@ -105,6 +124,10 @@ static const test_t TESTS[] = {
   { "type section: i32, f32 -> void",     true,   181,   16 },
   { "type section: void -> void",         true,   197,   14 },
   { "type section: i32, i64 -> f32, f64", true,   211,   18 },
+  { "import section: blank",              true,   229,   11 },
+  { "import func: \".\", id: 0",          true,   240,   15 },
+  { "import func: \"foo.bar\", id: 1",    true,   255,   21 },
+  { "import funcs: foo.bar, bar.blum",    true,   276,   32 },
 };
 
 static char *
@@ -167,6 +190,34 @@ read_file(
 }
 
 static void
+dump_import(
+  FILE * fh,
+  const pt_wasm_import_t * const im
+) {
+  fputs("\"", fh);
+  fwrite(im->module.ptr, im->module.len, 1, fh);
+  fputs(".", fh);
+  fwrite(im->name.ptr, im->name.len, 1, fh);
+  fprintf(fh, "\" (%s): ", pt_wasm_import_desc_get_name(im->import_desc));
+  // TODO: print import details
+  fprintf(fh, "\n");
+}
+
+static void
+on_test_imports(
+  const pt_wasm_import_t * const imports,
+  const size_t num_imports,
+  void * const data
+) {
+  (void) data;
+
+  for (size_t i = 0; i < num_imports; i++) {
+    fprintf(stderr, "imports[%zu]: ", i);
+    dump_import(stderr, imports + i);
+  }
+}
+
+static void
 dump_custom_section(
   FILE * fh,
   const pt_wasm_custom_section_t * const s
@@ -198,6 +249,7 @@ on_test_error(const char * const text, void * const data) {
 
 static const pt_wasm_parse_cbs_t GOOD_TEST_CBS = {
   .on_custom_section  = on_test_custom_section,
+  .on_imports         = on_test_imports,
   .on_error           = on_test_error,
 };
 
