@@ -276,8 +276,27 @@ dump_limits(
   FILE * fh,
   const pt_wasm_limits_t * const lim
 ) {
-  const char c = lim->has_max ? 't' : 'f';
-  fprintf(fh, "(has_max = %c, min = %u, max = %u)", c, lim->min, lim->max);
+  if (lim->has_max) {
+    fprintf(fh, "(min = %u, max = %u)", lim->min, lim->max);
+  } else {
+    fprintf(fh, "(min = %u)", lim->min);
+  }
+}
+
+static void
+on_test_tables(
+  const pt_wasm_table_t * const tbls,
+  const size_t num_tbls,
+  void * const data
+) {
+  (void) data;
+
+  fprintf(stderr, "tables(%zu) = {", num_tbls);
+  for (size_t i = 0; i < num_tbls; i++) {
+    fprintf(stderr, "%s", (i > 0) ? ", " : "");
+    dump_limits(stderr, &(tbls[i].limits));
+  }
+  fputs("}\n", stderr);
 }
 
 static void
@@ -379,6 +398,7 @@ static const pt_wasm_parse_cbs_t GOOD_TEST_CBS = {
   .on_custom_section  = on_test_custom_section,
   .on_imports         = on_test_imports,
   .on_functions       = on_test_functions,
+  .on_tables          = on_test_tables,
   .on_error           = on_test_error,
 };
 
