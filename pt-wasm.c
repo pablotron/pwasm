@@ -43,7 +43,7 @@ pt_wasm_import_desc_get_name(
 }
 
 static const char *PT_WASM_VALUE_TYPE_NAMES[] = {
-  "i32"
+  "i32",
   "i64",
   "f32",
   "f64",
@@ -640,8 +640,8 @@ pt_wasm_parse_import(
 
       // get mutable flag, check for error
       const uint8_t mut = data_ptr[len];
-      if (mut != 0 || mut != 1) {
-        FAIL("invalid import descriptor global mutable flag");
+      if ((mut != 0) && (mut != 1)) {
+        FAIL("invalid global import mutable flag");
       }
 
       // save mutable flag
