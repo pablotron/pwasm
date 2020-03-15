@@ -5,12 +5,6 @@
 
 #define MIN(a, b) (((a) < (b)) ? (a) : (b))
 
-#define PT_WASM_SECTION_TYPE(a, b) b,
-static const char *PT_WASM_SECTION_TYPE_NAMES[] = {
-PT_WASM_SECTION_TYPES
-};
-#undef PT_WASM_SECTION_TYPE
-
 // FIXME: limit to DEBUG
 #include <stdio.h>
 #define D(fmt, ...) fprintf( \
@@ -18,6 +12,12 @@ PT_WASM_SECTION_TYPES
   "%s:%d:%s(): " fmt "\n", \
   __FILE__, __LINE__, __func__, __VA_ARGS__ \
 )
+
+#define PT_WASM_SECTION_TYPE(a, b) b,
+static const char *PT_WASM_SECTION_TYPE_NAMES[] = {
+PT_WASM_SECTION_TYPES
+};
+#undef PT_WASM_SECTION_TYPE
 
 const char *
 pt_wasm_section_type_get_name(
@@ -27,6 +27,19 @@ pt_wasm_section_type_get_name(
   return PT_WASM_SECTION_TYPE_NAMES[ofs];
 }
 
+#define PT_WASM_IMPORT_DESC(a, b) b,
+static const char *PT_WASM_IMPORT_DESC_NAMES[] = {
+PT_WASM_IMPORT_DESCS
+};
+#undef PT_WASM_IMPORT_DESC
+
+const char *
+pt_wasm_import_desc_get_name(
+  const pt_wasm_import_desc_t v
+) {
+  const size_t ofs = MIN(PT_WASM_IMPORT_DESC_LAST, v);
+  return PT_WASM_IMPORT_DESC_NAMES[ofs];
+}
 
 static inline size_t
 pt_wasm_decode_u32(
@@ -156,7 +169,7 @@ pt_wasm_decode_u64(
 //   return 0;
 // }
 
-#define NAME_FAIL(msg) do { \
+#define SIZE_FAIL(msg) do { \
   if (cbs && cbs->on_error) { \
     cbs->on_error(msg, cb_data); \
   } \
@@ -173,14 +186,14 @@ pt_wasm_parse_name(
 ) {
   // check source length
   if (!src_len) {
-    NAME_FAIL("empty custom section name");
+    SIZE_FAIL("empty custom section name");
   }
 
   // decode name length, check for error
   uint32_t len = 0;
   const size_t len_ofs = pt_wasm_decode_u32(&len, src, src_len);
   if (!len_ofs) {
-    NAME_FAIL("bad custom section name length");
+    SIZE_FAIL("bad custom section name length");
   }
 
   // D("src: %p, src_len = %zu, len = %u, len_ofs = %zu", src, src_len, len, len_ofs);
@@ -188,7 +201,7 @@ pt_wasm_parse_name(
   // calculate total length, check for error
   const size_t num_bytes = len_ofs + len;
   if (num_bytes > src_len) {
-    NAME_FAIL("truncated custom section name");
+    SIZE_FAIL("truncated custom section name");
   }
 
   // build result
@@ -230,13 +243,6 @@ pt_wasm_is_valid_result_type(
   return ((v == 0x40) || pt_wasm_is_valid_value_type(v));
 }
 
-#define VALUE_TYPE_LIST_FAIL(msg) do { \
-  if (cbs && cbs->on_error) { \
-    cbs->on_error(msg, cb_data); \
-  } \
-  return 0; \
-} while (0)
-
 static size_t
 pt_wasm_parse_value_type_list(
   pt_wasm_buf_t * const ret_buf,
@@ -247,20 +253,20 @@ pt_wasm_parse_value_type_list(
 ) {
   // check source length
   if (!src_len) {
-    VALUE_TYPE_LIST_FAIL("empty value type list");
+    SIZE_FAIL("empty value type list");
   }
 
   // decode buffer length, check for error
   uint32_t len = 0;
   const size_t len_ofs = pt_wasm_decode_u32(&len, src, src_len);
   if (!len_ofs) {
-    VALUE_TYPE_LIST_FAIL("bad value type list length");
+    SIZE_FAIL("bad value type list length");
   }
 
   // calculate total number of bytes, check for error
   const size_t num_bytes = len_ofs + len;
   if (num_bytes > src_len) {
-    VALUE_TYPE_LIST_FAIL("value type list length too long");
+    SIZE_FAIL("value type list length too long");
   }
 
   // build result
@@ -274,7 +280,7 @@ pt_wasm_parse_value_type_list(
     // D("buf[%zu] = %02x", i, buf.ptr[i]);
     if (!pt_wasm_is_valid_value_type(buf.ptr[i])) {
       // invalid value type, return error
-      VALUE_TYPE_LIST_FAIL("bad value type list entry");
+      SIZE_FAIL("bad value type list entry");
     }
   }
 
@@ -457,6 +463,245 @@ pt_wasm_parse_type_section(
   return true;
 }
 
+static size_t
+pt_wasm_parse_limits(
+  pt_wasm_limits_t * const dst,
+  const pt_wasm_parse_cbs_t * const cbs,
+  const uint8_t * const src,
+  const size_t src_len,
+  void * const cb_data
+) {
+  if (src_len < 2) {
+    SIZE_FAIL("truncated limits");
+  }
+
+  // check limits flag
+  if (src[0] != 0 || src[0] != 1) {
+    SIZE_FAIL("bad limits flag");
+  }
+
+  // build result
+  pt_wasm_limits_t tmp = {
+    .has_max = (src[0] == 1),
+    .min = 0,
+    .max = 0,
+  };
+
+  // parse min, check for error
+  const size_t min_len = pt_wasm_decode_u32(&(tmp.min), src + 1, src_len - 1);
+  if (!min_len) {
+    SIZE_FAIL("bad limits minimum");
+  }
+
+  // build return value
+  size_t num_bytes = 1 + min_len;
+
+  if (src[0] == 1) {
+    // parse max, check for error
+    const size_t max_len = pt_wasm_decode_u32(&(tmp.max), src + num_bytes, src_len - num_bytes);
+    if (!max_len) {
+      SIZE_FAIL("bad limits maximum");
+    }
+
+    // increment number of bytes
+    num_bytes += max_len;
+  }
+
+  if (dst) {
+    // save to result
+    *dst = tmp;
+  }
+
+  // return number of bytes consumed
+  return num_bytes;
+}
+
+/**
+ * Parse import into +dst_import+ from source buffer +src+, consuming a
+ * maximum of +src_len+ bytes.
+ *
+ * Returns number of bytes consumed, or 0 on error.
+ */
+static size_t
+pt_wasm_parse_import(
+  pt_wasm_import_t * const dst_import,
+  const pt_wasm_parse_cbs_t * const cbs,
+  const uint8_t * const src,
+  const size_t src_len,
+  void * const cb_data
+) {
+  // parse module name, check for error
+  pt_wasm_buf_t mod;
+  const size_t mod_len = pt_wasm_parse_name(&mod, cbs, src, src_len, cb_data);
+  if (!mod_len) {
+    return false;
+  }
+
+  // parse name, check for error
+  pt_wasm_buf_t name;
+  const size_t name_len = pt_wasm_parse_name(&name, cbs, src + mod_len, src_len - mod_len, cb_data);
+  if (!name_len) {
+    return false;
+  }
+
+  // get import descriptor
+  const pt_wasm_import_desc_t desc = src[mod_len + name_len];
+
+  pt_wasm_import_t tmp = {
+    .module = mod,
+    .name = name,
+    .import_desc = desc,
+  };
+
+  // calculate number of bytes consumed so far
+  size_t num_bytes = mod_len + name_len + 1;
+
+  // check length
+  if (num_bytes >= src_len) {
+    FAIL("incomplete import descriptor");
+  }
+
+  const uint8_t * const data_ptr = src + num_bytes;
+  const size_t data_len = src_len - num_bytes;
+
+  switch (desc) {
+  case PT_WASM_IMPORT_DESC_FUNC:
+    {
+      const size_t len = pt_wasm_decode_u32(&(tmp.func.type), data_ptr, data_len);
+      if (!len) {
+        FAIL("invalid import descriptor function type");
+      }
+
+      // add length to result
+      num_bytes += len;
+    }
+
+    break;
+  case PT_WASM_IMPORT_DESC_TABLE:
+    {
+      // check table element type
+      // NOTE: at the moment only one table element type is supported
+      if (data_ptr[0] != 0x70) {
+        FAIL("invalid import descriptor table type");
+      }
+
+      // parse table limits, check for error
+      const size_t len = pt_wasm_parse_limits(&(tmp.table.limits), cbs, data_ptr + 1, data_len - 1, cb_data);
+      if (!len) {
+        return false;
+      }
+
+      // add length to result
+      num_bytes += 1 + len;
+    }
+
+    break;
+  case PT_WASM_IMPORT_DESC_MEM:
+    {
+      // parse memory limits, check for error
+      const size_t len = pt_wasm_parse_limits(&(tmp.mem.limits), cbs, data_ptr, data_len, cb_data);
+      if (!len) {
+        return false;
+      }
+
+      // add length to result
+      num_bytes += len;
+    }
+
+    break;
+  case PT_WASM_IMPORT_DESC_GLOBAL:
+    {
+      // parse memory limits, check for error
+      const size_t len = pt_wasm_decode_u32(&(tmp.global.type), data_ptr, data_len);
+      if (!len) {
+        FAIL("invalid import descriptor global value type");
+      }
+
+      // get mutable flag, check for error
+      const uint8_t mut = data_ptr[len];
+      if (mut != 0 || mut != 1) {
+        FAIL("invalid import descriptor global mutable flag");
+      }
+
+      // save mutable flag
+      tmp.global.mutable = (mut == 1);
+
+      // add length to result
+      num_bytes += len + 1;
+    }
+
+    break;
+  default:
+    FAIL("bad import descriptor");
+  }
+
+  if (dst_import) {
+    // save result to destination
+    *dst_import = tmp;
+  }
+
+  // return number of bytes consumed
+  return num_bytes;
+}
+
+#define PT_WASM_IMPORT_SET_SIZE 128
+
+static bool
+pt_wasm_parse_import_section(
+  const pt_wasm_parse_cbs_t * const cbs,
+  const uint8_t * const src,
+  const size_t src_len,
+  void * const cb_data
+) {
+  // get number of imports, check for error
+  uint32_t num_imports = 0;
+  const size_t len_ofs = pt_wasm_decode_u32(&num_imports, src, src_len);
+  if (!len_ofs) {
+    FAIL("invalid import section vector length");
+  }
+
+  pt_wasm_import_t imports[PT_WASM_IMPORT_SET_SIZE];
+
+  for (size_t i = 0, ofs = len_ofs; i < num_imports; i++) {
+    const size_t imports_ofs = (i & (PT_WASM_IMPORT_SET_SIZE - 1));
+
+    // parse import, check for error
+    const size_t import_len = pt_wasm_parse_import(
+      imports + imports_ofs,
+      cbs,
+      src + ofs,
+      src_len - ofs,
+      cb_data
+    );
+
+    if (!import_len) {
+      // return failure
+      return false;
+    }
+
+    // increment offset, check for error
+    ofs += import_len;
+    if (ofs > src_len) {
+      FAIL("import section length overflow");
+    }
+
+    if (imports_ofs == (sizeof(imports) - sizeof(imports[0]))) {
+      if (cbs && cbs->on_imports) {
+        cbs->on_imports(imports, imports_ofs, cb_data);
+      }
+    }
+  }
+
+  // flush remaining function types
+  const size_t num_left = num_imports % PT_WASM_FUNCTION_TYPE_SET_SIZE;
+  if (num_left && cbs && cbs->on_imports) {
+    cbs->on_imports(imports, num_left, cb_data);
+  }
+
+  // return success
+  return true;
+}
+
 static bool
 pt_wasm_parse_section(
   const pt_wasm_parse_cbs_t * const cbs,
@@ -465,18 +710,15 @@ pt_wasm_parse_section(
   const size_t src_len,
   void * const cb_data
 ) {
-  (void) cbs;
-  (void) sec_type;
-  (void) src;
-  (void) src_len;
-  (void) cb_data;
-
   switch (sec_type) {
   case PT_WASM_SECTION_TYPE_CUSTOM:
     return pt_wasm_parse_custom_section(cbs, src, src_len, cb_data);
     break;
   case PT_WASM_SECTION_TYPE_TYPE:
     return pt_wasm_parse_type_section(cbs, src, src_len, cb_data);
+    break;
+  case PT_WASM_SECTION_TYPE_IMPORT:
+    return pt_wasm_parse_import_section(cbs, src, src_len, cb_data);
     break;
   default:
     break;

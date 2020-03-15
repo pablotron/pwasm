@@ -54,8 +54,59 @@ typedef struct {
 } pt_wasm_function_type_t;
 
 typedef struct {
+  uint32_t min;
+  uint32_t max;
+  _Bool has_max;
+} pt_wasm_limits_t;
+
+#define PT_WASM_IMPORT_DESCS \
+  PT_WASM_IMPORT_DESC(FUNC, "func") \
+  PT_WASM_IMPORT_DESC(TABLE, "table") \
+  PT_WASM_IMPORT_DESC(MEM, "mem") \
+  PT_WASM_IMPORT_DESC(GLOBAL, "global") \
+  PT_WASM_IMPORT_DESC(LAST, "unknown import desc")
+
+#define PT_WASM_IMPORT_DESC(a, b) PT_WASM_IMPORT_DESC_##a,
+typedef enum {
+PT_WASM_IMPORT_DESCS
+} pt_wasm_import_desc_t;
+#undef PT_WASM_IMPORT_DESC
+
+const char *pt_wasm_import_desc_get_name(const pt_wasm_import_desc_t);
+
+typedef uint32_t pt_wasm_value_type_t;
+typedef uint32_t pt_wasm_table_elem_type_t;
+
+typedef struct {
+  pt_wasm_buf_t module;
+  pt_wasm_buf_t name;
+  pt_wasm_import_desc_t import_desc;
+
+  union {
+    struct {
+      uint32_t type;
+    } func;
+
+    struct {
+      pt_wasm_table_elem_type_t elem_type;
+      pt_wasm_limits_t limits;
+    } table;
+
+    struct {
+      pt_wasm_limits_t limits;
+    } mem;
+
+    struct {
+      pt_wasm_value_type_t type;
+      _Bool mutable;
+    } global;
+  };
+} pt_wasm_import_t;
+
+typedef struct {
   void (*on_custom_section)(const pt_wasm_custom_section_t *, void *);
   void (*on_function_types)(const pt_wasm_function_type_t *, const size_t, void *);
+  void (*on_imports)(const pt_wasm_import_t *, const size_t, void *);
   void (*on_error)(const char *, void *);
 } pt_wasm_parse_cbs_t;
 
