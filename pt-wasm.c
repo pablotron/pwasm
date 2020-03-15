@@ -6,6 +6,16 @@
 #define MIN(a, b) (((a) < (b)) ? (a) : (b))
 #define LEN(ary) (sizeof(ary) / sizeof((ary)[0]))
 
+/**
+ * Batch size.
+ *
+ * Used to batch up function types, imports, functions,
+ * etc, when dispatching to parsing callbacks.
+ *
+ * Note: must be a power of two.
+ */
+#define PT_WASM_BATCH_SIZE 128
+
 // FIXME: limit to DEBUG
 #include <stdio.h>
 #define D(fmt, ...) fprintf( \
@@ -422,9 +432,6 @@ pt_wasm_parse_function_type(
   return results_ofs + results_len;
 }
 
-// number of function types (NOTE: must be power of two)
-#define PT_WASM_FUNCTION_TYPE_SET_SIZE 128
-
 static bool
 pt_wasm_parse_type_section(
   const pt_wasm_parse_cbs_t * const cbs,
@@ -439,10 +446,10 @@ pt_wasm_parse_type_section(
     FAIL("invalid type section vector length");
   }
 
-  pt_wasm_function_type_t types[PT_WASM_FUNCTION_TYPE_SET_SIZE];
+  pt_wasm_function_type_t types[PT_WASM_BATCH_SIZE];
 
   for (size_t i = 0, ofs = len_ofs; i < num_types; i++) {
-    const size_t types_ofs = (i & (PT_WASM_FUNCTION_TYPE_SET_SIZE - 1));
+    const size_t types_ofs = (i & (PT_WASM_BATCH_SIZE - 1));
     // parse function type, check for error
     const size_t type_len = pt_wasm_parse_function_type(
       types + types_ofs,
@@ -463,16 +470,15 @@ pt_wasm_parse_type_section(
       FAIL("type section length overflow");
     }
 
-    if (types_ofs == (sizeof(types) - sizeof(types[0]))) {
-      if (cbs && cbs->on_function_types) {
-        cbs->on_function_types(types, types_ofs, cb_data);
-      }
+    if ((types_ofs == LEN(types)) && cbs && cbs->on_function_types) {
+      cbs->on_function_types(types, types_ofs, cb_data);
     }
   }
 
-  // flush remaining function types
-  const size_t num_left = num_types % PT_WASM_FUNCTION_TYPE_SET_SIZE;
+  // count remaining entries
+  const size_t num_left = num_types & (PT_WASM_BATCH_SIZE - 1);
   if (num_left && cbs && cbs->on_function_types) {
+    // flush remaining entries
     cbs->on_function_types(types, num_left, cb_data);
   }
 
@@ -665,8 +671,6 @@ pt_wasm_parse_import(
   return num_bytes;
 }
 
-#define PT_WASM_IMPORT_SET_SIZE 128
-
 static bool
 pt_wasm_parse_import_section(
   const pt_wasm_parse_cbs_t * const cbs,
@@ -681,10 +685,10 @@ pt_wasm_parse_import_section(
     FAIL("invalid import section vector length");
   }
 
-  pt_wasm_import_t imports[PT_WASM_IMPORT_SET_SIZE];
+  pt_wasm_import_t imports[PT_WASM_BATCH_SIZE];
 
   for (size_t i = 0, ofs = len_ofs; i < num_imports; i++) {
-    const size_t imports_ofs = (i & (PT_WASM_IMPORT_SET_SIZE - 1));
+    const size_t imports_ofs = (i & (PT_WASM_BATCH_SIZE - 1));
 
     // parse import, check for error
     const size_t import_len = pt_wasm_parse_import(
@@ -706,17 +710,66 @@ pt_wasm_parse_import_section(
       FAIL("import section length overflow");
     }
 
-    if (imports_ofs == (sizeof(imports) - sizeof(imports[0]))) {
-      if (cbs && cbs->on_imports) {
-        cbs->on_imports(imports, imports_ofs, cb_data);
-      }
+    if ((imports_ofs == LEN(imports)) && cbs && cbs->on_imports) {
+      // flush batch
+      cbs->on_imports(imports, imports_ofs, cb_data);
     }
   }
 
-  // flush remaining function types
-  const size_t num_left = num_imports % PT_WASM_FUNCTION_TYPE_SET_SIZE;
+  // count remaining entries
+  const size_t num_left = num_imports & (PT_WASM_BATCH_SIZE - 1);
   if (num_left && cbs && cbs->on_imports) {
+    // flush remaining entries
     cbs->on_imports(imports, num_left, cb_data);
+  }
+
+  // return success
+  return true;
+}
+
+static bool
+pt_wasm_parse_function_section(
+  const pt_wasm_parse_cbs_t * const cbs,
+  const uint8_t * const src,
+  const size_t src_len,
+  void * const cb_data
+) {
+  // get number of fns, check for error
+  uint32_t num_fns = 0;
+  const size_t len_ofs = pt_wasm_decode_u32(&num_fns, src, src_len);
+  if (!len_ofs) {
+    FAIL("invalid function section vector length");
+  }
+
+  uint32_t fns[PT_WASM_BATCH_SIZE];
+
+  for (size_t i = 0, ofs = len_ofs; i < num_fns; i++) {
+    const size_t fns_ofs = (i & (PT_WASM_BATCH_SIZE - 1));
+
+    // parse fn, check for error
+    const size_t fn_len = pt_wasm_decode_u32(fns + fns_ofs, src + ofs, src_len - ofs);
+    if (!fn_len) {
+      // return failure
+      return false;
+    }
+
+    // increment offset, check for error
+    ofs += fn_len;
+    if (ofs > src_len) {
+      FAIL("function section length overflow");
+    }
+
+    if ((fns_ofs == LEN(fns)) && cbs && cbs->on_functions) {
+      // flush batch
+      cbs->on_functions(fns, fns_ofs, cb_data);
+    }
+  }
+
+  // count remaining entries
+  const size_t num_left = num_fns % PT_WASM_BATCH_SIZE;
+  if (num_left && cbs && cbs->on_functions) {
+    // flush remaining entries
+    cbs->on_functions(fns, num_left, cb_data);
   }
 
   // return success
@@ -740,6 +793,9 @@ pt_wasm_parse_section(
     break;
   case PT_WASM_SECTION_TYPE_IMPORT:
     return pt_wasm_parse_import_section(cbs, src, src_len, cb_data);
+    break;
+  case PT_WASM_SECTION_TYPE_FUNCTION:
+    return pt_wasm_parse_function_section(cbs, src, src_len, cb_data);
     break;
   default:
     break;

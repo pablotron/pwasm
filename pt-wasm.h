@@ -111,6 +111,8 @@ typedef struct {
   void (*on_custom_section)(const pt_wasm_custom_section_t *, void *);
   void (*on_function_types)(const pt_wasm_function_type_t *, const size_t, void *);
   void (*on_imports)(const pt_wasm_import_t *, const size_t, void *);
+  void (*on_functions)(const uint32_t *, const size_t, void *);
+
   void (*on_error)(const char *, void *);
 } pt_wasm_parse_cbs_t;
 
