@@ -486,6 +486,11 @@ pt_wasm_parse_type_section(
   return true;
 }
 
+/**
+ * Parse limits into +dst+ from buffer +src+ of length +src_len+.
+ *
+ * Returns number of bytes consumed, or 0 on error.
+ */
 static size_t
 pt_wasm_parse_limits(
   pt_wasm_limits_t * const dst,
@@ -537,6 +542,52 @@ pt_wasm_parse_limits(
 
   // return number of bytes consumed
   return num_bytes;
+}
+
+/**
+ * Parse table into +dst+ from buffer +src+ of length +src_len+.
+ *
+ * Returns number of bytes consumed, or 0 on error.
+ */
+static size_t
+pt_wasm_parse_table(
+  pt_wasm_table_t * const dst,
+  const pt_wasm_parse_cbs_t * const cbs,
+  const uint8_t * const src,
+  const size_t src_len,
+  void * const cb_data
+) {
+  if (src_len < 3) {
+    SIZE_FAIL("incomplete table type");
+  }
+
+  // get element type, check for error
+  // NOTE: at the moment only one element type is supported
+  const pt_wasm_table_elem_type_t elem_type = src[0];
+  if (elem_type != 0x70) {
+    SIZE_FAIL("invalid table element type");
+  }
+
+  // parse limits, check for error
+  pt_wasm_limits_t limits;
+  const size_t len = pt_wasm_parse_limits(&limits, cbs, src + 1, src_len - 1, cb_data);
+  if (!len) {
+    return 0;
+  }
+
+  // build temp table
+  const pt_wasm_table_t tmp = {
+    .elem_type  = elem_type,
+    .limits     = limits,
+  };
+
+  if (dst) {
+    // copy result
+    *dst = tmp;
+  }
+
+  // return number of bytes consumed
+  return 1 + len;
 }
 
 /**
@@ -602,24 +653,14 @@ pt_wasm_parse_import(
     break;
   case PT_WASM_IMPORT_DESC_TABLE:
     {
-      if (data_len < 3) {
-        FAIL("incomplete table import");
-      }
-
-      // check table element type
-      // NOTE: at the moment only one table element type is supported
-      if (data_ptr[0] != 0x70) {
-        FAIL("invalid table import type");
-      }
-
-      // parse table limits, check for error
-      const size_t len = pt_wasm_parse_limits(&(tmp.table.limits), cbs, data_ptr + 1, data_len - 1, cb_data);
+      // parse table, check for error
+      const size_t len = pt_wasm_parse_table(&(tmp.table), cbs, data_ptr, data_len, cb_data);
       if (!len) {
         return false;
       }
 
       // add length to result
-      num_bytes += 1 + len;
+      num_bytes += len;
     }
 
     break;
@@ -780,6 +821,58 @@ pt_wasm_parse_function_section(
 }
 
 static bool
+pt_wasm_parse_table_section(
+  const pt_wasm_parse_cbs_t * const cbs,
+  const uint8_t * const src,
+  const size_t src_len,
+  void * const cb_data
+) {
+  // get number of tables, check for error
+  uint32_t num_tbls = 0;
+  const size_t len_ofs = pt_wasm_decode_u32(&num_tbls, src, src_len);
+  if (!len_ofs) {
+    FAIL("invalid table section vector length");
+  }
+
+  D("num_tbls = %u", num_tbls);
+
+  pt_wasm_table_t tbls[PT_WASM_BATCH_SIZE];
+
+  for (size_t i = 0, ofs = len_ofs; i < num_tbls; i++) {
+    const size_t tbls_ofs = (i & (PT_WASM_BATCH_SIZE - 1));
+
+    // parse fn, check for error
+    const size_t tbl_len = pt_wasm_parse_table(tbls + tbls_ofs, cbs, src + ofs, src_len - ofs, cb_data);
+    if (!tbl_len) {
+      FAIL("invalid table section entry");
+    }
+
+    D("tbls[%zu] = [%u, %u], has_max: %c", tbls_ofs, tbls[tbls_ofs].limits.min, tbls[tbls_ofs].limits.max, tbls[tbls_ofs].limits.has_max ? 't' : 'f');
+
+    // increment offset, check for error
+    ofs += tbl_len;
+    if (ofs > src_len) {
+      FAIL("table section length overflow");
+    }
+
+    if ((tbls_ofs == LEN(tbls)) && cbs && cbs->on_tables) {
+      // flush batch
+      cbs->on_tables(tbls, tbls_ofs, cb_data);
+    }
+  }
+
+  // count remaining entries
+  const size_t num_left = num_tbls & (PT_WASM_BATCH_SIZE - 1);
+  if (num_left && cbs && cbs->on_tables) {
+    // flush remaining entries
+    cbs->on_tables(tbls, num_left, cb_data);
+  }
+
+  // return success
+  return true;
+}
+
+static bool
 pt_wasm_parse_section(
   const pt_wasm_parse_cbs_t * const cbs,
   const pt_wasm_section_type_t sec_type,
@@ -790,17 +883,16 @@ pt_wasm_parse_section(
   switch (sec_type) {
   case PT_WASM_SECTION_TYPE_CUSTOM:
     return pt_wasm_parse_custom_section(cbs, src, src_len, cb_data);
-    break;
   case PT_WASM_SECTION_TYPE_TYPE:
     return pt_wasm_parse_type_section(cbs, src, src_len, cb_data);
-    break;
   case PT_WASM_SECTION_TYPE_IMPORT:
     return pt_wasm_parse_import_section(cbs, src, src_len, cb_data);
-    break;
   case PT_WASM_SECTION_TYPE_FUNCTION:
     return pt_wasm_parse_function_section(cbs, src, src_len, cb_data);
-    break;
+  case PT_WASM_SECTION_TYPE_TABLE:
+    return pt_wasm_parse_table_section(cbs, src, src_len, cb_data);
   default:
+    FAIL("unknown section type");
     break;
   }
 

@@ -59,6 +59,13 @@ typedef struct {
   _Bool has_max;
 } pt_wasm_limits_t;
 
+typedef uint32_t pt_wasm_table_elem_type_t;
+
+typedef struct {
+  pt_wasm_table_elem_type_t elem_type; /* must be 0x70 */
+  pt_wasm_limits_t limits;
+} pt_wasm_table_t;
+
 #define PT_WASM_IMPORT_DESCS \
   PT_WASM_IMPORT_DESC(FUNC, "func") \
   PT_WASM_IMPORT_DESC(TABLE, "table") \
@@ -78,8 +85,6 @@ typedef uint32_t pt_wasm_value_type_t;
 
 const char *pt_wasm_value_type_get_name(const pt_wasm_value_type_t);
 
-typedef uint32_t pt_wasm_table_elem_type_t;
-
 typedef struct {
   pt_wasm_buf_t module;
   pt_wasm_buf_t name;
@@ -91,10 +96,7 @@ typedef struct {
       uint32_t id;
     } func;
 
-    struct {
-      pt_wasm_table_elem_type_t elem_type;
-      pt_wasm_limits_t limits;
-    } table;
+    pt_wasm_table_t table;
 
     struct {
       pt_wasm_limits_t limits;
@@ -112,6 +114,7 @@ typedef struct {
   void (*on_function_types)(const pt_wasm_function_type_t *, const size_t, void *);
   void (*on_imports)(const pt_wasm_import_t *, const size_t, void *);
   void (*on_functions)(const uint32_t *, const size_t, void *);
+  void (*on_tables)(const pt_wasm_table_t *, const size_t, void *);
 
   void (*on_error)(const char *, void *);
 } pt_wasm_parse_cbs_t;
