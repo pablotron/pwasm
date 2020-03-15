@@ -284,6 +284,22 @@ dump_limits(
 }
 
 static void
+on_test_memories(
+  const pt_wasm_limits_t * const mems,
+  const size_t num_mems,
+  void * const data
+) {
+  (void) data;
+
+  fprintf(stderr, "memories(%zu) = {", num_mems);
+  for (size_t i = 0; i < num_mems; i++) {
+    fprintf(stderr, "%s", (i > 0) ? ", " : "");
+    dump_limits(stderr, mems + i);
+  }
+  fputs("}\n", stderr);
+}
+
+static void
 on_test_tables(
   const pt_wasm_table_t * const tbls,
   const size_t num_tbls,
@@ -399,6 +415,7 @@ static const pt_wasm_parse_cbs_t GOOD_TEST_CBS = {
   .on_imports         = on_test_imports,
   .on_functions       = on_test_functions,
   .on_tables          = on_test_tables,
+  .on_memories        = on_test_memories,
   .on_error           = on_test_error,
 };
 
