@@ -75,6 +75,9 @@ PT_WASM_IMPORT_DESCS
 const char *pt_wasm_import_desc_get_name(const pt_wasm_import_desc_t);
 
 typedef uint32_t pt_wasm_value_type_t;
+
+const char *pt_wasm_value_type_get_name(const pt_wasm_value_type_t);
+
 typedef uint32_t pt_wasm_table_elem_type_t;
 
 typedef struct {
@@ -84,7 +87,8 @@ typedef struct {
 
   union {
     struct {
-      uint32_t type;
+      /* type index */
+      uint32_t id;
     } func;
 
     struct {

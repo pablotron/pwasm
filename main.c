@@ -96,6 +96,11 @@ TEST_DATA[] = {
   0x02, 0x16, 0x02, 0x03, 'f',  'o',  'o',  0x03,
   'b',  'a',  'r',  0x00, 0x00, 0x02, 'h',  'i',
   0x05, 't',  'h',  'e', 'r',   'e',  0x00, 0x01,
+
+  // import table: ".", min: 0 (pass, ofs: 308, len: 17)
+  0x00, 0x61, 0x73, 0x6d, 0x01, 0x00, 0x00, 0x00,
+  0x02, 0x07, 0x01, 0x00, 0x00, 0x01, 0x70, 0x00,
+  0x00,
 };
 
 typedef struct {
@@ -128,6 +133,7 @@ static const test_t TESTS[] = {
   { "import func: \".\", id: 0",          true,   240,   15 },
   { "import func: \"foo.bar\", id: 1",    true,   255,   21 },
   { "import funcs: foo.bar, bar.blum",    true,   276,   32 },
+  { "import table: \".\", min: 0",        true,   308,   17 },
 };
 
 static char *
@@ -190,6 +196,15 @@ read_file(
 }
 
 static void
+dump_limits(
+  FILE * fh,
+  const pt_wasm_limits_t * const lim
+) {
+  const char c = lim->has_max ? 't' : 'f';
+  fprintf(fh, "(has_max = %c, min = %u, max = %u)", c, lim->min, lim->max);
+}
+
+static void
 dump_import(
   FILE * fh,
   const pt_wasm_import_t * const im
@@ -199,7 +214,29 @@ dump_import(
   fputs(".", fh);
   fwrite(im->name.ptr, im->name.len, 1, fh);
   fprintf(fh, "\" (%s): ", pt_wasm_import_desc_get_name(im->import_desc));
-  // TODO: print import details
+
+  switch (im->import_desc) {
+  case PT_WASM_IMPORT_DESC_FUNC:
+    fprintf(fh, "id = %u", im->func.id);
+    break;
+  case PT_WASM_IMPORT_DESC_TABLE:
+    fprintf(fh, "elem_type = %u, ", im->table.elem_type);
+    dump_limits(fh, &(im->table.limits));
+    break;
+  case PT_WASM_IMPORT_DESC_MEM:
+    dump_limits(fh, &(im->mem.limits));
+    break;
+  case PT_WASM_IMPORT_DESC_GLOBAL:
+    {
+      const char * const name = pt_wasm_value_type_get_name(im->global.type);
+      const char mut = im->global.mutable ? 't' : 'f';
+      fprintf(fh, "type = %s, mutable = %c", name, mut);
+    }
+    break;
+  default:
+    errx(EXIT_FAILURE, "invalid import_desc: %u", im->import_desc);
+  }
+
   fprintf(fh, "\n");
 }
 

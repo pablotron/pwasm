@@ -4,6 +4,7 @@
 #include "pt-wasm.h"
 
 #define MIN(a, b) (((a) < (b)) ? (a) : (b))
+#define LEN(ary) (sizeof(ary) / sizeof((ary)[0]))
 
 // FIXME: limit to DEBUG
 #include <stdio.h>
@@ -39,6 +40,22 @@ pt_wasm_import_desc_get_name(
 ) {
   const size_t ofs = MIN(PT_WASM_IMPORT_DESC_LAST, v);
   return PT_WASM_IMPORT_DESC_NAMES[ofs];
+}
+
+static const char *PT_WASM_VALUE_TYPE_NAMES[] = {
+  "i32"
+  "i64",
+  "f32",
+  "f64",
+  "unknown type",
+};
+
+const char *
+pt_wasm_value_type_get_name(
+  const pt_wasm_value_type_t v
+) {
+  const size_t ofs = MIN(0x7F - v, LEN(PT_WASM_VALUE_TYPE_NAMES));
+  return PT_WASM_VALUE_TYPE_NAMES[ofs];
 }
 
 static inline size_t
@@ -476,7 +493,7 @@ pt_wasm_parse_limits(
   }
 
   // check limits flag
-  if (src[0] != 0 || src[0] != 1) {
+  if ((src[0] != 0) && (src[0] != 1)) {
     SIZE_FAIL("bad limits flag");
   }
 
@@ -567,7 +584,7 @@ pt_wasm_parse_import(
   switch (desc) {
   case PT_WASM_IMPORT_DESC_FUNC:
     {
-      const size_t len = pt_wasm_decode_u32(&(tmp.func.type), data_ptr, data_len);
+      const size_t len = pt_wasm_decode_u32(&(tmp.func.id), data_ptr, data_len);
       if (!len) {
         FAIL("invalid function import type");
       }
@@ -615,7 +632,7 @@ pt_wasm_parse_import(
     break;
   case PT_WASM_IMPORT_DESC_GLOBAL:
     {
-      // parse memory limits, check for error
+      // parse global, check for error
       const size_t len = pt_wasm_decode_u32(&(tmp.global.type), data_ptr, data_len);
       if (!len) {
         FAIL("invalid import descriptor global value type");
