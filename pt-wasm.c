@@ -782,7 +782,7 @@ pt_wasm_parse_function_section(
     FAIL("invalid function section vector length");
   }
 
-  D("num_fns = %u", num_fns);
+  // D("num_fns = %u", num_fns);
 
   uint32_t fns[PT_WASM_BATCH_SIZE];
 
@@ -795,7 +795,7 @@ pt_wasm_parse_function_section(
       FAIL("invalid function index");
     }
 
-    D("fns[%zu] = %u", fns_ofs, fns[fns_ofs]);
+    // D("fns[%zu] = %u", fns_ofs, fns[fns_ofs]);
 
     // increment offset, check for error
     ofs += fn_len;
@@ -834,7 +834,7 @@ pt_wasm_parse_table_section(
     FAIL("invalid table section vector length");
   }
 
-  D("num_tbls = %u", num_tbls);
+  // D("num_tbls = %u", num_tbls);
 
   pt_wasm_table_t tbls[PT_WASM_BATCH_SIZE];
 
@@ -847,7 +847,7 @@ pt_wasm_parse_table_section(
       FAIL("invalid table section entry");
     }
 
-    D("tbls[%zu] = [%u, %u], has_max: %c", tbls_ofs, tbls[tbls_ofs].limits.min, tbls[tbls_ofs].limits.max, tbls[tbls_ofs].limits.has_max ? 't' : 'f');
+    // D("tbls[%zu] = [%u, %u], has_max: %c", tbls_ofs, tbls[tbls_ofs].limits.min, tbls[tbls_ofs].limits.max, tbls[tbls_ofs].limits.has_max ? 't' : 'f');
 
     // increment offset, check for error
     ofs += tbl_len;
