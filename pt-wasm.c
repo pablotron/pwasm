@@ -1,10 +1,21 @@
 #include <stdbool.h> // bool
-#include <stdint.h>  // uint32_t, int32_t, etc
 #include <string.h> // memcmp()
 #include "pt-wasm.h"
 
 #define MIN(a, b) (((a) < (b)) ? (a) : (b))
 #define LEN(ary) (sizeof(ary) / sizeof((ary)[0]))
+
+/**
+ * Call error callback (if defined), and then return 0.
+ *
+ * Note: used for functions that return both bool and size_t.
+ */
+#define FAIL(msg) do { \
+  if (cbs && cbs->on_error) { \
+    cbs->on_error(msg, cb_data); \
+  } \
+  return 0; \
+} while (0)
 
 /**
  * Batch size.
@@ -16,6 +27,7 @@
  */
 #define PT_WASM_BATCH_SIZE 128
 
+#ifdef PT_WASM_DEBUG
 // FIXME: limit to DEBUG
 #include <stdio.h>
 #define D(fmt, ...) fprintf( \
@@ -23,6 +35,9 @@
   "D %s:%d %s(): " fmt "\n", \
   __FILE__, __LINE__, __func__, __VA_ARGS__ \
 )
+#else
+#define D(fmt, ...)
+#endif /* PT_WASM_DEBUG */
 
 #define PT_WASM_SECTION_TYPE(a, b) b,
 static const char *PT_WASM_SECTION_TYPE_NAMES[] = {
@@ -196,13 +211,6 @@ pt_wasm_decode_u64(
 //   return 0;
 // }
 
-#define SIZE_FAIL(msg) do { \
-  if (cbs && cbs->on_error) { \
-    cbs->on_error(msg, cb_data); \
-  } \
-  return 0; \
-} while (0)
-
 static size_t
 pt_wasm_parse_name(
   pt_wasm_buf_t * ret_buf,
@@ -213,14 +221,14 @@ pt_wasm_parse_name(
 ) {
   // check source length
   if (!src_len) {
-    SIZE_FAIL("empty custom section name");
+    FAIL("empty custom section name");
   }
 
   // decode name length, check for error
   uint32_t len = 0;
   const size_t len_ofs = pt_wasm_decode_u32(&len, src, src_len);
   if (!len_ofs) {
-    SIZE_FAIL("bad custom section name length");
+    FAIL("bad custom section name length");
   }
 
   // D("src: %p, src_len = %zu, len = %u, len_ofs = %zu", src, src_len, len, len_ofs);
@@ -228,7 +236,7 @@ pt_wasm_parse_name(
   // calculate total length, check for error
   const size_t num_bytes = len_ofs + len;
   if (num_bytes > src_len) {
-    SIZE_FAIL("truncated custom section name");
+    FAIL("truncated custom section name");
   }
 
   // build result
@@ -280,20 +288,20 @@ pt_wasm_parse_value_type_list(
 ) {
   // check source length
   if (!src_len) {
-    SIZE_FAIL("empty value type list");
+    FAIL("empty value type list");
   }
 
   // decode buffer length, check for error
   uint32_t len = 0;
   const size_t len_ofs = pt_wasm_decode_u32(&len, src, src_len);
   if (!len_ofs) {
-    SIZE_FAIL("bad value type list length");
+    FAIL("bad value type list length");
   }
 
   // calculate total number of bytes, check for error
   const size_t num_bytes = len_ofs + len;
   if (num_bytes > src_len) {
-    SIZE_FAIL("value type list length too long");
+    FAIL("value type list length too long");
   }
 
   // build result
@@ -307,7 +315,7 @@ pt_wasm_parse_value_type_list(
     // D("buf[%zu] = %02x", i, buf.ptr[i]);
     if (!pt_wasm_is_valid_value_type(buf.ptr[i])) {
       // invalid value type, return error
-      SIZE_FAIL("bad value type list entry");
+      FAIL("bad value type list entry");
     }
   }
 
@@ -319,13 +327,6 @@ pt_wasm_parse_value_type_list(
   // return section length, in bytes
   return num_bytes;
 }
-
-#define FAIL(msg) do { \
-  if (cbs && cbs->on_error) { \
-    cbs->on_error(msg, cb_data); \
-  } \
-  return false; \
-} while (0)
 
 static bool
 pt_wasm_parse_custom_section(
@@ -500,12 +501,12 @@ pt_wasm_parse_limits(
   void * const cb_data
 ) {
   if (src_len < 2) {
-    SIZE_FAIL("truncated limits");
+    FAIL("truncated limits");
   }
 
   // check limits flag
   if ((src[0] != 0) && (src[0] != 1)) {
-    SIZE_FAIL("bad limits flag");
+    FAIL("bad limits flag");
   }
 
   // build result
@@ -518,7 +519,7 @@ pt_wasm_parse_limits(
   // parse min, check for error
   const size_t min_len = pt_wasm_decode_u32(&(tmp.min), src + 1, src_len - 1);
   if (!min_len) {
-    SIZE_FAIL("bad limits minimum");
+    FAIL("bad limits minimum");
   }
 
   // build return value
@@ -528,7 +529,7 @@ pt_wasm_parse_limits(
     // parse max, check for error
     const size_t max_len = pt_wasm_decode_u32(&(tmp.max), src + num_bytes, src_len - num_bytes);
     if (!max_len) {
-      SIZE_FAIL("bad limits maximum");
+      FAIL("bad limits maximum");
     }
 
     // increment number of bytes
@@ -558,14 +559,14 @@ pt_wasm_parse_table(
   void * const cb_data
 ) {
   if (src_len < 3) {
-    SIZE_FAIL("incomplete table type");
+    FAIL("incomplete table type");
   }
 
   // get element type, check for error
   // NOTE: at the moment only one element type is supported
   const pt_wasm_table_elem_type_t elem_type = src[0];
   if (elem_type != 0x70) {
-    SIZE_FAIL("invalid table element type");
+    FAIL("invalid table element type");
   }
 
   // parse limits, check for error
@@ -588,6 +589,61 @@ pt_wasm_parse_table(
 
   // return number of bytes consumed
   return 1 + len;
+}
+
+/**
+ * Parse global type into +dst+ from buffer +src+ of length +src_len+.
+ *
+ * Returns number of bytes consumed, or 0 on error.
+ */
+static size_t
+pt_wasm_parse_global_type(
+  pt_wasm_global_type_t * const dst,
+  const pt_wasm_parse_cbs_t * const cbs,
+  const uint8_t * const src,
+  const size_t src_len,
+  void * const cb_data
+) {
+  // check source length
+  if (src_len < 2) {
+    FAIL("incomplete global type");
+  }
+
+  // parse value type, check for error
+  pt_wasm_value_type_t type;
+  const size_t len = pt_wasm_decode_u32(&type, src, src_len);
+  if (!len) {
+    FAIL("bad global value type");
+  }
+
+  // check value type
+  if (!pt_wasm_is_valid_value_type(type)) {
+    FAIL("bad global value type");
+  }
+
+  // check for overflow
+  if (len >= src_len) {
+    FAIL("missing global mutable flag");
+  }
+
+  // get mutable flag, check for error
+  const uint8_t mut = src[len];
+  if ((mut != 0) && (mut != 1)) {
+    FAIL("bad global mutable flag value");
+  }
+
+  const pt_wasm_global_type_t tmp = {
+    .type = type,
+    .mutable = (mut == 1),
+  };
+
+  if (dst) {
+    // copy to result
+    *dst = tmp;
+  }
+
+  // return number of bytes consumed
+  return len + 1;
 }
 
 /**
@@ -680,22 +736,13 @@ pt_wasm_parse_import(
   case PT_WASM_IMPORT_DESC_GLOBAL:
     {
       // parse global, check for error
-      const size_t len = pt_wasm_decode_u32(&(tmp.global.type), data_ptr, data_len);
+      const size_t len = pt_wasm_parse_global_type(&(tmp.global), cbs, data_ptr, data_len, cb_data);
       if (!len) {
-        FAIL("invalid import descriptor global value type");
+        return false;
       }
-
-      // get mutable flag, check for error
-      const uint8_t mut = data_ptr[len];
-      if ((mut != 0) && (mut != 1)) {
-        FAIL("invalid global import mutable flag");
-      }
-
-      // save mutable flag
-      tmp.global.mutable = (mut == 1);
 
       // add length to result
-      num_bytes += len + 1;
+      num_bytes += len;
     }
 
     break;
@@ -894,7 +941,7 @@ pt_wasm_parse_memory_section(
     // parse mem, check for error
     const size_t mem_len = pt_wasm_parse_limits(mems + mems_ofs, cbs, src + ofs, src_len - ofs, cb_data);
     if (!mem_len) {
-      return 0;
+      return false;
     }
 
     // increment offset, check for error

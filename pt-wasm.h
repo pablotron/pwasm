@@ -6,6 +6,7 @@ extern "C" {
 #endif /* __cplusplus */
 
 #include <stddef.h> // size_t
+#include <stdint.h> // uint8_t, uint32_t, etc
 
 #define PT_WASM_SECTION_TYPES \
   PT_WASM_SECTION_TYPE(CUSTOM, "custom") \
@@ -66,6 +67,24 @@ typedef struct {
   pt_wasm_limits_t limits;
 } pt_wasm_table_t;
 
+typedef uint32_t pt_wasm_value_type_t;
+
+const char *pt_wasm_value_type_get_name(const pt_wasm_value_type_t);
+
+typedef struct {
+  pt_wasm_value_type_t type;
+  _Bool mutable;
+} pt_wasm_global_type_t;
+
+typedef struct {
+  pt_wasm_buf_t buf;
+} pt_wasm_expr_t;
+
+typedef struct {
+  pt_wasm_global_type_t type;
+  pt_wasm_expr_t expr;
+} pt_wasm_global_t;
+
 #define PT_WASM_IMPORT_DESCS \
   PT_WASM_IMPORT_DESC(FUNC, "func") \
   PT_WASM_IMPORT_DESC(TABLE, "table") \
@@ -80,10 +99,6 @@ PT_WASM_IMPORT_DESCS
 #undef PT_WASM_IMPORT_DESC
 
 const char *pt_wasm_import_desc_get_name(const pt_wasm_import_desc_t);
-
-typedef uint32_t pt_wasm_value_type_t;
-
-const char *pt_wasm_value_type_get_name(const pt_wasm_value_type_t);
 
 typedef struct {
   pt_wasm_buf_t module;
@@ -102,10 +117,7 @@ typedef struct {
       pt_wasm_limits_t limits;
     } mem;
 
-    struct {
-      pt_wasm_value_type_t type;
-      _Bool mutable;
-    } global;
+    pt_wasm_global_type_t global;
   };
 } pt_wasm_import_t;
 
@@ -116,6 +128,7 @@ typedef struct {
   void (*on_functions)(const uint32_t *, const size_t, void *);
   void (*on_tables)(const pt_wasm_table_t *, const size_t, void *);
   void (*on_memories)(const pt_wasm_limits_t *, const size_t, void *);
+  void (*on_globals)(const pt_wasm_global_t *, const size_t, void *);
 
   void (*on_error)(const char *, void *);
 } pt_wasm_parse_cbs_t;
