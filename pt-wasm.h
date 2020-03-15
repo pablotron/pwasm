@@ -115,6 +115,7 @@ typedef struct {
   void (*on_imports)(const pt_wasm_import_t *, const size_t, void *);
   void (*on_functions)(const uint32_t *, const size_t, void *);
   void (*on_tables)(const pt_wasm_table_t *, const size_t, void *);
+  void (*on_memories)(const pt_wasm_limits_t *, const size_t, void *);
 
   void (*on_error)(const char *, void *);
 } pt_wasm_parse_cbs_t;

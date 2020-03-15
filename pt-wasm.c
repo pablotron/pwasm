@@ -873,6 +873,54 @@ pt_wasm_parse_table_section(
 }
 
 static bool
+pt_wasm_parse_memory_section(
+  const pt_wasm_parse_cbs_t * const cbs,
+  const uint8_t * const src,
+  const size_t src_len,
+  void * const cb_data
+) {
+  // get number of mems, check for error
+  uint32_t num_mems = 0;
+  const size_t len_ofs = pt_wasm_decode_u32(&num_mems, src, src_len);
+  if (!len_ofs) {
+    FAIL("invalid memory section vector length");
+  }
+
+  pt_wasm_limits_t mems[PT_WASM_BATCH_SIZE];
+
+  for (size_t i = 0, ofs = len_ofs; i < num_mems; i++) {
+    const size_t mems_ofs = (i & (PT_WASM_BATCH_SIZE - 1));
+
+    // parse mem, check for error
+    const size_t mem_len = pt_wasm_parse_limits(mems + mems_ofs, cbs, src + ofs, src_len - ofs, cb_data);
+    if (!mem_len) {
+      return 0;
+    }
+
+    // increment offset, check for error
+    ofs += mem_len;
+    if (ofs > src_len) {
+      FAIL("memory section length overflow");
+    }
+
+    if ((mems_ofs == LEN(mems)) && cbs && cbs->on_memories) {
+      // flush batch
+      cbs->on_memories(mems, mems_ofs, cb_data);
+    }
+  }
+
+  // count remaining entries
+  const size_t num_left = num_mems & (PT_WASM_BATCH_SIZE - 1);
+  if (num_left && cbs && cbs->on_memories) {
+    // flush remaining entries
+    cbs->on_memories(mems, num_left, cb_data);
+  }
+
+  // return success
+  return true;
+}
+
+static bool
 pt_wasm_parse_section(
   const pt_wasm_parse_cbs_t * const cbs,
   const pt_wasm_section_type_t sec_type,
@@ -891,6 +939,8 @@ pt_wasm_parse_section(
     return pt_wasm_parse_function_section(cbs, src, src_len, cb_data);
   case PT_WASM_SECTION_TYPE_TABLE:
     return pt_wasm_parse_table_section(cbs, src, src_len, cb_data);
+  case PT_WASM_SECTION_TYPE_MEMORY:
+    return pt_wasm_parse_memory_section(cbs, src, src_len, cb_data);
   default:
     FAIL("unknown section type");
     break;
