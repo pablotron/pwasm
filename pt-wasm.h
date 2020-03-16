@@ -504,6 +504,23 @@ _Bool pt_wasm_parse_module(
   void * const data
 );
 
+typedef struct {
+  uint32_t num;
+  pt_wasm_value_type_t type;
+} pt_wasm_local_t;
+
+typedef struct {
+  void (*on_locals)(const pt_wasm_local_t *, const size_t, void *);
+  void (*on_insts)(const pt_wasm_inst_t *, const size_t, void *);
+  void (*on_error)(const char *, void *);
+} pt_wasm_parse_function_cbs_t;
+
+_Bool pt_wasm_parse_function(
+  const pt_wasm_buf_t src,
+  const pt_wasm_parse_function_cbs_t * const cbs,
+  void * const data
+);
+
 #ifdef __cplusplus
 };
 #endif /* __cplusplus */
