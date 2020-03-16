@@ -67,6 +67,27 @@ pt_wasm_import_desc_get_name(
   return PT_WASM_IMPORT_DESC_NAMES[ofs];
 }
 
+#define PT_WASM_EXPORT_TYPE(a, b) b,
+static const char *PT_WASM_EXPORT_TYPE_NAMES[] = {
+PT_WASM_EXPORT_TYPES
+};
+#undef PT_WASM_EXPORT_TYPE
+
+const char *
+pt_wasm_export_type_get_name(
+  const pt_wasm_export_type_t v
+) {
+  const size_t ofs = MIN(PT_WASM_EXPORT_TYPE_LAST, v);
+  return PT_WASM_EXPORT_TYPE_NAMES[ofs];
+}
+
+static inline bool
+pt_wasm_is_valid_export_type(
+  const uint8_t v
+) {
+  return v < PT_WASM_EXPORT_TYPE_LAST;
+}
+
 static const char *PT_WASM_VALUE_TYPE_NAMES[] = {
   "i32",
   "i64",
@@ -1388,6 +1409,109 @@ pt_wasm_parse_global_section(
   return true;
 }
 
+/**
+ * Parse export into +dst+ from source buffer +src+, consuming a
+ * maximum of +src_len+ bytes.
+ *
+ * Returns number of bytes consumed, or 0 on error.
+ */
+static size_t
+pt_wasm_parse_export(
+  pt_wasm_export_t * const dst,
+  const pt_wasm_parse_cbs_t * const cbs,
+  const uint8_t * const src,
+  const size_t src_len,
+  void * const cb_data
+) {
+  // parse export name, check for error
+  pt_wasm_buf_t name;
+  const size_t n_len = pt_wasm_parse_name(&name, cbs, src, src_len, cb_data);
+  if (!n_len) {
+    return 0;
+  }
+
+  // check src length
+  if (n_len + 2 > src_len) {
+    FAIL("truncated export");
+  }
+
+  // get export type, check for error
+  const pt_wasm_export_type_t type = src[n_len];
+  if (!pt_wasm_is_valid_export_type(type)) {
+    FAIL("bad export type");
+  }
+
+  // parse id, check for error
+  uint32_t id;
+  const size_t id_len = pt_wasm_decode_u32(&id, src + 1 + n_len, src_len - 1 - n_len);
+  if (!id_len) {
+    FAIL("bad export index");
+  }
+
+  // build result
+  const pt_wasm_export_t tmp = {
+    .name = name,
+    .type = type,
+    .id   = id
+  };
+
+  if (dst) {
+    // copy to destination
+    *dst = tmp;
+  }
+
+  // return number of bytes consumed
+  return n_len + 1 + id_len;
+}
+
+static bool
+pt_wasm_parse_export_section(
+  const pt_wasm_parse_cbs_t * const cbs,
+  const uint8_t * const src,
+  const size_t src_len,
+  void * const cb_data
+) {
+  // get number of exports, check for error
+  uint32_t num_es = 0;
+  const size_t len_ofs = pt_wasm_decode_u32(&num_es, src, src_len);
+  if (!len_ofs) {
+    FAIL("invalid export section vector length");
+  }
+
+  pt_wasm_export_t es[PT_WASM_BATCH_SIZE];
+
+  for (size_t i = 0, ofs = len_ofs; i < num_es; i++) {
+    const size_t es_ofs = (i & (PT_WASM_BATCH_SIZE - 1));
+
+    // parse mem, check for error
+    const size_t e_len = pt_wasm_parse_export(es + es_ofs, cbs, src + ofs, src_len - ofs, cb_data);
+    if (!e_len) {
+      return false;
+    }
+
+    // increment offset, check for error
+    ofs += e_len;
+    if (ofs > src_len) {
+      FAIL("export section length overflow");
+    }
+
+    if ((es_ofs == LEN(es)) && cbs && cbs->on_exports) {
+      // flush batch
+      cbs->on_exports(es, es_ofs, cb_data);
+    }
+  }
+
+  // count remaining entries
+  const size_t num_left = num_es & (PT_WASM_BATCH_SIZE - 1);
+  if (num_left && cbs && cbs->on_exports) {
+    // flush remaining entries
+    cbs->on_exports(es, num_left, cb_data);
+  }
+
+  // return success
+  return true;
+}
+
 static bool
 pt_wasm_parse_section(
   const pt_wasm_parse_cbs_t * const cbs,
@@ -1411,6 +1535,8 @@ pt_wasm_parse_section(
     return pt_wasm_parse_memory_section(cbs, src, src_len, cb_data);
   case PT_WASM_SECTION_TYPE_GLOBAL:
     return pt_wasm_parse_global_section(cbs, src, src_len, cb_data);
+  case PT_WASM_SECTION_TYPE_EXPORT:
+    return pt_wasm_parse_export_section(cbs, src, src_len, cb_data);
   default:
     FAIL("unknown section type");
     break;

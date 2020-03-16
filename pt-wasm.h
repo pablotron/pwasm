@@ -440,6 +440,27 @@ typedef struct {
   };
 } pt_wasm_import_t;
 
+#define PT_WASM_EXPORT_TYPES \
+  PT_WASM_EXPORT_TYPE(FUNC, "function") \
+  PT_WASM_EXPORT_TYPE(TABLE, "table") \
+  PT_WASM_EXPORT_TYPE(MEM, "table") \
+  PT_WASM_EXPORT_TYPE(GLOBAL, "table") \
+  PT_WASM_EXPORT_TYPE(LAST, "unknown export type")
+
+#define PT_WASM_EXPORT_TYPE(a, b) PT_WASM_EXPORT_TYPE_##a,
+typedef enum {
+PT_WASM_EXPORT_TYPES
+} pt_wasm_export_type_t;
+#undef PT_WASM_EXPORT_TYPE
+
+const char *pt_wasm_export_type_get_name(const pt_wasm_export_type_t);
+
+typedef struct {
+  pt_wasm_buf_t name;
+  pt_wasm_export_type_t type;
+  uint32_t id;
+} pt_wasm_export_t;
+
 typedef struct {
   void (*on_custom_section)(const pt_wasm_custom_section_t *, void *);
   void (*on_function_types)(const pt_wasm_function_type_t *, const size_t, void *);
@@ -448,6 +469,7 @@ typedef struct {
   void (*on_tables)(const pt_wasm_table_t *, const size_t, void *);
   void (*on_memories)(const pt_wasm_limits_t *, const size_t, void *);
   void (*on_globals)(const pt_wasm_global_t *, const size_t, void *);
+  void (*on_exports)(const pt_wasm_export_t *, const size_t, void *);
 
   void (*on_error)(const char *, void *);
 } pt_wasm_parse_cbs_t;
