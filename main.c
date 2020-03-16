@@ -203,6 +203,26 @@ TEST_DATA[] = {
   // global section: one mut i32 (pass, ofs: 681, len: 16)
   0x00, 0x61, 0x73, 0x6d, 0x01, 0x00, 0x00, 0x00,
   0x06, 0x06, 0x01, 0x7F, 0x01, 0x41, 0x02, 0x0B,
+
+  // global section: one i64 (pass, ofs: 697, len: 16)
+  0x00, 0x61, 0x73, 0x6d, 0x01, 0x00, 0x00, 0x00,
+  0x06, 0x06, 0x01, 0x7E, 0x00, 0x42, 0x28, 0x0B,
+
+  // global section: one f32 (pass, ofs: 713, len: 19)
+  0x00, 0x61, 0x73, 0x6d, 0x01, 0x00, 0x00, 0x00,
+  0x06, 0x09, 0x01, 0x7D, 0x00, 0x43, 0x00, 0x00,
+  0x00, 0x00, 0x0B,
+
+  // global section: one f64 (pass, ofs: 732, len: 23)
+  0x00, 0x61, 0x73, 0x6d, 0x01, 0x00, 0x00, 0x00,
+  0x06, 0x0D, 0x01, 0x7C, 0x00, 0x44, 0x00, 0x00,
+  0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x0B,
+
+  // global section: f32 pi, e (pass, ofs: 755, len: 27)
+  0x00, 0x61, 0x73, 0x6d, 0x01, 0x00, 0x00, 0x00,
+  0x06, 0x11, 0x02, 0x7D, 0x00, 0x43, 0xDB, 0x0F,
+  0x49, 0x40, 0x0B, 0x7D, 0x00, 0x43, 0x54, 0xF8,
+  0x2D, 0x40, 0x0B,
 };
 
 static const test_t TESTS[] = {
@@ -249,6 +269,10 @@ static const test_t TESTS[] = {
   { "global section: blank",              false,  660,   10 },
   { "global section: empty",              true,   670,   11 },
   { "global section: one mut i32",        true,   681,   16 },
+  { "global section: one i64",            true,   697,   16 },
+  { "global section: one f32",            true,   713,   19 },
+  { "global section: one f64",            true,   732,   23 },
+  { "global section: f32 pi, e",          true,   755,   27 },
 };
 
 static char *
@@ -322,6 +346,41 @@ dump_limits(
   }
 }
 
+static void
+dump_global(
+  FILE * fh,
+  const pt_wasm_global_t * const g
+) {
+  // print global attributes
+  fprintf(fh, "{type: \"%s\", mut: %c, expr: [",
+    pt_wasm_value_type_get_name(g->type.type),
+    g->type.mutable ? 't' : 'f'
+  );
+
+  // print expr
+  for (size_t j = 0; j < g->expr.buf.len; j++) {
+    fprintf(fh, "%s0x%02X", ((j > 0) ? ", " : ""), g->expr.buf.ptr[j]);
+  }
+
+  // add footer
+  fputs("]}", fh);
+}
+
+static void
+on_test_globals(
+  const pt_wasm_global_t * const gs,
+  const size_t num_gs,
+  void * const data
+) {
+  (void) data;
+
+  fprintf(stderr, "globals(%zu) = {", num_gs);
+  for (size_t i = 0; i < num_gs; i++) {
+    fprintf(stderr, "%s", (i > 0) ? ", " : "");
+    dump_global(stderr, gs + i);
+  }
+  fputs("}\n", stderr);
+}
 static void
 on_test_memories(
   const pt_wasm_limits_t * const mems,
@@ -455,6 +514,7 @@ static const pt_wasm_parse_cbs_t GOOD_TEST_CBS = {
   .on_functions       = on_test_functions,
   .on_tables          = on_test_tables,
   .on_memories        = on_test_memories,
+  .on_globals         = on_test_globals,
   .on_error           = on_test_error,
 };
 
