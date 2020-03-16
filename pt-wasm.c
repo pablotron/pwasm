@@ -270,20 +270,19 @@ pt_wasm_decode_u64(
 
 static size_t
 pt_wasm_parse_name(
-  pt_wasm_buf_t * ret_buf,
+  pt_wasm_buf_t * const ret_buf,
   const pt_wasm_parse_module_cbs_t * const cbs,
-  const uint8_t * const src,
-  const size_t src_len,
+  const pt_wasm_buf_t src,
   void * const cb_data
 ) {
   // check source length
-  if (!src_len) {
+  if (!src.len) {
     FAIL("empty custom section name");
   }
 
   // decode name length, check for error
   uint32_t len = 0;
-  const size_t len_ofs = pt_wasm_decode_u32(&len, src, src_len);
+  const size_t len_ofs = pt_wasm_decode_u32(&len, src.ptr, src.len);
   if (!len_ofs) {
     FAIL("bad custom section name length");
   }
@@ -292,13 +291,13 @@ pt_wasm_parse_name(
 
   // calculate total length, check for error
   const size_t num_bytes = len_ofs + len;
-  if (num_bytes > src_len) {
+  if (num_bytes > src.len) {
     FAIL("truncated custom section name");
   }
 
   // build result
   const pt_wasm_buf_t buf = {
-    .ptr = src + len_ofs,
+    .ptr = src.ptr + len_ofs,
     .len = len,
   };
 
@@ -369,7 +368,7 @@ pt_wasm_parse_custom_section(
 ) {
   // parse name, check for error
   pt_wasm_buf_t name;
-  const size_t ofs = pt_wasm_parse_name(&name, cbs, src.ptr, src.len, cb_data);
+  const size_t ofs = pt_wasm_parse_name(&name, cbs, src, cb_data);
   if (!ofs) {
     return false;
   }
@@ -1141,16 +1140,26 @@ pt_wasm_parse_import(
   const size_t src_len,
   void * const cb_data
 ) {
+  const pt_wasm_buf_t mod_src = {
+    .ptr = src,
+    .len = src_len,
+  };
+
   // parse module name, check for error
   pt_wasm_buf_t mod;
-  const size_t mod_len = pt_wasm_parse_name(&mod, cbs, src, src_len, cb_data);
+  const size_t mod_len = pt_wasm_parse_name(&mod, cbs, mod_src, cb_data);
   if (!mod_len) {
     return false;
   }
 
+  const pt_wasm_buf_t name_src = {
+    .ptr = mod_src.ptr + mod_len,
+    .len = mod_src.len - mod_len,
+  };
+
   // parse name, check for error
   pt_wasm_buf_t name;
-  const size_t name_len = pt_wasm_parse_name(&name, cbs, src + mod_len, src_len - mod_len, cb_data);
+  const size_t name_len = pt_wasm_parse_name(&name, cbs, name_src, cb_data);
   if (!name_len) {
     return false;
   }
@@ -1505,9 +1514,14 @@ pt_wasm_parse_export(
   const size_t src_len,
   void * const cb_data
 ) {
+  const pt_wasm_buf_t name_src = {
+    .ptr = src,
+    .len = src_len,
+  };
+
   // parse export name, check for error
   pt_wasm_buf_t name;
-  const size_t n_len = pt_wasm_parse_name(&name, cbs, src, src_len, cb_data);
+  const size_t n_len = pt_wasm_parse_name(&name, cbs, name_src, cb_data);
   if (!n_len) {
     return 0;
   }
