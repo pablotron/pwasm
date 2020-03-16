@@ -304,9 +304,9 @@ on_test_data_segments(
     dump_buf(stderr, ds[i].expr.buf);
     fputs(", data: ", stderr);
     dump_buf(stderr, ds[i].data);
+    fputs("\n", stderr);
   }
 }
-
 
 static void
 on_test_error(const char * const text, void * const data) {
