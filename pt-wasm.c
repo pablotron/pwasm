@@ -1540,6 +1540,136 @@ pt_wasm_parse_start_section(
   return true;
 }
 
+/**
+ * Parse element into +dst+ from source buffer +src+, consuming a
+ * maximum of +src_len+ bytes.
+ *
+ * Returns number of bytes consumed, or 0 on error.
+ */
+static size_t
+pt_wasm_parse_element(
+  pt_wasm_element_t * const dst,
+  const pt_wasm_parse_cbs_t * const cbs,
+  const uint8_t * const src,
+  const size_t src_len,
+  void * const cb_data
+) {
+  // get table_id, check for error
+  uint32_t t_id = 0;
+  const size_t t_len = pt_wasm_decode_u32(&t_id, src, src_len);
+  if (!t_len) {
+    FAIL("bad element table id");
+  }
+
+  // parse expr, check for error
+  pt_wasm_expr_t expr;
+  const size_t expr_len = pt_wasm_parse_expr(&expr, cbs, src + t_len, src_len - t_len, cb_data);
+  if (!expr_len) {
+    return 0;
+  }
+
+  // build offset
+  size_t ofs = t_len + expr_len;
+
+  // get function index count, check for error
+  uint32_t num_fns;
+  const size_t n_len = pt_wasm_decode_u32(&num_fns, src + ofs, src_len - ofs);
+  if (!n_len) {
+    FAIL("bad element function index count");
+  }
+
+  // increment offset
+  ofs += n_len;
+
+  size_t data_len = 0;
+  for (size_t i = 0; i < num_fns; i++) {
+    uint32_t id = 0;
+    const size_t len = pt_wasm_decode_u32(&id, src + ofs, src_len - ofs);
+    if (!len) {
+      FAIL("bad element function index");
+    }
+
+    // increment offset
+    data_len += len;
+  }
+
+  // build result
+  const pt_wasm_element_t tmp = {
+    .table_id = t_id,
+    .expr = expr,
+    .num_func_ids = num_fns,
+    .func_ids = {
+      .ptr = src + ofs,
+      .len = data_len,
+    },
+  };
+
+  if (dst) {
+    // copy result to destination
+    *dst = tmp;
+  }
+
+  // return number of bytes consumed
+  return ofs + data_len;
+}
+
+static bool
+pt_wasm_parse_element_section(
+  const pt_wasm_parse_cbs_t * const cbs,
+  const uint8_t * const src,
+  const size_t src_len,
+  void * const cb_data
+) {
+  // check source length
+  if (!src_len) {
+    FAIL("empty element section");
+  }
+
+  // get entry count, check for error
+  uint32_t num_es = 0;
+  const size_t num_len = pt_wasm_decode_u32(&num_es, src, src_len);
+  if (!num_len) {
+    FAIL("bad element section entry count");
+  }
+
+  // batch export buffer
+  pt_wasm_element_t es[PT_WASM_BATCH_SIZE];
+
+  size_t ofs = num_len;
+  for (size_t i = 0; i < num_es; i++) {
+    const size_t es_ofs = (i & (PT_WASM_BATCH_SIZE - 1));
+
+    // parse element, check for error
+    const size_t len = pt_wasm_parse_element(es + es_ofs, cbs, src + ofs, src_len - ofs, cb_data);
+    if (!len) {
+      return false;
+    }
+
+    // increment offset, check for error
+    ofs += len;
+    if (ofs > src_len) {
+      FAIL("element section length overflow");
+    }
+
+    if ((es_ofs == LEN(es)) && cbs && cbs->on_elements) {
+      // flush batch
+      cbs->on_elements(es, es_ofs, cb_data);
+    }
+  }
+
+  // FIXME: check offset?
+
+  // count remaining entries
+  const size_t num_left = num_es & (PT_WASM_BATCH_SIZE - 1);
+  if (num_left && cbs && cbs->on_elements) {
+    // flush remaining entries
+    cbs->on_elements(es, num_left, cb_data);
+  }
+
+  // return success
+  return true;
+}
+
 static bool
 pt_wasm_parse_section(
   const pt_wasm_parse_cbs_t * const cbs,
@@ -1567,6 +1697,8 @@ pt_wasm_parse_section(
     return pt_wasm_parse_export_section(cbs, src, src_len, cb_data);
   case PT_WASM_SECTION_TYPE_START:
     return pt_wasm_parse_start_section(cbs, src, src_len, cb_data);
+  case PT_WASM_SECTION_TYPE_ELEMENT:
+    return pt_wasm_parse_element_section(cbs, src, src_len, cb_data);
   default:
     FAIL("unknown section type");
     break;

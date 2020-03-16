@@ -462,6 +462,17 @@ typedef struct {
 } pt_wasm_export_t;
 
 typedef struct {
+  uint32_t table_id;
+  pt_wasm_expr_t expr;
+
+  /* number of elements in func_ids */
+  size_t num_func_ids;
+
+  /* packed buffer of function ids */
+  pt_wasm_buf_t func_ids;
+} pt_wasm_element_t;
+
+typedef struct {
   void (*on_custom_section)(const pt_wasm_custom_section_t *, void *);
   void (*on_function_types)(const pt_wasm_function_type_t *, const size_t, void *);
   void (*on_imports)(const pt_wasm_import_t *, const size_t, void *);
@@ -470,6 +481,7 @@ typedef struct {
   void (*on_memories)(const pt_wasm_limits_t *, const size_t, void *);
   void (*on_globals)(const pt_wasm_global_t *, const size_t, void *);
   void (*on_exports)(const pt_wasm_export_t *, const size_t, void *);
+  void (*on_elements)(const pt_wasm_element_t *, const size_t, void *);
   void (*on_start)(const uint32_t, void *);
 
   void (*on_error)(const char *, void *);
