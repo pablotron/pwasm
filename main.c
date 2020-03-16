@@ -8,6 +8,13 @@
 
 #define NUM_ITEMS(ary) (sizeof(ary) / sizeof(ary[0]))
 
+typedef struct {
+  char *name;
+  bool want;
+  size_t ofs;
+  size_t len;
+} test_t;
+
 static const uint8_t
 TEST_DATA[] = {
   // bad header (fail, ofs: 0, len: 8)
@@ -184,14 +191,19 @@ TEST_DATA[] = {
   0x80, 0x80, 0x80, 0x08, 0x83, 0x80, 0x80, 0x80,
   0x08, 0x01, 0x84, 0x80, 0x80, 0x80, 0x08, 0x85,
   0x80, 0x80, 0x80, 0x08,
-};
 
-typedef struct {
-  char *name;
-  bool want;
-  size_t ofs;
-  size_t len;
-} test_t;
+  // global section: blank (fail, ofs: 660, len: 10)
+  0x00, 0x61, 0x73, 0x6d, 0x01, 0x00, 0x00, 0x00,
+  0x06, 0x00,
+
+  // global section: empty (pass, ofs: 670, len: 11)
+  0x00, 0x61, 0x73, 0x6d, 0x01, 0x00, 0x00, 0x00,
+  0x06, 0x01, 0x00,
+
+  // global section: one mut i32 (pass, ofs: 681, len: 16)
+  0x00, 0x61, 0x73, 0x6d, 0x01, 0x00, 0x00, 0x00,
+  0x06, 0x06, 0x01, 0x7F, 0x01, 0x41, 0x02, 0x0B,
+};
 
 static const test_t TESTS[] = {
   { "short length",                       false,    0,    0 },
@@ -234,6 +246,9 @@ static const test_t TESTS[] = {
   { "memory section: empty",              true,   592,   11 },
   { "memory section: one",                true,   603,   13 },
   { "memory section: 3 pairs",            true,   616,   44 },
+  { "global section: blank",              false,  660,   10 },
+  { "global section: empty",              true,   670,   11 },
+  { "global section: one mut i32",        true,   681,   16 },
 };
 
 static char *

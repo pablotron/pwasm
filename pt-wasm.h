@@ -349,6 +349,7 @@ typedef struct {
 
 typedef struct {
   pt_wasm_op_t op;
+
   union {
     /* block, loop */
     struct {

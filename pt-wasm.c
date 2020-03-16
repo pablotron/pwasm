@@ -75,11 +75,23 @@ static const char *PT_WASM_VALUE_TYPE_NAMES[] = {
   "unknown type",
 };
 
+/**
+ * Is this value a valid value type?
+ *
+ * From section 5.3.1 of the WebAssembly documentation.
+ */
+static inline bool
+pt_wasm_is_valid_value_type(
+  const uint8_t v
+) {
+  return ((v == 0x7F) || (v == 0x7E) || (v == 0x7D) || (v == 0x7C));
+}
+
 const char *
 pt_wasm_value_type_get_name(
   const pt_wasm_value_type_t v
 ) {
-  const size_t ofs = MIN(0x7F - v, LEN(PT_WASM_VALUE_TYPE_NAMES));
+  const size_t ofs = MIN(0x7F - (v & 0x7F), LEN(PT_WASM_VALUE_TYPE_NAMES));
   return PT_WASM_VALUE_TYPE_NAMES[ofs];
 }
 
@@ -88,6 +100,18 @@ pt_wasm_result_type_get_name(
   const pt_wasm_result_type_t v
 ) {
   return (v == 0x40) ? "void" : pt_wasm_value_type_get_name(v);
+}
+
+/**
+ * Is this value a valid result type?
+ *
+ * From section 5.3.2 of the WebAssembly documentation.
+ */
+static inline bool
+pt_wasm_is_valid_result_type(
+  const uint8_t v
+) {
+  return ((v == 0x40) || pt_wasm_is_valid_value_type(v));
 }
 
 static inline size_t
@@ -259,30 +283,6 @@ pt_wasm_parse_name(
 
   // return section length, in bytes
   return num_bytes;
-}
-
-/**
- * Is this value a valid value type?
- *
- * From section 5.3.1 of the WebAssembly documentation.
- */
-static inline bool
-pt_wasm_is_valid_value_type(
-  const uint8_t v
-) {
-  return ((v == 0x7F) || (v == 0x7E) || (v == 0x7D) || (v == 0x7C));
-}
-
-/**
- * Is this value a valid result type?
- *
- * From section 5.3.2 of the WebAssembly documentation.
- */
-static inline bool
-pt_wasm_is_valid_result_type(
-  const uint8_t v
-) {
-  return ((v == 0x40) || pt_wasm_is_valid_value_type(v));
 }
 
 static size_t
@@ -649,7 +649,7 @@ pt_wasm_is_valid_op(
   return PT_WASM_OPS[byte].valid;
 }
 
-static inline bool
+static inline pt_wasm_imm_t
 pt_wasm_op_get_imm(
   const pt_wasm_op_t op
 ) {
@@ -693,9 +693,8 @@ pt_wasm_parse_inst(
     .op = op,
   };
 
-  // get immediate, check for error
-  const pt_wasm_imm_t imm = pt_wasm_op_get_imm(in.op);
-  switch (imm) {
+  // get op immediate
+  switch (pt_wasm_op_get_imm(in.op)) {
   case PT_WASM_IMM_NONE:
     // do nothing
     break;
@@ -716,6 +715,7 @@ pt_wasm_parse_inst(
       in.v_block.type = type;
       len += 1;
     }
+
     break;
   case PT_WASM_IMM_INDEX:
     {
@@ -730,6 +730,7 @@ pt_wasm_parse_inst(
       in.v_index.id = id;
       len += id_len;
     }
+
     break;
   case PT_WASM_IMM_CALL_INDIRECT:
     {
