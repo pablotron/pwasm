@@ -8,6 +8,11 @@ extern "C" {
 #include <stddef.h> // size_t
 #include <stdint.h> // uint8_t, uint32_t, etc
 
+typedef struct {
+  const uint8_t *ptr;
+  size_t len;
+} pt_wasm_buf_t;
+
 #define PT_WASM_SECTION_TYPES \
   PT_WASM_SECTION_TYPE(CUSTOM, "custom") \
   PT_WASM_SECTION_TYPE(TYPE, "type") \
@@ -40,11 +45,6 @@ PT_WASM_SECTION_TYPES
 const char *pt_wasm_section_type_get_name(const pt_wasm_section_type_t);
 
 typedef struct {
-  const uint8_t *ptr;
-  size_t len;
-} pt_wasm_buf_t;
-
-typedef struct {
   pt_wasm_buf_t name;
   pt_wasm_buf_t data;
 } pt_wasm_custom_section_t;
@@ -71,14 +71,332 @@ typedef uint32_t pt_wasm_value_type_t;
 
 const char *pt_wasm_value_type_get_name(const pt_wasm_value_type_t);
 
-typedef struct {
-  pt_wasm_value_type_t type;
-  _Bool mutable;
-} pt_wasm_global_type_t;
+typedef uint32_t pt_wasm_result_type_t;
+
+const char *pt_wasm_result_type_get_name(const pt_wasm_result_type_t);
+
+#define PT_WASM_OP_DEFS \
+  /* 0x00 */ PT_WASM_OP(UNREACHABLE, "unreachable", NONE) \
+  /* 0x01 */ PT_WASM_OP(NOP, "nop", NONE) \
+  /* 0x02 */ PT_WASM_OP_CONTROL(BLOCK, "block", BLOCK) \
+  /* 0x03 */ PT_WASM_OP_CONTROL(LOOP, "loop", BLOCK) \
+  /* 0x04 */ PT_WASM_OP_CONTROL(IF, "if", BLOCK) \
+  /* 0x05 */ PT_WASM_OP(ELSE, "else", NONE) \
+  /* 0x06 */ PT_WASM_OP_RESERVED(RESERVED_06, "reserved_06") \
+  /* 0x07 */ PT_WASM_OP_RESERVED(RESERVED_07, "reserved_07") \
+  /* 0x08 */ PT_WASM_OP_RESERVED(RESERVED_08, "reserved_08") \
+  /* 0x09 */ PT_WASM_OP_RESERVED(RESERVED_09, "reserved_09") \
+  /* 0x0A */ PT_WASM_OP_RESERVED(RESERVED_0A, "reserved_0A") \
+  /* 0x0B */ PT_WASM_OP(END, "end", NONE) \
+  /* 0x0C */ PT_WASM_OP(BR, "br", INDEX) \
+  /* 0x0D */ PT_WASM_OP(BR_IF, "br_if", INDEX) \
+  /* 0x0E */ PT_WASM_OP(BR_TABLE, "br_table", BR_TABLE) \
+  /* 0x0F */ PT_WASM_OP(RETURN, "return", NONE) \
+  /* 0x10 */ PT_WASM_OP(CALL, "call", INDEX) \
+  /* 0x11 */ PT_WASM_OP(CALL_INDIRECT, "call_indirect", CALL_INDIRECT) \
+  /* 0x12 */ PT_WASM_OP_RESERVED(RESERVED_12, "reserved_12") \
+  /* 0x13 */ PT_WASM_OP_RESERVED(RESERVED_13, "reserved_13") \
+  /* 0x14 */ PT_WASM_OP_RESERVED(RESERVED_14, "reserved_14") \
+  /* 0x15 */ PT_WASM_OP_RESERVED(RESERVED_15, "reserved_15") \
+  /* 0x16 */ PT_WASM_OP_RESERVED(RESERVED_16, "reserved_16") \
+  /* 0x17 */ PT_WASM_OP_RESERVED(RESERVED_17, "reserved_17") \
+  /* 0x18 */ PT_WASM_OP_RESERVED(RESERVED_18, "reserved_18") \
+  /* 0x19 */ PT_WASM_OP_RESERVED(RESERVED_19, "reserved_19") \
+  /* 0x1A */ PT_WASM_OP(DROP, "drop", NONE) \
+  /* 0x1B */ PT_WASM_OP(SELECT, "select", NONE) \
+  /* 0x1C */ PT_WASM_OP_RESERVED(RESERVED_1C, "reserved_1c") \
+  /* 0x1D */ PT_WASM_OP_RESERVED(RESERVED_1D, "reserved_1d") \
+  /* 0x1E */ PT_WASM_OP_RESERVED(RESERVED_1E, "reserved_1e") \
+  /* 0x1F */ PT_WASM_OP_RESERVED(RESERVED_1F, "reserved_1f") \
+  /* 0x20 */ PT_WASM_OP(LOCAL_GET, "local.get", INDEX) \
+  /* 0x21 */ PT_WASM_OP(LOCAL_SET, "local.set", INDEX) \
+  /* 0x22 */ PT_WASM_OP(LOCAL_TEE, "local.tee", INDEX) \
+  /* 0x23 */ PT_WASM_OP(GLOBAL_GET, "global.get", INDEX) \
+  /* 0x24 */ PT_WASM_OP(GLOBAL_SET, "global.set", INDEX) \
+  /* 0x25 */ PT_WASM_OP_RESERVED(RESERVED_25, "reserved_25") \
+  /* 0x26 */ PT_WASM_OP_RESERVED(RESERVED_26, "reserved_26") \
+  /* 0x27 */ PT_WASM_OP_RESERVED(RESERVED_27, "reserved_27") \
+  /* 0x28 */ PT_WASM_OP(I32_LOAD, "i32.load", MEM) \
+  /* 0x29 */ PT_WASM_OP(I64_LOAD, "i64.load", MEM) \
+  /* 0x2A */ PT_WASM_OP(F32_LOAD, "f32.load", MEM) \
+  /* 0x2B */ PT_WASM_OP(F64_LOAD, "f64.load", MEM) \
+  /* 0x2C */ PT_WASM_OP(I32_LOAD8_S, "i32.load8_s", MEM) \
+  /* 0x2D */ PT_WASM_OP(I32_LOAD8_U, "i32.load8_u", MEM) \
+  /* 0x2E */ PT_WASM_OP(I32_LOAD16_S, "i32.load16_s", MEM) \
+  /* 0x2F */ PT_WASM_OP(I32_LOAD16_U, "i32.load16_u", MEM) \
+  /* 0x30 */ PT_WASM_OP(I64_LOAD8_S, "i64.load8_s", MEM) \
+  /* 0x31 */ PT_WASM_OP(I64_LOAD8_U, "i64.load8_u", MEM) \
+  /* 0x32 */ PT_WASM_OP(I64_LOAD16_S, "i64.load16_s", MEM) \
+  /* 0x33 */ PT_WASM_OP(I64_LOAD16_U, "i64.load16_u", MEM) \
+  /* 0x34 */ PT_WASM_OP(I64_LOAD32_S, "i64.load32_s", MEM) \
+  /* 0x35 */ PT_WASM_OP(I64_LOAD32_U, "i64.load32_u", MEM) \
+  /* 0x36 */ PT_WASM_OP(I32_STORE, "i32.store", MEM) \
+  /* 0x37 */ PT_WASM_OP(I64_STORE, "i64.store", MEM) \
+  /* 0x38 */ PT_WASM_OP(F32_STORE, "f32.store", MEM) \
+  /* 0x39 */ PT_WASM_OP(F64_STORE, "f64.store", MEM) \
+  /* 0x3A */ PT_WASM_OP(I32_STORE8, "i32.store8", MEM) \
+  /* 0x3B */ PT_WASM_OP(I32_STORE16, "i32.store16", MEM) \
+  /* 0x3C */ PT_WASM_OP(I64_STORE8, "i64.store8", MEM) \
+  /* 0x3D */ PT_WASM_OP(I64_STORE16, "i64.store16", MEM) \
+  /* 0x3E */ PT_WASM_OP(I64_STORE32, "i64.store32", MEM) \
+  /* 0x3F */ PT_WASM_OP(MEMORY_SIZE, "memory.size", NONE) \
+  /* 0x40 */ PT_WASM_OP(MEMORY_GROW, "memory.grow", NONE) \
+  /* 0x41 */ PT_WASM_OP(I32_CONST, "i32.const", I32_CONST) \
+  /* 0x42 */ PT_WASM_OP(I64_CONST, "i64.const", I64_CONST) \
+  /* 0x43 */ PT_WASM_OP(F32_CONST, "f32.const", F32_CONST) \
+  /* 0x44 */ PT_WASM_OP(F64_CONST, "f64.const", F64_CONST) \
+  /* 0x45 */ PT_WASM_OP(I32_EQZ, "i32.eqz", NONE) \
+  /* 0x46 */ PT_WASM_OP(I32_EQ, "i32.eq", NONE) \
+  /* 0x47 */ PT_WASM_OP(I32_NE, "i32.ne", NONE) \
+  /* 0x48 */ PT_WASM_OP(I32_LT_S, "i32.lt_s", NONE) \
+  /* 0x49 */ PT_WASM_OP(I32_LT_U, "i32.lt_u", NONE) \
+  /* 0x4A */ PT_WASM_OP(I32_GT_S, "i32.gt_s", NONE) \
+  /* 0x4B */ PT_WASM_OP(I32_GT_U, "i32.gt_u", NONE) \
+  /* 0x4C */ PT_WASM_OP(I32_LE_S, "i32.le_s", NONE) \
+  /* 0x4D */ PT_WASM_OP(I32_LE_U, "i32.le_u", NONE) \
+  /* 0x4E */ PT_WASM_OP(I32_GE_S, "i32.ge_s", NONE) \
+  /* 0x4F */ PT_WASM_OP(I32_GE_U, "i32.ge_u", NONE) \
+  /* 0x50 */ PT_WASM_OP(I64_EQZ, "i64.eqz", NONE) \
+  /* 0x51 */ PT_WASM_OP(I64_EQ, "i64.eq", NONE) \
+  /* 0x52 */ PT_WASM_OP(I64_NE, "i64.ne", NONE) \
+  /* 0x53 */ PT_WASM_OP(I64_LT_S, "i64.lt_s", NONE) \
+  /* 0x54 */ PT_WASM_OP(I64_LT_U, "i64.lt_u", NONE) \
+  /* 0x55 */ PT_WASM_OP(I64_GT_S, "i64.gt_s", NONE) \
+  /* 0x56 */ PT_WASM_OP(I64_GT_U, "i64.gt_u", NONE) \
+  /* 0x57 */ PT_WASM_OP(I64_LE_S, "i64.le_s", NONE) \
+  /* 0x58 */ PT_WASM_OP(I64_LE_U, "i64.le_u", NONE) \
+  /* 0x59 */ PT_WASM_OP(I64_GE_S, "i64.ge_s", NONE) \
+  /* 0x5A */ PT_WASM_OP(I64_GE_U, "i64.ge_u", NONE) \
+  /* 0x5B */ PT_WASM_OP(F32_EQ, "f32.eq", NONE) \
+  /* 0x5C */ PT_WASM_OP(F32_NE, "f32.ne", NONE) \
+  /* 0x5D */ PT_WASM_OP(F32_LT, "f32.lt", NONE) \
+  /* 0x5E */ PT_WASM_OP(F32_GT, "f32.gt", NONE) \
+  /* 0x5F */ PT_WASM_OP(F32_LE, "f32.le", NONE) \
+  /* 0x60 */ PT_WASM_OP(F32_GE, "f32.ge", NONE) \
+  /* 0x61 */ PT_WASM_OP(F64_EQ, "f64.eq", NONE) \
+  /* 0x62 */ PT_WASM_OP(F64_NE, "f64.ne", NONE) \
+  /* 0x63 */ PT_WASM_OP(F64_LT, "f64.lt", NONE) \
+  /* 0x64 */ PT_WASM_OP(F64_GT, "f64.gt", NONE) \
+  /* 0x65 */ PT_WASM_OP(F64_LE, "f64.le", NONE) \
+  /* 0x66 */ PT_WASM_OP(F64_GE, "f64.ge", NONE) \
+  /* 0x67 */ PT_WASM_OP(I32_CLZ, "i32.clz", NONE) \
+  /* 0x68 */ PT_WASM_OP(I32_CTZ, "i32.ctz", NONE) \
+  /* 0x69 */ PT_WASM_OP(I32_POPCNT, "i32.popcnt", NONE) \
+  /* 0x6A */ PT_WASM_OP(I32_ADD, "i32.add", NONE) \
+  /* 0x6B */ PT_WASM_OP(I32_SUB, "i32.sub", NONE) \
+  /* 0x6C */ PT_WASM_OP(I32_MUL, "i32.mul", NONE) \
+  /* 0x6D */ PT_WASM_OP(I32_DIV_S, "i32.div_s", NONE) \
+  /* 0x6E */ PT_WASM_OP(I32_DIV_U, "i32.div_u", NONE) \
+  /* 0x6F */ PT_WASM_OP(I32_REM_S, "i32.rem_s", NONE) \
+  /* 0x70 */ PT_WASM_OP(I32_REM_U, "i32.rem_u", NONE) \
+  /* 0x71 */ PT_WASM_OP(I32_AND, "i32.and", NONE) \
+  /* 0x72 */ PT_WASM_OP(I32_OR, "i32.or", NONE) \
+  /* 0x73 */ PT_WASM_OP(I32_XOR, "i32.xor", NONE) \
+  /* 0x74 */ PT_WASM_OP(I32_SHL, "i32.shl", NONE) \
+  /* 0x75 */ PT_WASM_OP(I32_SHR_S, "i32.shr_s", NONE) \
+  /* 0x76 */ PT_WASM_OP(I32_SHR_U, "i32.shr_u", NONE) \
+  /* 0x77 */ PT_WASM_OP(I32_ROTL, "i32.rotl", NONE) \
+  /* 0x78 */ PT_WASM_OP(I32_ROTR, "i32.rotr", NONE) \
+  /* 0x79 */ PT_WASM_OP(I64_CLZ, "i64.clz", NONE) \
+  /* 0x7A */ PT_WASM_OP(I64_CTZ, "i64.ctz", NONE) \
+  /* 0x7B */ PT_WASM_OP(I64_POPCNT, "i64.popcnt", NONE) \
+  /* 0x7C */ PT_WASM_OP(I64_ADD, "i64.add", NONE) \
+  /* 0x7D */ PT_WASM_OP(I64_SUB, "i64.sub", NONE) \
+  /* 0x7E */ PT_WASM_OP(I64_MUL, "i64.mul", NONE) \
+  /* 0x7F */ PT_WASM_OP(I64_DIV_S, "i64.div_s", NONE) \
+  /* 0x80 */ PT_WASM_OP(I64_DIV_U, "i64.div_u", NONE) \
+  /* 0x81 */ PT_WASM_OP(I64_REM_S, "i64.rem_s", NONE) \
+  /* 0x82 */ PT_WASM_OP(I64_REM_U, "i64.rem_u", NONE) \
+  /* 0x83 */ PT_WASM_OP(I64_AND, "i64.and", NONE) \
+  /* 0x84 */ PT_WASM_OP(I64_OR, "i64.or", NONE) \
+  /* 0x85 */ PT_WASM_OP(I64_XOR, "i64.xor", NONE) \
+  /* 0x86 */ PT_WASM_OP(I64_SHL, "i64.shl", NONE) \
+  /* 0x87 */ PT_WASM_OP(I64_SHR_S, "i64.shr_s", NONE) \
+  /* 0x88 */ PT_WASM_OP(I64_SHR_U, "i64.shr_u", NONE) \
+  /* 0x89 */ PT_WASM_OP(I64_ROTL, "i64.rotl", NONE) \
+  /* 0x8A */ PT_WASM_OP(I64_ROTR, "i64.rotr", NONE) \
+  /* 0x8B */ PT_WASM_OP(F32_ABS, "f32.abs", NONE) \
+  /* 0x8C */ PT_WASM_OP(F32_NEG, "f32.neg", NONE) \
+  /* 0x8D */ PT_WASM_OP(F32_CEIL, "f32.ceil", NONE) \
+  /* 0x8E */ PT_WASM_OP(F32_FLOOR, "f32.floor", NONE) \
+  /* 0x8F */ PT_WASM_OP(F32_TRUNC, "f32.trunc", NONE) \
+  /* 0x90 */ PT_WASM_OP(F32_NEAREST, "f32.nearest", NONE) \
+  /* 0x91 */ PT_WASM_OP(F32_SQRT, "f32.sqrt", NONE) \
+  /* 0x92 */ PT_WASM_OP(F32_ADD, "f32.add", NONE) \
+  /* 0x93 */ PT_WASM_OP(F32_SUB, "f32.sub", NONE) \
+  /* 0x94 */ PT_WASM_OP(F32_MUL, "f32.mul", NONE) \
+  /* 0x95 */ PT_WASM_OP(F32_DIV, "f32.div", NONE) \
+  /* 0x96 */ PT_WASM_OP(F32_MIN, "f32.min", NONE) \
+  /* 0x97 */ PT_WASM_OP(F32_MAX, "f32.max", NONE) \
+  /* 0x98 */ PT_WASM_OP(F32_COPYSIGN, "f32.copysign", NONE) \
+  /* 0x99 */ PT_WASM_OP(F64_ABS, "f64.abs", NONE) \
+  /* 0x9A */ PT_WASM_OP(F64_NEG, "f64.neg", NONE) \
+  /* 0x9B */ PT_WASM_OP(F64_CEIL, "f64.ceil", NONE) \
+  /* 0x9C */ PT_WASM_OP(F64_FLOOR, "f64.floor", NONE) \
+  /* 0x9D */ PT_WASM_OP(F64_TRUNC, "f64.trunc", NONE) \
+  /* 0x9E */ PT_WASM_OP(F64_NEAREST, "f64.nearest", NONE) \
+  /* 0x9F */ PT_WASM_OP(F64_SQRT, "f64.sqrt", NONE) \
+  /* 0xA0 */ PT_WASM_OP(F64_ADD, "f64.add", NONE) \
+  /* 0xA1 */ PT_WASM_OP(F64_SUB, "f64.sub", NONE) \
+  /* 0xA2 */ PT_WASM_OP(F64_MUL, "f64.mul", NONE) \
+  /* 0xA3 */ PT_WASM_OP(F64_DIV, "f64.div", NONE) \
+  /* 0xA4 */ PT_WASM_OP(F64_MIN, "f64.min", NONE) \
+  /* 0xA5 */ PT_WASM_OP(F64_MAX, "f64.max", NONE) \
+  /* 0xA6 */ PT_WASM_OP(F64_COPYSIGN, "f64.copysign", NONE) \
+  /* 0xA7 */ PT_WASM_OP(I32_WRAP_I64, "i32.wrap_i64", NONE) \
+  /* 0xA8 */ PT_WASM_OP(I32_TRUNC_F32_S, "i32.trunc_f32_s", NONE) \
+  /* 0xA9 */ PT_WASM_OP(I32_TRUNC_F32_U, "i32.trunc_f32_u", NONE) \
+  /* 0xAA */ PT_WASM_OP(I32_TRUNC_F64_S, "i32.trunc_f64_s", NONE) \
+  /* 0xAB */ PT_WASM_OP(I32_TRUNC_F64_U, "i32.trunc_f64_u", NONE) \
+  /* 0xAC */ PT_WASM_OP(I64_EXTEND_I32_S, "i64.extend_i32_s", NONE) \
+  /* 0xAD */ PT_WASM_OP(I64_EXTEND_I32_U, "i64.extend_i32_u", NONE) \
+  /* 0xAE */ PT_WASM_OP(I64_TRUNC_F32_S, "i64.trunc_f32_s", NONE) \
+  /* 0xAF */ PT_WASM_OP(I64_TRUNC_F32_U, "i64.trunc_f32_u", NONE) \
+  /* 0xB0 */ PT_WASM_OP(I64_TRUNC_F64_S, "i64.trunc_f64_s", NONE) \
+  /* 0xB1 */ PT_WASM_OP(I64_TRUNC_F64_U, "i64.trunc_f64_u", NONE) \
+  /* 0xB2 */ PT_WASM_OP(F32_CONVERT_I32_S, "f32.convert_i32_s", NONE) \
+  /* 0xB3 */ PT_WASM_OP(F32_CONVERT_I32_U, "f32.convert_i32_u", NONE) \
+  /* 0xB4 */ PT_WASM_OP(F32_CONVERT_I64_S, "f32.convert_i64_s", NONE) \
+  /* 0xB5 */ PT_WASM_OP(F32_CONVERT_I64_U, "f32.convert_i64_u", NONE) \
+  /* 0xB6 */ PT_WASM_OP(F32_DEMOTE_F64, "f32.demote_f64", NONE) \
+  /* 0xB7 */ PT_WASM_OP(F64_CONVERT_I32_S, "f64.convert_i32_s", NONE) \
+  /* 0xB8 */ PT_WASM_OP(F64_CONVERT_I32_U, "f64.convert_i32_u", NONE) \
+  /* 0xB9 */ PT_WASM_OP(F64_CONVERT_I64_S, "f64.convert_i64_s", NONE) \
+  /* 0xBA */ PT_WASM_OP(F64_CONVERT_I64_U, "f64.convert_i64_u", NONE) \
+  /* 0xBB */ PT_WASM_OP(F64_PROMOTE_F32, "f64.promote_f32", NONE) \
+  /* 0xBC */ PT_WASM_OP(I32_REINTERPRET_F32, "i32.reinterpret_f32", NONE) \
+  /* 0xBD */ PT_WASM_OP(I64_REINTERPRET_F64, "i64.reinterpret_f64", NONE) \
+  /* 0xBE */ PT_WASM_OP(F32_REINTERPRET_I32, "f32.reinterpret_i32", NONE) \
+  /* 0xBF */ PT_WASM_OP(F64_REINTERPRET_I64, "f64.reinterpret_i64", NONE) \
+  /* 0xC0 */ PT_WASM_OP_RESERVED(RESERVED_C0, "reserved_c0") \
+  /* 0xC1 */ PT_WASM_OP_RESERVED(RESERVED_C1, "reserved_c1") \
+  /* 0xC2 */ PT_WASM_OP_RESERVED(RESERVED_C2, "reserved_c2") \
+  /* 0xC3 */ PT_WASM_OP_RESERVED(RESERVED_C3, "reserved_c3") \
+  /* 0xC4 */ PT_WASM_OP_RESERVED(RESERVED_C4, "reserved_c4") \
+  /* 0xC5 */ PT_WASM_OP_RESERVED(RESERVED_C5, "reserved_c5") \
+  /* 0xC6 */ PT_WASM_OP_RESERVED(RESERVED_C6, "reserved_c6") \
+  /* 0xC7 */ PT_WASM_OP_RESERVED(RESERVED_C7, "reserved_c7") \
+  /* 0xC8 */ PT_WASM_OP_RESERVED(RESERVED_C8, "reserved_c8") \
+  /* 0xC9 */ PT_WASM_OP_RESERVED(RESERVED_C9, "reserved_c9") \
+  /* 0xCA */ PT_WASM_OP_RESERVED(RESERVED_CA, "reserved_ca") \
+  /* 0xCB */ PT_WASM_OP_RESERVED(RESERVED_CB, "reserved_cb") \
+  /* 0xCC */ PT_WASM_OP_RESERVED(RESERVED_CC, "reserved_cc") \
+  /* 0xCD */ PT_WASM_OP_RESERVED(RESERVED_CD, "reserved_cd") \
+  /* 0xCE */ PT_WASM_OP_RESERVED(RESERVED_CE, "reserved_ce") \
+  /* 0xCF */ PT_WASM_OP_RESERVED(RESERVED_CF, "reserved_cf") \
+  /* 0xD0 */ PT_WASM_OP_RESERVED(RESERVED_D0, "reserved_d0") \
+  /* 0xD1 */ PT_WASM_OP_RESERVED(RESERVED_D1, "reserved_d1") \
+  /* 0xD2 */ PT_WASM_OP_RESERVED(RESERVED_D2, "reserved_d2") \
+  /* 0xD3 */ PT_WASM_OP_RESERVED(RESERVED_D3, "reserved_d3") \
+  /* 0xD4 */ PT_WASM_OP_RESERVED(RESERVED_D4, "reserved_d4") \
+  /* 0xD5 */ PT_WASM_OP_RESERVED(RESERVED_D5, "reserved_d5") \
+  /* 0xD6 */ PT_WASM_OP_RESERVED(RESERVED_D6, "reserved_d6") \
+  /* 0xD7 */ PT_WASM_OP_RESERVED(RESERVED_D7, "reserved_d7") \
+  /* 0xD8 */ PT_WASM_OP_RESERVED(RESERVED_D8, "reserved_d8") \
+  /* 0xD9 */ PT_WASM_OP_RESERVED(RESERVED_D9, "reserved_d9") \
+  /* 0xDA */ PT_WASM_OP_RESERVED(RESERVED_DA, "reserved_da") \
+  /* 0xDB */ PT_WASM_OP_RESERVED(RESERVED_DB, "reserved_db") \
+  /* 0xDC */ PT_WASM_OP_RESERVED(RESERVED_DC, "reserved_dc") \
+  /* 0xDD */ PT_WASM_OP_RESERVED(RESERVED_DD, "reserved_dd") \
+  /* 0xDE */ PT_WASM_OP_RESERVED(RESERVED_DE, "reserved_de") \
+  /* 0xDF */ PT_WASM_OP_RESERVED(RESERVED_DF, "reserved_df") \
+  /* 0xE0 */ PT_WASM_OP_RESERVED(RESERVED_E0, "reserved_e0") \
+  /* 0xE1 */ PT_WASM_OP_RESERVED(RESERVED_E1, "reserved_e1") \
+  /* 0xE2 */ PT_WASM_OP_RESERVED(RESERVED_E2, "reserved_e2") \
+  /* 0xE3 */ PT_WASM_OP_RESERVED(RESERVED_E3, "reserved_e3") \
+  /* 0xE4 */ PT_WASM_OP_RESERVED(RESERVED_E4, "reserved_e4") \
+  /* 0xE5 */ PT_WASM_OP_RESERVED(RESERVED_E5, "reserved_e5") \
+  /* 0xE6 */ PT_WASM_OP_RESERVED(RESERVED_E6, "reserved_e6") \
+  /* 0xE7 */ PT_WASM_OP_RESERVED(RESERVED_E7, "reserved_e7") \
+  /* 0xE8 */ PT_WASM_OP_RESERVED(RESERVED_E8, "reserved_e8") \
+  /* 0xE9 */ PT_WASM_OP_RESERVED(RESERVED_E9, "reserved_e9") \
+  /* 0xEA */ PT_WASM_OP_RESERVED(RESERVED_EA, "reserved_ea") \
+  /* 0xEB */ PT_WASM_OP_RESERVED(RESERVED_EB, "reserved_eb") \
+  /* 0xEC */ PT_WASM_OP_RESERVED(RESERVED_EC, "reserved_ec") \
+  /* 0xED */ PT_WASM_OP_RESERVED(RESERVED_ED, "reserved_ed") \
+  /* 0xEE */ PT_WASM_OP_RESERVED(RESERVED_EE, "reserved_ee") \
+  /* 0xEF */ PT_WASM_OP_RESERVED(RESERVED_EF, "reserved_ef") \
+  /* 0xF0 */ PT_WASM_OP_RESERVED(RESERVED_F0, "reserved_f0") \
+  /* 0xF1 */ PT_WASM_OP_RESERVED(RESERVED_F1, "reserved_f1") \
+  /* 0xF2 */ PT_WASM_OP_RESERVED(RESERVED_F2, "reserved_f2") \
+  /* 0xF3 */ PT_WASM_OP_RESERVED(RESERVED_F3, "reserved_f3") \
+  /* 0xF4 */ PT_WASM_OP_RESERVED(RESERVED_F4, "reserved_f4") \
+  /* 0xF5 */ PT_WASM_OP_RESERVED(RESERVED_F5, "reserved_f5") \
+  /* 0xF6 */ PT_WASM_OP_RESERVED(RESERVED_F6, "reserved_f6") \
+  /* 0xF7 */ PT_WASM_OP_RESERVED(RESERVED_F7, "reserved_f7") \
+  /* 0xF8 */ PT_WASM_OP_RESERVED(RESERVED_F8, "reserved_f8") \
+  /* 0xF9 */ PT_WASM_OP_RESERVED(RESERVED_F9, "reserved_f9") \
+  /* 0xFA */ PT_WASM_OP_RESERVED(RESERVED_FA, "reserved_fa") \
+  /* 0xFB */ PT_WASM_OP_RESERVED(RESERVED_FB, "reserved_fb") \
+  /* 0xFC */ PT_WASM_OP_RESERVED(RESERVED_FC, "reserved_fc") \
+  /* 0xFD */ PT_WASM_OP_RESERVED(RESERVED_FD, "reserved_fd") \
+  /* 0xFE */ PT_WASM_OP_RESERVED(RESERVED_FE, "reserved_fe") \
+  /* 0xFF */ PT_WASM_OP_RESERVED(RESERVED_FF, "reserved_ff")
+
+#define PT_WASM_OP(a, b, c) PT_WASM_OP_##a,
+#define PT_WASM_OP_CONTROL(a, b, c) PT_WASM_OP##a,
+#define PT_WASM_OP_RESERVED(a, b) PT_WASM_OP##a,
+typedef enum {
+PT_WASM_OP_DEFS
+} pt_wasm_op_t;
+#undef PT_WASM_OP
+#undef PT_WASM_OP_CONTROL
+#undef PT_WASM_OP_RESERVED
 
 typedef struct {
   pt_wasm_buf_t buf;
 } pt_wasm_expr_t;
+
+typedef struct {
+  pt_wasm_op_t op;
+  union {
+    /* block, loop */
+    struct {
+      pt_wasm_result_type_t type;
+    } v_block;
+
+    /* br_table */
+    struct {
+      pt_wasm_buf_t labels;
+    } v_br_table;
+
+    /* br, br_if, call, call_indirect, local.{get,set,tee}, global.{get,set} */
+    struct {
+      uint32_t id;
+    } v_index;
+
+    /* {i32,i64,f32,f64}.{load,store}* */
+    struct {
+      uint32_t align;
+      uint32_t offset;
+    } v_mem;
+
+    /* const.i32 */
+    struct {
+      uint32_t val;
+    } v_i32;
+
+    /* const.i64 */
+    struct {
+      uint64_t val;
+    } v_i64;
+
+    /* const.f32 */
+    struct {
+      float val;
+    } v_f32;
+
+    /* const.f64 */
+    struct {
+      double val;
+    } v_f64;
+  };
+} pt_wasm_inst_t;
+
+typedef struct {
+  pt_wasm_value_type_t type;
+  _Bool mutable;
+} pt_wasm_global_type_t;
 
 typedef struct {
   pt_wasm_global_type_t type;
