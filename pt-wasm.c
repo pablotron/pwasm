@@ -39,6 +39,11 @@
 #define D(fmt, ...)
 #endif /* PT_WASM_DEBUG */
 
+typedef struct {
+  const pt_wasm_parse_module_cbs_t *cbs;
+  void *data;
+} pt_wasm_parse_module_ctx_t;
+
 #define PT_WASM_SECTION_TYPE(a, b) b,
 static const char *PT_WASM_SECTION_TYPE_NAMES[] = {
 PT_WASM_SECTION_TYPES
@@ -359,13 +364,12 @@ pt_wasm_parse_value_type_list(
 static bool
 pt_wasm_parse_custom_section(
   const pt_wasm_parse_module_cbs_t * const cbs,
-  const uint8_t * const src,
-  const size_t src_len,
+  const pt_wasm_buf_t src,
   void * const cb_data
 ) {
   // parse name, check for error
   pt_wasm_buf_t name;
-  const size_t ofs = pt_wasm_parse_name(&name, cbs, src, src_len, cb_data);
+  const size_t ofs = pt_wasm_parse_name(&name, cbs, src.ptr, src.len, cb_data);
   if (!ofs) {
     return false;
   }
@@ -378,8 +382,8 @@ pt_wasm_parse_custom_section(
     },
 
     .data = {
-      .ptr = src + ofs,
-      .len = src_len - ofs,
+      .ptr = src.ptr + ofs,
+      .len = src.len - ofs,
     },
   };
 
@@ -464,13 +468,12 @@ pt_wasm_parse_function_type(
 static bool
 pt_wasm_parse_type_section(
   const pt_wasm_parse_module_cbs_t * const cbs,
-  const uint8_t * const src,
-  const size_t src_len,
+  const pt_wasm_buf_t src,
   void * const cb_data
 ) {
   // get number of types, check for error
   uint32_t num_types = 0;
-  const size_t len_ofs = pt_wasm_decode_u32(&num_types, src, src_len);
+  const size_t len_ofs = pt_wasm_decode_u32(&num_types, src.ptr, src.len);
   if (!len_ofs) {
     FAIL("invalid type section vector length");
   }
@@ -483,8 +486,8 @@ pt_wasm_parse_type_section(
     const size_t type_len = pt_wasm_parse_function_type(
       types + types_ofs,
       cbs,
-      src + ofs,
-      src_len - ofs,
+      src.ptr + ofs,
+      src.len - ofs,
       cb_data
     );
 
@@ -495,7 +498,7 @@ pt_wasm_parse_type_section(
 
     // increment offset, check for error
     ofs += type_len;
-    if (ofs > src_len) {
+    if (ofs > src.len) {
       FAIL("type section length overflow");
     }
 
@@ -516,7 +519,7 @@ pt_wasm_parse_type_section(
 }
 
 /**
- * Parse limits into +dst+ from buffer +src+ of length +src_len+.
+ * Parse limits into +dst+ from buffer +src+.
  *
  * Returns number of bytes consumed, or 0 on error.
  */
@@ -1240,13 +1243,12 @@ pt_wasm_parse_import(
 static bool
 pt_wasm_parse_import_section(
   const pt_wasm_parse_module_cbs_t * const cbs,
-  const uint8_t * const src,
-  const size_t src_len,
+  const pt_wasm_buf_t src,
   void * const cb_data
 ) {
   // get number of imports, check for error
   uint32_t num_imports = 0;
-  const size_t len_ofs = pt_wasm_decode_u32(&num_imports, src, src_len);
+  const size_t len_ofs = pt_wasm_decode_u32(&num_imports, src.ptr, src.len);
   if (!len_ofs) {
     FAIL("invalid import section vector length");
   }
@@ -1260,8 +1262,8 @@ pt_wasm_parse_import_section(
     const size_t import_len = pt_wasm_parse_import(
       imports + imports_ofs,
       cbs,
-      src + ofs,
-      src_len - ofs,
+      src.ptr + ofs,
+      src.len - ofs,
       cb_data
     );
 
@@ -1272,7 +1274,7 @@ pt_wasm_parse_import_section(
 
     // increment offset, check for error
     ofs += import_len;
-    if (ofs > src_len) {
+    if (ofs > src.len) {
       FAIL("import section length overflow");
     }
 
@@ -1296,13 +1298,12 @@ pt_wasm_parse_import_section(
 static bool
 pt_wasm_parse_function_section(
   const pt_wasm_parse_module_cbs_t * const cbs,
-  const uint8_t * const src,
-  const size_t src_len,
+  const pt_wasm_buf_t src,
   void * const cb_data
 ) {
   // get number of fns, check for error
   uint32_t num_fns = 0;
-  const size_t len_ofs = pt_wasm_decode_u32(&num_fns, src, src_len);
+  const size_t len_ofs = pt_wasm_decode_u32(&num_fns, src.ptr, src.len);
   if (!len_ofs) {
     FAIL("invalid function section vector length");
   }
@@ -1315,7 +1316,7 @@ pt_wasm_parse_function_section(
     const size_t fns_ofs = (i & (PT_WASM_BATCH_SIZE - 1));
 
     // parse fn, check for error
-    const size_t fn_len = pt_wasm_decode_u32(fns + fns_ofs, src + ofs, src_len - ofs);
+    const size_t fn_len = pt_wasm_decode_u32(fns + fns_ofs, src.ptr + ofs, src.len - ofs);
     if (!fn_len) {
       FAIL("invalid function index");
     }
@@ -1324,7 +1325,7 @@ pt_wasm_parse_function_section(
 
     // increment offset, check for error
     ofs += fn_len;
-    if (ofs > src_len) {
+    if (ofs > src.len) {
       FAIL("function section length overflow");
     }
 
@@ -1348,13 +1349,12 @@ pt_wasm_parse_function_section(
 static bool
 pt_wasm_parse_table_section(
   const pt_wasm_parse_module_cbs_t * const cbs,
-  const uint8_t * const src,
-  const size_t src_len,
+  const pt_wasm_buf_t src,
   void * const cb_data
 ) {
   // get number of tables, check for error
   uint32_t num_tbls = 0;
-  const size_t len_ofs = pt_wasm_decode_u32(&num_tbls, src, src_len);
+  const size_t len_ofs = pt_wasm_decode_u32(&num_tbls, src.ptr, src.len);
   if (!len_ofs) {
     FAIL("invalid table section vector length");
   }
@@ -1367,7 +1367,7 @@ pt_wasm_parse_table_section(
     const size_t tbls_ofs = (i & (PT_WASM_BATCH_SIZE - 1));
 
     // parse fn, check for error
-    const size_t tbl_len = pt_wasm_parse_table(tbls + tbls_ofs, cbs, src + ofs, src_len - ofs, cb_data);
+    const size_t tbl_len = pt_wasm_parse_table(tbls + tbls_ofs, cbs, src.ptr + ofs, src.len - ofs, cb_data);
     if (!tbl_len) {
       FAIL("invalid table section entry");
     }
@@ -1376,7 +1376,7 @@ pt_wasm_parse_table_section(
 
     // increment offset, check for error
     ofs += tbl_len;
-    if (ofs > src_len) {
+    if (ofs > src.len) {
       FAIL("table section length overflow");
     }
 
@@ -1400,13 +1400,12 @@ pt_wasm_parse_table_section(
 static bool
 pt_wasm_parse_memory_section(
   const pt_wasm_parse_module_cbs_t * const cbs,
-  const uint8_t * const src,
-  const size_t src_len,
+  const pt_wasm_buf_t src,
   void * const cb_data
 ) {
   // get number of mems, check for error
   uint32_t num_mems = 0;
-  const size_t len_ofs = pt_wasm_decode_u32(&num_mems, src, src_len);
+  const size_t len_ofs = pt_wasm_decode_u32(&num_mems, src.ptr, src.len);
   if (!len_ofs) {
     FAIL("invalid memory section vector length");
   }
@@ -1417,14 +1416,14 @@ pt_wasm_parse_memory_section(
     const size_t mems_ofs = (i & (PT_WASM_BATCH_SIZE - 1));
 
     // parse mem, check for error
-    const size_t mem_len = pt_wasm_parse_limits(mems + mems_ofs, cbs, src + ofs, src_len - ofs, cb_data);
+    const size_t mem_len = pt_wasm_parse_limits(mems + mems_ofs, cbs, src.ptr + ofs, src.len - ofs, cb_data);
     if (!mem_len) {
       return false;
     }
 
     // increment offset, check for error
     ofs += mem_len;
-    if (ofs > src_len) {
+    if (ofs > src.len) {
       FAIL("memory section length overflow");
     }
 
@@ -1448,13 +1447,12 @@ pt_wasm_parse_memory_section(
 static bool
 pt_wasm_parse_global_section(
   const pt_wasm_parse_module_cbs_t * const cbs,
-  const uint8_t * const src,
-  const size_t src_len,
+  const pt_wasm_buf_t src,
   void * const cb_data
 ) {
   // get number of mems, check for error
   uint32_t num_gs = 0;
-  const size_t len_ofs = pt_wasm_decode_u32(&num_gs, src, src_len);
+  const size_t len_ofs = pt_wasm_decode_u32(&num_gs, src.ptr, src.len);
   if (!len_ofs) {
     FAIL("invalid global section vector length");
   }
@@ -1465,14 +1463,14 @@ pt_wasm_parse_global_section(
     const size_t gs_ofs = (i & (PT_WASM_BATCH_SIZE - 1));
 
     // parse mem, check for error
-    const size_t g_len = pt_wasm_parse_global(gs + gs_ofs, cbs, src + ofs, src_len - ofs, cb_data);
+    const size_t g_len = pt_wasm_parse_global(gs + gs_ofs, cbs, src.ptr + ofs, src.len - ofs, cb_data);
     if (!g_len) {
       return false;
     }
 
     // increment offset, check for error
     ofs += g_len;
-    if (ofs > src_len) {
+    if (ofs > src.len) {
       FAIL("global section length overflow");
     }
 
@@ -1551,13 +1549,12 @@ pt_wasm_parse_export(
 static bool
 pt_wasm_parse_export_section(
   const pt_wasm_parse_module_cbs_t * const cbs,
-  const uint8_t * const src,
-  const size_t src_len,
+  const pt_wasm_buf_t src,
   void * const cb_data
 ) {
   // get number of exports, check for error
   uint32_t num_es = 0;
-  const size_t len_ofs = pt_wasm_decode_u32(&num_es, src, src_len);
+  const size_t len_ofs = pt_wasm_decode_u32(&num_es, src.ptr, src.len);
   if (!len_ofs) {
     FAIL("invalid export section vector length");
   }
@@ -1568,14 +1565,14 @@ pt_wasm_parse_export_section(
     const size_t es_ofs = (i & (PT_WASM_BATCH_SIZE - 1));
 
     // parse mem, check for error
-    const size_t e_len = pt_wasm_parse_export(es + es_ofs, cbs, src + ofs, src_len - ofs, cb_data);
+    const size_t e_len = pt_wasm_parse_export(es + es_ofs, cbs, src.ptr + ofs, src.len - ofs, cb_data);
     if (!e_len) {
       return false;
     }
 
     // increment offset, check for error
     ofs += e_len;
-    if (ofs > src_len) {
+    if (ofs > src.len) {
       FAIL("export section length overflow");
     }
 
@@ -1599,18 +1596,17 @@ pt_wasm_parse_export_section(
 static bool
 pt_wasm_parse_start_section(
   const pt_wasm_parse_module_cbs_t * const cbs,
-  const uint8_t * const src,
-  const size_t src_len,
+  const pt_wasm_buf_t src,
   void * const cb_data
 ) {
   // check source length
-  if (!src_len) {
+  if (!src.len) {
     FAIL("empty start section");
   }
 
   // get id, check for error
   uint32_t id = 0;
-  const size_t len = pt_wasm_decode_u32(&id, src, src_len);
+  const size_t len = pt_wasm_decode_u32(&id, src.ptr, src.len);
   if (!len) {
     FAIL("bad start section function index");
   }
@@ -1625,8 +1621,7 @@ pt_wasm_parse_start_section(
 }
 
 /**
- * Parse element into +dst+ from source buffer +src+, consuming a
- * maximum of +src_len+ bytes.
+ * Parse element into +dst+ from source buffer +src+.
  *
  * Returns number of bytes consumed, or 0 on error.
  */
@@ -1701,18 +1696,17 @@ pt_wasm_parse_element(
 static bool
 pt_wasm_parse_element_section(
   const pt_wasm_parse_module_cbs_t * const cbs,
-  const uint8_t * const src,
-  const size_t src_len,
+  const pt_wasm_buf_t src,
   void * const cb_data
 ) {
   // check source length
-  if (!src_len) {
+  if (!src.len) {
     FAIL("empty element section");
   }
 
   // get entry count, check for error
   uint32_t num_es = 0;
-  const size_t num_len = pt_wasm_decode_u32(&num_es, src, src_len);
+  const size_t num_len = pt_wasm_decode_u32(&num_es, src.ptr, src.len);
   if (!num_len) {
     FAIL("bad element section entry count");
   }
@@ -1725,14 +1719,14 @@ pt_wasm_parse_element_section(
     const size_t es_ofs = (i & (PT_WASM_BATCH_SIZE - 1));
 
     // parse element, check for error
-    const size_t len = pt_wasm_parse_element(es + es_ofs, cbs, src + ofs, src_len - ofs, cb_data);
+    const size_t len = pt_wasm_parse_element(es + es_ofs, cbs, src.ptr + ofs, src.len - ofs, cb_data);
     if (!len) {
       return false;
     }
 
     // increment offset, check for error
     ofs += len;
-    if (ofs > src_len) {
+    if (ofs > src.len) {
       FAIL("element section length overflow");
     }
 
@@ -1900,18 +1894,17 @@ pt_wasm_parse_fn_code(
 static bool
 pt_wasm_parse_code_section(
   const pt_wasm_parse_module_cbs_t * const cbs,
-  const uint8_t * const src,
-  const size_t src_len,
+  const pt_wasm_buf_t src,
   void * const cb_data
 ) {
   // check source length
-  if (!src_len) {
+  if (!src.len) {
     FAIL("empty code section");
   }
 
   // get entry count, check for error
   uint32_t num_fns = 0;
-  const size_t num_len = pt_wasm_decode_u32(&num_fns, src, src_len);
+  const size_t num_len = pt_wasm_decode_u32(&num_fns, src.ptr, src.len);
   if (!num_len) {
     FAIL("bad code section function count");
   }
@@ -1924,14 +1917,14 @@ pt_wasm_parse_code_section(
     const size_t fns_ofs = (i & (PT_WASM_BATCH_SIZE - 1));
 
     // parse entry, check for error
-    const size_t len = pt_wasm_parse_fn_code(fns + fns_ofs, cbs, src + ofs, src_len - ofs, cb_data);
+    const size_t len = pt_wasm_parse_fn_code(fns + fns_ofs, cbs, src.ptr + ofs, src.len - ofs, cb_data);
     if (!len) {
       return false;
     }
 
     // increment offset, check for error
     ofs += len;
-    if (ofs > src_len) {
+    if (ofs > src.len) {
       FAIL("code section length overflow");
     }
 
@@ -2008,18 +2001,17 @@ pt_wasm_parse_data_segment(
 static bool
 pt_wasm_parse_data_section(
   const pt_wasm_parse_module_cbs_t * const cbs,
-  const uint8_t * const src,
-  const size_t src_len,
+  const pt_wasm_buf_t src,
   void * const cb_data
 ) {
   // check source length
-  if (!src_len) {
+  if (!src.len) {
     FAIL("empty data section");
   }
 
   // get entry count, check for error
   uint32_t num_ds = 0;
-  const size_t num_len = pt_wasm_decode_u32(&num_ds, src, src_len);
+  const size_t num_len = pt_wasm_decode_u32(&num_ds, src.ptr, src.len);
   if (!num_len) {
     FAIL("bad data section segment count");
   }
@@ -2032,14 +2024,14 @@ pt_wasm_parse_data_section(
     const size_t ds_ofs = (i & (PT_WASM_BATCH_SIZE - 1));
 
     // parse entry, check for error
-    const size_t len = pt_wasm_parse_data_segment(ds + ds_ofs, cbs, src + ofs, src_len - ofs, cb_data);
+    const size_t len = pt_wasm_parse_data_segment(ds + ds_ofs, cbs, src.ptr + ofs, src.len - ofs, cb_data);
     if (!len) {
       return false;
     }
 
     // increment offset, check for error
     ofs += len;
-    if (ofs > src_len) {
+    if (ofs > src.len) {
       FAIL("code section length overflow");
     }
 
@@ -2064,35 +2056,34 @@ static bool
 pt_wasm_parse_section(
   const pt_wasm_parse_module_cbs_t * const cbs,
   const pt_wasm_section_type_t sec_type,
-  const uint8_t * const src,
-  const size_t src_len,
+  const pt_wasm_buf_t src,
   void * const cb_data
 ) {
   switch (sec_type) {
   case PT_WASM_SECTION_TYPE_CUSTOM:
-    return pt_wasm_parse_custom_section(cbs, src, src_len, cb_data);
+    return pt_wasm_parse_custom_section(cbs, src, cb_data);
   case PT_WASM_SECTION_TYPE_TYPE:
-    return pt_wasm_parse_type_section(cbs, src, src_len, cb_data);
+    return pt_wasm_parse_type_section(cbs, src, cb_data);
   case PT_WASM_SECTION_TYPE_IMPORT:
-    return pt_wasm_parse_import_section(cbs, src, src_len, cb_data);
+    return pt_wasm_parse_import_section(cbs, src, cb_data);
   case PT_WASM_SECTION_TYPE_FUNCTION:
-    return pt_wasm_parse_function_section(cbs, src, src_len, cb_data);
+    return pt_wasm_parse_function_section(cbs, src, cb_data);
   case PT_WASM_SECTION_TYPE_TABLE:
-    return pt_wasm_parse_table_section(cbs, src, src_len, cb_data);
+    return pt_wasm_parse_table_section(cbs, src, cb_data);
   case PT_WASM_SECTION_TYPE_MEMORY:
-    return pt_wasm_parse_memory_section(cbs, src, src_len, cb_data);
+    return pt_wasm_parse_memory_section(cbs, src, cb_data);
   case PT_WASM_SECTION_TYPE_GLOBAL:
-    return pt_wasm_parse_global_section(cbs, src, src_len, cb_data);
+    return pt_wasm_parse_global_section(cbs, src, cb_data);
   case PT_WASM_SECTION_TYPE_EXPORT:
-    return pt_wasm_parse_export_section(cbs, src, src_len, cb_data);
+    return pt_wasm_parse_export_section(cbs, src, cb_data);
   case PT_WASM_SECTION_TYPE_START:
-    return pt_wasm_parse_start_section(cbs, src, src_len, cb_data);
+    return pt_wasm_parse_start_section(cbs, src, cb_data);
   case PT_WASM_SECTION_TYPE_ELEMENT:
-    return pt_wasm_parse_element_section(cbs, src, src_len, cb_data);
+    return pt_wasm_parse_element_section(cbs, src, cb_data);
   case PT_WASM_SECTION_TYPE_CODE:
-    return pt_wasm_parse_code_section(cbs, src, src_len, cb_data);
+    return pt_wasm_parse_code_section(cbs, src, cb_data);
   case PT_WASM_SECTION_TYPE_DATA:
-    return pt_wasm_parse_data_section(cbs, src, src_len, cb_data);
+    return pt_wasm_parse_data_section(cbs, src, cb_data);
   default:
     FAIL("unknown section type");
     break;
@@ -2169,12 +2160,17 @@ pt_wasm_parse_module(
       FAIL("truncated section");
     }
 
-    // is the on_section cb defined?
     // build section data pointer
     const uint8_t * const data_ptr = src + ofs + 1 + len_ofs;
 
+    // build section buffer
+    const pt_wasm_buf_t data = {
+      .ptr = data_ptr,
+      .len = data_len,
+    };
+
     // parse section, check for error
-    if (!pt_wasm_parse_section(cbs, sec_type, data_ptr, data_len, cb_data)) {
+    if (!pt_wasm_parse_section(cbs, sec_type, data, cb_data)) {
       // return failure
       return false;
     }
