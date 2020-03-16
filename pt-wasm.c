@@ -1935,7 +1935,7 @@ pt_wasm_parse_code_section(
       FAIL("code section length overflow");
     }
 
-    if ((fns_ofs == LEN(fns)) && cbs && cbs->on_functions) {
+    if ((fns_ofs == LEN(fns)) && cbs && cbs->on_function_codes) {
       // flush batch
       cbs->on_function_codes(fns, fns_ofs, cb_data);
     }
@@ -1943,7 +1943,7 @@ pt_wasm_parse_code_section(
 
   // count remaining entries
   const size_t num_left = num_fns & (PT_WASM_BATCH_SIZE - 1);
-  if (num_left && cbs && cbs->on_functions) {
+  if (num_left && cbs && cbs->on_function_codes) {
     // flush remaining functions
     cbs->on_function_codes(fns, num_left, cb_data);
   }

@@ -79,23 +79,38 @@ dump_limits(
 }
 
 static void
+dump_buf(
+  FILE * fh,
+  const pt_wasm_buf_t buf
+) {
+  // print header
+  fputs("[", fh);
+
+  // print contents
+  for (size_t i = 0; i < buf.len; i++) {
+    fprintf(fh, "%s0x%02X", ((i > 0) ? ", " : ""), buf.ptr[i]);
+  }
+
+  // add footer
+  fputs("]", fh);
+}
+
+static void
 dump_global(
   FILE * fh,
   const pt_wasm_global_t * const g
 ) {
   // print global attributes
-  fprintf(fh, "{type: \"%s\", mut: %c, expr: [",
+  fprintf(fh, "{type: \"%s\", mut: %c, expr: ",
     pt_wasm_value_type_get_name(g->type.type),
     g->type.mutable ? 't' : 'f'
   );
 
   // print expr
-  for (size_t j = 0; j < g->expr.buf.len; j++) {
-    fprintf(fh, "%s0x%02X", ((j > 0) ? ", " : ""), g->expr.buf.ptr[j]);
-  }
+  dump_buf(fh, g->expr.buf);
 
   // add footer
-  fputs("]}", fh);
+  fputs("}", fh);
 }
 
 static void
@@ -271,9 +286,27 @@ on_test_function_codes(
 
   fprintf(stderr, "function codes(%zu):\n", num_fns);
   for (size_t i = 0; i < num_fns; i++) {
-    fprintf(stderr, "function[%zu].len = %zu", i, fns[i].len);
+    fprintf(stderr, "function[%zu].len = %zu\n", i, fns[i].len);
   }
 }
+
+static void
+on_test_data_segments(
+  const pt_wasm_data_segment_t * const ds,
+  const size_t len,
+  void * const data
+) {
+  (void) data;
+
+  fprintf(stderr, "data segments(%zu):\n", len);
+  for (size_t i = 0; i < len; i++) {
+    fprintf(stderr, "segment[%zu] = {id: %u, expr: ", i, ds[i].mem_id);
+    dump_buf(stderr, ds[i].expr.buf);
+    fputs(", data: ", stderr);
+    dump_buf(stderr, ds[i].data);
+  }
+}
+
 
 static void
 on_test_error(const char * const text, void * const data) {
@@ -290,6 +323,7 @@ static const pt_wasm_parse_cbs_t GOOD_TEST_CBS = {
   .on_globals         = on_test_globals,
   .on_exports         = on_test_exports,
   .on_function_codes  = on_test_function_codes,
+  .on_data_segments   = on_test_data_segments,
   .on_error           = on_test_error,
 };
 
