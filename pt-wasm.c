@@ -1670,6 +1670,203 @@ pt_wasm_parse_element_section(
   return true;
 }
 
+// /**
+//  * Parse local into +dst+ from source buffer +src+, consuming a
+//  * maximum of +src_len+ bytes.
+//  *
+//  * Returns number of bytes consumed, or 0 on error.
+//  */
+// static size_t
+// pt_wasm_parse_local(
+//   pt_wasm_local_t * const dst,
+//   const pt_wasm_parse_cbs_t * const cbs,
+//   const uint8_t * const src,
+//   const size_t src_len,
+//   void * const cb_data
+// ) {
+//   if (src_len < 2) {
+//     FAIL("empty local");
+//   }
+// 
+//   // parse count, check for error
+//   const uint32_t num;
+//   const size_t n_len = pt_wasm_decode_u32(&num, src, src_len);
+//   if (!n_len) {
+//     FAIL("bad local count");
+//   }
+// 
+//   if (n_len >= src_len) {
+//     FAIL("missing local type");
+//   }
+// 
+//   // get type, check for error
+//   const pt_wasm_value_type_t type = src[n_len];
+//   if (!pt_wasm_is_valid_value_type(type)) {
+//     FAIL("bad local type");
+//   }
+// 
+//   // populate result
+//   const pt_wasm_local_t tmp = {
+//     .num  = num,
+//     .type = type,
+//   };
+// 
+//   if (dst) {
+//     // copy result to destination
+//     *dst = tmp;
+//   }
+// 
+//   // return number of bytes consumed
+//   return n_len + 1;
+// }
+// 
+// /**
+//  * Parse func into +dst+ from source buffer +src+, consuming a
+//  * maximum of +src_len+ bytes.
+//  *
+//  * Returns number of bytes consumed, or 0 on error.
+//  */
+// static size_t
+// pt_wasm_parse_func(
+//   pt_wasm_func_t * const dst,
+//   const size_t func_id,
+//   const pt_wasm_parse_cbs_t * const cbs,
+//   const uint8_t * const src,
+//   const size_t src_len,
+//   void * const cb_data
+// ) {
+//   size_t num_locals = 0;
+//   const size_t num_len = pt_wasm_decode_u32(&num_locals, src, src_len);
+//   if (!num_len) {
+//     FAIL("bad locals count");
+//   }
+// 
+//   pt_wasm_local_t ls[PT_WASM_BATCH_SIZE];
+// 
+//   size_t ofs = num_len;
+//   for (size_t i = 0; i < num_locals; i++) {
+//     const size_t ls_ofs = (i & (PT_WASM_BATCH_SIZE - 1));
+// 
+//     // parse local, check for error
+//     const size_t len = pt_wasm_parse_local(ls + ls_ofs, cbs, src + ofs, src_len - ofs, cb_data);
+//     if (!len) {
+//       return 0;
+//     }
+// 
+//     // increment offset, check for error
+//     ofs += len;
+//     if (ofs > src_len) {
+//       FAIL("function section length overflow");
+//     }
+// 
+//     if ((ls_ofs == LEN(cs)) && cbs && cbs->on_locals) {
+//       // flush batch
+//       cbs->on_locals(ls, ls_ofs, cb_data);
+//     }
+//   }
+// }
+
+/**
+ * Parse function code into +dst+ from source buffer +src+, consuming a
+ * maximum of +src_len+ bytes.
+ *
+ * Returns number of bytes consumed, or 0 on error.
+ */
+static size_t
+pt_wasm_parse_fn_code(
+  pt_wasm_buf_t * const dst,
+  const pt_wasm_parse_cbs_t * const cbs,
+  const uint8_t * const src,
+  const size_t src_len,
+  void * const cb_data
+) {
+  // check length
+  if (!src_len) {
+    FAIL("empty code section entry");
+  }
+
+  // get size, check for error
+  uint32_t size = 0;
+  const size_t size_len = pt_wasm_decode_u32(&size, src, src_len);
+  if (!size_len) {
+    FAIL("bad code size");
+  }
+
+  // check size
+  if (size > src_len - size_len) {
+    FAIL("truncated code");
+  }
+
+  // populate result
+  const pt_wasm_buf_t tmp = {
+    .ptr = src + size_len,
+    .len = size,
+  };
+
+  if (dst) {
+    // copy result to destination
+    *dst = tmp;
+  }
+
+  // return number of bytes consumed
+  return size_len + size;
+}
+
+static bool
+pt_wasm_parse_code_section(
+  const pt_wasm_parse_cbs_t * const cbs,
+  const uint8_t * const src,
+  const size_t src_len,
+  void * const cb_data
+) {
+  // check source length
+  if (!src_len) {
+    FAIL("empty code section");
+  }
+
+  // get entry count, check for error
+  uint32_t num_fns = 0;
+  const size_t num_len = pt_wasm_decode_u32(&num_fns, src, src_len);
+  if (!num_len) {
+    FAIL("bad code section function count");
+  }
+
+  // batch function buffer
+  pt_wasm_buf_t fns[PT_WASM_BATCH_SIZE];
+
+  size_t ofs = num_len;
+  for (size_t i = 0; i < num_fns; i++) {
+    const size_t fns_ofs = (i & (PT_WASM_BATCH_SIZE - 1));
+
+    // parse entry, check for error
+    const size_t len = pt_wasm_parse_fn_code(fns + fns_ofs, cbs, src + ofs, src_len - ofs, cb_data);
+    if (!len) {
+      return false;
+    }
+
+    // increment offset, check for error
+    ofs += len;
+    if (ofs > src_len) {
+      FAIL("code section length overflow");
+    }
+
+    if ((fns_ofs == LEN(fns)) && cbs && cbs->on_functions) {
+      // flush batch
+      cbs->on_function_codes(fns, fns_ofs, cb_data);
+    }
+  }
+
+  // count remaining entries
+  const size_t num_left = num_fns & (PT_WASM_BATCH_SIZE - 1);
+  if (num_left && cbs && cbs->on_functions) {
+    // flush remaining functions
+    cbs->on_function_codes(fns, num_left, cb_data);
+  }
+
+  // return success
+  return true;
+}
+
 static bool
 pt_wasm_parse_section(
   const pt_wasm_parse_cbs_t * const cbs,
@@ -1699,6 +1896,8 @@ pt_wasm_parse_section(
     return pt_wasm_parse_start_section(cbs, src, src_len, cb_data);
   case PT_WASM_SECTION_TYPE_ELEMENT:
     return pt_wasm_parse_element_section(cbs, src, src_len, cb_data);
+  case PT_WASM_SECTION_TYPE_CODE:
+    return pt_wasm_parse_code_section(cbs, src, src_len, cb_data);
   default:
     FAIL("unknown section type");
     break;

@@ -483,6 +483,7 @@ typedef struct {
   void (*on_exports)(const pt_wasm_export_t *, const size_t, void *);
   void (*on_elements)(const pt_wasm_element_t *, const size_t, void *);
   void (*on_start)(const uint32_t, void *);
+  void (*on_function_codes)(const pt_wasm_buf_t *, const size_t, void *);
 
   void (*on_error)(const char *, void *);
 } pt_wasm_parse_cbs_t;
