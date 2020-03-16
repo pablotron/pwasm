@@ -1598,12 +1598,28 @@ pt_wasm_parse(
     FAIL("invalid module header");
   }
 
+  // bitfield to catch duplicate sections
+  uint64_t seen = 0;
+
   for (size_t ofs = 8; ofs < src_len;) {
     // parse section type, check for error
     const pt_wasm_section_type_t sec_type = src[ofs];
     if (sec_type >= PT_WASM_SECTION_TYPE_LAST) {
       // FIXME: show section type?
       FAIL("invalid section type");
+    }
+
+    if (sec_type != PT_WASM_SECTION_TYPE_CUSTOM) {
+      // build section mask
+      const uint64_t mask = (1 << (sec_type - 1));
+
+      // check for duplicate sections
+      if (seen & mask) {
+        FAIL("duplicate section");
+      }
+
+      // set section mask
+      seen |= mask;
     }
 
     // check to make sure u32 ptr doesn't exceed input size

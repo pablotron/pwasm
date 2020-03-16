@@ -237,6 +237,10 @@ static const uint8_t TEST_DATA[] = {
   0x01, 0x03, 'b',  'a',  'r',  0x01, 0x02, 0x03,
   'b',  'a',  'z',  0x02, 0x03, 0x04, 'b',  'l',
   'u',  'm',  0x03, 0x04,
+
+  // duplicate section test (fail, ofs: 839, len: 14)
+  0x00, 0x61, 0x73, 0x6d, 0x01, 0x00, 0x00, 0x00,
+  0x07, 0x01, 0x00, 0x07, 0x01, 0x00,
 };
 
 static const test_t TESTS[] = {
@@ -290,6 +294,7 @@ static const test_t TESTS[] = {
   { "export section: blank",              false,  782,   10 },
   { "export section: empty",              true,   792,   11 },
   { "exports: foo, bar, baz, blum",       true,   803,   36 },
+  { "duplicate section test",             false,  839,   14 },
 };
 
 static char *
