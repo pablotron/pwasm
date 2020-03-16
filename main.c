@@ -314,7 +314,7 @@ on_test_error(const char * const text, void * const data) {
   warnx("test = \"%s\", error = \"%s\"", test->name, text);
 }
 
-static const pt_wasm_parse_cbs_t GOOD_TEST_CBS = {
+static const pt_wasm_parse_module_cbs_t GOOD_TEST_CBS = {
   .on_custom_section  = on_test_custom_section,
   .on_imports         = on_test_imports,
   .on_functions       = on_test_functions,
@@ -337,7 +337,7 @@ run_tests(void) {
   for (size_t i = 0; i < NUM_TESTS; i++) {
     // get test, run it, and get result
     const test_t * const test = TESTS + i;
-    const bool r = pt_wasm_parse(
+    const bool r = pt_wasm_parse_module(
       TEST_DATA + test->ofs,
       test->len,
       test->want ? &GOOD_TEST_CBS : NULL,

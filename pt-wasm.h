@@ -495,12 +495,12 @@ typedef struct {
   void (*on_data_segments)(const pt_wasm_data_segment_t *, const size_t, void *);
 
   void (*on_error)(const char *, void *);
-} pt_wasm_parse_cbs_t;
+} pt_wasm_parse_module_cbs_t;
 
-_Bool pt_wasm_parse(
+_Bool pt_wasm_parse_module(
   const void * const src_ptr,
   const size_t src_len,
-  const pt_wasm_parse_cbs_t * const cbs,
+  const pt_wasm_parse_module_cbs_t * const cbs,
   void * const data
 );
 

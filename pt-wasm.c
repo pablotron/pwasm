@@ -266,7 +266,7 @@ pt_wasm_decode_u64(
 static size_t
 pt_wasm_parse_name(
   pt_wasm_buf_t * ret_buf,
-  const pt_wasm_parse_cbs_t * const cbs,
+  const pt_wasm_parse_module_cbs_t * const cbs,
   const uint8_t * const src,
   const size_t src_len,
   void * const cb_data
@@ -309,7 +309,7 @@ pt_wasm_parse_name(
 static size_t
 pt_wasm_parse_value_type_list(
   pt_wasm_buf_t * const ret_buf,
-  const pt_wasm_parse_cbs_t * const cbs,
+  const pt_wasm_parse_module_cbs_t * const cbs,
   const uint8_t * const src,
   const size_t src_len,
   void * const cb_data
@@ -358,7 +358,7 @@ pt_wasm_parse_value_type_list(
 
 static bool
 pt_wasm_parse_custom_section(
-  const pt_wasm_parse_cbs_t * const cbs,
+  const pt_wasm_parse_module_cbs_t * const cbs,
   const uint8_t * const src,
   const size_t src_len,
   void * const cb_data
@@ -401,7 +401,7 @@ pt_wasm_parse_custom_section(
 static size_t
 pt_wasm_parse_function_type(
   pt_wasm_function_type_t * const dst_func_type,
-  const pt_wasm_parse_cbs_t * const cbs,
+  const pt_wasm_parse_module_cbs_t * const cbs,
   const uint8_t * const src,
   const size_t src_len,
   void * const cb_data
@@ -463,7 +463,7 @@ pt_wasm_parse_function_type(
 
 static bool
 pt_wasm_parse_type_section(
-  const pt_wasm_parse_cbs_t * const cbs,
+  const pt_wasm_parse_module_cbs_t * const cbs,
   const uint8_t * const src,
   const size_t src_len,
   void * const cb_data
@@ -523,7 +523,7 @@ pt_wasm_parse_type_section(
 static size_t
 pt_wasm_parse_limits(
   pt_wasm_limits_t * const dst,
-  const pt_wasm_parse_cbs_t * const cbs,
+  const pt_wasm_parse_module_cbs_t * const cbs,
   const uint8_t * const src,
   const size_t src_len,
   void * const cb_data
@@ -581,7 +581,7 @@ pt_wasm_parse_limits(
 static size_t
 pt_wasm_parse_table(
   pt_wasm_table_t * const dst,
-  const pt_wasm_parse_cbs_t * const cbs,
+  const pt_wasm_parse_module_cbs_t * const cbs,
   const uint8_t * const src,
   const size_t src_len,
   void * const cb_data
@@ -707,7 +707,7 @@ pt_wasm_op_is_const(
 static size_t
 pt_wasm_parse_inst(
   pt_wasm_inst_t * const dst,
-  const pt_wasm_parse_cbs_t * const cbs,
+  const pt_wasm_parse_module_cbs_t * const cbs,
   const uint8_t * const src,
   const size_t src_len,
   void * const cb_data
@@ -911,7 +911,7 @@ pt_wasm_parse_inst(
 static size_t
 pt_wasm_parse_expr(
   pt_wasm_expr_t * const dst,
-  const pt_wasm_parse_cbs_t * const cbs,
+  const pt_wasm_parse_module_cbs_t * const cbs,
   const uint8_t * const src,
   const size_t src_len,
   void * const cb_data
@@ -968,7 +968,7 @@ pt_wasm_parse_expr(
 static size_t
 pt_wasm_parse_const_expr(
   pt_wasm_expr_t * const dst,
-  const pt_wasm_parse_cbs_t * const cbs,
+  const pt_wasm_parse_module_cbs_t * const cbs,
   const uint8_t * const src,
   const size_t src_len,
   void * const cb_data
@@ -1031,7 +1031,7 @@ pt_wasm_parse_const_expr(
 static size_t
 pt_wasm_parse_global_type(
   pt_wasm_global_type_t * const dst,
-  const pt_wasm_parse_cbs_t * const cbs,
+  const pt_wasm_parse_module_cbs_t * const cbs,
   const uint8_t * const src,
   const size_t src_len,
   void * const cb_data
@@ -1086,7 +1086,7 @@ pt_wasm_parse_global_type(
 static size_t
 pt_wasm_parse_global(
   pt_wasm_global_t * const dst,
-  const pt_wasm_parse_cbs_t * const cbs,
+  const pt_wasm_parse_module_cbs_t * const cbs,
   const uint8_t * const src,
   const size_t src_len,
   void * const cb_data
@@ -1133,7 +1133,7 @@ pt_wasm_parse_global(
 static size_t
 pt_wasm_parse_import(
   pt_wasm_import_t * const dst_import,
-  const pt_wasm_parse_cbs_t * const cbs,
+  const pt_wasm_parse_module_cbs_t * const cbs,
   const uint8_t * const src,
   const size_t src_len,
   void * const cb_data
@@ -1239,7 +1239,7 @@ pt_wasm_parse_import(
 
 static bool
 pt_wasm_parse_import_section(
-  const pt_wasm_parse_cbs_t * const cbs,
+  const pt_wasm_parse_module_cbs_t * const cbs,
   const uint8_t * const src,
   const size_t src_len,
   void * const cb_data
@@ -1295,7 +1295,7 @@ pt_wasm_parse_import_section(
 
 static bool
 pt_wasm_parse_function_section(
-  const pt_wasm_parse_cbs_t * const cbs,
+  const pt_wasm_parse_module_cbs_t * const cbs,
   const uint8_t * const src,
   const size_t src_len,
   void * const cb_data
@@ -1347,7 +1347,7 @@ pt_wasm_parse_function_section(
 
 static bool
 pt_wasm_parse_table_section(
-  const pt_wasm_parse_cbs_t * const cbs,
+  const pt_wasm_parse_module_cbs_t * const cbs,
   const uint8_t * const src,
   const size_t src_len,
   void * const cb_data
@@ -1399,7 +1399,7 @@ pt_wasm_parse_table_section(
 
 static bool
 pt_wasm_parse_memory_section(
-  const pt_wasm_parse_cbs_t * const cbs,
+  const pt_wasm_parse_module_cbs_t * const cbs,
   const uint8_t * const src,
   const size_t src_len,
   void * const cb_data
@@ -1447,7 +1447,7 @@ pt_wasm_parse_memory_section(
 
 static bool
 pt_wasm_parse_global_section(
-  const pt_wasm_parse_cbs_t * const cbs,
+  const pt_wasm_parse_module_cbs_t * const cbs,
   const uint8_t * const src,
   const size_t src_len,
   void * const cb_data
@@ -1502,7 +1502,7 @@ pt_wasm_parse_global_section(
 static size_t
 pt_wasm_parse_export(
   pt_wasm_export_t * const dst,
-  const pt_wasm_parse_cbs_t * const cbs,
+  const pt_wasm_parse_module_cbs_t * const cbs,
   const uint8_t * const src,
   const size_t src_len,
   void * const cb_data
@@ -1550,7 +1550,7 @@ pt_wasm_parse_export(
 
 static bool
 pt_wasm_parse_export_section(
-  const pt_wasm_parse_cbs_t * const cbs,
+  const pt_wasm_parse_module_cbs_t * const cbs,
   const uint8_t * const src,
   const size_t src_len,
   void * const cb_data
@@ -1598,7 +1598,7 @@ pt_wasm_parse_export_section(
 
 static bool
 pt_wasm_parse_start_section(
-  const pt_wasm_parse_cbs_t * const cbs,
+  const pt_wasm_parse_module_cbs_t * const cbs,
   const uint8_t * const src,
   const size_t src_len,
   void * const cb_data
@@ -1633,7 +1633,7 @@ pt_wasm_parse_start_section(
 static size_t
 pt_wasm_parse_element(
   pt_wasm_element_t * const dst,
-  const pt_wasm_parse_cbs_t * const cbs,
+  const pt_wasm_parse_module_cbs_t * const cbs,
   const uint8_t * const src,
   const size_t src_len,
   void * const cb_data
@@ -1700,7 +1700,7 @@ pt_wasm_parse_element(
 
 static bool
 pt_wasm_parse_element_section(
-  const pt_wasm_parse_cbs_t * const cbs,
+  const pt_wasm_parse_module_cbs_t * const cbs,
   const uint8_t * const src,
   const size_t src_len,
   void * const cb_data
@@ -1764,7 +1764,7 @@ pt_wasm_parse_element_section(
 // static size_t
 // pt_wasm_parse_local(
 //   pt_wasm_local_t * const dst,
-//   const pt_wasm_parse_cbs_t * const cbs,
+//   const pt_wasm_parse_module_cbs_t * const cbs,
 //   const uint8_t * const src,
 //   const size_t src_len,
 //   void * const cb_data
@@ -1815,7 +1815,7 @@ pt_wasm_parse_element_section(
 // pt_wasm_parse_func(
 //   pt_wasm_func_t * const dst,
 //   const size_t func_id,
-//   const pt_wasm_parse_cbs_t * const cbs,
+//   const pt_wasm_parse_module_cbs_t * const cbs,
 //   const uint8_t * const src,
 //   const size_t src_len,
 //   void * const cb_data
@@ -1860,7 +1860,7 @@ pt_wasm_parse_element_section(
 static size_t
 pt_wasm_parse_fn_code(
   pt_wasm_buf_t * const dst,
-  const pt_wasm_parse_cbs_t * const cbs,
+  const pt_wasm_parse_module_cbs_t * const cbs,
   const uint8_t * const src,
   const size_t src_len,
   void * const cb_data
@@ -1899,7 +1899,7 @@ pt_wasm_parse_fn_code(
 
 static bool
 pt_wasm_parse_code_section(
-  const pt_wasm_parse_cbs_t * const cbs,
+  const pt_wasm_parse_module_cbs_t * const cbs,
   const uint8_t * const src,
   const size_t src_len,
   void * const cb_data
@@ -1955,7 +1955,7 @@ pt_wasm_parse_code_section(
 static size_t
 pt_wasm_parse_data_segment(
   pt_wasm_data_segment_t * const dst,
-  const pt_wasm_parse_cbs_t * const cbs,
+  const pt_wasm_parse_module_cbs_t * const cbs,
   const uint8_t * const src,
   const size_t src_len,
   void * const cb_data
@@ -2007,7 +2007,7 @@ pt_wasm_parse_data_segment(
 
 static bool
 pt_wasm_parse_data_section(
-  const pt_wasm_parse_cbs_t * const cbs,
+  const pt_wasm_parse_module_cbs_t * const cbs,
   const uint8_t * const src,
   const size_t src_len,
   void * const cb_data
@@ -2062,7 +2062,7 @@ pt_wasm_parse_data_section(
 
 static bool
 pt_wasm_parse_section(
-  const pt_wasm_parse_cbs_t * const cbs,
+  const pt_wasm_parse_module_cbs_t * const cbs,
   const pt_wasm_section_type_t sec_type,
   const uint8_t * const src,
   const size_t src_len,
@@ -2105,10 +2105,10 @@ pt_wasm_parse_section(
 static const uint8_t WASM_HEADER[] = { 0, 0x61, 0x73, 0x6d, 1, 0, 0, 0 };
 
 bool
-pt_wasm_parse(
+pt_wasm_parse_module(
   const void * const src_ptr,
   const size_t src_len,
-  const pt_wasm_parse_cbs_t * const cbs,
+  const pt_wasm_parse_module_cbs_t * const cbs,
   void * const cb_data
 ) {
   const uint8_t * const src = src_ptr;
