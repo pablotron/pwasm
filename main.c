@@ -15,8 +15,7 @@ typedef struct {
   size_t len;
 } test_t;
 
-static const uint8_t
-TEST_DATA[] = {
+static const uint8_t TEST_DATA[] = {
   // bad header (fail, ofs: 0, len: 8)
   0x01, 0x61, 0x73, 0x6d, 0x01, 0x00, 0x00, 0x00,
 
@@ -223,6 +222,21 @@ TEST_DATA[] = {
   0x06, 0x11, 0x02, 0x7D, 0x00, 0x43, 0xDB, 0x0F,
   0x49, 0x40, 0x0B, 0x7D, 0x00, 0x43, 0x54, 0xF8,
   0x2D, 0x40, 0x0B,
+
+  // export section: blank (fail, ofs: 782, len: 10)
+  0x00, 0x61, 0x73, 0x6d, 0x01, 0x00, 0x00, 0x00,
+  0x07, 0x00,
+
+  // export section: empty (pass, ofs: 792, len: 11)
+  0x00, 0x61, 0x73, 0x6d, 0x01, 0x00, 0x00, 0x00,
+  0x07, 0x01, 0x00,
+
+  // exports: foo, bar, baz, blum (pass, ofs: 803, len: 36)
+  0x00, 0x61, 0x73, 0x6d, 0x01, 0x00, 0x00, 0x00,
+  0x07, 0x1A, 0x03, 0x03, 'f',  'o',  'o',  0x00,
+  0x01, 0x03, 'b',  'a',  'r',  0x01, 0x02, 0x03,
+  'b',  'a',  'z',  0x02, 0x03, 0x04, 'b',  'l',
+  'u',  'm',  0x03, 0x04,
 };
 
 static const test_t TESTS[] = {
@@ -273,6 +287,9 @@ static const test_t TESTS[] = {
   { "global section: one f32",            true,   713,   19 },
   { "global section: one f64",            true,   732,   23 },
   { "global section: f32 pi, e",          true,   755,   27 },
+  { "export section: blank",              false,  782,   10 },
+  { "export section: empty",              true,   792,   11 },
+  { "exports: foo, bar, baz, blum",       true,   803,   36 },
 };
 
 static char *
@@ -503,6 +520,33 @@ on_test_custom_section(
 }
 
 static void
+dump_export(
+  FILE * fh,
+  const pt_wasm_export_t * const e
+) {
+  const char * const type_name = pt_wasm_export_type_get_name(e->type);
+  fputs("{name: \"", fh);
+  fwrite(e->name.ptr, e->name.len, 1, fh);
+  fprintf(fh, "\", type: %s, id: %u}", type_name, e->id);
+}
+
+static void
+on_test_exports(
+  const pt_wasm_export_t * const exports,
+  const size_t num_exports,
+  void * const data
+) {
+  (void) data;
+
+  fprintf(stderr, "exports(%zu): ", num_exports);
+  for (size_t i = 0; i < num_exports; i++) {
+    fputs((i > 0) ? ", " : "", stderr);
+    dump_export(stderr, exports + i);
+  }
+  fputs("\n", stderr);
+}
+
+static void
 on_test_error(const char * const text, void * const data) {
   const test_t * const test = data;
   warnx("test = \"%s\", error = \"%s\"", test->name, text);
@@ -515,6 +559,7 @@ static const pt_wasm_parse_cbs_t GOOD_TEST_CBS = {
   .on_tables          = on_test_tables,
   .on_memories        = on_test_memories,
   .on_globals         = on_test_globals,
+  .on_exports         = on_test_exports,
   .on_error           = on_test_error,
 };
 
