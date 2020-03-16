@@ -406,25 +406,25 @@ typedef struct {
   pt_wasm_expr_t expr;
 } pt_wasm_global_t;
 
-#define PT_WASM_IMPORT_DESCS \
-  PT_WASM_IMPORT_DESC(FUNC, "func") \
-  PT_WASM_IMPORT_DESC(TABLE, "table") \
-  PT_WASM_IMPORT_DESC(MEM, "mem") \
-  PT_WASM_IMPORT_DESC(GLOBAL, "global") \
-  PT_WASM_IMPORT_DESC(LAST, "unknown import desc")
+#define PT_WASM_IMPORT_TYPES \
+  PT_WASM_IMPORT_TYPE(FUNC, "func") \
+  PT_WASM_IMPORT_TYPE(TABLE, "table") \
+  PT_WASM_IMPORT_TYPE(MEM, "mem") \
+  PT_WASM_IMPORT_TYPE(GLOBAL, "global") \
+  PT_WASM_IMPORT_TYPE(LAST, "unknown import desc")
 
-#define PT_WASM_IMPORT_DESC(a, b) PT_WASM_IMPORT_DESC_##a,
+#define PT_WASM_IMPORT_TYPE(a, b) PT_WASM_IMPORT_TYPE_##a,
 typedef enum {
-PT_WASM_IMPORT_DESCS
-} pt_wasm_import_desc_t;
-#undef PT_WASM_IMPORT_DESC
+PT_WASM_IMPORT_TYPES
+} pt_wasm_import_type_t;
+#undef PT_WASM_IMPORT_TYPE
 
-const char *pt_wasm_import_desc_get_name(const pt_wasm_import_desc_t);
+const char *pt_wasm_import_type_get_name(const pt_wasm_import_type_t);
 
 typedef struct {
   pt_wasm_buf_t module;
   pt_wasm_buf_t name;
-  pt_wasm_import_desc_t import_desc;
+  pt_wasm_import_type_t type;
 
   union {
     struct {

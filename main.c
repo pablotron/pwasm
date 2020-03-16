@@ -184,20 +184,20 @@ dump_import(
   fwrite(im->module.ptr, im->module.len, 1, fh);
   fputs(".", fh);
   fwrite(im->name.ptr, im->name.len, 1, fh);
-  fprintf(fh, "\" (%s): ", pt_wasm_import_desc_get_name(im->import_desc));
+  fprintf(fh, "\" (%s): ", pt_wasm_import_type_get_name(im->type));
 
-  switch (im->import_desc) {
-  case PT_WASM_IMPORT_DESC_FUNC:
+  switch (im->type) {
+  case PT_WASM_IMPORT_TYPE_FUNC:
     fprintf(fh, "id = %u", im->func.id);
     break;
-  case PT_WASM_IMPORT_DESC_TABLE:
+  case PT_WASM_IMPORT_TYPE_TABLE:
     fprintf(fh, "elem_type = %u, ", im->table.elem_type);
     dump_limits(fh, &(im->table.limits));
     break;
-  case PT_WASM_IMPORT_DESC_MEM:
+  case PT_WASM_IMPORT_TYPE_MEM:
     dump_limits(fh, &(im->mem.limits));
     break;
-  case PT_WASM_IMPORT_DESC_GLOBAL:
+  case PT_WASM_IMPORT_TYPE_GLOBAL:
     {
       const char * const name = pt_wasm_value_type_get_name(im->global.type);
       const char mut = im->global.mutable ? 't' : 'f';
@@ -205,7 +205,7 @@ dump_import(
     }
     break;
   default:
-    errx(EXIT_FAILURE, "invalid import_desc: %u", im->import_desc);
+    errx(EXIT_FAILURE, "invalid import_type: %u", im->type);
   }
 
   fprintf(fh, "\n");

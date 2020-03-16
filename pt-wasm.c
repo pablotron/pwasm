@@ -53,18 +53,18 @@ pt_wasm_section_type_get_name(
   return PT_WASM_SECTION_TYPE_NAMES[ofs];
 }
 
-#define PT_WASM_IMPORT_DESC(a, b) b,
-static const char *PT_WASM_IMPORT_DESC_NAMES[] = {
-PT_WASM_IMPORT_DESCS
+#define PT_WASM_IMPORT_TYPE(a, b) b,
+static const char *PT_WASM_IMPORT_TYPE_NAMES[] = {
+PT_WASM_IMPORT_TYPES
 };
-#undef PT_WASM_IMPORT_DESC
+#undef PT_WASM_IMPORT_TYPE
 
 const char *
-pt_wasm_import_desc_get_name(
-  const pt_wasm_import_desc_t v
+pt_wasm_import_type_get_name(
+  const pt_wasm_import_type_t v
 ) {
-  const size_t ofs = MIN(PT_WASM_IMPORT_DESC_LAST, v);
-  return PT_WASM_IMPORT_DESC_NAMES[ofs];
+  const size_t ofs = MIN(PT_WASM_IMPORT_TYPE_LAST, v);
+  return PT_WASM_IMPORT_TYPE_NAMES[ofs];
 }
 
 #define PT_WASM_EXPORT_TYPE(a, b) b,
@@ -1152,13 +1152,13 @@ pt_wasm_parse_import(
     return false;
   }
 
-  // get import descriptor
-  const pt_wasm_import_desc_t desc = src[mod_len + name_len];
+  // get import type
+  const pt_wasm_import_type_t type = src[mod_len + name_len];
 
   pt_wasm_import_t tmp = {
     .module = mod,
     .name = name,
-    .import_desc = desc,
+    .type = type,
   };
 
   // calculate number of bytes consumed so far
@@ -1172,8 +1172,8 @@ pt_wasm_parse_import(
   const uint8_t * const data_ptr = src + num_bytes;
   const size_t data_len = src_len - num_bytes;
 
-  switch (desc) {
-  case PT_WASM_IMPORT_DESC_FUNC:
+  switch (type) {
+  case PT_WASM_IMPORT_TYPE_FUNC:
     {
       const size_t len = pt_wasm_decode_u32(&(tmp.func.id), data_ptr, data_len);
       if (!len) {
@@ -1185,7 +1185,7 @@ pt_wasm_parse_import(
     }
 
     break;
-  case PT_WASM_IMPORT_DESC_TABLE:
+  case PT_WASM_IMPORT_TYPE_TABLE:
     {
       // parse table, check for error
       const size_t len = pt_wasm_parse_table(&(tmp.table), cbs, data_ptr, data_len, cb_data);
@@ -1198,7 +1198,7 @@ pt_wasm_parse_import(
     }
 
     break;
-  case PT_WASM_IMPORT_DESC_MEM:
+  case PT_WASM_IMPORT_TYPE_MEM:
     {
       // parse memory limits, check for error
       const size_t len = pt_wasm_parse_limits(&(tmp.mem.limits), cbs, data_ptr, data_len, cb_data);
@@ -1211,7 +1211,7 @@ pt_wasm_parse_import(
     }
 
     break;
-  case PT_WASM_IMPORT_DESC_GLOBAL:
+  case PT_WASM_IMPORT_TYPE_GLOBAL:
     {
       // parse global, check for error
       const size_t len = pt_wasm_parse_global_type(&(tmp.global), cbs, data_ptr, data_len, cb_data);
