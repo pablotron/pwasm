@@ -3,7 +3,7 @@
 # gnu11 for MAP_ANONYMOUS
 CFLAGS=-W -Wall -O2 -std=gnu11 -DPT_WASM_DEBUG # -I$(LUAJIT_DIR)
 APP=wasm
-OBJS=pt-wasm.o main.o
+OBJS=pt-wasm.o main.o tests.o
 
 .PHONY=all clean
 
