@@ -1513,6 +1513,34 @@ pt_wasm_parse_export_section(
 }
 
 static bool
+pt_wasm_parse_start_section(
+  const pt_wasm_parse_cbs_t * const cbs,
+  const uint8_t * const src,
+  const size_t src_len,
+  void * const cb_data
+) {
+  // check source length
+  if (!src_len) {
+    FAIL("empty start section");
+  }
+
+  // get id, check for error
+  uint32_t id = 0;
+  const size_t len = pt_wasm_decode_u32(&id, src, src_len);
+  if (!len) {
+    FAIL("bad start section function index");
+  }
+
+  if (cbs && cbs->on_start) {
+    // send callback
+    cbs->on_start(id, cb_data);
+  }
+
+  // return success
+  return true;
+}
+
+static bool
 pt_wasm_parse_section(
   const pt_wasm_parse_cbs_t * const cbs,
   const pt_wasm_section_type_t sec_type,
@@ -1537,6 +1565,8 @@ pt_wasm_parse_section(
     return pt_wasm_parse_global_section(cbs, src, src_len, cb_data);
   case PT_WASM_SECTION_TYPE_EXPORT:
     return pt_wasm_parse_export_section(cbs, src, src_len, cb_data);
+  case PT_WASM_SECTION_TYPE_START:
+    return pt_wasm_parse_start_section(cbs, src, src_len, cb_data);
   default:
     FAIL("unknown section type");
     break;
