@@ -619,24 +619,6 @@ pt_wasm_parse_table(
   return 1 + len;
 }
 
-#define PT_WASM_OP(a, b, c) { \
-  .name = (b), \
-  .valid = true, \
-  .imm = PT_WASM_IMM_##c, \
-},
-
-#define PT_WASM_OP_CONTROL(a, b, c) { \
-  .name = (b), \
-  .valid = true, \
-  .control = true, \
-  .imm = PT_WASM_IMM_##c, \
-},
-
-#define PT_WASM_OP_RESERVED(a, b) { \
-  .name = (b), \
-  .imm = PT_WASM_IMM_LAST, \
-},
-
 typedef enum {
   PT_WASM_IMM_NONE,
   PT_WASM_IMM_BLOCK,
@@ -651,10 +633,36 @@ typedef enum {
   PT_WASM_IMM_LAST,
 } pt_wasm_imm_t;
 
+#define PT_WASM_OP(a, b, c) { \
+  .name = (b), \
+  .is_valid = true, \
+  .imm = PT_WASM_IMM_##c, \
+},
+
+#define PT_WASM_OP_CONST(a, b, c) { \
+  .name = (b), \
+  .is_valid = true, \
+  .is_const = true, \
+  .imm = PT_WASM_IMM_##c, \
+},
+
+#define PT_WASM_OP_CONTROL(a, b, c) { \
+  .name = (b), \
+  .is_valid = true, \
+  .is_control = true, \
+  .imm = PT_WASM_IMM_##c, \
+},
+
+#define PT_WASM_OP_RESERVED(a, b) { \
+  .name = (b), \
+  .imm = PT_WASM_IMM_LAST, \
+},
+
 static const struct {
   const char * name;
-  bool control;
-  bool valid;
+  bool is_control;
+  bool is_valid;
+  bool is_const;
   pt_wasm_imm_t imm;
 } PT_WASM_OPS[] = {
 PT_WASM_OP_DEFS
@@ -664,10 +672,10 @@ PT_WASM_OP_DEFS
 #undef PT_WASM_OP_RESERVED
 
 static inline bool
-pt_wasm_is_valid_op(
+pt_wasm_op_is_valid(
   const uint8_t byte
 ) {
-  return PT_WASM_OPS[byte].valid;
+  return PT_WASM_OPS[byte].is_valid;
 }
 
 static inline pt_wasm_imm_t
@@ -681,7 +689,14 @@ static inline bool
 pt_wasm_op_is_control(
   const pt_wasm_op_t op
 ) {
-  return PT_WASM_OPS[op].control;
+  return PT_WASM_OPS[op].is_control;
+}
+
+static inline bool
+pt_wasm_op_is_const(
+  const pt_wasm_op_t op
+) {
+  return PT_WASM_OPS[op].is_const;
 }
 
 /**
@@ -704,7 +719,7 @@ pt_wasm_parse_inst(
 
   // get op, check for error
   const pt_wasm_op_t op = src[0];
-  if (!pt_wasm_is_valid_op(op)) {
+  if (!pt_wasm_op_is_valid(op)) {
     FAIL("invalid op");
   }
 
@@ -833,39 +848,45 @@ pt_wasm_parse_inst(
     break;
   case PT_WASM_IMM_F32_CONST:
     {
+      // immediate size, in bytes
+      const size_t imm_len = 4;
+
       // check length
-      if (src_len - 1 < 4) {
+      if (src_len - 1 < imm_len) {
         FAIL("incomplete f32");
       }
 
       union {
-        uint8_t u8[4];
+        uint8_t u8[imm_len];
         float f32;
       } u;
-      memcpy(u.u8, src + 1, 4);
+      memcpy(u.u8, src + 1, imm_len);
 
       // save value, increment length
       in.v_f32.val = u.f32;
-      len += 4;
+      len += imm_len;
     }
 
     break;
   case PT_WASM_IMM_F64_CONST:
     {
+      // immediate size, in bytes
+      const size_t imm_len = 8;
+
       // check length
-      if (src_len - 1 < 8) {
+      if (src_len - 1 < imm_len) {
         FAIL("incomplete f64");
       }
 
       union {
-        uint8_t u8[8];
+        uint8_t u8[imm_len];
         double f64;
       } u;
-      memcpy(u.u8, src + 1, 8);
+      memcpy(u.u8, src + 1, imm_len);
 
       // save value, increment length
       in.v_f64.val = u.f64;
-      len += 4;
+      len += imm_len;
     }
 
     break;
@@ -908,6 +929,69 @@ pt_wasm_parse_expr(
     const size_t len = pt_wasm_parse_inst(&in, cbs, src + ofs, src_len - ofs, cb_data);
     if (!len) {
       return 0;
+    }
+
+    // update depth
+    depth += pt_wasm_op_is_control(in.op) ? 1 : 0;
+    depth -= (in.op == PT_WASM_OP_END) ? 1 : 0;
+
+    // increment offset
+    ofs += len;
+  }
+
+  // check for error
+  if (depth > 0) {
+    FAIL("unterminated expression");
+  }
+
+  const pt_wasm_expr_t tmp = {
+    .buf = {
+      .ptr = src,
+      .len = ofs,
+    },
+  };
+
+  if (dst) {
+    // copy result
+    *dst = tmp;
+  }
+
+  // return number of bytes consumed
+  return ofs;
+}
+
+/**
+ * Parse constant expr into +dst+ from buffer +src+ of length +src_len+.
+ *
+ * Returns number of bytes consumed, or 0 on error.
+ */
+static size_t
+pt_wasm_parse_const_expr(
+  pt_wasm_expr_t * const dst,
+  const pt_wasm_parse_cbs_t * const cbs,
+  const uint8_t * const src,
+  const size_t src_len,
+  void * const cb_data
+) {
+  // check source length
+  if (src_len < 1) {
+    FAIL("invalid expr");
+  }
+
+  size_t depth = 1;
+  size_t ofs = 0;
+  while ((depth > 0) && (ofs < src_len)) {
+    // parse instruction, check for error
+    pt_wasm_inst_t in;
+    const size_t len = pt_wasm_parse_inst(&in, cbs, src + ofs, src_len - ofs, cb_data);
+    if (!len) {
+      return 0;
+    }
+
+    // check op
+    if (!pt_wasm_op_is_const(in.op)) {
+      D("in.op = %u", in.op);
+      FAIL("non-constant instruction in expr");
     }
 
     // update depth
@@ -1021,7 +1105,7 @@ pt_wasm_parse_global(
 
   // parse expr, check for error
   pt_wasm_expr_t expr;
-  const size_t expr_len = pt_wasm_parse_expr(&expr, cbs, src + type_len, src_len - type_len, cb_data);
+  const size_t expr_len = pt_wasm_parse_const_expr(&expr, cbs, src + type_len, src_len - type_len, cb_data);
   if (!expr_len) {
     return 0;
   }
@@ -1562,6 +1646,7 @@ pt_wasm_parse_element(
   }
 
   // parse expr, check for error
+  // FIXME: should this be a const_expr too?
   pt_wasm_expr_t expr;
   const size_t expr_len = pt_wasm_parse_expr(&expr, cbs, src + t_len, src_len - t_len, cb_data);
   if (!expr_len) {

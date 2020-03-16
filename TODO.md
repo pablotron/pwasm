@@ -1,7 +1,10 @@
 *TODO*
+* limit elements to const ops
 * add generic vector handling
 * add generic vec(u32) 
 * add function code parsing
-* limit globals and elements to const ops
 * add interpreter
 * add jit
+
+*DONE*
+* limit globals to const ops (added `parse_const_expr`)

@@ -87,7 +87,7 @@ const char *pt_wasm_result_type_get_name(const pt_wasm_result_type_t);
   /* 0x08 */ PT_WASM_OP_RESERVED(RESERVED_08, "reserved.08") \
   /* 0x09 */ PT_WASM_OP_RESERVED(RESERVED_09, "reserved.09") \
   /* 0x0A */ PT_WASM_OP_RESERVED(RESERVED_0A, "reserved.0A") \
-  /* 0x0B */ PT_WASM_OP(END, "end", NONE) \
+  /* 0x0B */ PT_WASM_OP_CONST(END, "end", NONE) \
   /* 0x0C */ PT_WASM_OP(BR, "br", INDEX) \
   /* 0x0D */ PT_WASM_OP(BR_IF, "br_if", INDEX) \
   /* 0x0E */ PT_WASM_OP(BR_TABLE, "br_table", BR_TABLE) \
@@ -111,7 +111,7 @@ const char *pt_wasm_result_type_get_name(const pt_wasm_result_type_t);
   /* 0x20 */ PT_WASM_OP(LOCAL_GET, "local.get", INDEX) \
   /* 0x21 */ PT_WASM_OP(LOCAL_SET, "local.set", INDEX) \
   /* 0x22 */ PT_WASM_OP(LOCAL_TEE, "local.tee", INDEX) \
-  /* 0x23 */ PT_WASM_OP(GLOBAL_GET, "global.get", INDEX) \
+  /* 0x23 */ PT_WASM_OP_CONST(GLOBAL_GET, "global.get", INDEX) \
   /* 0x24 */ PT_WASM_OP(GLOBAL_SET, "global.set", INDEX) \
   /* 0x25 */ PT_WASM_OP_RESERVED(RESERVED_25, "reserved.25") \
   /* 0x26 */ PT_WASM_OP_RESERVED(RESERVED_26, "reserved.26") \
@@ -141,10 +141,10 @@ const char *pt_wasm_result_type_get_name(const pt_wasm_result_type_t);
   /* 0x3E */ PT_WASM_OP(I64_STORE32, "i64.store32", MEM) \
   /* 0x3F */ PT_WASM_OP(MEMORY_SIZE, "memory.size", NONE) \
   /* 0x40 */ PT_WASM_OP(MEMORY_GROW, "memory.grow", NONE) \
-  /* 0x41 */ PT_WASM_OP(I32_CONST, "i32.const", I32_CONST) \
-  /* 0x42 */ PT_WASM_OP(I64_CONST, "i64.const", I64_CONST) \
-  /* 0x43 */ PT_WASM_OP(F32_CONST, "f32.const", F32_CONST) \
-  /* 0x44 */ PT_WASM_OP(F64_CONST, "f64.const", F64_CONST) \
+  /* 0x41 */ PT_WASM_OP_CONST(I32_CONST, "i32.const", I32_CONST) \
+  /* 0x42 */ PT_WASM_OP_CONST(I64_CONST, "i64.const", I64_CONST) \
+  /* 0x43 */ PT_WASM_OP_CONST(F32_CONST, "f32.const", F32_CONST) \
+  /* 0x44 */ PT_WASM_OP_CONST(F64_CONST, "f64.const", F64_CONST) \
   /* 0x45 */ PT_WASM_OP(I32_EQZ, "i32.eqz", NONE) \
   /* 0x46 */ PT_WASM_OP(I32_EQ, "i32.eq", NONE) \
   /* 0x47 */ PT_WASM_OP(I32_NE, "i32.ne", NONE) \
@@ -334,12 +334,14 @@ const char *pt_wasm_result_type_get_name(const pt_wasm_result_type_t);
   /* 0xFF */ PT_WASM_OP_RESERVED(RESERVED_FF, "reserved.ff")
 
 #define PT_WASM_OP(a, b, c) PT_WASM_OP_##a,
+#define PT_WASM_OP_CONST(a, b, c) PT_WASM_OP_##a,
 #define PT_WASM_OP_CONTROL(a, b, c) PT_WASM_OP##a,
 #define PT_WASM_OP_RESERVED(a, b) PT_WASM_OP##a,
 typedef enum {
 PT_WASM_OP_DEFS
 } pt_wasm_op_t;
 #undef PT_WASM_OP
+#undef PT_WASM_OP_CONST
 #undef PT_WASM_OP_CONTROL
 #undef PT_WASM_OP_RESERVED
 
