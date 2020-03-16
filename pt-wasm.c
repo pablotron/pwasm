@@ -654,7 +654,7 @@ typedef enum {
 },
 
 #define PT_WASM_OP_RESERVED(a, b) { \
-  .name = (b), \
+  .name = ("reserved." b), \
   .imm = PT_WASM_IMM_LAST, \
 },
 
