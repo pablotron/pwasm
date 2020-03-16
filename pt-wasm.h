@@ -407,9 +407,9 @@ typedef struct {
 } pt_wasm_global_t;
 
 #define PT_WASM_IMPORT_TYPES \
-  PT_WASM_IMPORT_TYPE(FUNC, "func") \
+  PT_WASM_IMPORT_TYPE(FUNC, "funcion") \
   PT_WASM_IMPORT_TYPE(TABLE, "table") \
-  PT_WASM_IMPORT_TYPE(MEM, "mem") \
+  PT_WASM_IMPORT_TYPE(MEM, "memory") \
   PT_WASM_IMPORT_TYPE(GLOBAL, "global") \
   PT_WASM_IMPORT_TYPE(LAST, "unknown import desc")
 
@@ -445,8 +445,8 @@ typedef struct {
 #define PT_WASM_EXPORT_TYPES \
   PT_WASM_EXPORT_TYPE(FUNC, "function") \
   PT_WASM_EXPORT_TYPE(TABLE, "table") \
-  PT_WASM_EXPORT_TYPE(MEM, "table") \
-  PT_WASM_EXPORT_TYPE(GLOBAL, "table") \
+  PT_WASM_EXPORT_TYPE(MEM, "memory") \
+  PT_WASM_EXPORT_TYPE(GLOBAL, "global") \
   PT_WASM_EXPORT_TYPE(LAST, "unknown export type")
 
 #define PT_WASM_EXPORT_TYPE(a, b) PT_WASM_EXPORT_TYPE_##a,
