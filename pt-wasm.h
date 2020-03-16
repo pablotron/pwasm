@@ -475,6 +475,12 @@ typedef struct {
 } pt_wasm_element_t;
 
 typedef struct {
+  uint32_t mem_id;
+  pt_wasm_expr_t expr;
+  pt_wasm_buf_t data;
+} pt_wasm_data_segment_t;
+
+typedef struct {
   void (*on_custom_section)(const pt_wasm_custom_section_t *, void *);
   void (*on_function_types)(const pt_wasm_function_type_t *, const size_t, void *);
   void (*on_imports)(const pt_wasm_import_t *, const size_t, void *);
@@ -486,6 +492,7 @@ typedef struct {
   void (*on_elements)(const pt_wasm_element_t *, const size_t, void *);
   void (*on_start)(const uint32_t, void *);
   void (*on_function_codes)(const pt_wasm_buf_t *, const size_t, void *);
+  void (*on_data_segments)(const pt_wasm_data_segment_t *, const size_t, void *);
 
   void (*on_error)(const char *, void *);
 } pt_wasm_parse_cbs_t;

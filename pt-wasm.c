@@ -1952,6 +1952,114 @@ pt_wasm_parse_code_section(
   return true;
 }
 
+static size_t
+pt_wasm_parse_data_segment(
+  pt_wasm_data_segment_t * const dst,
+  const pt_wasm_parse_cbs_t * const cbs,
+  const uint8_t * const src,
+  const size_t src_len,
+  void * const cb_data
+) {
+  // get memory index, check for error
+  uint32_t id = 0;
+  const size_t id_len = pt_wasm_decode_u32(&id, src, src_len);
+  if (!id_len) {
+    FAIL("bad data section memory index");
+  }
+
+  // parse expr, check for error
+  pt_wasm_expr_t expr;
+  const size_t expr_len = pt_wasm_parse_const_expr(&expr, cbs, src + id_len, src_len - id_len, cb_data);
+  if (!expr_len) {
+    return 0;
+  }
+
+  const size_t data_ofs = id_len + expr_len;
+  if (data_ofs >= src_len) {
+    FAIL("missing data section data");
+  }
+
+  // get size, check for error
+  uint32_t size = 0;
+  const size_t size_len = pt_wasm_decode_u32(&size, src + data_ofs, src_len - data_ofs);
+  if (!size_len) {
+    FAIL("bad data section data size");
+  }
+
+  // build result
+  pt_wasm_data_segment_t tmp = {
+    .mem_id = id,
+    .expr = expr,
+    .data = {
+      .ptr = src + data_ofs + size_len,
+      .len = size,
+    },
+  };
+
+  if (dst) {
+    // copy result to destination
+    *dst = tmp;
+  }
+
+  // return number of bytes consumed
+  return data_ofs + size_len + size;
+}
+
+static bool
+pt_wasm_parse_data_section(
+  const pt_wasm_parse_cbs_t * const cbs,
+  const uint8_t * const src,
+  const size_t src_len,
+  void * const cb_data
+) {
+  // check source length
+  if (!src_len) {
+    FAIL("empty data section");
+  }
+
+  // get entry count, check for error
+  uint32_t num_ds = 0;
+  const size_t num_len = pt_wasm_decode_u32(&num_ds, src, src_len);
+  if (!num_len) {
+    FAIL("bad data section segment count");
+  }
+
+  // batch function buffer
+  pt_wasm_data_segment_t ds[PT_WASM_BATCH_SIZE];
+
+  size_t ofs = num_len;
+  for (size_t i = 0; i < num_ds; i++) {
+    const size_t ds_ofs = (i & (PT_WASM_BATCH_SIZE - 1));
+
+    // parse entry, check for error
+    const size_t len = pt_wasm_parse_data_segment(ds + ds_ofs, cbs, src + ofs, src_len - ofs, cb_data);
+    if (!len) {
+      return false;
+    }
+
+    // increment offset, check for error
+    ofs += len;
+    if (ofs > src_len) {
+      FAIL("code section length overflow");
+    }
+
+    if ((ds_ofs == LEN(ds)) && cbs && cbs->on_data_segments) {
+      // flush batch
+      cbs->on_data_segments(ds, ds_ofs, cb_data);
+    }
+  }
+
+  // count remaining entries
+  const size_t num_left = num_ds & (PT_WASM_BATCH_SIZE - 1);
+  if (num_left && cbs && cbs->on_data_segments) {
+    // flush remaining functions
+    cbs->on_data_segments(ds, num_left, cb_data);
+  }
+
+  // return success
+  return true;
+}
+
 static bool
 pt_wasm_parse_section(
   const pt_wasm_parse_cbs_t * const cbs,
@@ -1983,6 +2091,8 @@ pt_wasm_parse_section(
     return pt_wasm_parse_element_section(cbs, src, src_len, cb_data);
   case PT_WASM_SECTION_TYPE_CODE:
     return pt_wasm_parse_code_section(cbs, src, src_len, cb_data);
+  case PT_WASM_SECTION_TYPE_DATA:
+    return pt_wasm_parse_data_section(cbs, src, src_len, cb_data);
   default:
     FAIL("unknown section type");
     break;
