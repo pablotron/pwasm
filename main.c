@@ -268,6 +268,14 @@ static const uint8_t TEST_DATA[] = {
   0x08, 0x0F, 0x02, 0x01, 0x41, 0x00, 0x0B, 0x02,
   0x02, 0x03, 0x04, 0x41, 0x01, 0x0B, 0x02, 0x05,
   0x06,
+
+  // code section: blank (fail, ofs: 950, len: 10)
+  0x00, 0x61, 0x73, 0x6d, 0x01, 0x00, 0x00, 0x00,
+  0x09, 0x00,
+
+  // code section: empty (pass, ofs: 960, len: 11)
+  0x00, 0x61, 0x73, 0x6d, 0x01, 0x00, 0x00, 0x00,
+  0x09, 0x01, 0x00,
 };
 
 static const test_t TESTS[] = {
@@ -328,6 +336,8 @@ static const test_t TESTS[] = {
   { "element section: two fns",           true,   888,   16 },
   { "two elements, two fns",              true,   904,   21 },
   { "two elements, two i32s",             true,   925,   25 },
+  { "code section: blank",                false,  950,   10 },
+  { "code section: empty",                true,   960,   11 },
 };
 
 static char *
@@ -585,6 +595,20 @@ on_test_exports(
 }
 
 static void
+on_test_function_codes(
+  const pt_wasm_buf_t * const fns,
+  const size_t num_fns,
+  void * const data
+) {
+  (void) data;
+
+  fprintf(stderr, "function codes(%zu):\n", num_fns);
+  for (size_t i = 0; i < num_fns; i++) {
+    fprintf(stderr, "function[%zu].len = %zu", i, fns[i].len);
+  }
+}
+
+static void
 on_test_error(const char * const text, void * const data) {
   const test_t * const test = data;
   warnx("test = \"%s\", error = \"%s\"", test->name, text);
@@ -598,6 +622,7 @@ static const pt_wasm_parse_cbs_t GOOD_TEST_CBS = {
   .on_memories        = on_test_memories,
   .on_globals         = on_test_globals,
   .on_exports         = on_test_exports,
+  .on_function_codes  = on_test_function_codes,
   .on_error           = on_test_error,
 };
 
