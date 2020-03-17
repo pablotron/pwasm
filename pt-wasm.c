@@ -51,6 +51,54 @@ typedef struct {
 #define D(fmt, ...)
 #endif /* PT_WASM_DEBUG */
 
+#define DEF_VEC_PARSE_FN(FN_NAME, TEXT, EL_TYPE, CBS_TYPE, PARSE_FN, FLUSH_CB) \
+static size_t FN_NAME ( \
+  const pt_wasm_buf_t src, \
+  const CBS_TYPE * const cbs, \
+  void * const cb_data \
+) { \
+  /* get count, check for error */ \
+  uint32_t num_els = 0; \
+  size_t src_ofs = pt_wasm_decode_u32(&num_els, src.ptr, src.len); \
+  if (!src_ofs) { \
+    FAIL(TEXT ": invalid vector length"); \
+  } \
+  \
+  /* element buffer */ \
+  EL_TYPE dst[PT_WASM_BATCH_SIZE]; \
+  \
+  for (size_t i = 0; i < num_els; i++) { \
+    const size_t dst_ofs = (i & (PT_WASM_BATCH_SIZE - 1)); \
+    \
+    /* parse element, check for error */ \
+    const size_t used = PARSE_FN(dst + dst_ofs, cbs, src.ptr + src_ofs, src.len - src_ofs, cb_data); \
+    if (!used) { \
+      return 0; \
+    } \
+    \
+    /* increment offset, check for error */ \
+    src_ofs += used; \
+    if (src_ofs > src.len) { \
+      FAIL(TEXT ": source buffer length overflow"); \
+    } \
+    \
+    if ((dst_ofs == (PT_WASM_BATCH_SIZE - 1)) && cbs && cbs->FLUSH_CB) { \
+      /* flush batch */ \
+      cbs->FLUSH_CB(dst, PT_WASM_BATCH_SIZE, cb_data); \
+    } \
+  } \
+  \
+  /* count remaining entries */ \
+  const size_t num_left = num_els & (PT_WASM_BATCH_SIZE - 1); \
+  if (num_left && cbs && cbs->FLUSH_CB) { \
+    /* flush remaining entries */ \
+    cbs->FLUSH_CB(dst, num_left, cb_data); \
+  } \
+  \
+  /* return number of bytes consumed */ \
+  return src_ofs; \
+}
+
 #define PT_WASM_SECTION_TYPE(a, b) b,
 static const char *PT_WASM_SECTION_TYPE_NAMES[] = {
 PT_WASM_SECTION_TYPES
@@ -471,57 +519,22 @@ pt_wasm_parse_function_type(
   return results_ofs + results_len;
 }
 
+DEF_VEC_PARSE_FN(
+  pt_wasm_parse_types,
+  "parse types",
+  pt_wasm_function_type_t,
+  pt_wasm_parse_module_cbs_t,
+  pt_wasm_parse_function_type,
+  on_function_types
+);
+
 static bool
 pt_wasm_parse_type_section(
   const pt_wasm_parse_module_cbs_t * const cbs,
   const pt_wasm_buf_t src,
   void * const cb_data
 ) {
-  // get number of types, check for error
-  uint32_t num_types = 0;
-  const size_t len_ofs = pt_wasm_decode_u32(&num_types, src.ptr, src.len);
-  if (!len_ofs) {
-    FAIL("invalid type section vector length");
-  }
-
-  pt_wasm_function_type_t types[PT_WASM_BATCH_SIZE];
-
-  for (size_t i = 0, ofs = len_ofs; i < num_types; i++) {
-    const size_t types_ofs = (i & (PT_WASM_BATCH_SIZE - 1));
-    // parse function type, check for error
-    const size_t type_len = pt_wasm_parse_function_type(
-      types + types_ofs,
-      cbs,
-      src.ptr + ofs,
-      src.len - ofs,
-      cb_data
-    );
-
-    if (!type_len) {
-      // return failure
-      return false;
-    }
-
-    // increment offset, check for error
-    ofs += type_len;
-    if (ofs > src.len) {
-      FAIL("type section length overflow");
-    }
-
-    if ((types_ofs == (LEN(types) - 1)) && cbs && cbs->on_function_types) {
-      cbs->on_function_types(types, types_ofs, cb_data);
-    }
-  }
-
-  // count remaining entries
-  const size_t num_left = num_types & (PT_WASM_BATCH_SIZE - 1);
-  if (num_left && cbs && cbs->on_function_types) {
-    // flush remaining entries
-    cbs->on_function_types(types, num_left, cb_data);
-  }
-
-  // return success
-  return true;
+  return pt_wasm_parse_types(src, cbs, cb_data);
 }
 
 /**
@@ -1209,60 +1222,50 @@ pt_wasm_parse_import(
   return num_bytes;
 }
 
+DEF_VEC_PARSE_FN(
+  pt_wasm_parse_imports,
+  "parse imports",
+  pt_wasm_import_t,
+  pt_wasm_parse_module_cbs_t,
+  pt_wasm_parse_import,
+  on_imports
+);
+
 static bool
 pt_wasm_parse_import_section(
   const pt_wasm_parse_module_cbs_t * const cbs,
   const pt_wasm_buf_t src,
   void * const cb_data
 ) {
-  // get number of imports, check for error
-  uint32_t num_imports = 0;
-  const size_t len_ofs = pt_wasm_decode_u32(&num_imports, src.ptr, src.len);
-  if (!len_ofs) {
-    FAIL("invalid import section vector length");
-  }
-
-  pt_wasm_import_t imports[PT_WASM_BATCH_SIZE];
-
-  for (size_t i = 0, ofs = len_ofs; i < num_imports; i++) {
-    const size_t imports_ofs = (i & (PT_WASM_BATCH_SIZE - 1));
-
-    // parse import, check for error
-    const size_t import_len = pt_wasm_parse_import(
-      imports + imports_ofs,
-      cbs,
-      src.ptr + ofs,
-      src.len - ofs,
-      cb_data
-    );
-
-    if (!import_len) {
-      // return failure
-      return false;
-    }
-
-    // increment offset, check for error
-    ofs += import_len;
-    if (ofs > src.len) {
-      FAIL("import section length overflow");
-    }
-
-    if ((imports_ofs == (LEN(imports) - 1)) && cbs && cbs->on_imports) {
-      // flush batch
-      cbs->on_imports(imports, imports_ofs, cb_data);
-    }
-  }
-
-  // count remaining entries
-  const size_t num_left = num_imports & (PT_WASM_BATCH_SIZE - 1);
-  if (num_left && cbs && cbs->on_imports) {
-    // flush remaining entries
-    cbs->on_imports(imports, num_left, cb_data);
-  }
-
-  // return success
-  return true;
+  return pt_wasm_parse_imports(src, cbs, cb_data) > 0;
 }
+
+static inline size_t
+pt_wasm_function_section_parse_fn(
+  uint32_t * const dst,
+  const pt_wasm_parse_module_cbs_t * const cbs,
+  const uint8_t * const src,
+  const size_t src_len,
+  void * const cb_data
+) {
+  // parse index, check for error
+  const size_t len = pt_wasm_decode_u32(dst, src, src_len);
+  if (!len) {
+    FAIL("invalid function index");
+  }
+
+  // return number of bytes consumed
+  return len;
+}
+
+DEF_VEC_PARSE_FN(
+  pt_wasm_parse_functions,
+  "parse tables",
+  uint32_t,
+  pt_wasm_parse_module_cbs_t,
+  pt_wasm_function_section_parse_fn,
+  on_functions
+);
 
 static bool
 pt_wasm_parse_function_section(
@@ -1270,50 +1273,17 @@ pt_wasm_parse_function_section(
   const pt_wasm_buf_t src,
   void * const cb_data
 ) {
-  // get number of fns, check for error
-  uint32_t num_fns = 0;
-  const size_t len_ofs = pt_wasm_decode_u32(&num_fns, src.ptr, src.len);
-  if (!len_ofs) {
-    FAIL("invalid function section vector length");
-  }
-
-  // D("num_fns = %u", num_fns);
-
-  uint32_t fns[PT_WASM_BATCH_SIZE];
-
-  for (size_t i = 0, ofs = len_ofs; i < num_fns; i++) {
-    const size_t fns_ofs = (i & (PT_WASM_BATCH_SIZE - 1));
-
-    // parse fn, check for error
-    const size_t fn_len = pt_wasm_decode_u32(fns + fns_ofs, src.ptr + ofs, src.len - ofs);
-    if (!fn_len) {
-      FAIL("invalid function index");
-    }
-
-    // D("fns[%zu] = %u", fns_ofs, fns[fns_ofs]);
-
-    // increment offset, check for error
-    ofs += fn_len;
-    if (ofs > src.len) {
-      FAIL("function section length overflow");
-    }
-
-    if ((fns_ofs == (LEN(fns) - 1)) && cbs && cbs->on_functions) {
-      // flush batch
-      cbs->on_functions(fns, fns_ofs, cb_data);
-    }
-  }
-
-  // count remaining entries
-  const size_t num_left = num_fns & (PT_WASM_BATCH_SIZE - 1);
-  if (num_left && cbs && cbs->on_functions) {
-    // flush remaining entries
-    cbs->on_functions(fns, num_left, cb_data);
-  }
-
-  // return success
-  return true;
+  return pt_wasm_parse_functions(src, cbs, cb_data) > 0;
 }
+
+DEF_VEC_PARSE_FN(
+  pt_wasm_parse_tables,
+  "parse tables",
+  pt_wasm_table_t,
+  pt_wasm_parse_module_cbs_t,
+  pt_wasm_parse_table,
+  on_tables
+);
 
 static bool
 pt_wasm_parse_table_section(
@@ -1321,50 +1291,17 @@ pt_wasm_parse_table_section(
   const pt_wasm_buf_t src,
   void * const cb_data
 ) {
-  // get number of tables, check for error
-  uint32_t num_tbls = 0;
-  const size_t len_ofs = pt_wasm_decode_u32(&num_tbls, src.ptr, src.len);
-  if (!len_ofs) {
-    FAIL("invalid table section vector length");
-  }
-
-  // D("num_tbls = %u", num_tbls);
-
-  pt_wasm_table_t tbls[PT_WASM_BATCH_SIZE];
-
-  for (size_t i = 0, ofs = len_ofs; i < num_tbls; i++) {
-    const size_t tbls_ofs = (i & (PT_WASM_BATCH_SIZE - 1));
-
-    // parse fn, check for error
-    const size_t tbl_len = pt_wasm_parse_table(tbls + tbls_ofs, cbs, src.ptr + ofs, src.len - ofs, cb_data);
-    if (!tbl_len) {
-      FAIL("invalid table section entry");
-    }
-
-    // D("tbls[%zu] = [%u, %u], has_max: %c", tbls_ofs, tbls[tbls_ofs].limits.min, tbls[tbls_ofs].limits.max, tbls[tbls_ofs].limits.has_max ? 't' : 'f');
-
-    // increment offset, check for error
-    ofs += tbl_len;
-    if (ofs > src.len) {
-      FAIL("table section length overflow");
-    }
-
-    if ((tbls_ofs == (LEN(tbls) - 1)) && cbs && cbs->on_tables) {
-      // flush batch
-      cbs->on_tables(tbls, tbls_ofs, cb_data);
-    }
-  }
-
-  // count remaining entries
-  const size_t num_left = num_tbls & (PT_WASM_BATCH_SIZE - 1);
-  if (num_left && cbs && cbs->on_tables) {
-    // flush remaining entries
-    cbs->on_tables(tbls, num_left, cb_data);
-  }
-
-  // return success
-  return true;
+  return pt_wasm_parse_tables(src, cbs, cb_data) > 0;
 }
+
+DEF_VEC_PARSE_FN(
+  pt_wasm_parse_memories,
+  "parse memories",
+  pt_wasm_limits_t,
+  pt_wasm_parse_module_cbs_t,
+  pt_wasm_parse_limits,
+  on_memories
+);
 
 static bool
 pt_wasm_parse_memory_section(
@@ -1372,46 +1309,17 @@ pt_wasm_parse_memory_section(
   const pt_wasm_buf_t src,
   void * const cb_data
 ) {
-  // get number of mems, check for error
-  uint32_t num_mems = 0;
-  const size_t len_ofs = pt_wasm_decode_u32(&num_mems, src.ptr, src.len);
-  if (!len_ofs) {
-    FAIL("invalid memory section vector length");
-  }
-
-  pt_wasm_limits_t mems[PT_WASM_BATCH_SIZE];
-
-  for (size_t i = 0, ofs = len_ofs; i < num_mems; i++) {
-    const size_t mems_ofs = (i & (PT_WASM_BATCH_SIZE - 1));
-
-    // parse mem, check for error
-    const size_t mem_len = pt_wasm_parse_limits(mems + mems_ofs, cbs, src.ptr + ofs, src.len - ofs, cb_data);
-    if (!mem_len) {
-      return false;
-    }
-
-    // increment offset, check for error
-    ofs += mem_len;
-    if (ofs > src.len) {
-      FAIL("memory section length overflow");
-    }
-
-    if ((mems_ofs == (LEN(mems) - 1)) && cbs && cbs->on_memories) {
-      // flush batch
-      cbs->on_memories(mems, mems_ofs, cb_data);
-    }
-  }
-
-  // count remaining entries
-  const size_t num_left = num_mems & (PT_WASM_BATCH_SIZE - 1);
-  if (num_left && cbs && cbs->on_memories) {
-    // flush remaining entries
-    cbs->on_memories(mems, num_left, cb_data);
-  }
-
-  // return success
-  return true;
+  return pt_wasm_parse_memories(src, cbs, cb_data) > 0;
 }
+
+DEF_VEC_PARSE_FN(
+  pt_wasm_parse_globals,
+  "parse globals",
+  pt_wasm_global_t,
+  pt_wasm_parse_module_cbs_t,
+  pt_wasm_parse_global,
+  on_globals
+);
 
 static bool
 pt_wasm_parse_global_section(
@@ -1419,45 +1327,7 @@ pt_wasm_parse_global_section(
   const pt_wasm_buf_t src,
   void * const cb_data
 ) {
-  // get number of mems, check for error
-  uint32_t num_gs = 0;
-  const size_t len_ofs = pt_wasm_decode_u32(&num_gs, src.ptr, src.len);
-  if (!len_ofs) {
-    FAIL("invalid global section vector length");
-  }
-
-  pt_wasm_global_t gs[PT_WASM_BATCH_SIZE];
-
-  for (size_t i = 0, ofs = len_ofs; i < num_gs; i++) {
-    const size_t gs_ofs = (i & (PT_WASM_BATCH_SIZE - 1));
-
-    // parse mem, check for error
-    const size_t g_len = pt_wasm_parse_global(gs + gs_ofs, cbs, src.ptr + ofs, src.len - ofs, cb_data);
-    if (!g_len) {
-      return false;
-    }
-
-    // increment offset, check for error
-    ofs += g_len;
-    if (ofs > src.len) {
-      FAIL("global section length overflow");
-    }
-
-    if ((gs_ofs == (LEN(gs) - 1)) && cbs && cbs->on_globals) {
-      // flush batch
-      cbs->on_globals(gs, gs_ofs, cb_data);
-    }
-  }
-
-  // count remaining entries
-  const size_t num_left = num_gs & (PT_WASM_BATCH_SIZE - 1);
-  if (num_left && cbs && cbs->on_globals) {
-    // flush remaining entries
-    cbs->on_globals(gs, num_left, cb_data);
-  }
-
-  // return success
-  return true;
+  return pt_wasm_parse_globals(src, cbs, cb_data) > 0;
 }
 
 /**
@@ -1520,51 +1390,22 @@ pt_wasm_parse_export(
   return n_len + 1 + id_len;
 }
 
+DEF_VEC_PARSE_FN(
+  pt_wasm_parse_exports,
+  "parse exports",
+  pt_wasm_export_t,
+  pt_wasm_parse_module_cbs_t,
+  pt_wasm_parse_export,
+  on_exports
+);
+
 static bool
 pt_wasm_parse_export_section(
   const pt_wasm_parse_module_cbs_t * const cbs,
   const pt_wasm_buf_t src,
   void * const cb_data
 ) {
-  // get number of exports, check for error
-  uint32_t num_es = 0;
-  const size_t len_ofs = pt_wasm_decode_u32(&num_es, src.ptr, src.len);
-  if (!len_ofs) {
-    FAIL("invalid export section vector length");
-  }
-
-  pt_wasm_export_t es[PT_WASM_BATCH_SIZE];
-
-  for (size_t i = 0, ofs = len_ofs; i < num_es; i++) {
-    const size_t es_ofs = (i & (PT_WASM_BATCH_SIZE - 1));
-
-    // parse mem, check for error
-    const size_t e_len = pt_wasm_parse_export(es + es_ofs, cbs, src.ptr + ofs, src.len - ofs, cb_data);
-    if (!e_len) {
-      return false;
-    }
-
-    // increment offset, check for error
-    ofs += e_len;
-    if (ofs > src.len) {
-      FAIL("export section length overflow");
-    }
-
-    if ((es_ofs == (LEN(es) - 1)) && cbs && cbs->on_exports) {
-      // flush batch
-      cbs->on_exports(es, es_ofs, cb_data);
-    }
-  }
-
-  // count remaining entries
-  const size_t num_left = num_es & (PT_WASM_BATCH_SIZE - 1);
-  if (num_left && cbs && cbs->on_exports) {
-    // flush remaining entries
-    cbs->on_exports(es, num_left, cb_data);
-  }
-
-  // return success
-  return true;
+  return pt_wasm_parse_exports(src, cbs, cb_data) > 0;
 }
 
 static bool
@@ -1666,60 +1507,22 @@ pt_wasm_parse_element(
   return ofs + data_len;
 }
 
+DEF_VEC_PARSE_FN(
+  pt_wasm_parse_elements,
+  "parse elements",
+  pt_wasm_element_t,
+  pt_wasm_parse_module_cbs_t,
+  pt_wasm_parse_element,
+  on_elements
+);
+
 static bool
 pt_wasm_parse_element_section(
   const pt_wasm_parse_module_cbs_t * const cbs,
   const pt_wasm_buf_t src,
   void * const cb_data
 ) {
-  // check source length
-  if (!src.len) {
-    FAIL("empty element section");
-  }
-
-  // get entry count, check for error
-  uint32_t num_es = 0;
-  const size_t num_len = pt_wasm_decode_u32(&num_es, src.ptr, src.len);
-  if (!num_len) {
-    FAIL("bad element section entry count");
-  }
-
-  // batch export buffer
-  pt_wasm_element_t es[PT_WASM_BATCH_SIZE];
-
-  size_t ofs = num_len;
-  for (size_t i = 0; i < num_es; i++) {
-    const size_t es_ofs = (i & (PT_WASM_BATCH_SIZE - 1));
-
-    // parse element, check for error
-    const size_t len = pt_wasm_parse_element(es + es_ofs, cbs, src.ptr + ofs, src.len - ofs, cb_data);
-    if (!len) {
-      return false;
-    }
-
-    // increment offset, check for error
-    ofs += len;
-    if (ofs > src.len) {
-      FAIL("element section length overflow");
-    }
-
-    if ((es_ofs == (LEN(es) - 1)) && cbs && cbs->on_elements) {
-      // flush batch
-      cbs->on_elements(es, es_ofs, cb_data);
-    }
-  }
-
-  // FIXME: check offset?
-
-  // count remaining entries
-  const size_t num_left = num_es & (PT_WASM_BATCH_SIZE - 1);
-  if (num_left && cbs && cbs->on_elements) {
-    // flush remaining entries
-    cbs->on_elements(es, num_left, cb_data);
-  }
-
-  // return success
-  return true;
+  return pt_wasm_parse_elements(src, cbs, cb_data) > 0;
 }
 
 /**
@@ -1768,58 +1571,22 @@ pt_wasm_parse_fn_code(
   return size_len + size;
 }
 
+DEF_VEC_PARSE_FN(
+  pt_wasm_parse_codes,
+  "parse function codes",
+  pt_wasm_buf_t,
+  pt_wasm_parse_module_cbs_t,
+  pt_wasm_parse_fn_code,
+  on_function_codes
+);
+
 static bool
 pt_wasm_parse_code_section(
   const pt_wasm_parse_module_cbs_t * const cbs,
   const pt_wasm_buf_t src,
   void * const cb_data
 ) {
-  // check source length
-  if (!src.len) {
-    FAIL("empty code section");
-  }
-
-  // get entry count, check for error
-  uint32_t num_fns = 0;
-  const size_t num_len = pt_wasm_decode_u32(&num_fns, src.ptr, src.len);
-  if (!num_len) {
-    FAIL("bad code section function count");
-  }
-
-  // batch function buffer
-  pt_wasm_buf_t fns[PT_WASM_BATCH_SIZE];
-
-  size_t ofs = num_len;
-  for (size_t i = 0; i < num_fns; i++) {
-    const size_t fns_ofs = (i & (PT_WASM_BATCH_SIZE - 1));
-
-    // parse entry, check for error
-    const size_t len = pt_wasm_parse_fn_code(fns + fns_ofs, cbs, src.ptr + ofs, src.len - ofs, cb_data);
-    if (!len) {
-      return false;
-    }
-
-    // increment offset, check for error
-    ofs += len;
-    if (ofs > src.len) {
-      FAIL("code section length overflow");
-    }
-
-    if ((fns_ofs == (LEN(fns) - 1)) && cbs && cbs->on_function_codes) {
-      // flush batch
-      cbs->on_function_codes(fns, fns_ofs, cb_data);
-    }
-  }
-
-  // count remaining entries
-  const size_t num_left = num_fns & (PT_WASM_BATCH_SIZE - 1);
-  if (num_left && cbs && cbs->on_function_codes) {
-    // flush remaining functions
-    cbs->on_function_codes(fns, num_left, cb_data);
-  }
-
-  // return success
-  return true;
+  return pt_wasm_parse_codes(src, cbs, cb_data) > 0;
 }
 
 static size_t
@@ -1875,58 +1642,22 @@ pt_wasm_parse_data_segment(
   return data_ofs + size_len + size;
 }
 
+DEF_VEC_PARSE_FN(
+  pt_wasm_parse_data_segments,
+  "parse data segments",
+  pt_wasm_data_segment_t,
+  pt_wasm_parse_module_cbs_t,
+  pt_wasm_parse_data_segment,
+  on_data_segments
+);
+
 static bool
 pt_wasm_parse_data_section(
   const pt_wasm_parse_module_cbs_t * const cbs,
   const pt_wasm_buf_t src,
   void * const cb_data
 ) {
-  // check source length
-  if (!src.len) {
-    FAIL("empty data section");
-  }
-
-  // get entry count, check for error
-  uint32_t num_ds = 0;
-  const size_t num_len = pt_wasm_decode_u32(&num_ds, src.ptr, src.len);
-  if (!num_len) {
-    FAIL("bad data section segment count");
-  }
-
-  // batch function buffer
-  pt_wasm_data_segment_t ds[PT_WASM_BATCH_SIZE];
-
-  size_t ofs = num_len;
-  for (size_t i = 0; i < num_ds; i++) {
-    const size_t ds_ofs = (i & (PT_WASM_BATCH_SIZE - 1));
-
-    // parse entry, check for error
-    const size_t len = pt_wasm_parse_data_segment(ds + ds_ofs, cbs, src.ptr + ofs, src.len - ofs, cb_data);
-    if (!len) {
-      return false;
-    }
-
-    // increment offset, check for error
-    ofs += len;
-    if (ofs > src.len) {
-      FAIL("code section length overflow");
-    }
-
-    if ((ds_ofs == (LEN(ds) - 1)) && cbs && cbs->on_data_segments) {
-      // flush batch
-      cbs->on_data_segments(ds, ds_ofs, cb_data);
-    }
-  }
-
-  // count remaining entries
-  const size_t num_left = num_ds & (PT_WASM_BATCH_SIZE - 1);
-  if (num_left && cbs && cbs->on_data_segments) {
-    // flush remaining functions
-    cbs->on_data_segments(ds, num_left, cb_data);
-  }
-
-  // return success
-  return true;
+  return pt_wasm_parse_data_segments(src, cbs, cb_data) > 0;
 }
 
 static bool
@@ -1970,7 +1701,7 @@ pt_wasm_parse_section(
   return true;
 }
 
-static const uint8_t WASM_HEADER[] = { 0, 0x61, 0x73, 0x6d, 1, 0, 0, 0 };
+static const uint8_t PT_WASM_HEADER[] = { 0, 0x61, 0x73, 0x6d, 1, 0, 0, 0 };
 
 bool
 pt_wasm_parse_module(
@@ -1988,7 +1719,7 @@ pt_wasm_parse_module(
 
   // fprintf(stderr," sizeof(WASM_HEADER) = %zu\n", sizeof(WASM_HEADER));
   // check magic and version
-  if (memcmp(src, WASM_HEADER, sizeof(WASM_HEADER))) {
+  if (memcmp(src, PT_WASM_HEADER, sizeof(PT_WASM_HEADER))) {
     FAIL("invalid module header");
   }
 
