@@ -99,7 +99,7 @@ static size_t FN_NAME ( \
   return src_ofs; \
 }
 
-#define PT_WASM_SECTION_TYPE(a, b) b,
+#define PT_WASM_SECTION_TYPE(a, b) #b,
 static const char *PT_WASM_SECTION_TYPE_NAMES[] = {
 PT_WASM_SECTION_TYPES
 };
@@ -1661,44 +1661,37 @@ pt_wasm_parse_data_section(
 }
 
 static bool
+pt_wasm_parse_invalid_section(
+  const pt_wasm_parse_module_cbs_t * const cbs,
+  const pt_wasm_buf_t src,
+  void * const cb_data
+) {
+  (void) src;
+  FAIL("unknown section type");
+}
+
+typedef bool (*pt_wasm_parse_section_fn_t)(
+  const pt_wasm_parse_module_cbs_t * const cbs,
+  const pt_wasm_buf_t src,
+  void * const cb_data
+);
+
+#define PT_WASM_SECTION_TYPE(a, b) pt_wasm_parse_ ## b ## _section,
+static const pt_wasm_parse_section_fn_t
+PT_WASM_SECTION_PARSERS[] = {
+PT_WASM_SECTION_TYPES
+};
+#undef PT_WASM_SECTION_TYPE
+
+static bool
 pt_wasm_parse_section(
   const pt_wasm_parse_module_cbs_t * const cbs,
   const pt_wasm_section_type_t sec_type,
   const pt_wasm_buf_t src,
   void * const cb_data
 ) {
-  switch (sec_type) {
-  case PT_WASM_SECTION_TYPE_CUSTOM:
-    return pt_wasm_parse_custom_section(cbs, src, cb_data);
-  case PT_WASM_SECTION_TYPE_TYPE:
-    return pt_wasm_parse_type_section(cbs, src, cb_data);
-  case PT_WASM_SECTION_TYPE_IMPORT:
-    return pt_wasm_parse_import_section(cbs, src, cb_data);
-  case PT_WASM_SECTION_TYPE_FUNCTION:
-    return pt_wasm_parse_function_section(cbs, src, cb_data);
-  case PT_WASM_SECTION_TYPE_TABLE:
-    return pt_wasm_parse_table_section(cbs, src, cb_data);
-  case PT_WASM_SECTION_TYPE_MEMORY:
-    return pt_wasm_parse_memory_section(cbs, src, cb_data);
-  case PT_WASM_SECTION_TYPE_GLOBAL:
-    return pt_wasm_parse_global_section(cbs, src, cb_data);
-  case PT_WASM_SECTION_TYPE_EXPORT:
-    return pt_wasm_parse_export_section(cbs, src, cb_data);
-  case PT_WASM_SECTION_TYPE_START:
-    return pt_wasm_parse_start_section(cbs, src, cb_data);
-  case PT_WASM_SECTION_TYPE_ELEMENT:
-    return pt_wasm_parse_element_section(cbs, src, cb_data);
-  case PT_WASM_SECTION_TYPE_CODE:
-    return pt_wasm_parse_code_section(cbs, src, cb_data);
-  case PT_WASM_SECTION_TYPE_DATA:
-    return pt_wasm_parse_data_section(cbs, src, cb_data);
-  default:
-    FAIL("unknown section type");
-    break;
-  }
-
-  // return success
-  return true;
+  const size_t ofs = MIN(sec_type, PT_WASM_SECTION_TYPE_LAST);
+  return PT_WASM_SECTION_PARSERS[ofs](cbs, src, cb_data);
 }
 
 static const uint8_t PT_WASM_HEADER[] = { 0, 0x61, 0x73, 0x6d, 1, 0, 0, 0 };
