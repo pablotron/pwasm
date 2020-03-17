@@ -5,7 +5,35 @@
 #include <stdio.h> // fopen()
 #include <err.h> // err()
 #include "pt-wasm.h"
-#include "tests.h"
+#include "mod-tests.h"
+#include "func-tests.h"
+
+typedef struct {
+  size_t num_fails;
+  size_t num_tests;
+} result_t;
+
+static inline result_t
+result(
+  const size_t num_fails,
+  const size_t num_tests
+) {
+  const result_t r = { num_fails, num_tests };
+  return r;
+}
+
+static inline result_t
+add_results(
+  const result_t a,
+  const result_t b
+) {
+  const result_t r = {
+    .num_fails = a.num_fails + b.num_fails,
+    .num_tests = a.num_tests + b.num_tests,
+  };
+
+  return r;
+}
 
 static char *
 read_file(
@@ -114,7 +142,7 @@ dump_global(
 }
 
 static void
-on_test_globals(
+mod_test_on_globals(
   const pt_wasm_global_t * const gs,
   const size_t num_gs,
   void * const data
@@ -129,7 +157,7 @@ on_test_globals(
   fputs("}\n", stderr);
 }
 static void
-on_test_memories(
+mod_test_on_memories(
   const pt_wasm_limits_t * const mems,
   const size_t num_mems,
   void * const data
@@ -145,7 +173,7 @@ on_test_memories(
 }
 
 static void
-on_test_tables(
+mod_test_on_tables(
   const pt_wasm_table_t * const tbls,
   const size_t num_tbls,
   void * const data
@@ -161,7 +189,7 @@ on_test_tables(
 }
 
 static void
-on_test_functions(
+mod_test_on_functions(
   const uint32_t * const fns,
   const size_t num_fns,
   void * const data
@@ -212,7 +240,7 @@ dump_import(
 }
 
 static void
-on_test_imports(
+mod_test_on_imports(
   const pt_wasm_import_t * const imports,
   const size_t num_imports,
   void * const data
@@ -240,7 +268,7 @@ dump_custom_section(
 }
 
 static void
-on_test_custom_section(
+mod_test_on_custom_section(
   const pt_wasm_custom_section_t * const s,
   void * const data
 ) {
@@ -261,7 +289,7 @@ dump_export(
 }
 
 static void
-on_test_exports(
+mod_test_on_exports(
   const pt_wasm_export_t * const exports,
   const size_t num_exports,
   void * const data
@@ -277,7 +305,7 @@ on_test_exports(
 }
 
 static void
-on_test_function_codes(
+mod_test_on_function_codes(
   const pt_wasm_buf_t * const fns,
   const size_t num_fns,
   void * const data
@@ -291,7 +319,7 @@ on_test_function_codes(
 }
 
 static void
-on_test_data_segments(
+mod_test_on_data_segments(
   const pt_wasm_data_segment_t * const ds,
   const size_t len,
   void * const data
@@ -309,38 +337,38 @@ on_test_data_segments(
 }
 
 static void
-on_test_error(const char * const text, void * const data) {
+mod_test_on_error(const char * const text, void * const data) {
   const test_t * const test = data;
   warnx("test = \"%s\", error = \"%s\"", test->name, text);
 }
 
-static const pt_wasm_parse_module_cbs_t GOOD_TEST_CBS = {
-  .on_custom_section  = on_test_custom_section,
-  .on_imports         = on_test_imports,
-  .on_functions       = on_test_functions,
-  .on_tables          = on_test_tables,
-  .on_memories        = on_test_memories,
-  .on_globals         = on_test_globals,
-  .on_exports         = on_test_exports,
-  .on_function_codes  = on_test_function_codes,
-  .on_data_segments   = on_test_data_segments,
-  .on_error           = on_test_error,
+static const pt_wasm_parse_module_cbs_t MOD_TEST_CBS = {
+  .on_custom_section  = mod_test_on_custom_section,
+  .on_imports         = mod_test_on_imports,
+  .on_functions       = mod_test_on_functions,
+  .on_tables          = mod_test_on_tables,
+  .on_memories        = mod_test_on_memories,
+  .on_globals         = mod_test_on_globals,
+  .on_exports         = mod_test_on_exports,
+  .on_function_codes  = mod_test_on_function_codes,
+  .on_data_segments   = mod_test_on_data_segments,
+  .on_error           = mod_test_on_error,
 };
 
-static bool
-run_tests(void) {
-  const size_t NUM_TESTS = get_num_tests();
-  const test_t * const TESTS = get_tests();
-  const uint8_t * const TEST_DATA = get_test_data();
+static result_t
+run_mod_tests(void) {
+  const suite_t suite = get_mod_tests();
   size_t num_fails = 0;
 
-  for (size_t i = 0; i < NUM_TESTS; i++) {
+  for (size_t i = 0; i < suite.num_tests; i++) {
     // get test, run it, and get result
-    const test_t * const test = TESTS + i;
+    const test_t * const test = suite.tests + i;
+
+    // run test, get result
     const bool r = pt_wasm_parse_module(
-      TEST_DATA + test->ofs,
+      (suite.data + test->ofs),
       test->len,
-      test->want ? &GOOD_TEST_CBS : NULL,
+      test->want ? &MOD_TEST_CBS : NULL,
       (void*) test
     );
 
@@ -350,13 +378,73 @@ run_tests(void) {
 
     if (!ok) {
       // warn on failure
-      warnx("FAIL: %s", test->name);
+      warnx("FAIL module test: %s", test->name);
     }
   }
 
-  // print results, return number of failures
-  printf("Tests: %zu/%zu\n", NUM_TESTS - num_fails, NUM_TESTS);
-  return num_fails;
+  // return results
+  return result(num_fails, suite.num_tests);
+}
+
+static const pt_wasm_parse_function_cbs_t FUNC_TEST_CBS = {
+  .on_error           = mod_test_on_error,
+};
+
+static result_t
+run_func_tests(void) {
+  const suite_t suite = get_func_tests();
+  size_t num_fails = 0;
+
+  for (size_t i = 0; i < suite.num_tests; i++) {
+    // get test, run it, and get result
+    const test_t * const test = suite.tests + i;
+
+    const pt_wasm_buf_t buf = {
+      .ptr = suite.data + test->ofs,
+      .len = test->len,
+    };
+
+    // run test, get result
+    const bool r = pt_wasm_parse_function(
+      buf,
+      test->want ? &FUNC_TEST_CBS : NULL,
+      (void*) test
+    );
+
+    // check result, increment failure count
+    const bool ok = (r == test->want);
+    num_fails += ok ? 0 : 1;
+
+    if (!ok) {
+      // warn on failure
+      warnx("FAIL: function test: %s", test->name);
+    }
+  }
+
+  // return results
+  return result(num_fails, suite.num_tests);
+}
+
+static result_t (*SUITES[])(void) = {
+  run_mod_tests,
+  run_func_tests,
+};
+
+static bool
+run_tests(void) {
+  // run all test suites
+  result_t sum = { 0, 0 };
+  for (size_t i = 0; i < (sizeof(SUITES) / sizeof(SUITES[0])); i++) {
+    // run suite, add to results
+    sum = add_results(sum, SUITES[i]());
+  }
+
+  // print results
+  const size_t num_passed = sum.num_tests - sum.num_fails;
+  printf("Tests: %zu/%zu\n", num_passed, sum.num_tests);
+
+  // return result
+  return sum.num_fails > 0;
 }
 
 int main(int argc, char *argv[]) {

@@ -1,10 +1,10 @@
 #include <stdbool.h> // bool
 #include <stdint.h> // uint8_t
-#include "tests.h"
+#include "mod-tests.h"
 
 #define NUM_ITEMS(ary) (sizeof(ary) / sizeof(ary[0]))
 
-static const uint8_t TEST_DATA[] = {
+static const uint8_t DATA[] = {
   // bad header (fail, ofs: 0, len: 8)
   0x01, 0x61, 0x73, 0x6d, 0x01, 0x00, 0x00, 0x00,
 
@@ -346,14 +346,12 @@ static const test_t TESTS[] = {
   { "data section: 10 bytes",             true,   992,   26 },
 };
 
-size_t get_num_tests(void) {
-  return NUM_ITEMS(TESTS);
-}
+static const suite_t SUITE = {
+  .num_tests  = NUM_ITEMS(TESTS),
+  .tests      = TESTS,
+  .data       = DATA,
+};
 
-const test_t *get_tests(void) {
-  return TESTS;
-}
-
-const uint8_t *get_test_data(void) {
-  return TEST_DATA;
+suite_t get_mod_tests(void) {
+  return SUITE;
 }
