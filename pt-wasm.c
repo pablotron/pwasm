@@ -17,6 +17,18 @@
   return 0; \
 } while (0)
 
+#define INST_FAIL(msg) do { \
+  if (ctx.on_error) { \
+    ctx.on_error(msg, ctx.cb_data); \
+  } \
+  return 0; \
+} while (0)
+
+typedef struct {
+  void (*on_error)(const char *, void *);
+  void *cb_data;
+} pt_wasm_parse_inst_ctx_t;
+
 /**
  * Batch size.
  *
@@ -38,11 +50,6 @@
 #else
 #define D(fmt, ...)
 #endif /* PT_WASM_DEBUG */
-
-typedef struct {
-  const pt_wasm_parse_module_cbs_t *cbs;
-  void *data;
-} pt_wasm_parse_module_ctx_t;
 
 #define PT_WASM_SECTION_TYPE(a, b) b,
 static const char *PT_WASM_SECTION_TYPE_NAMES[] = {
@@ -501,7 +508,7 @@ pt_wasm_parse_type_section(
       FAIL("type section length overflow");
     }
 
-    if ((types_ofs == LEN(types)) && cbs && cbs->on_function_types) {
+    if ((types_ofs == (LEN(types) - 1)) && cbs && cbs->on_function_types) {
       cbs->on_function_types(types, types_ofs, cb_data);
     }
   }
@@ -709,20 +716,18 @@ pt_wasm_op_is_const(
 static size_t
 pt_wasm_parse_inst(
   pt_wasm_inst_t * const dst,
-  const pt_wasm_parse_module_cbs_t * const cbs,
-  const uint8_t * const src,
-  const size_t src_len,
-  void * const cb_data
+  const pt_wasm_parse_inst_ctx_t ctx,
+  const pt_wasm_buf_t src
 ) {
   // check source length
-  if (src_len < 1) {
-    FAIL("short instruction");
+  if (src.len < 1) {
+    INST_FAIL("short instruction");
   }
 
   // get op, check for error
-  const pt_wasm_op_t op = src[0];
+  const pt_wasm_op_t op = src.ptr[0];
   if (!pt_wasm_op_is_valid(op)) {
-    FAIL("invalid op");
+    INST_FAIL("invalid op");
   }
 
   // build length and instruction
@@ -739,14 +744,14 @@ pt_wasm_parse_inst(
   case PT_WASM_IMM_BLOCK:
     {
       // check length
-      if (src_len < 2) {
-        FAIL("missing result type immediate");
+      if (src.len < 2) {
+        INST_FAIL("missing result type immediate");
       }
 
       // get block result type, check for error
-      const uint8_t type = src[1];
+      const uint8_t type = src.ptr[1];
       if (!pt_wasm_is_valid_result_type(type)) {
-        FAIL("invalid result type");
+        INST_FAIL("invalid result type");
       }
 
       // save result type, increment length
@@ -759,9 +764,9 @@ pt_wasm_parse_inst(
     {
       // get index, check for error
       uint32_t id = 0;
-      const size_t id_len = pt_wasm_decode_u32(&id, src + 1, src_len - 1);
+      const size_t id_len = pt_wasm_decode_u32(&id, src.ptr + 1, src.len - 1);
       if (!id_len) {
-        FAIL("bad immediate index value");
+        INST_FAIL("bad immediate index value");
       }
 
       // save index, increment length
@@ -774,19 +779,19 @@ pt_wasm_parse_inst(
     {
       // get index, check for error
       uint32_t id = 0;
-      const size_t id_len = pt_wasm_decode_u32(&id, src + 1, src_len - 1);
+      const size_t id_len = pt_wasm_decode_u32(&id, src.ptr + 1, src.len - 1);
       if (!id_len) {
-        FAIL("bad immediate index value");
+        INST_FAIL("bad immediate index value");
       }
 
       // check remaining length
-      if (len + id_len >= src_len) {
-        FAIL("truncated call_immediate");
+      if (len + id_len >= src.len) {
+        INST_FAIL("truncated call_immediate");
       }
 
       // check call_indirect table index
-      if (src[len + id_len] != 0) {
-        FAIL("invalid call_indirect table index");
+      if (src.ptr[len + id_len] != 0) {
+        INST_FAIL("invalid call_indirect table index");
       }
 
       // save index, increment length
@@ -799,16 +804,16 @@ pt_wasm_parse_inst(
     {
       // get align value, check for error
       uint32_t align = 0;
-      const size_t a_len = pt_wasm_decode_u32(&align, src + 1, src_len - 1);
+      const size_t a_len = pt_wasm_decode_u32(&align, src.ptr + 1, src.len - 1);
       if (!a_len) {
-        FAIL("bad align value");
+        INST_FAIL("bad align value");
       }
 
       // get offset value, check for error
       uint32_t offset = 0;
-      const size_t o_len = pt_wasm_decode_u32(&offset, src + 1 + a_len, src_len - 1 - a_len);
+      const size_t o_len = pt_wasm_decode_u32(&offset, src.ptr + 1 + a_len, src.len - 1 - a_len);
       if (!o_len) {
-        FAIL("bad offset value");
+        INST_FAIL("bad offset value");
       }
 
       // save alignment and offset, increment length
@@ -822,9 +827,9 @@ pt_wasm_parse_inst(
     {
       // get value, check for error
       uint32_t val = 0;
-      const size_t v_len = pt_wasm_decode_u32(&val, src + 1, src_len - 1);
+      const size_t v_len = pt_wasm_decode_u32(&val, src.ptr + 1, src.len - 1);
       if (!v_len) {
-        FAIL("bad align value");
+        INST_FAIL("bad align value");
       }
 
       // save value, increment length
@@ -837,9 +842,9 @@ pt_wasm_parse_inst(
     {
       // get value, check for error
       uint64_t val = 0;
-      const size_t v_len = pt_wasm_decode_u64(&val, src + 1, src_len - 1);
+      const size_t v_len = pt_wasm_decode_u64(&val, src.ptr + 1, src.len - 1);
       if (!v_len) {
-        FAIL("bad align value");
+        INST_FAIL("bad align value");
       }
 
       // save value, increment length
@@ -854,15 +859,15 @@ pt_wasm_parse_inst(
       const size_t imm_len = 4;
 
       // check length
-      if (src_len - 1 < imm_len) {
-        FAIL("incomplete f32");
+      if (src.len - 1 < imm_len) {
+        INST_FAIL("incomplete f32");
       }
 
       union {
         uint8_t u8[imm_len];
         float f32;
       } u;
-      memcpy(u.u8, src + 1, imm_len);
+      memcpy(u.u8, src.ptr + 1, imm_len);
 
       // save value, increment length
       in.v_f32.val = u.f32;
@@ -876,15 +881,15 @@ pt_wasm_parse_inst(
       const size_t imm_len = 8;
 
       // check length
-      if (src_len - 1 < imm_len) {
-        FAIL("incomplete f64");
+      if (src.len - 1 < imm_len) {
+        INST_FAIL("incomplete f64");
       }
 
       union {
         uint8_t u8[imm_len];
         double f64;
       } u;
-      memcpy(u.u8, src + 1, imm_len);
+      memcpy(u.u8, src.ptr + 1, imm_len);
 
       // save value, increment length
       in.v_f64.val = u.f64;
@@ -894,7 +899,7 @@ pt_wasm_parse_inst(
     break;
   default:
     // never reached
-    FAIL("invalid immediate type");
+    INST_FAIL("invalid immediate type");
   }
 
   if (dst) {
@@ -903,63 +908,6 @@ pt_wasm_parse_inst(
 
   // return number of bytes consumed
   return len;
-}
-
-/**
- * Parse expr into +dst+ from buffer +src+ of length +src_len+.
- *
- * Returns number of bytes consumed, or 0 on error.
- */
-static size_t
-pt_wasm_parse_expr(
-  pt_wasm_expr_t * const dst,
-  const pt_wasm_parse_module_cbs_t * const cbs,
-  const uint8_t * const src,
-  const size_t src_len,
-  void * const cb_data
-) {
-  // check source length
-  if (src_len < 1) {
-    FAIL("invalid expr");
-  }
-
-  size_t depth = 1;
-  size_t ofs = 0;
-  while ((depth > 0) && (ofs < src_len)) {
-    // parse instruction, check for error
-    pt_wasm_inst_t in;
-    const size_t len = pt_wasm_parse_inst(&in, cbs, src + ofs, src_len - ofs, cb_data);
-    if (!len) {
-      return 0;
-    }
-
-    // update depth
-    depth += pt_wasm_op_is_control(in.op) ? 1 : 0;
-    depth -= (in.op == PT_WASM_OP_END) ? 1 : 0;
-
-    // increment offset
-    ofs += len;
-  }
-
-  // check for error
-  if (depth > 0) {
-    FAIL("unterminated expression");
-  }
-
-  const pt_wasm_expr_t tmp = {
-    .buf = {
-      .ptr = src,
-      .len = ofs,
-    },
-  };
-
-  if (dst) {
-    // copy result
-    *dst = tmp;
-  }
-
-  // return number of bytes consumed
-  return ofs;
 }
 
 /**
@@ -980,12 +928,24 @@ pt_wasm_parse_const_expr(
     FAIL("invalid expr");
   }
 
+  // build instruction parser context
+  const pt_wasm_parse_inst_ctx_t in_ctx = {
+    .on_error = cbs->on_error,
+    .cb_data  = cb_data,
+  };
+
   size_t depth = 1;
   size_t ofs = 0;
   while ((depth > 0) && (ofs < src_len)) {
+    // pack instruction source buffer
+    const pt_wasm_buf_t in_src = {
+      .ptr = src + ofs,
+      .len = src_len - ofs,
+    };
+
     // parse instruction, check for error
     pt_wasm_inst_t in;
-    const size_t len = pt_wasm_parse_inst(&in, cbs, src + ofs, src_len - ofs, cb_data);
+    const size_t len = pt_wasm_parse_inst(&in, in_ctx, in_src);
     if (!len) {
       return 0;
     }
@@ -1287,7 +1247,7 @@ pt_wasm_parse_import_section(
       FAIL("import section length overflow");
     }
 
-    if ((imports_ofs == LEN(imports)) && cbs && cbs->on_imports) {
+    if ((imports_ofs == (LEN(imports) - 1)) && cbs && cbs->on_imports) {
       // flush batch
       cbs->on_imports(imports, imports_ofs, cb_data);
     }
@@ -1338,7 +1298,7 @@ pt_wasm_parse_function_section(
       FAIL("function section length overflow");
     }
 
-    if ((fns_ofs == LEN(fns)) && cbs && cbs->on_functions) {
+    if ((fns_ofs == (LEN(fns) - 1)) && cbs && cbs->on_functions) {
       // flush batch
       cbs->on_functions(fns, fns_ofs, cb_data);
     }
@@ -1389,7 +1349,7 @@ pt_wasm_parse_table_section(
       FAIL("table section length overflow");
     }
 
-    if ((tbls_ofs == LEN(tbls)) && cbs && cbs->on_tables) {
+    if ((tbls_ofs == (LEN(tbls) - 1)) && cbs && cbs->on_tables) {
       // flush batch
       cbs->on_tables(tbls, tbls_ofs, cb_data);
     }
@@ -1436,7 +1396,7 @@ pt_wasm_parse_memory_section(
       FAIL("memory section length overflow");
     }
 
-    if ((mems_ofs == LEN(mems)) && cbs && cbs->on_memories) {
+    if ((mems_ofs == (LEN(mems) - 1)) && cbs && cbs->on_memories) {
       // flush batch
       cbs->on_memories(mems, mems_ofs, cb_data);
     }
@@ -1483,7 +1443,7 @@ pt_wasm_parse_global_section(
       FAIL("global section length overflow");
     }
 
-    if ((gs_ofs == LEN(gs)) && cbs && cbs->on_globals) {
+    if ((gs_ofs == (LEN(gs) - 1)) && cbs && cbs->on_globals) {
       // flush batch
       cbs->on_globals(gs, gs_ofs, cb_data);
     }
@@ -1590,7 +1550,7 @@ pt_wasm_parse_export_section(
       FAIL("export section length overflow");
     }
 
-    if ((es_ofs == LEN(es)) && cbs && cbs->on_exports) {
+    if ((es_ofs == (LEN(es) - 1)) && cbs && cbs->on_exports) {
       // flush batch
       cbs->on_exports(es, es_ofs, cb_data);
     }
@@ -1655,9 +1615,8 @@ pt_wasm_parse_element(
   }
 
   // parse expr, check for error
-  // FIXME: should this be a const_expr too?
   pt_wasm_expr_t expr;
-  const size_t expr_len = pt_wasm_parse_expr(&expr, cbs, src + t_len, src_len - t_len, cb_data);
+  const size_t expr_len = pt_wasm_parse_const_expr(&expr, cbs, src + t_len, src_len - t_len, cb_data);
   if (!expr_len) {
     return 0;
   }
@@ -1744,7 +1703,7 @@ pt_wasm_parse_element_section(
       FAIL("element section length overflow");
     }
 
-    if ((es_ofs == LEN(es)) && cbs && cbs->on_elements) {
+    if ((es_ofs == (LEN(es) - 1)) && cbs && cbs->on_elements) {
       // flush batch
       cbs->on_elements(es, es_ofs, cb_data);
     }
@@ -1846,7 +1805,7 @@ pt_wasm_parse_code_section(
       FAIL("code section length overflow");
     }
 
-    if ((fns_ofs == LEN(fns)) && cbs && cbs->on_function_codes) {
+    if ((fns_ofs == (LEN(fns) - 1)) && cbs && cbs->on_function_codes) {
       // flush batch
       cbs->on_function_codes(fns, fns_ofs, cb_data);
     }
@@ -1953,7 +1912,7 @@ pt_wasm_parse_data_section(
       FAIL("code section length overflow");
     }
 
-    if ((ds_ofs == LEN(ds)) && cbs && cbs->on_data_segments) {
+    if ((ds_ofs == (LEN(ds) - 1)) && cbs && cbs->on_data_segments) {
       // flush batch
       cbs->on_data_segments(ds, ds_ofs, cb_data);
     }
@@ -2096,6 +2055,207 @@ pt_wasm_parse_module(
     // increment source offset
     ofs += 1 + len_ofs + data_len;
   }
+
+  // return success
+  return true;
+}
+
+static size_t
+pt_wasm_parse_local(
+  pt_wasm_local_t * const dst,
+  const pt_wasm_buf_t src,
+  const pt_wasm_parse_function_cbs_t * const cbs,
+  void * const cb_data
+) {
+  if (src.len < 2) {
+    FAIL("empty local");
+  }
+
+  // parse local count, check for error
+  uint32_t num;
+  const size_t n_len = pt_wasm_decode_u32(&num, src.ptr, src.len);
+  if (!n_len) {
+    FAIL("bad local count");
+  }
+
+  if (n_len >= src.len) {
+    FAIL("missing local type");
+  }
+
+  // get type, check for error
+  const pt_wasm_value_type_t type = src.ptr[n_len];
+  if (!pt_wasm_is_valid_value_type(type)) {
+    FAIL("bad local type");
+  }
+
+  // populate result
+  const pt_wasm_local_t tmp = {
+    .num  = num,
+    .type = type,
+  };
+
+  if (dst) {
+    // copy result to destination
+    *dst = tmp;
+  }
+
+  // return number of bytes consumed
+  return n_len + 1;
+}
+
+static inline size_t
+pt_wasm_parse_function_locals(
+  const pt_wasm_buf_t src,
+  const pt_wasm_parse_function_cbs_t * const cbs,
+  void * const cb_data
+) {
+  // get number of locals, check for error
+  uint32_t num_locals = 0;
+  const size_t num_len = pt_wasm_decode_u32(&num_locals, src.ptr, src.len);
+  if (!num_len) {
+    FAIL("bad locals count");
+  }
+
+  pt_wasm_local_t ls[PT_WASM_BATCH_SIZE];
+
+  size_t ofs = num_len;
+  for (size_t i = 0; i < num_locals; i++) {
+    const size_t ls_ofs = (i & (PT_WASM_BATCH_SIZE - 1));
+
+    // build temporary buffer
+    const pt_wasm_buf_t tmp = {
+      .ptr = src.ptr + ofs,
+      .len = src.len - ofs,
+    };
+
+    // parse local, check for error
+    const size_t len = pt_wasm_parse_local(ls + ls_ofs, tmp, cbs, cb_data);
+    if (!len) {
+      return 0;
+    }
+
+    // increment offset, check for error
+    ofs += len;
+    if (ofs > src.len) {
+      FAIL("function section length overflow");
+    }
+
+    if ((ls_ofs == (LEN(ls) - 1)) && cbs && cbs->on_locals) {
+      // flush batch
+      cbs->on_locals(ls, ls_ofs, cb_data);
+    }
+  }
+
+  // count remaining entries
+  const size_t num_left = num_locals & (PT_WASM_BATCH_SIZE - 1);
+  if (num_left && cbs && cbs->on_locals) {
+    // flush remaining locals
+    cbs->on_locals(ls, num_left, cb_data);
+  }
+
+  // return success
+  return true;
+}
+
+/**
+ * Parse expr in buffer +src+ into sequence of instructions.
+ *
+ * Returns number of bytes consumed, or 0 on error.
+ */
+static inline size_t
+pt_wasm_parse_function_expr(
+  const pt_wasm_buf_t src,
+  const pt_wasm_parse_function_cbs_t * const cbs,
+  void * const cb_data
+) {
+  // check source length
+  if (src.len < 1) {
+    FAIL("invalid expr");
+  }
+
+  // build instruction parser context
+  const pt_wasm_parse_inst_ctx_t in_ctx = {
+    .on_error = cbs->on_error,
+    .cb_data  = cb_data,
+  };
+
+  pt_wasm_inst_t ins[PT_WASM_BATCH_SIZE];
+
+  size_t depth = 1;
+  size_t ofs = 0;
+  size_t num_ins = 0;
+  while ((depth > 0) && (ofs < src.len)) {
+    // build output offset
+    const size_t ins_ofs = (num_ins & (PT_WASM_BATCH_SIZE - 1));
+
+    const pt_wasm_buf_t in_src = {
+      .ptr = src.ptr + ofs,
+      .len = src.len - ofs,
+    };
+
+    // parse instruction, check for error
+    pt_wasm_inst_t in;
+    const size_t len = pt_wasm_parse_inst(ins + ins_ofs, in_ctx, in_src);
+    if (!len) {
+      return 0;
+    }
+
+    if ((ins_ofs == (LEN(ins) - 1)) && cbs && cbs->on_insts) {
+      cbs->on_insts(ins, ins_ofs, cb_data);
+    }
+
+    // update depth
+    depth += pt_wasm_op_is_control(in.op) ? 1 : 0;
+    depth -= (in.op == PT_WASM_OP_END) ? 1 : 0;
+
+    // increment offset
+    ofs += len;
+
+    // increment instruction count
+    num_ins++;
+  }
+
+  // check for depth error
+  if (depth > 0) {
+    FAIL("unterminated expression");
+  }
+
+  // count remaining entries
+  const size_t num_left = num_ins & (PT_WASM_BATCH_SIZE - 1);
+  if (num_left && cbs && cbs->on_insts) {
+    // flush remaining entries
+    cbs->on_insts(ins, num_left, cb_data);
+  }
+
+  // return number of bytes consumed
+  return ofs;
+}
+
+bool
+pt_wasm_parse_function(
+  const pt_wasm_buf_t src,
+  const pt_wasm_parse_function_cbs_t * const cbs,
+  void * const cb_data
+) {
+  // parse locals, check for error
+  const size_t ls_len = pt_wasm_parse_function_locals(src, cbs, cb_data);
+  if (!ls_len) {
+    return false;
+  }
+
+  // build temp expr source
+  const pt_wasm_buf_t expr_src = {
+    .ptr = src.ptr + ls_len,
+    .len = src.len - ls_len,
+  };
+
+  // parse expression, check for error
+  const size_t expr_len = pt_wasm_parse_function_expr(expr_src, cbs, cb_data);
+  if (!expr_len) {
+    return false;
+  }
+
+  // FIXME: warn about length here?
 
   // return success
   return true;
