@@ -75,6 +75,27 @@ typedef uint32_t pt_wasm_result_type_t;
 
 const char *pt_wasm_result_type_get_name(const pt_wasm_result_type_t);
 
+#define PT_WASM_IMM_DEFS \
+  PT_WASM_IMM(NONE, "none") \
+  PT_WASM_IMM(BLOCK, "block") \
+  PT_WASM_IMM(BR_TABLE, "br_table") \
+  PT_WASM_IMM(INDEX, "index") \
+  PT_WASM_IMM(CALL_INDIRECT, "call_indirect") \
+  PT_WASM_IMM(MEM, "mem") \
+  PT_WASM_IMM(I32_CONST, "i32_const") \
+  PT_WASM_IMM(I64_CONST, "i64_const") \
+  PT_WASM_IMM(F32_CONST, "f32_const") \
+  PT_WASM_IMM(F64_CONST, "f64_const") \
+  PT_WASM_IMM(LAST, "invalid")
+
+typedef enum {
+#define PT_WASM_IMM(a, b) PT_WASM_IMM_##a,
+PT_WASM_IMM_DEFS
+#undef PT_WASM_IMM
+} pt_wasm_imm_t;
+
+const char *pt_wasm_imm_get_name(const pt_wasm_imm_t);
+
 #define PT_WASM_OP_DEFS \
   /* 0x00 */ PT_WASM_OP(UNREACHABLE, "unreachable", NONE) \
   /* 0x01 */ PT_WASM_OP(NOP, "nop", NONE) \

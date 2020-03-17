@@ -641,19 +641,18 @@ pt_wasm_parse_table(
   return 1 + len;
 }
 
-typedef enum {
-  PT_WASM_IMM_NONE,
-  PT_WASM_IMM_BLOCK,
-  PT_WASM_IMM_BR_TABLE,
-  PT_WASM_IMM_INDEX,
-  PT_WASM_IMM_CALL_INDIRECT,
-  PT_WASM_IMM_MEM,
-  PT_WASM_IMM_I32_CONST,
-  PT_WASM_IMM_I64_CONST,
-  PT_WASM_IMM_F32_CONST,
-  PT_WASM_IMM_F64_CONST,
-  PT_WASM_IMM_LAST,
-} pt_wasm_imm_t;
+static const char *PT_WASM_IMM_NAMES[] = {
+#define PT_WASM_IMM(a, b) b,
+PT_WASM_IMM_DEFS
+#undef PT_WASM_IMM
+};
+
+const char *
+pt_wasm_imm_get_name(
+  const pt_wasm_imm_t v
+) {
+  return PT_WASM_IMM_NAMES[MIN(v, PT_WASM_IMM_LAST)];
+}
 
 #define PT_WASM_OP(a, b, c) { \
   .name = (b), \
