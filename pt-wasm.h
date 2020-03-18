@@ -366,6 +366,8 @@ PT_WASM_OP_DEFS
 #undef PT_WASM_OP_CONTROL
 #undef PT_WASM_OP_RESERVED
 
+const char *pt_wasm_op_get_name(const pt_wasm_op_t);
+
 typedef struct {
   pt_wasm_buf_t buf;
 } pt_wasm_expr_t;

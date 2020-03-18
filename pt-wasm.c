@@ -692,6 +692,13 @@ PT_WASM_OP_DEFS
 #undef PT_WASM_OP_CONTROL
 #undef PT_WASM_OP_RESERVED
 
+const char *
+pt_wasm_op_get_name(
+  const pt_wasm_op_t op
+) {
+  return PT_WASM_OPS[op].name;
+}
+
 static inline bool
 pt_wasm_op_is_valid(
   const uint8_t byte
@@ -937,7 +944,7 @@ pt_wasm_parse_const_expr(
 ) {
   // check source length
   if (src_len < 1) {
-    FAIL("invalid expr");
+    FAIL("invalid const expr");
   }
 
   // build instruction parser context
@@ -978,7 +985,7 @@ pt_wasm_parse_const_expr(
 
   // check for error
   if (depth > 0) {
-    FAIL("unterminated expression");
+    FAIL("unterminated const expression");
   }
 
   const pt_wasm_expr_t tmp = {
@@ -1917,8 +1924,8 @@ pt_wasm_parse_function_expr(
     };
 
     // parse instruction, check for error
-    pt_wasm_inst_t in;
-    const size_t len = pt_wasm_parse_inst(ins + ins_ofs, in_ctx, in_src);
+    pt_wasm_inst_t * const dst = ins + ins_ofs;
+    const size_t len = pt_wasm_parse_inst(dst, in_ctx, in_src);
     if (!len) {
       return 0;
     }
@@ -1928,8 +1935,8 @@ pt_wasm_parse_function_expr(
     }
 
     // update depth
-    depth += pt_wasm_op_is_control(in.op) ? 1 : 0;
-    depth -= (in.op == PT_WASM_OP_END) ? 1 : 0;
+    depth += pt_wasm_op_is_control(dst->op) ? 1 : 0;
+    depth -= (dst->op == PT_WASM_OP_END) ? 1 : 0;
 
     // increment offset
     ofs += len;

@@ -339,7 +339,7 @@ mod_test_on_data_segments(
 static void
 mod_test_on_error(const char * const text, void * const data) {
   const test_t * const test = data;
-  warnx("test = \"%s\", error = \"%s\"", test->name, text);
+  warnx("mod test = \"%s\", error = \"%s\"", test->name, text);
 }
 
 static const pt_wasm_parse_module_cbs_t MOD_TEST_CBS = {
@@ -386,8 +386,39 @@ run_mod_tests(void) {
   return result(num_fails, suite.num_tests);
 }
 
+static void
+dump_inst(
+  FILE *fh,
+  const pt_wasm_inst_t in
+) {
+  fprintf(fh, "(%s)", pt_wasm_op_get_name(in.op));
+}
+
+static void
+func_test_on_insts(
+  const pt_wasm_inst_t * const ins,
+  const size_t len,
+  void * const data
+) {
+  (void) data;
+
+  fprintf(stderr, "insts(%zu) = ", len);
+  for (size_t i = 0; i < len; i++) {
+    fputs((i > 0) ? ", " : "", stderr);
+    dump_inst(stderr, ins[i]);
+  }
+  fprintf(stderr, "\n");
+}
+
+static void
+func_test_on_error(const char * const text, void * const data) {
+  const test_t * const test = data;
+  warnx("func test = \"%s\", error = \"%s\"", test->name, text);
+}
+
 static const pt_wasm_parse_function_cbs_t FUNC_TEST_CBS = {
-  .on_error           = mod_test_on_error,
+  .on_insts           = func_test_on_insts,
+  .on_error           = func_test_on_error,
 };
 
 static result_t
@@ -403,6 +434,10 @@ run_func_tests(void) {
       .ptr = suite.data + test->ofs,
       .len = test->len,
     };
+
+    fprintf(stderr, "tests[%zu].data = ", i);
+    dump_buf(stderr, buf);
+    fprintf(stderr, "\n");
 
     // run test, get result
     const bool r = pt_wasm_parse_function(
