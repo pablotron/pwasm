@@ -332,14 +332,14 @@ pt_wasm_parse_name(
 ) {
   // check source length
   if (!src.len) {
-    FAIL("empty custom section name");
+    FAIL("empty name");
   }
 
   // decode name length, check for error
   uint32_t len = 0;
   const size_t len_ofs = pt_wasm_decode_u32(&len, src.ptr, src.len);
   if (!len_ofs) {
-    FAIL("bad custom section name length");
+    FAIL("bad name length");
   }
 
   // D("src: %p, src_len = %zu, len = %u, len_ofs = %zu", src, src_len, len, len_ofs);
@@ -347,7 +347,7 @@ pt_wasm_parse_name(
   // calculate total length, check for error
   const size_t num_bytes = len_ofs + len;
   if (num_bytes > src.len) {
-    FAIL("truncated custom section name");
+    FAIL("truncated name");
   }
 
   // build result
