@@ -1,7 +1,7 @@
 # LUA=$(HOME)/git/luajit-2.0/src/luajit
 # LUAJIT_DIR=$(HOME)/git/luajit-2.0
 # gnu11 for MAP_ANONYMOUS
-CFLAGS=-W -Wall -O2 -std=gnu11 -DPT_WASM_DEBUG # -I$(LUAJIT_DIR)
+CFLAGS=-W -Wall -Wextra -Werror -std=gnu11 -g -pg -DPT_WASM_DEBUG # -I$(LUAJIT_DIR)
 APP=wasm
 OBJS=pt-wasm.o main.o mod-tests.o func-tests.o
 

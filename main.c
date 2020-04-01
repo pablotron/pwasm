@@ -416,9 +416,10 @@ func_test_on_error(const char * const text, void * const data) {
   warnx("func test = \"%s\", error = \"%s\"", test->name, text);
 }
 
-static const pt_wasm_parse_function_cbs_t FUNC_TEST_CBS = {
-  .on_insts           = func_test_on_insts,
-  .on_error           = func_test_on_error,
+static const pt_wasm_parse_function_cbs_t
+FUNC_TEST_CBS = {
+  .on_insts = func_test_on_insts,
+  .on_error = func_test_on_error,
 };
 
 static result_t

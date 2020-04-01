@@ -492,7 +492,7 @@ pt_wasm_parse_function_type(
     FAIL("bad function type: missing results");
   }
 
-  // parse params, check for error
+  // parse results, check for error
   pt_wasm_buf_t results;
   const size_t results_len = pt_wasm_parse_value_type_list(&results, cbs, src + results_ofs, src_len - results_ofs, cb_data);
   if (!results_len) {
@@ -1790,6 +1790,134 @@ pt_wasm_parse_module(
   return true;
 }
 
+/**
+ * Parse expr in buffer +src+ into sequence of instructions.
+ *
+ * Returns number of bytes consumed, or 0 on error.
+ */
+size_t
+pt_wasm_parse_expr(
+  const pt_wasm_buf_t src,
+  const pt_wasm_parse_expr_cbs_t * const cbs,
+  void * const cb_data
+) {
+  // check source length
+  if (src.len < 1) {
+    FAIL("invalid expr");
+  }
+
+  // build instruction parser context
+  const pt_wasm_parse_inst_ctx_t in_ctx = {
+    .on_error = cbs->on_error,
+    .cb_data  = cb_data,
+  };
+
+  pt_wasm_inst_t ins[PT_WASM_BATCH_SIZE];
+
+  size_t depth = 1;
+  size_t ofs = 0;
+  size_t num_ins = 0;
+  while ((depth > 0) && (ofs < src.len)) {
+    // build output offset
+    const size_t ins_ofs = (num_ins & (PT_WASM_BATCH_SIZE - 1));
+
+    const pt_wasm_buf_t in_src = {
+      .ptr = src.ptr + ofs,
+      .len = src.len - ofs,
+    };
+
+    // parse instruction, check for error
+    pt_wasm_inst_t * const dst = ins + ins_ofs;
+    const size_t len = pt_wasm_parse_inst(dst, in_ctx, in_src);
+    if (!len) {
+      return 0;
+    }
+
+    if ((ins_ofs == (LEN(ins) - 1)) && cbs && cbs->on_insts) {
+      cbs->on_insts(ins, ins_ofs, cb_data);
+    }
+
+    // update depth
+    depth += pt_wasm_op_is_control(dst->op) ? 1 : 0;
+    depth -= (dst->op == PT_WASM_OP_END) ? 1 : 0;
+
+    // increment offset
+    ofs += len;
+
+    // increment instruction count
+    num_ins++;
+  }
+
+  // check for depth error
+  if (depth > 0) {
+    FAIL("unterminated expression");
+  }
+
+  // count remaining entries
+  const size_t num_left = num_ins & (PT_WASM_BATCH_SIZE - 1);
+  if (num_left && cbs && cbs->on_insts) {
+    // flush remaining entries
+    cbs->on_insts(ins, num_left, cb_data);
+  }
+
+  // return number of bytes consumed
+  return ofs;
+}
+
+typedef struct {
+  bool success;
+  size_t num;
+} pt_wasm_get_expr_size_t;
+
+static void
+pt_wasm_get_expr_size_on_insts(
+  const pt_wasm_inst_t * const insts,
+  const size_t num,
+  void *cb_data
+) {
+  pt_wasm_get_expr_size_t * const data = cb_data;
+  (void) insts;
+  data->num += num;
+}
+
+static void
+pt_wasm_get_expr_size_on_error(
+  const char * const text,
+  void *cb_data
+) {
+  pt_wasm_get_expr_size_t * const data = cb_data;
+  (void) text;
+  data->success = false;
+}
+
+static const pt_wasm_parse_expr_cbs_t
+PT_WASM_GET_EXPR_SIZE_CBS = {
+  .on_insts = pt_wasm_get_expr_size_on_insts,
+  .on_error = pt_wasm_get_expr_size_on_error,
+};
+
+bool
+pt_wasm_get_expr_size(
+  const pt_wasm_buf_t src,
+  size_t * const ret_size
+) {
+  pt_wasm_get_expr_size_t data = {
+    .success = true,
+    .num = 0,
+  };
+
+  // count instructions, ignore result (number of bytes)
+  (void) pt_wasm_parse_expr(src, &PT_WASM_GET_EXPR_SIZE_CBS, &data);
+
+  if (data.success && ret_size) {
+    // copy size to output
+    *ret_size = data.num;
+  }
+
+  // return result
+  return data.success;
+}
+
 static size_t
 pt_wasm_parse_local(
   pt_wasm_local_t * const dst,
@@ -1895,70 +2023,15 @@ pt_wasm_parse_function_locals(
 static inline size_t
 pt_wasm_parse_function_expr(
   const pt_wasm_buf_t src,
-  const pt_wasm_parse_function_cbs_t * const cbs,
+  const pt_wasm_parse_function_cbs_t * const fn_cbs,
   void * const cb_data
 ) {
-  // check source length
-  if (src.len < 1) {
-    FAIL("invalid expr");
-  }
-
-  // build instruction parser context
-  const pt_wasm_parse_inst_ctx_t in_ctx = {
-    .on_error = cbs->on_error,
-    .cb_data  = cb_data,
+  const pt_wasm_parse_expr_cbs_t expr_cbs = {
+    .on_insts = fn_cbs ? fn_cbs->on_insts : NULL,
+    .on_error = fn_cbs ? fn_cbs->on_error : NULL,
   };
 
-  pt_wasm_inst_t ins[PT_WASM_BATCH_SIZE];
-
-  size_t depth = 1;
-  size_t ofs = 0;
-  size_t num_ins = 0;
-  while ((depth > 0) && (ofs < src.len)) {
-    // build output offset
-    const size_t ins_ofs = (num_ins & (PT_WASM_BATCH_SIZE - 1));
-
-    const pt_wasm_buf_t in_src = {
-      .ptr = src.ptr + ofs,
-      .len = src.len - ofs,
-    };
-
-    // parse instruction, check for error
-    pt_wasm_inst_t * const dst = ins + ins_ofs;
-    const size_t len = pt_wasm_parse_inst(dst, in_ctx, in_src);
-    if (!len) {
-      return 0;
-    }
-
-    if ((ins_ofs == (LEN(ins) - 1)) && cbs && cbs->on_insts) {
-      cbs->on_insts(ins, ins_ofs, cb_data);
-    }
-
-    // update depth
-    depth += pt_wasm_op_is_control(dst->op) ? 1 : 0;
-    depth -= (dst->op == PT_WASM_OP_END) ? 1 : 0;
-
-    // increment offset
-    ofs += len;
-
-    // increment instruction count
-    num_ins++;
-  }
-
-  // check for depth error
-  if (depth > 0) {
-    FAIL("unterminated expression");
-  }
-
-  // count remaining entries
-  const size_t num_left = num_ins & (PT_WASM_BATCH_SIZE - 1);
-  if (num_left && cbs && cbs->on_insts) {
-    // flush remaining entries
-    cbs->on_insts(ins, num_left, cb_data);
-  }
-
-  // return number of bytes consumed
-  return ofs;
+  return pt_wasm_parse_expr(src, &expr_cbs, cb_data);
 }
 
 bool
@@ -1986,6 +2059,271 @@ pt_wasm_parse_function(
   }
 
   // FIXME: warn about length here?
+
+  // return success
+  return true;
+}
+
+typedef struct {
+  pt_wasm_function_sizes_t sizes;
+  bool success;
+} pt_wasm_get_function_sizes_t;
+
+static void
+pt_wasm_get_function_sizes_on_locals(
+  const pt_wasm_local_t * const rows,
+  const size_t num,
+  void *cb_data
+) {
+  pt_wasm_get_function_sizes_t *data = cb_data;
+  (void) rows;
+  data->sizes.num_locals += num;
+}
+
+static void
+pt_wasm_get_function_sizes_on_insts(
+  const pt_wasm_inst_t * const rows,
+  const size_t num,
+  void *cb_data
+) {
+  pt_wasm_get_function_sizes_t *data = cb_data;
+  (void) rows;
+  data->sizes.num_insts += num;
+}
+
+static void
+pt_wasm_get_function_sizes_on_error(
+  const char * const text,
+  void *cb_data
+) {
+  pt_wasm_get_function_sizes_t *data = cb_data;
+  (void) text;
+  data->success = false;
+}
+
+static const pt_wasm_parse_function_cbs_t
+PT_WASM_GET_FUNCTION_SIZES_CBS = {
+  .on_locals = pt_wasm_get_function_sizes_on_locals,
+  .on_insts  = pt_wasm_get_function_sizes_on_insts,
+  .on_error  = pt_wasm_get_function_sizes_on_error,
+};
+
+bool
+pt_wasm_get_function_sizes(
+  const pt_wasm_buf_t src,
+  pt_wasm_function_sizes_t * const ret_sizes
+) {
+  // build callback data
+  pt_wasm_get_function_sizes_t data = {
+    .sizes = { 0, 0 },
+    .success = true,
+  };
+
+  // count sizes
+  (void) pt_wasm_parse_function(src, &PT_WASM_GET_FUNCTION_SIZES_CBS, &data);
+
+  if (data.success && ret_sizes) {
+    // copy sizes to result
+    *ret_sizes = data.sizes;
+  }
+
+  // return result
+  return data.success;
+}
+
+typedef struct {
+  pt_wasm_module_sizes_t sizes;
+  const pt_wasm_get_module_sizes_cbs_t *cbs;
+  void *cb_data;
+  bool success;
+} pt_wasm_get_module_sizes_t;
+
+static void
+pt_wasm_get_module_sizes_on_custom_section(
+  const pt_wasm_custom_section_t * const ptr,
+  void *cb_data
+) {
+  pt_wasm_get_module_sizes_t *data = cb_data;
+  (void) ptr;
+  data->sizes.num_custom_sections++;
+}
+
+static void
+pt_wasm_get_module_sizes_on_error(
+  const char * const text,
+  void *cb_data
+) {
+  pt_wasm_get_module_sizes_t *data = cb_data;
+  data->success = false;
+  if (data->cbs->on_error) {
+    data->cbs->on_error(text, data->cb_data);
+  }
+}
+
+static void
+pt_wasm_get_module_sizes_on_function_types(
+  const pt_wasm_function_type_t * const function_types,
+  const size_t num,
+  void * const cb_data
+) {
+  pt_wasm_get_module_sizes_t * const data = cb_data;
+  data->sizes.num_function_types += num;
+
+  for (size_t i = 0; i < num; i++) {
+    data->sizes.num_function_type_params += function_types[i].params.len;
+    data->sizes.num_function_type_results += function_types[i].results.len;
+  }
+}
+
+static void
+pt_wasm_get_module_sizes_on_globals (
+  const pt_wasm_global_t * const globals,
+  const size_t num,
+  void * const cb_data
+) {
+  pt_wasm_get_module_sizes_t * const data = cb_data;
+  data->sizes.num_globals += num;
+
+  for (size_t i = 0; i < num; i++) {
+    size_t num_insts = 0;
+    if (!pt_wasm_get_expr_size(globals[i].expr.buf, &num_insts)) {
+      pt_wasm_get_module_sizes_on_error("get global expr size failed", data);
+      return;
+    }
+
+    data->sizes.num_global_insts += num_insts;
+  }
+}
+
+static void
+pt_wasm_get_module_sizes_on_function_codes (
+  const pt_wasm_buf_t * const rows,
+  const size_t num,
+  void * const cb_data
+) {
+  pt_wasm_get_module_sizes_t * const data = cb_data;
+  data->sizes.num_function_codes += num;
+
+  for (size_t i = 0; i < num; i++) {
+    pt_wasm_function_sizes_t sizes;
+    if (!pt_wasm_get_function_sizes(rows[i], &sizes)) {
+      pt_wasm_get_module_sizes_on_error("get function size failed", data);
+      return;
+    }
+
+    data->sizes.num_function_locals += sizes.num_locals;
+    data->sizes.num_function_insts += sizes.num_insts;
+  }
+}
+
+static void
+pt_wasm_get_module_sizes_on_elements (
+  const pt_wasm_element_t * const rows,
+  const size_t num,
+  void * const cb_data
+) {
+  pt_wasm_get_module_sizes_t * const data = cb_data;
+  data->sizes.num_elements += num;
+
+  for (size_t i = 0; i < num; i++) {
+    size_t num_insts = 0;
+    if (!pt_wasm_get_expr_size(rows[i].expr.buf, &num_insts)) {
+      pt_wasm_get_module_sizes_on_error("get element expr size failed", data);
+      return;
+    }
+
+    data->sizes.num_element_insts += num_insts;
+  }
+}
+
+static void
+pt_wasm_get_module_sizes_on_data_segments (
+  const pt_wasm_data_segment_t * const rows,
+  const size_t num,
+  void * const cb_data
+) {
+  pt_wasm_get_module_sizes_t * const data = cb_data;
+  data->sizes.num_data_segments += num;
+
+  for (size_t i = 0; i < num; i++) {
+    size_t num_insts = 0;
+    if (!pt_wasm_get_expr_size(rows[i].expr.buf, &num_insts)) {
+      pt_wasm_get_module_sizes_on_error("get data segment expr size failed", data);
+      return;
+    }
+
+    data->sizes.num_data_segment_insts += num_insts;
+  }
+}
+
+#define GET_MOD_SIZES_FNS \
+  CUSTOM_SIZE_FN(on_custom_section) \
+  CUSTOM_SIZE_FN(on_function_types) \
+  SIZE_FN(on_imports, pt_wasm_import_t, num_imports) \
+  SIZE_FN(on_functions, uint32_t, num_functions) \
+  SIZE_FN(on_tables, pt_wasm_table_t, num_tables) \
+  SIZE_FN(on_memories, pt_wasm_limits_t, num_memories) \
+  CUSTOM_SIZE_FN(on_globals) \
+  SIZE_FN(on_exports, pt_wasm_export_t, num_exports) \
+  CUSTOM_SIZE_FN(on_elements) \
+  CUSTOM_SIZE_FN(on_function_codes) \
+  CUSTOM_SIZE_FN(on_data_segments)
+
+#define SIZE_FN(fn_name, type, sum) \
+  static void pt_wasm_get_module_sizes_ ## fn_name ( \
+    const type * const ptr, \
+    const size_t num, \
+    void * const cb_data \
+  ) { \
+    pt_wasm_get_module_sizes_t * const data = cb_data; \
+    (void) ptr; \
+    data->sizes.sum += num; \
+  }
+#define CUSTOM_SIZE_FN(fn_name)
+GET_MOD_SIZES_FNS
+#undef SIZE_FN
+#undef CUSTOM_SIZE_FN
+
+static const pt_wasm_parse_module_cbs_t
+PT_WASM_GET_MOD_SIZES_CBS = {
+#define SIZE_FN(fn_name, type, sum) \
+  .fn_name = pt_wasm_get_module_sizes_ ## fn_name,
+#define CUSTOM_SIZE_FN(fn_name) \
+  .fn_name = pt_wasm_get_module_sizes_ ## fn_name,
+GET_MOD_SIZES_FNS
+#undef CUSTOM_SIZE_FN
+#undef SIZE_FN
+  .on_error = pt_wasm_get_module_sizes_on_error,
+};
+
+_Bool pt_wasm_get_module_sizes(
+  pt_wasm_module_sizes_t * const sizes,
+  const void * const src,
+  const size_t len,
+  const pt_wasm_get_module_sizes_cbs_t * const cbs,
+  void * const cb_data
+) {
+  pt_wasm_get_module_sizes_t data = {
+    .success  = true,
+    .cbs      = cbs,
+    .cb_data  = cb_data,
+  };
+
+  // parse module, check for error
+  if (!pt_wasm_parse_module(src, len, &PT_WASM_GET_MOD_SIZES_CBS, &data)) {
+    // return failure
+    return false;
+  }
+
+  if (!data.success) {
+    // return failure
+    return false;
+  }
+
+  if (sizes) {
+    // copy to result
+    *sizes = data.sizes;
+  }
 
   // return success
   return true;

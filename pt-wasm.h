@@ -430,7 +430,7 @@ typedef struct {
 } pt_wasm_global_t;
 
 #define PT_WASM_IMPORT_TYPES \
-  PT_WASM_IMPORT_TYPE(FUNC, "funcion") \
+  PT_WASM_IMPORT_TYPE(FUNC, "function") \
   PT_WASM_IMPORT_TYPE(TABLE, "table") \
   PT_WASM_IMPORT_TYPE(MEM, "memory") \
   PT_WASM_IMPORT_TYPE(GLOBAL, "global") \
@@ -528,6 +528,25 @@ _Bool pt_wasm_parse_module(
 );
 
 typedef struct {
+  void (*on_insts)(const pt_wasm_inst_t *, const size_t, void *);
+  void (*on_error)(const char *, void *);
+} pt_wasm_parse_expr_cbs_t;
+
+size_t pt_wasm_parse_expr(
+  const pt_wasm_buf_t src,
+  const pt_wasm_parse_expr_cbs_t * const cbs,
+  void * const data
+);
+
+/**
+ * Count the number of instructions in an expression.
+ */
+_Bool pt_wasm_get_expr_size(
+  const pt_wasm_buf_t,
+  size_t * const ret_size
+);
+
+typedef struct {
   uint32_t num;
   pt_wasm_value_type_t type;
 } pt_wasm_local_t;
@@ -542,6 +561,93 @@ _Bool pt_wasm_parse_function(
   const pt_wasm_buf_t src,
   const pt_wasm_parse_function_cbs_t * const cbs,
   void * const data
+);
+
+typedef struct {
+  // number of locals
+  size_t num_locals;
+
+  // number of instructions
+  size_t num_insts;
+} pt_wasm_function_sizes_t;
+
+/**
+ * Get the number of locals and number of instructions in the function
+ * stored in the buffer +src+.
+ *
+ * Returns false if the function could not be parsed.
+ */
+_Bool pt_wasm_get_function_sizes(
+  const pt_wasm_buf_t src,
+  pt_wasm_function_sizes_t *
+);
+
+typedef struct {
+  // total number custom sections
+  size_t num_custom_sections;
+
+  // total number of parameters across all function types
+  size_t num_function_type_params;
+
+  // total number of results across all function types
+  size_t num_function_type_results;
+
+  // total number of function types
+  size_t num_function_types;
+
+  // total number of imports
+  size_t num_imports;
+
+  // total number of functions
+  size_t num_functions;
+
+  // total number of tables
+  size_t num_tables;
+
+  // total number of memories
+  size_t num_memories;
+
+  // total number of instructions across all global initializers
+  size_t num_global_insts;
+
+  // total number of globals
+  size_t num_globals;
+
+  // total number of exports
+  size_t num_exports;
+
+  // total number of instructions across all element initializers
+  size_t num_element_insts;
+
+  // total number of elements
+  size_t num_elements;
+
+  // total number of locals across all function bodies
+  size_t num_function_locals;
+
+  // total number of instructions across all function bodies
+  size_t num_function_insts;
+
+  // total number of function bodies
+  size_t num_function_codes;
+
+  // total number of instructions across all segment initializers
+  size_t num_data_segment_insts;
+
+  // total number data segments
+  size_t num_data_segments;
+} pt_wasm_module_sizes_t;
+
+typedef struct {
+  void (*on_error)(const char *, void *);
+} pt_wasm_get_module_sizes_cbs_t;
+
+_Bool pt_wasm_get_module_sizes(
+  pt_wasm_module_sizes_t * const,
+  const void * const,
+  const size_t,
+  const pt_wasm_get_module_sizes_cbs_t * const cbs,
+  void * const cb_data
 );
 
 #ifdef __cplusplus
