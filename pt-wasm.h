@@ -598,6 +598,9 @@ typedef struct {
   // total number of function types
   size_t num_function_types;
 
+  // number of imports by type
+  size_t num_import_types[PT_WASM_IMPORT_TYPE_LAST];
+
   // total number of imports
   size_t num_imports;
 
@@ -739,15 +742,12 @@ typedef struct {
   const pt_wasm_function_t *functions;
   size_t num_functions;
 
-  // FIXME: need to add imported tables here too
   const pt_wasm_table_t *tables;
   size_t num_tables;
 
-  // FIXME: need to add imported memories here too
   const pt_wasm_limits_t *memories;
   size_t num_memories;
 
-  // FIXME: need to add imported globals here too
   const pt_wasm_module_global_t *globals;
   size_t num_globals;
 

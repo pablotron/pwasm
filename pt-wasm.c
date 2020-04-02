@@ -2155,7 +2155,7 @@ pt_wasm_get_module_sizes_on_error(
 ) {
   pt_wasm_get_module_sizes_t *data = cb_data;
   data->success = false;
-  if (data->cbs->on_error) {
+  if (data->cbs && data->cbs->on_error) {
     data->cbs->on_error(text, data->cb_data);
   }
 }
@@ -2183,14 +2183,10 @@ static void pt_wasm_get_module_sizes_on_imports(
   pt_wasm_get_module_sizes_t * const data = cb_data;
   data->sizes.num_imports += num;
 
-  // get number of import functions
-  size_t num_import_funcs = 0;
+  // get number of imports by type
   for (size_t i = 0; i < num; i++) {
-    num_import_funcs += (rows[i].type == PT_WASM_IMPORT_TYPE_FUNC) ? 1 : 0;
+    data->sizes.num_import_types[rows[i].type]++;
   }
-
-  // add to total number of functions
-  data->sizes.num_functions += num_import_funcs;
 }
 
 static void
@@ -2347,6 +2343,12 @@ _Bool pt_wasm_get_module_sizes(
     // return failure
     return false;
   }
+
+  // add import counts to result
+  data.sizes.num_functions += data.sizes.num_import_types[PT_WASM_IMPORT_TYPE_FUNC];
+  data.sizes.num_tables += data.sizes.num_import_types[PT_WASM_IMPORT_TYPE_TABLE];
+  data.sizes.num_memories += data.sizes.num_import_types[PT_WASM_IMPORT_TYPE_MEM];
+  data.sizes.num_globals += data.sizes.num_import_types[PT_WASM_IMPORT_TYPE_GLOBAL];
 
   if (!data.success) {
     // return failure

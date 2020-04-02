@@ -142,7 +142,7 @@ dump_global(
 }
 
 static void
-mod_test_on_globals(
+parse_mod_test_on_globals(
   const pt_wasm_global_t * const gs,
   const size_t num_gs,
   void * const data
@@ -157,7 +157,7 @@ mod_test_on_globals(
   fputs("}\n", stderr);
 }
 static void
-mod_test_on_memories(
+parse_mod_test_on_memories(
   const pt_wasm_limits_t * const mems,
   const size_t num_mems,
   void * const data
@@ -173,7 +173,7 @@ mod_test_on_memories(
 }
 
 static void
-mod_test_on_tables(
+parse_mod_test_on_tables(
   const pt_wasm_table_t * const tbls,
   const size_t num_tbls,
   void * const data
@@ -189,7 +189,7 @@ mod_test_on_tables(
 }
 
 static void
-mod_test_on_functions(
+parse_mod_test_on_functions(
   const uint32_t * const fns,
   const size_t num_fns,
   void * const data
@@ -240,7 +240,7 @@ dump_import(
 }
 
 static void
-mod_test_on_imports(
+parse_mod_test_on_imports(
   const pt_wasm_import_t * const imports,
   const size_t num_imports,
   void * const data
@@ -268,7 +268,7 @@ dump_custom_section(
 }
 
 static void
-mod_test_on_custom_section(
+parse_mod_test_on_custom_section(
   const pt_wasm_custom_section_t * const s,
   void * const data
 ) {
@@ -289,7 +289,7 @@ dump_export(
 }
 
 static void
-mod_test_on_exports(
+parse_mod_test_on_exports(
   const pt_wasm_export_t * const exports,
   const size_t num_exports,
   void * const data
@@ -305,7 +305,7 @@ mod_test_on_exports(
 }
 
 static void
-mod_test_on_function_codes(
+parse_mod_test_on_function_codes(
   const pt_wasm_buf_t * const fns,
   const size_t num_fns,
   void * const data
@@ -319,7 +319,7 @@ mod_test_on_function_codes(
 }
 
 static void
-mod_test_on_data_segments(
+parse_mod_test_on_data_segments(
   const pt_wasm_data_segment_t * const ds,
   const size_t len,
   void * const data
@@ -337,26 +337,27 @@ mod_test_on_data_segments(
 }
 
 static void
-mod_test_on_error(const char * const text, void * const data) {
+parse_mod_test_on_error(const char * const text, void * const data) {
   const test_t * const test = data;
-  warnx("mod test = \"%s\", error = \"%s\"", test->name, text);
+  warnx("parse mod test = \"%s\", error = \"%s\"", test->name, text);
 }
 
-static const pt_wasm_parse_module_cbs_t MOD_TEST_CBS = {
-  .on_custom_section  = mod_test_on_custom_section,
-  .on_imports         = mod_test_on_imports,
-  .on_functions       = mod_test_on_functions,
-  .on_tables          = mod_test_on_tables,
-  .on_memories        = mod_test_on_memories,
-  .on_globals         = mod_test_on_globals,
-  .on_exports         = mod_test_on_exports,
-  .on_function_codes  = mod_test_on_function_codes,
-  .on_data_segments   = mod_test_on_data_segments,
-  .on_error           = mod_test_on_error,
+static const pt_wasm_parse_module_cbs_t
+PARSE_MOD_TEST_CBS = {
+  .on_custom_section  = parse_mod_test_on_custom_section,
+  .on_imports         = parse_mod_test_on_imports,
+  .on_functions       = parse_mod_test_on_functions,
+  .on_tables          = parse_mod_test_on_tables,
+  .on_memories        = parse_mod_test_on_memories,
+  .on_globals         = parse_mod_test_on_globals,
+  .on_exports         = parse_mod_test_on_exports,
+  .on_function_codes  = parse_mod_test_on_function_codes,
+  .on_data_segments   = parse_mod_test_on_data_segments,
+  .on_error           = parse_mod_test_on_error,
 };
 
 static result_t
-run_mod_tests(void) {
+run_parse_mod_tests(void) {
   const suite_t suite = get_mod_tests();
   size_t num_fails = 0;
 
@@ -368,7 +369,7 @@ run_mod_tests(void) {
     const bool r = pt_wasm_parse_module(
       (suite.data + test->ofs),
       test->len,
-      test->want ? &MOD_TEST_CBS : NULL,
+      test->want ? &PARSE_MOD_TEST_CBS : NULL,
       (void*) test
     );
 
@@ -378,7 +379,7 @@ run_mod_tests(void) {
 
     if (!ok) {
       // warn on failure
-      warnx("FAIL module test: %s", test->name);
+      warnx("FAIL parse_module test: %s", test->name);
     }
   }
 
@@ -395,7 +396,7 @@ dump_inst(
 }
 
 static void
-func_test_on_insts(
+parse_func_test_on_insts(
   const pt_wasm_inst_t * const ins,
   const size_t len,
   void * const data
@@ -411,19 +412,19 @@ func_test_on_insts(
 }
 
 static void
-func_test_on_error(const char * const text, void * const data) {
+parse_func_test_on_error(const char * const text, void * const data) {
   const test_t * const test = data;
-  warnx("func test = \"%s\", error = \"%s\"", test->name, text);
+  warnx("parse func test = \"%s\", error = \"%s\"", test->name, text);
 }
 
 static const pt_wasm_parse_function_cbs_t
-FUNC_TEST_CBS = {
-  .on_insts = func_test_on_insts,
-  .on_error = func_test_on_error,
+PARSE_FUNC_TEST_CBS = {
+  .on_insts = parse_func_test_on_insts,
+  .on_error = parse_func_test_on_error,
 };
 
 static result_t
-run_func_tests(void) {
+run_parse_func_tests(void) {
   const suite_t suite = get_func_tests();
   size_t num_fails = 0;
 
@@ -443,7 +444,7 @@ run_func_tests(void) {
     // run test, get result
     const bool r = pt_wasm_parse_function(
       buf,
-      test->want ? &FUNC_TEST_CBS : NULL,
+      test->want ? &PARSE_FUNC_TEST_CBS : NULL,
       (void*) test
     );
 
@@ -453,7 +454,7 @@ run_func_tests(void) {
 
     if (!ok) {
       // warn on failure
-      warnx("FAIL: function test: %s", test->name);
+      warnx("FAIL: parse_function test: %s", test->name);
     }
   }
 
@@ -461,9 +462,144 @@ run_func_tests(void) {
   return result(num_fails, suite.num_tests);
 }
 
+static void
+dump_mod_sizes(
+  FILE * fh,
+  const char * const test_name,
+  const pt_wasm_module_sizes_t * const sizes
+) {
+  fprintf(fh,
+    "\"%s\" = {\n"
+    "  src = {\n"
+    "    ptr = %p,\n"
+    "    len = %zu,\n"
+    "  },\n"
+    "  num_custom_sections = %zu,\n"
+    "  num_function_params = %zu,\n"
+    "  num_function_results = %zu,\n"
+    "  num_function_types = %zu,\n"
+    "  num_import_types = {\n"
+    "    [%u] = %zu, // %s\n"
+    "    [%u] = %zu, // %s\n"
+    "    [%u] = %zu, // %s\n"
+    "    [%u] = %zu, // %s\n"
+    "  },\n"
+    "  num_imports = %zu,\n"
+    "  num_functions = %zu,\n"
+    "  num_tables = %zu,\n"
+    "  num_memories = %zu,\n"
+    "  num_global_insts = %zu,\n"
+    "  num_globals = %zu,\n"
+    "  num_exports = %zu,\n"
+    "  num_element_func_ids = %zu,\n"
+    "  num_element_insts = %zu,\n"
+    "  num_elements = %zu,\n"
+    "  num_locals = %zu,\n"
+    "  num_function_insts = %zu,\n"
+    "  num_function_codes = %zu,\n"
+    "  num_data_segment_insts = %zu,\n"
+    "  num_data_segments = %zu,\n"
+    "  num_insts = %zu,\n"
+    "}\n",
+    test_name,
+
+    sizes->src.ptr,
+    sizes->src.len,
+
+    sizes->num_custom_sections,
+    sizes->num_function_params,
+    sizes->num_function_results,
+    sizes->num_function_types,
+
+    PT_WASM_IMPORT_TYPE_FUNC,
+    sizes->num_import_types[PT_WASM_IMPORT_TYPE_FUNC],
+    pt_wasm_import_type_get_name(PT_WASM_IMPORT_TYPE_FUNC),
+
+    PT_WASM_IMPORT_TYPE_TABLE,
+    sizes->num_import_types[PT_WASM_IMPORT_TYPE_TABLE],
+    pt_wasm_import_type_get_name(PT_WASM_IMPORT_TYPE_TABLE),
+
+    PT_WASM_IMPORT_TYPE_MEM,
+    sizes->num_import_types[PT_WASM_IMPORT_TYPE_MEM],
+    pt_wasm_import_type_get_name(PT_WASM_IMPORT_TYPE_MEM),
+
+    PT_WASM_IMPORT_TYPE_GLOBAL,
+    sizes->num_import_types[PT_WASM_IMPORT_TYPE_GLOBAL],
+    pt_wasm_import_type_get_name(PT_WASM_IMPORT_TYPE_GLOBAL),
+
+    sizes->num_imports,
+    sizes->num_functions,
+    sizes->num_tables,
+    sizes->num_memories,
+    sizes->num_global_insts,
+    sizes->num_globals,
+    sizes->num_exports,
+    sizes->num_element_func_ids,
+    sizes->num_element_insts,
+    sizes->num_elements,
+    sizes->num_locals,
+    sizes->num_function_insts,
+    sizes->num_function_codes,
+    sizes->num_data_segment_insts,
+    sizes->num_data_segments,
+    sizes->num_insts
+  );
+}
+
+static void
+get_mod_sizes_test_on_error(
+  const char * const text,
+  void * const data
+) {
+  const test_t * const test = data;
+  warnx("get mod sizes test = \"%s\", error = \"%s\"", test->name, text);
+}
+
+static const pt_wasm_get_module_sizes_cbs_t
+GET_MOD_SIZES_TEST_CBS = {
+  .on_error = get_mod_sizes_test_on_error,
+};
+
+static result_t
+run_get_mod_sizes_tests(void) {
+  const suite_t suite = get_mod_tests();
+  size_t num_fails = 0;
+
+  for (size_t i = 0; i < suite.num_tests; i++) {
+    // get test, run it, and get result
+    const test_t * const test = suite.tests + i;
+
+    // run test, get result
+    pt_wasm_module_sizes_t sizes;
+    const bool r = pt_wasm_get_module_sizes(
+      &sizes,
+      (suite.data + test->ofs),
+      test->len,
+      test->want ? &GET_MOD_SIZES_TEST_CBS : NULL,
+      (void*) test
+    );
+
+    // check result, increment failure count
+    const bool ok = (r == test->want);
+    num_fails += ok ? 0 : 1;
+
+    if (ok && test->want) {
+      dump_mod_sizes(stderr, test->name, &sizes);
+    } else if (!ok) {
+      // warn on failure
+      warnx("FAIL get_module_sizes test: %s", test->name);
+    }
+  }
+
+  // return results
+  return result(num_fails, suite.num_tests);
+}
+
+
 static result_t (*SUITES[])(void) = {
-  run_mod_tests,
-  run_func_tests,
+  run_parse_mod_tests,
+  run_parse_func_tests,
+  run_get_mod_sizes_tests,
 };
 
 static bool
