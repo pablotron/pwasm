@@ -583,14 +583,17 @@ _Bool pt_wasm_get_function_sizes(
 );
 
 typedef struct {
+  // source data
+  pt_wasm_buf_t src;
+
   // total number custom sections
   size_t num_custom_sections;
 
   // total number of parameters across all function types
-  size_t num_function_type_params;
+  size_t num_function_params;
 
   // total number of results across all function types
-  size_t num_function_type_results;
+  size_t num_function_results;
 
   // total number of function types
   size_t num_function_types;
@@ -598,7 +601,8 @@ typedef struct {
   // total number of imports
   size_t num_imports;
 
-  // total number of functions
+  // total number of functions (note: this includes both imported
+  // functions and functions defined in the module)
   size_t num_functions;
 
   // total number of tables
@@ -616,6 +620,9 @@ typedef struct {
   // total number of exports
   size_t num_exports;
 
+  // total number of function ids across all elements
+  size_t num_element_func_ids;
+
   // total number of instructions across all element initializers
   size_t num_element_insts;
 
@@ -623,7 +630,7 @@ typedef struct {
   size_t num_elements;
 
   // total number of locals across all function bodies
-  size_t num_function_locals;
+  size_t num_locals;
 
   // total number of instructions across all function bodies
   size_t num_function_insts;
@@ -636,6 +643,10 @@ typedef struct {
 
   // total number data segments
   size_t num_data_segments;
+
+  // total number of instructions across all globals, elements,
+  // segments, and functions
+  size_t num_insts;
 } pt_wasm_module_sizes_t;
 
 typedef struct {
@@ -649,6 +660,143 @@ _Bool pt_wasm_get_module_sizes(
   const pt_wasm_get_module_sizes_cbs_t * const cbs,
   void * const cb_data
 );
+
+typedef struct {
+  size_t ofs;
+  size_t len;
+} pt_wasm_slice_t;
+
+typedef enum {
+  PT_WASM_FUNCTION_SOURCE_IMPORT, // imported function
+  PT_WASM_FUNCTION_SOURCE_MODULE, // internal function
+  PT_WASM_FUNCTION_SOURCE_LAST,
+} pt_wasm_function_source_t;
+
+typedef struct {
+  // function source (e.g. import or module)
+  pt_wasm_function_source_t source;
+
+  // offset of function prototype in function_types
+  size_t type_ofs;
+
+  // local variable types
+  pt_wasm_slice_t locals;
+
+  // instructions
+  pt_wasm_slice_t insts;
+} pt_wasm_function_t;
+
+// FIXME: rename pt_wasm_global_t to pt_wasm_unparsed_global_t or
+// something and then rename this to pt_wasm_global_t
+typedef struct {
+  pt_wasm_global_type_t type;
+
+  // parsed instructions
+  pt_wasm_slice_t expr;
+} pt_wasm_module_global_t;
+
+// FIXME: rename pt_wasm_element
+typedef struct {
+  uint32_t table_id;
+
+  // parsed offset expression instructions
+  pt_wasm_slice_t expr;
+
+  // slice of function IDs
+  pt_wasm_slice_t func_ids;
+} pt_wasm_module_element_t;
+
+// FIXME: rename pt_wasm_data_segment
+typedef struct {
+  uint32_t mem_id;
+
+  // parsed offset expression instructions
+  pt_wasm_slice_t expr;
+
+  // raw data
+  pt_wasm_buf_t data;
+} pt_wasm_module_data_segment_t;
+
+typedef struct {
+  const pt_wasm_buf_t src;
+  void *mem;
+
+  const pt_wasm_custom_section_t *custom_sections;
+  size_t num_custom_sections;
+
+  const pt_wasm_function_type_t *function_types;
+  size_t num_function_types;
+
+  const pt_wasm_import_t *imports;
+  size_t num_imports;
+
+  const pt_wasm_local_t *locals;
+  size_t num_locals;
+
+  const pt_wasm_inst_t *insts;
+  size_t num_insts;
+
+  const pt_wasm_function_t *functions;
+  size_t num_functions;
+
+  // FIXME: need to add imported tables here too
+  const pt_wasm_table_t *tables;
+  size_t num_tables;
+
+  // FIXME: need to add imported memories here too
+  const pt_wasm_limits_t *memories;
+  size_t num_memories;
+
+  // FIXME: need to add imported globals here too
+  const pt_wasm_module_global_t *globals;
+  size_t num_globals;
+
+  const pt_wasm_export_t *exports;
+  size_t num_exports;
+
+  const uint32_t *element_func_ids;
+  size_t num_element_func_ids;
+
+  const pt_wasm_module_element_t *elements;
+  size_t num_elements;
+
+  const uint32_t start;
+
+  const pt_wasm_module_data_segment_t *data_segments;
+  size_t num_data_segments;
+} pt_wasm_module_t;
+
+typedef struct {
+  void *(*on_alloc)(const size_t, void *);
+  void (*on_error)(const char *, void *);
+} pt_wasm_module_alloc_cbs_t;
+
+/**
+ * Allocate memory for module components.
+ *
+ * Returns false if memory could not be allocated.
+ */
+_Bool
+pt_wasm_module_alloc(
+  pt_wasm_module_t *,
+  const pt_wasm_module_sizes_t *,
+  const pt_wasm_module_alloc_cbs_t *,
+  void *
+);
+
+/* 
+ * typedef union {
+ *   uint32_t i32;
+ *   uint64_t i64;
+ *   float    f32;
+ *   double   f64;
+ * } pt_wasm_value_t;
+ * 
+ * typedef struct {
+ *   pt_wasm_value_t *stack;
+ *   const size_t stack_size;
+ * } pt_wasm_invoke_ctx_t;
+ */ 
 
 #ifdef __cplusplus
 };

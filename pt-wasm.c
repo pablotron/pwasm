@@ -2162,7 +2162,7 @@ pt_wasm_get_module_sizes_on_error(
 
 static void
 pt_wasm_get_module_sizes_on_function_types(
-  const pt_wasm_function_type_t * const function_types,
+  const pt_wasm_function_type_t * const rows,
   const size_t num,
   void * const cb_data
 ) {
@@ -2170,13 +2170,31 @@ pt_wasm_get_module_sizes_on_function_types(
   data->sizes.num_function_types += num;
 
   for (size_t i = 0; i < num; i++) {
-    data->sizes.num_function_type_params += function_types[i].params.len;
-    data->sizes.num_function_type_results += function_types[i].results.len;
+    data->sizes.num_function_params += rows[i].params.len;
+    data->sizes.num_function_results += rows[i].results.len;
   }
 }
 
+static void pt_wasm_get_module_sizes_on_imports(
+  const pt_wasm_import_t * const rows,
+  const size_t num,
+  void * const cb_data
+) {
+  pt_wasm_get_module_sizes_t * const data = cb_data;
+  data->sizes.num_imports += num;
+
+  // get number of import functions
+  size_t num_import_funcs = 0;
+  for (size_t i = 0; i < num; i++) {
+    num_import_funcs += (rows[i].type == PT_WASM_IMPORT_TYPE_FUNC) ? 1 : 0;
+  }
+
+  // add to total number of functions
+  data->sizes.num_functions += num_import_funcs;
+}
+
 static void
-pt_wasm_get_module_sizes_on_globals (
+pt_wasm_get_module_sizes_on_globals(
   const pt_wasm_global_t * const globals,
   const size_t num,
   void * const cb_data
@@ -2192,17 +2210,19 @@ pt_wasm_get_module_sizes_on_globals (
     }
 
     data->sizes.num_global_insts += num_insts;
+    data->sizes.num_insts += num_insts;
   }
 }
 
 static void
-pt_wasm_get_module_sizes_on_function_codes (
+pt_wasm_get_module_sizes_on_function_codes(
   const pt_wasm_buf_t * const rows,
   const size_t num,
   void * const cb_data
 ) {
   pt_wasm_get_module_sizes_t * const data = cb_data;
   data->sizes.num_function_codes += num;
+  data->sizes.num_functions += num;
 
   for (size_t i = 0; i < num; i++) {
     pt_wasm_function_sizes_t sizes;
@@ -2211,13 +2231,14 @@ pt_wasm_get_module_sizes_on_function_codes (
       return;
     }
 
-    data->sizes.num_function_locals += sizes.num_locals;
+    data->sizes.num_locals += sizes.num_locals;
     data->sizes.num_function_insts += sizes.num_insts;
+    data->sizes.num_insts += sizes.num_insts;
   }
 }
 
 static void
-pt_wasm_get_module_sizes_on_elements (
+pt_wasm_get_module_sizes_on_elements(
   const pt_wasm_element_t * const rows,
   const size_t num,
   void * const cb_data
@@ -2226,6 +2247,9 @@ pt_wasm_get_module_sizes_on_elements (
   data->sizes.num_elements += num;
 
   for (size_t i = 0; i < num; i++) {
+    data->sizes.num_element_func_ids += rows[i].num_func_ids;
+
+    // count number of instructions in expression
     size_t num_insts = 0;
     if (!pt_wasm_get_expr_size(rows[i].expr.buf, &num_insts)) {
       pt_wasm_get_module_sizes_on_error("get element expr size failed", data);
@@ -2233,11 +2257,12 @@ pt_wasm_get_module_sizes_on_elements (
     }
 
     data->sizes.num_element_insts += num_insts;
+    data->sizes.num_insts += num_insts;
   }
 }
 
 static void
-pt_wasm_get_module_sizes_on_data_segments (
+pt_wasm_get_module_sizes_on_data_segments(
   const pt_wasm_data_segment_t * const rows,
   const size_t num,
   void * const cb_data
@@ -2253,13 +2278,14 @@ pt_wasm_get_module_sizes_on_data_segments (
     }
 
     data->sizes.num_data_segment_insts += num_insts;
+    data->sizes.num_insts += num_insts;
   }
 }
 
 #define GET_MOD_SIZES_FNS \
   CUSTOM_SIZE_FN(on_custom_section) \
   CUSTOM_SIZE_FN(on_function_types) \
-  SIZE_FN(on_imports, pt_wasm_import_t, num_imports) \
+  CUSTOM_SIZE_FN(on_imports) \
   SIZE_FN(on_functions, uint32_t, num_functions) \
   SIZE_FN(on_tables, pt_wasm_table_t, num_tables) \
   SIZE_FN(on_memories, pt_wasm_limits_t, num_memories) \
@@ -2304,6 +2330,13 @@ _Bool pt_wasm_get_module_sizes(
   void * const cb_data
 ) {
   pt_wasm_get_module_sizes_t data = {
+    .sizes = {
+      .src = {
+        .ptr = src,
+        .len = len,
+      },
+    },
+
     .success  = true,
     .cbs      = cbs,
     .cb_data  = cb_data,
@@ -2323,6 +2356,234 @@ _Bool pt_wasm_get_module_sizes(
   if (sizes) {
     // copy to result
     *sizes = data.sizes;
+  }
+
+  // return success
+  return true;
+}
+
+bool
+pt_wasm_module_alloc(
+  pt_wasm_module_t * ret_mod,
+  const pt_wasm_module_sizes_t * const sizes,
+  const pt_wasm_module_alloc_cbs_t * const cbs,
+  void *cb_data
+) {
+  if (!cbs || !cbs->on_alloc) {
+    // return failure
+    return false;
+  }
+
+  // calculate total number of bytes needed
+  const size_t num_bytes = (
+    // custom section handles
+    sizeof(pt_wasm_custom_section_t) * sizes->num_custom_sections +
+
+    // function types
+    sizeof(pt_wasm_function_type_t) * sizes->num_function_types +
+
+    // imports
+    sizeof(pt_wasm_import_t) * sizes->num_imports +
+
+    // function locals
+    sizeof(pt_wasm_local_t) * sizes->num_locals +
+
+    // instructions
+    sizeof(pt_wasm_inst_t) * sizes->num_insts +
+
+    // functions
+    sizeof(pt_wasm_function_t) * sizes->num_functions +
+
+    // tables
+    sizeof(pt_wasm_table_t) * sizes->num_tables +
+
+    // memories
+    sizeof(pt_wasm_limits_t) * sizes->num_memories +
+
+    // globals
+    sizeof(pt_wasm_module_global_t) * sizes->num_globals +
+
+    // exports
+    sizeof(pt_wasm_export_t) * sizes->num_exports +
+
+    // element function IDs
+    sizeof(uint32_t) * sizes->num_element_func_ids +
+
+    // elements
+    sizeof(pt_wasm_module_element_t) * sizes->num_elements +
+
+    // data segments
+    sizeof(pt_wasm_module_data_segment_t) * sizes->num_data_segments +
+
+    // sentinel
+    0
+  );
+
+  // allocate memory, check for error
+  uint8_t * const mem = cbs->on_alloc(num_bytes, cb_data);
+  if (!mem) {
+    if (cbs->on_error) {
+      cbs->on_error("alloc failed", cb_data);
+    }
+
+    // return failure
+    return false;
+  }
+
+  // build result module
+  pt_wasm_module_t mod = {
+    // source module
+    .src = sizes->src,
+
+    // memory buffer
+    .mem = mem,
+
+    // custom sections
+    .custom_sections = (pt_wasm_custom_section_t*) mem,
+    .num_custom_sections = sizes->num_custom_sections,
+
+    // function types
+    .function_types = (pt_wasm_function_type_t*) (mem + (
+      sizeof(pt_wasm_custom_section_t) * sizes->num_custom_sections
+    )),
+    .num_function_types = sizes->num_function_types,
+
+    // imports
+    .imports = (pt_wasm_import_t*) (mem + (
+      sizeof(pt_wasm_custom_section_t) * sizes->num_custom_sections +
+      sizeof(pt_wasm_function_type_t) * sizes->num_function_types
+    )),
+    .num_imports = sizes->num_imports,
+
+    // locals
+    .locals = (pt_wasm_local_t*) (mem + (
+      sizeof(pt_wasm_custom_section_t) * sizes->num_custom_sections +
+      sizeof(pt_wasm_function_type_t) * sizes->num_function_types +
+      sizeof(pt_wasm_import_t) * sizes->num_imports
+    )),
+    .num_locals = sizes->num_locals,
+
+    // instructions
+    .insts = (pt_wasm_inst_t*) (mem + (
+      sizeof(pt_wasm_custom_section_t) * sizes->num_custom_sections +
+      sizeof(pt_wasm_function_type_t) * sizes->num_function_types +
+      sizeof(pt_wasm_import_t) * sizes->num_imports +
+      sizeof(pt_wasm_local_t) * sizes->num_locals
+    )),
+    .num_insts = sizes->num_insts,
+
+    // functions
+    .functions = (pt_wasm_function_t*) (mem + (
+      sizeof(pt_wasm_custom_section_t) * sizes->num_custom_sections +
+      sizeof(pt_wasm_function_type_t) * sizes->num_function_types +
+      sizeof(pt_wasm_import_t) * sizes->num_imports +
+      sizeof(pt_wasm_local_t) * sizes->num_locals +
+      sizeof(pt_wasm_inst_t) * sizes->num_insts
+    )),
+    .num_functions = sizes->num_functions,
+
+    // tables
+    .tables = (pt_wasm_table_t*) (mem + (
+      sizeof(pt_wasm_custom_section_t) * sizes->num_custom_sections +
+      sizeof(pt_wasm_function_type_t) * sizes->num_function_types +
+      sizeof(pt_wasm_import_t) * sizes->num_imports +
+      sizeof(pt_wasm_local_t) * sizes->num_locals +
+      sizeof(pt_wasm_inst_t) * sizes->num_insts +
+      sizeof(pt_wasm_function_t) * sizes->num_functions
+    )),
+    .num_tables = sizes->num_tables,
+
+    // memories
+    .memories = (pt_wasm_limits_t*) (mem + (
+      sizeof(pt_wasm_custom_section_t) * sizes->num_custom_sections +
+      sizeof(pt_wasm_function_type_t) * sizes->num_function_types +
+      sizeof(pt_wasm_import_t) * sizes->num_imports +
+      sizeof(pt_wasm_local_t) * sizes->num_locals +
+      sizeof(pt_wasm_inst_t) * sizes->num_insts +
+      sizeof(pt_wasm_function_t) * sizes->num_functions +
+      sizeof(pt_wasm_table_t) * sizes->num_tables
+    )),
+    .num_memories = sizes->num_memories,
+
+    // globals
+    .globals = (pt_wasm_module_global_t*) (mem + (
+      sizeof(pt_wasm_custom_section_t) * sizes->num_custom_sections +
+      sizeof(pt_wasm_function_type_t) * sizes->num_function_types +
+      sizeof(pt_wasm_import_t) * sizes->num_imports +
+      sizeof(pt_wasm_local_t) * sizes->num_locals +
+      sizeof(pt_wasm_inst_t) * sizes->num_insts +
+      sizeof(pt_wasm_function_t) * sizes->num_functions +
+      sizeof(pt_wasm_table_t) * sizes->num_tables +
+      sizeof(pt_wasm_limits_t) * sizes->num_memories
+    )),
+    .num_globals = sizes->num_globals,
+
+    // exports
+    .exports = (pt_wasm_export_t*) (mem + (
+      sizeof(pt_wasm_custom_section_t) * sizes->num_custom_sections +
+      sizeof(pt_wasm_function_type_t) * sizes->num_function_types +
+      sizeof(pt_wasm_import_t) * sizes->num_imports +
+      sizeof(pt_wasm_local_t) * sizes->num_locals +
+      sizeof(pt_wasm_inst_t) * sizes->num_insts +
+      sizeof(pt_wasm_function_t) * sizes->num_functions +
+      sizeof(pt_wasm_table_t) * sizes->num_tables +
+      sizeof(pt_wasm_limits_t) * sizes->num_memories +
+      sizeof(pt_wasm_module_global_t) * sizes->num_globals
+    )),
+    .num_exports = sizes->num_exports,
+
+    // element function IDs
+    .element_func_ids = (uint32_t*) (mem + (
+      sizeof(pt_wasm_custom_section_t) * sizes->num_custom_sections +
+      sizeof(pt_wasm_function_type_t) * sizes->num_function_types +
+      sizeof(pt_wasm_import_t) * sizes->num_imports +
+      sizeof(pt_wasm_local_t) * sizes->num_locals +
+      sizeof(pt_wasm_inst_t) * sizes->num_insts +
+      sizeof(pt_wasm_function_t) * sizes->num_functions +
+      sizeof(pt_wasm_table_t) * sizes->num_tables +
+      sizeof(pt_wasm_limits_t) * sizes->num_memories +
+      sizeof(pt_wasm_module_global_t) * sizes->num_globals +
+      sizeof(pt_wasm_export_t) * sizes->num_exports
+    )),
+    .num_element_func_ids = sizes->num_element_func_ids,
+
+    // elements
+    .elements = (pt_wasm_module_element_t*) (mem + (
+      sizeof(pt_wasm_custom_section_t) * sizes->num_custom_sections +
+      sizeof(pt_wasm_function_type_t) * sizes->num_function_types +
+      sizeof(pt_wasm_import_t) * sizes->num_imports +
+      sizeof(pt_wasm_local_t) * sizes->num_locals +
+      sizeof(pt_wasm_inst_t) * sizes->num_insts +
+      sizeof(pt_wasm_function_t) * sizes->num_functions +
+      sizeof(pt_wasm_table_t) * sizes->num_tables +
+      sizeof(pt_wasm_limits_t) * sizes->num_memories +
+      sizeof(pt_wasm_module_global_t) * sizes->num_globals +
+      sizeof(pt_wasm_export_t) * sizes->num_exports +
+      sizeof(uint32_t) * sizes->num_element_func_ids
+    )),
+    .num_elements = sizes->num_elements,
+
+    // data segments
+    .data_segments = (pt_wasm_module_data_segment_t*) (mem + (
+      sizeof(pt_wasm_custom_section_t) * sizes->num_custom_sections +
+      sizeof(pt_wasm_function_type_t) * sizes->num_function_types +
+      sizeof(pt_wasm_import_t) * sizes->num_imports +
+      sizeof(pt_wasm_local_t) * sizes->num_locals +
+      sizeof(pt_wasm_inst_t) * sizes->num_insts +
+      sizeof(pt_wasm_function_t) * sizes->num_functions +
+      sizeof(pt_wasm_table_t) * sizes->num_tables +
+      sizeof(pt_wasm_limits_t) * sizes->num_memories +
+      sizeof(pt_wasm_module_global_t) * sizes->num_globals +
+      sizeof(pt_wasm_export_t) * sizes->num_exports +
+      sizeof(uint32_t) * sizes->num_element_func_ids +
+      sizeof(pt_wasm_module_element_t) * sizes->num_elements
+    )),
+    .num_data_segments = sizes->num_data_segments,
+  };
+
+  if (ret_mod) {
+    // copy module to output
+    memcpy(ret_mod, &mod, sizeof(pt_wasm_module_t));
   }
 
   // return success
