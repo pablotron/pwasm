@@ -3214,6 +3214,114 @@ pt_wasm_module_init_on_data_segments(
   data->sizes.num_data_segments += num;
 }
 
+typedef struct {
+  pt_wasm_module_init_t * const init_data;
+  const size_t ofs;
+  bool success;
+} pt_wasm_module_add_code_t;
+
+static void
+pt_wasm_module_add_code_on_locals(
+  const pt_wasm_local_t * const rows,
+  const size_t num,
+  void *cb_data
+) {
+  pt_wasm_module_add_code_t *data = cb_data;
+  pt_wasm_module_init_t * const init_data = data->init_data;
+
+  // calculate destination and number of bytes
+  pt_wasm_local_t * const dst = init_data->mod->locals + init_data->sizes.num_locals;
+  const size_t num_bytes = sizeof(pt_wasm_local_t) * num;
+
+  // copy data, increment offset
+  memcpy(dst, rows, num_bytes);
+  init_data->sizes.num_locals += num;
+
+  // update function locals slice length
+  init_data->mod->functions[data->ofs].locals.len += num;
+}
+
+static void
+pt_wasm_module_add_code_on_insts(
+  const pt_wasm_inst_t * const rows,
+  const size_t num,
+  void *cb_data
+) {
+  pt_wasm_module_add_code_t *data = cb_data;
+  pt_wasm_module_init_t * const init_data = data->init_data;
+
+  // calculate destination and number of bytes
+  pt_wasm_inst_t * const dst = init_data->mod->insts + init_data->sizes.num_insts;
+  const size_t num_bytes = sizeof(pt_wasm_inst_t) * num;
+
+  // copy data, increment offset
+  memcpy(dst, rows, num_bytes);
+  init_data->sizes.num_insts += num;
+
+  // update function insts slice length
+  init_data->mod->functions[data->ofs].insts.len += num;
+}
+
+static void
+pt_wasm_module_add_code_on_error(
+  const char * const text,
+  void *cb_data
+) {
+  pt_wasm_module_add_code_t *data = cb_data;
+  pt_wasm_module_init_t * const init_data = data->init_data;
+  data->success = false;
+  pt_wasm_module_init_on_error(text, init_data);
+}
+
+static const pt_wasm_parse_function_cbs_t
+PT_WASM_MODULE_ADD_CODE_CBS = {
+  .on_locals = pt_wasm_module_add_code_on_locals,
+  .on_insts  = pt_wasm_module_add_code_on_insts,
+  .on_error  = pt_wasm_module_add_code_on_error,
+};
+
+bool
+pt_wasm_module_add_code(
+  pt_wasm_module_init_t * const init_data,
+  const size_t ofs,
+  const pt_wasm_buf_t src
+) {
+  // build callback data
+  pt_wasm_module_add_code_t data = {
+    .init_data = init_data,
+    .ofs = ofs,
+    .success = true,
+  };
+
+  // add code
+  pt_wasm_parse_function(src, &PT_WASM_MODULE_ADD_CODE_CBS, &data);
+
+  // return result
+  return data.success;
+}
+
+static void
+pt_wasm_module_init_on_function_codes(
+  const pt_wasm_buf_t * const rows,
+  const size_t num,
+  void * const cb_data
+) {
+  pt_wasm_module_init_t * const data = cb_data;
+  const size_t num_imports = data->sizes.num_import_types[PT_WASM_IMPORT_TYPE_FUNC];
+
+  for (size_t i = 0; i < num; i++) {
+    // get offset
+    const size_t ofs = num_imports + data->sizes.num_function_codes + i;
+
+    // add function code, check for error
+    if (!pt_wasm_module_add_code(data, ofs, rows[i])) {
+      return;
+    }
+  }
+
+  // increment function codes
+  data->sizes.num_function_codes += num;
+}
 
 static const pt_wasm_parse_module_cbs_t
 PT_WASM_MOD_INIT_CBS = {
@@ -3229,7 +3337,6 @@ PT_WASM_MOD_INIT_CBS = {
   .on_start           = pt_wasm_module_init_on_start,
   .on_elements        = pt_wasm_module_init_on_elements,
   .on_data_segments   = pt_wasm_module_init_on_data_segments,
-  // TODO
   .on_function_codes  = pt_wasm_module_init_on_function_codes,
 };
 
