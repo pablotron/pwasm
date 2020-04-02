@@ -670,35 +670,38 @@ typedef struct {
 } pt_wasm_slice_t;
 
 typedef enum {
-  PT_WASM_FUNCTION_SOURCE_IMPORT, // imported function
-  PT_WASM_FUNCTION_SOURCE_MODULE, // internal function
-  PT_WASM_FUNCTION_SOURCE_LAST,
-} pt_wasm_function_source_t;
+  PT_WASM_SOURCE_IMPORT, // imported function/global
+  PT_WASM_SOURCE_MODULE, // internal function/global
+  PT_WASM_SOURCE_LAST,
+} pt_wasm_source_t;
 
 typedef struct {
   // function source (e.g. import or module)
-  pt_wasm_function_source_t source;
+  pt_wasm_source_t source;
 
   // offset of function prototype in function_types
-  size_t type_ofs;
+  size_t type_id;
 
-  // local variable types
+  // local variable types (only used for module functions)
   pt_wasm_slice_t locals;
 
-  // instructions
+  // instructions (only used for module functions)
   pt_wasm_slice_t insts;
 } pt_wasm_function_t;
 
 // FIXME: rename pt_wasm_global_t to pt_wasm_unparsed_global_t or
-// something and then rename this to pt_wasm_global_t
+// pt_wasm_raw_global_t, etc and then rename this to pt_wasm_global_t
 typedef struct {
+  // global source (e.g. import or module)
+  pt_wasm_source_t source;
+
   pt_wasm_global_type_t type;
 
-  // parsed instructions
+  // parsed instructions (only used for module globals)
   pt_wasm_slice_t expr;
 } pt_wasm_module_global_t;
 
-// FIXME: rename pt_wasm_element
+// FIXME: rename pt_wasm_element (e.g. prefix with raw)
 typedef struct {
   uint32_t table_id;
 
@@ -709,7 +712,7 @@ typedef struct {
   pt_wasm_slice_t func_ids;
 } pt_wasm_module_element_t;
 
-// FIXME: rename pt_wasm_data_segment
+// FIXME: rename pt_wasm_data_segment (e.g. prefix with raw)
 typedef struct {
   uint32_t mem_id;
 
@@ -722,48 +725,50 @@ typedef struct {
 
 typedef struct {
   const pt_wasm_buf_t src;
+  const pt_wasm_module_sizes_t *sizes;
   void *mem;
 
-  const pt_wasm_custom_section_t *custom_sections;
-  size_t num_custom_sections;
+  pt_wasm_custom_section_t * const custom_sections;
+  const size_t num_custom_sections;
 
-  const pt_wasm_function_type_t *function_types;
-  size_t num_function_types;
+  pt_wasm_function_type_t * const function_types;
+  const size_t num_function_types;
 
-  const pt_wasm_import_t *imports;
-  size_t num_imports;
+  pt_wasm_import_t * const imports;
+  const size_t num_imports;
 
-  const pt_wasm_local_t *locals;
-  size_t num_locals;
+  pt_wasm_local_t * const locals;
+  const size_t num_locals;
 
-  const pt_wasm_inst_t *insts;
-  size_t num_insts;
+  pt_wasm_inst_t * const insts;
+  const size_t num_insts;
 
-  const pt_wasm_function_t *functions;
-  size_t num_functions;
+  pt_wasm_function_t * const functions;
+  const size_t num_functions;
 
-  const pt_wasm_table_t *tables;
-  size_t num_tables;
+  pt_wasm_table_t * const tables;
+  const size_t num_tables;
 
-  const pt_wasm_limits_t *memories;
-  size_t num_memories;
+  pt_wasm_limits_t * const memories;
+  const size_t num_memories;
 
-  const pt_wasm_module_global_t *globals;
-  size_t num_globals;
+  pt_wasm_module_global_t * const globals;
+  const size_t num_globals;
 
-  const pt_wasm_export_t *exports;
-  size_t num_exports;
+  pt_wasm_export_t * const exports;
+  const size_t num_exports;
 
-  const uint32_t *element_func_ids;
-  size_t num_element_func_ids;
+  uint32_t * const element_func_ids;
+  const size_t num_element_func_ids;
 
-  const pt_wasm_module_element_t *elements;
-  size_t num_elements;
+  pt_wasm_module_element_t * const elements;
+  const size_t num_elements;
 
-  const uint32_t start;
+  _Bool has_start;
+  uint32_t start;
 
-  const pt_wasm_module_data_segment_t *data_segments;
-  size_t num_data_segments;
+  pt_wasm_module_data_segment_t * const data_segments;
+  const size_t num_data_segments;
 } pt_wasm_module_t;
 
 typedef struct {
@@ -781,6 +786,22 @@ pt_wasm_module_alloc(
   pt_wasm_module_t *,
   const pt_wasm_module_sizes_t *,
   const pt_wasm_module_alloc_cbs_t *,
+  void *
+);
+
+typedef struct {
+  void (*on_error)(const char *, void *);
+} pt_wasm_module_init_cbs_t;
+
+/**
+ * Populate previously allocated module.
+ *
+ * Returns false if an error occurs.
+ */
+_Bool
+pt_wasm_module_init(
+  pt_wasm_module_t *,
+  const pt_wasm_module_init_cbs_t *,
   void *
 );
 

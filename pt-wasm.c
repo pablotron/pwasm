@@ -415,6 +415,73 @@ pt_wasm_parse_value_type_list(
   return num_bytes;
 }
 
+typedef struct {
+  void (*on_count)(const uint32_t, void *);
+  void (*on_vals)(const uint32_t *, const size_t, void *);
+  void (*on_error)(const char *, void *);
+} pt_wasm_parse_u32s_cbs_t;
+
+static bool
+pt_wasm_parse_u32s(
+  const pt_wasm_buf_t src,
+  const pt_wasm_parse_u32s_cbs_t * const cbs,
+  void *cb_data
+) {
+  size_t ofs = 0;
+
+  // get count, check for error
+  uint32_t num;
+  const size_t n_len = pt_wasm_decode_u32(&num, src.ptr, src.len);
+  if (!n_len) {
+    FAIL("bad u32 vector count");
+  }
+
+  if (cbs && cbs->on_count) {
+    cbs->on_count(num, cb_data);
+  }
+
+  // increment offset
+  ofs += n_len;
+
+  uint32_t vals[PT_WASM_BATCH_SIZE];
+
+  size_t vals_ofs = 0;
+  for (size_t i = 0; i < num; i++) {
+    if (ofs > src.len) {
+      FAIL("u32 vector buffer overflow");
+    }
+
+    // decode id, check for error
+    const size_t len = pt_wasm_decode_u32(vals + vals_ofs, src.ptr + ofs, src.len - ofs);
+    if (!len) {
+      FAIL("bad u32 in u32 vector");
+    }
+
+    // increment vals offset
+    vals_ofs++;
+    if (vals_ofs == (LEN(vals) - 1)) {
+      if (cbs && cbs->on_vals) {
+        // flush batch
+        cbs->on_vals(vals, PT_WASM_BATCH_SIZE, cb_data);
+      }
+
+      // reset offset
+      vals_ofs = 0;
+    }
+
+    // increment offset
+    ofs += len;
+  }
+
+  if ((vals_ofs > 0) && cbs && cbs->on_vals) {
+    // flush remaining values
+    cbs->on_vals(vals, vals_ofs, cb_data);
+  }
+
+  // return success
+  return true;
+}
+
 static bool
 pt_wasm_parse_custom_section(
   const pt_wasm_parse_module_cbs_t * const cbs,
@@ -2366,7 +2433,7 @@ _Bool pt_wasm_get_module_sizes(
 
 bool
 pt_wasm_module_alloc(
-  pt_wasm_module_t * ret_mod,
+  pt_wasm_module_t * const ret,
   const pt_wasm_module_sizes_t * const sizes,
   const pt_wasm_module_alloc_cbs_t * const cbs,
   void *cb_data
@@ -2434,8 +2501,9 @@ pt_wasm_module_alloc(
 
   // build result module
   pt_wasm_module_t mod = {
-    // source module
+    // source module and sizes
     .src = sizes->src,
+    .sizes = sizes,
 
     // memory buffer
     .mem = mem,
@@ -2583,9 +2651,607 @@ pt_wasm_module_alloc(
     .num_data_segments = sizes->num_data_segments,
   };
 
-  if (ret_mod) {
+  if (ret) {
     // copy module to output
-    memcpy(ret_mod, &mod, sizeof(pt_wasm_module_t));
+    memcpy(ret, &mod, sizeof(pt_wasm_module_t));
+  }
+
+  // return success
+  return true;
+}
+
+typedef struct {
+  pt_wasm_module_t *mod;
+  pt_wasm_module_sizes_t sizes;
+  const pt_wasm_module_init_cbs_t *cbs;
+  void *cb_data;
+  bool success;
+} pt_wasm_module_init_t;
+
+static void
+pt_wasm_module_init_on_error(
+  const char * const text,
+  void *cb_data
+) {
+  pt_wasm_module_init_t *data = cb_data;
+  data->success = false;
+  if (data->cbs && data->cbs->on_error) {
+    data->cbs->on_error(text, data->cb_data);
+  }
+}
+
+static void
+pt_wasm_module_init_on_custom_section(
+  const pt_wasm_custom_section_t * const ptr,
+  void *cb_data
+) {
+  pt_wasm_module_init_t *data = cb_data;
+  data->mod->custom_sections[data->sizes.num_custom_sections++] = *ptr;
+}
+
+static void
+pt_wasm_module_init_on_function_types(
+  const pt_wasm_function_type_t * const rows,
+  const size_t num,
+  void * const cb_data
+) {
+  pt_wasm_module_init_t * const data = cb_data;
+  pt_wasm_function_type_t * const dst = data->mod->function_types + data->sizes.num_function_types;
+  const size_t num_bytes = sizeof(pt_wasm_function_type_t) * num;
+
+  memcpy(dst, rows, num_bytes);
+  data->sizes.num_function_types += num;
+}
+
+static void
+pt_wasm_module_init_on_imports(
+  const pt_wasm_import_t * const rows,
+  const size_t num,
+  void * const cb_data
+) {
+  pt_wasm_module_init_t * const data = cb_data;
+  pt_wasm_module_t * const mod = data->mod;
+
+  // get destination and number of bytes
+  pt_wasm_import_t * const dst = mod->imports + data->sizes.num_imports;
+  const size_t num_bytes = sizeof(pt_wasm_import_t) * num;
+
+  // copy data, increment offset
+  memcpy(dst, rows, num_bytes);
+  data->sizes.num_imports += num;
+
+  // populate imports
+  for (size_t i = 0; i < num; i++) {
+    switch (rows[i].type) {
+    case PT_WASM_IMPORT_TYPE_FUNC:
+      mod->functions[data->sizes.num_functions].source = PT_WASM_SOURCE_IMPORT;
+      mod->functions[data->sizes.num_functions].type_id = rows[i].func.id;
+      data->sizes.num_functions++;
+      break;
+    case PT_WASM_IMPORT_TYPE_TABLE:
+      mod->tables[data->sizes.num_tables++] = rows[i].table;
+      data->sizes.num_tables++;
+      break;
+    case PT_WASM_IMPORT_TYPE_MEM:
+      mod->memories[data->sizes.num_memories++] = rows[i].mem.limits;
+      data->sizes.num_memories++;
+      break;
+    case PT_WASM_IMPORT_TYPE_GLOBAL:
+      mod->globals[data->sizes.num_globals].source = PT_WASM_SOURCE_IMPORT;
+      mod->globals[data->sizes.num_globals].type = rows[i].global;
+      data->sizes.num_globals++;
+      break;
+    default:
+      // never reached
+      pt_wasm_module_init_on_error("unknown import type", cb_data);
+      return;
+    }
+  }
+}
+
+static void
+pt_wasm_module_init_on_functions(
+  const uint32_t * const rows,
+  const size_t num,
+  void * const cb_data
+) {
+  pt_wasm_module_init_t * const data = cb_data;
+
+  // populate internal function types
+  for (size_t i = 0; i < num; i++) {
+    const size_t ofs = data->mod->sizes->num_functions + i;
+    data->mod->functions[ofs].source = PT_WASM_SOURCE_MODULE;
+    data->mod->functions[ofs].type_id = rows[i];
+  }
+
+  // increment functions size
+  data->sizes.num_functions += num;
+}
+
+static void
+pt_wasm_module_init_on_tables(
+  const pt_wasm_table_t * const rows,
+  const size_t num,
+  void * const cb_data
+) {
+  pt_wasm_module_init_t * const data = cb_data;
+  pt_wasm_module_t * const mod = data->mod;
+
+  // get destination and number of bytes
+  pt_wasm_table_t * const dst = mod->tables + data->sizes.num_tables;
+  const size_t num_bytes = sizeof(pt_wasm_table_t) * num;
+
+  // copy data, increment offset
+  memcpy(dst, rows, num_bytes);
+  data->sizes.num_tables += num;
+}
+
+static void
+pt_wasm_module_init_on_memories(
+  const pt_wasm_limits_t * const rows,
+  const size_t num,
+  void * const cb_data
+) {
+  pt_wasm_module_init_t * const data = cb_data;
+  pt_wasm_module_t * const mod = data->mod;
+
+  // get destination and number of bytes
+  pt_wasm_limits_t * const dst = mod->memories + data->sizes.num_memories;
+  const size_t num_bytes = sizeof(pt_wasm_limits_t) * num;
+
+  // copy data, increment offset
+  memcpy(dst, rows, num_bytes);
+  data->sizes.num_memories += num;
+}
+
+typedef struct {
+  pt_wasm_module_init_t * const init_data;
+  const size_t ofs;
+  bool success;
+} pt_wasm_module_init_on_globals_t;
+
+static void
+pt_wasm_module_init_on_globals_on_insts(
+  const pt_wasm_inst_t * const rows,
+  const size_t num,
+  void *cb_data
+) {
+  pt_wasm_module_init_on_globals_t * const data = cb_data;
+  pt_wasm_module_init_t * const init_data = data->init_data;
+
+  if (!data->success) {
+    return;
+  }
+
+  // calculate destination and number of bytes
+  pt_wasm_inst_t * const dst = init_data->mod->insts + init_data->sizes.num_insts;
+  const size_t num_bytes = sizeof(pt_wasm_inst_t) * num;
+
+  // copy data, increment offset
+  memcpy(dst, rows, num_bytes);
+  init_data->sizes.num_insts += num;
+
+  // update expr slice length
+  init_data->mod->globals[data->ofs].expr.len += num;
+}
+
+static void
+pt_wasm_module_init_on_globals_on_error(
+  const char * const text,
+  void *cb_data
+) {
+  pt_wasm_module_init_on_globals_t * const data = cb_data;
+  pt_wasm_module_init_t * const init_data = data->init_data;
+
+  data->success = false;
+  pt_wasm_module_init_on_error(text, init_data);
+}
+
+static const pt_wasm_parse_expr_cbs_t
+PT_WASM_MODULE_INIT_ON_GLOBALS_CBS = {
+  .on_insts = pt_wasm_module_init_on_globals_on_insts,
+  .on_error = pt_wasm_module_init_on_globals_on_error,
+};
+
+static void
+pt_wasm_module_init_on_globals(
+  const pt_wasm_global_t * const rows,
+  const size_t num,
+  void * const cb_data
+) {
+  pt_wasm_module_init_t * const data = cb_data;
+  pt_wasm_module_t * const mod = data->mod;
+
+  for (size_t i = 0; i < num; i++) {
+    const size_t ofs = data->mod->sizes->num_globals + i;
+    mod->globals[ofs].source = PT_WASM_SOURCE_MODULE;
+    mod->globals[ofs].type = rows[i].type;
+    mod->globals[ofs].expr.ofs = data->sizes.num_insts;
+    mod->globals[ofs].expr.len = 0;
+
+    // build expr parsing callback data
+    pt_wasm_module_init_on_globals_t expr_data = {
+      .init_data  = data,
+      .ofs        = ofs,
+      .success    = true,
+    };
+
+    // parse expression
+    // FIXME: should limit to constant expr here
+    (void) pt_wasm_parse_expr(
+      rows[i].expr.buf,
+      &PT_WASM_MODULE_INIT_ON_GLOBALS_CBS,
+      &expr_data
+    );
+
+    if (!expr_data.success) {
+      // expression parsing failed, return
+      return;
+    }
+  }
+
+  // increment globals
+  data->sizes.num_globals += num;
+}
+
+static void
+pt_wasm_module_init_on_exports(
+  const pt_wasm_export_t * const rows,
+  const size_t num,
+  void * const cb_data
+) {
+  pt_wasm_module_init_t * const data = cb_data;
+  pt_wasm_module_t * const mod = data->mod;
+
+  // get destination and number of bytes
+  pt_wasm_export_t * const dst = mod->exports + data->sizes.num_exports;
+  const size_t num_bytes = sizeof(pt_wasm_export_t) * num;
+
+  // copy data, increment offset
+  memcpy(dst, rows, num_bytes);
+  data->sizes.num_exports += num;
+}
+
+static void
+pt_wasm_module_init_on_start(
+  const uint32_t start,
+  void * const cb_data
+) {
+  pt_wasm_module_init_t * const data = cb_data;
+  data->mod->has_start = true;
+  data->mod->start = start;
+}
+
+typedef struct {
+  pt_wasm_module_init_t * const init_data;
+  const size_t ofs;
+  bool success;
+} pt_wasm_module_add_element_expr_t;
+
+static void
+pt_wasm_module_add_element_expr_on_insts(
+  const pt_wasm_inst_t * const rows,
+  const size_t num,
+  void *cb_data
+) {
+  pt_wasm_module_add_element_expr_t * const data = cb_data;
+  pt_wasm_module_init_t * const init_data = data->init_data;
+
+  if (!data->success) {
+    return;
+  }
+
+  // calculate destination and number of bytes
+  pt_wasm_inst_t * const dst = init_data->mod->insts + init_data->sizes.num_insts;
+  const size_t num_bytes = sizeof(pt_wasm_inst_t) * num;
+
+  // copy data, increment offset
+  memcpy(dst, rows, num_bytes);
+  init_data->sizes.num_insts += num;
+
+  // update expr slice length
+  init_data->mod->elements[data->ofs].expr.len += num;
+}
+
+static void
+pt_wasm_module_add_element_expr_on_error(
+  const char * const text,
+  void *cb_data
+) {
+  pt_wasm_module_add_element_expr_t * const data = cb_data;
+  pt_wasm_module_init_t * const init_data = data->init_data;
+
+  data->success = false;
+  pt_wasm_module_init_on_error(text, init_data);
+}
+
+static const pt_wasm_parse_expr_cbs_t
+PT_WASM_MODULE_ADD_ELEMENT_EXPR_CBS = {
+  .on_insts = pt_wasm_module_add_element_expr_on_insts,
+  .on_error = pt_wasm_module_add_element_expr_on_error,
+};
+
+static inline bool
+pt_wasm_module_add_element_expr(
+  pt_wasm_module_t * const mod,
+  pt_wasm_module_init_t * const init_data,
+  const size_t ofs,
+  const pt_wasm_buf_t src
+) {
+  // populate expression slice offset and length
+  mod->elements[ofs].expr.ofs = init_data->sizes.num_insts;
+  mod->elements[ofs].expr.len = 0;
+
+  // build expr parsing callback data
+  pt_wasm_module_add_element_expr_t expr_data = {
+    .init_data  = init_data,
+    .ofs        = ofs,
+    .success    = true,
+  };
+
+  // parse expression
+  // FIXME: should limit to constant expr here
+  (void) pt_wasm_parse_expr(
+    src,
+    &PT_WASM_MODULE_ADD_ELEMENT_EXPR_CBS,
+    &expr_data
+  );
+
+  return expr_data.success;
+}
+
+typedef struct {
+  pt_wasm_module_init_t * const init_data;
+  const size_t ofs;
+  bool success;
+} pt_wasm_module_add_element_fns_t;
+
+static void
+pt_wasm_module_add_element_fns_on_vals(
+  const uint32_t * const ids,
+  const size_t num,
+  void *cb_data
+) {
+  pt_wasm_module_add_element_fns_t * const data = cb_data;
+  pt_wasm_module_init_t * const init_data = data->init_data;
+
+  if (!data->success) {
+    return;
+  }
+
+  // calculate destination and number of bytes
+  uint32_t * const dst = init_data->mod->element_func_ids + init_data->sizes.num_element_func_ids;
+  const size_t num_bytes = sizeof(uint32_t) * num;
+
+  // copy data, increment offset
+  memcpy(dst, ids, num_bytes);
+  init_data->sizes.num_element_func_ids += num;
+
+  // update function ids slice length
+  init_data->mod->elements[data->ofs].func_ids.len += num;
+}
+
+static void
+pt_wasm_module_add_element_fns_on_error(
+  const char * const text,
+  void *cb_data
+) {
+  pt_wasm_module_add_element_fns_t * const data = cb_data;
+  pt_wasm_module_init_t * const init_data = data->init_data;
+
+  data->success = false;
+  pt_wasm_module_init_on_error(text, init_data);
+}
+
+static const pt_wasm_parse_u32s_cbs_t
+PT_WASM_MODULE_ADD_ELEMENT_FNS_CBS = {
+  .on_vals  = pt_wasm_module_add_element_fns_on_vals,
+  .on_error = pt_wasm_module_add_element_fns_on_error,
+};
+
+static inline bool
+pt_wasm_module_add_element_fns(
+  pt_wasm_module_t * const mod,
+  pt_wasm_module_init_t * const init_data,
+  const size_t ofs,
+  const pt_wasm_buf_t src
+) {
+  // populate function id slice offset and length
+  mod->elements[ofs].func_ids.ofs = init_data->sizes.num_element_func_ids;
+  mod->elements[ofs].func_ids.len = 0;
+
+  // build function id parsing callback data
+  pt_wasm_module_add_element_fns_t fns_data = {
+    .init_data  = init_data,
+    .ofs        = ofs,
+    .success    = true,
+  };
+
+  // parse function IDs
+  pt_wasm_parse_u32s(src, &PT_WASM_MODULE_ADD_ELEMENT_FNS_CBS, &fns_data);
+
+  // return result
+  return fns_data.success;
+}
+
+static void
+pt_wasm_module_init_on_elements(
+  const pt_wasm_element_t * const rows,
+  const size_t num,
+  void * const cb_data
+) {
+  pt_wasm_module_init_t * const data = cb_data;
+  pt_wasm_module_t * const mod = data->mod;
+
+  for (size_t i = 0; i < num; i++) {
+    // get offset
+    const size_t ofs = data->sizes.num_elements + i;
+
+    // set table ID
+    mod->elements[ofs].table_id = rows[i].table_id;
+
+    // add element expression, check for error
+    if (!pt_wasm_module_add_element_expr(mod, data, ofs, rows[i].expr.buf)) {
+      // add failed, exit
+      return;
+    }
+
+    // add element function IDs, check for error
+    if (!pt_wasm_module_add_element_fns(mod, data, ofs, rows[i].func_ids)) {
+      // add failed, exit
+      return;
+    }
+  }
+
+  // increment number of elements
+  data->sizes.num_elements += num;
+}
+
+typedef struct {
+  pt_wasm_module_init_t * const init_data;
+  const size_t ofs;
+  bool success;
+} pt_wasm_module_add_segment_expr_t;
+
+static void
+pt_wasm_module_add_segment_expr_on_insts(
+  const pt_wasm_inst_t * const rows,
+  const size_t num,
+  void *cb_data
+) {
+  pt_wasm_module_add_segment_expr_t * const data = cb_data;
+  pt_wasm_module_init_t * const init_data = data->init_data;
+
+  if (!data->success) {
+    return;
+  }
+
+  // calculate destination and number of bytes
+  pt_wasm_inst_t * const dst = init_data->mod->insts + init_data->sizes.num_insts;
+  const size_t num_bytes = sizeof(pt_wasm_inst_t) * num;
+
+  // copy data, increment offset
+  memcpy(dst, rows, num_bytes);
+  init_data->sizes.num_insts += num;
+
+  // update expr slice length
+  init_data->mod->data_segments[data->ofs].expr.len += num;
+}
+
+static void
+pt_wasm_module_add_segment_expr_on_error(
+  const char * const text,
+  void *cb_data
+) {
+  pt_wasm_module_add_segment_expr_t * const data = cb_data;
+  pt_wasm_module_init_t * const init_data = data->init_data;
+
+  data->success = false;
+  pt_wasm_module_init_on_error(text, init_data);
+}
+
+static const pt_wasm_parse_expr_cbs_t
+PT_WASM_MODULE_ADD_SEGMENT_EXPR_CBS = {
+  .on_insts = pt_wasm_module_add_segment_expr_on_insts,
+  .on_error = pt_wasm_module_add_segment_expr_on_error,
+};
+
+static inline bool
+pt_wasm_module_add_segment_expr(
+  pt_wasm_module_t * const mod,
+  pt_wasm_module_init_t * const init_data,
+  const size_t ofs,
+  const pt_wasm_buf_t src
+) {
+  // populate expression slice offset and length
+  mod->data_segments[ofs].expr.ofs = init_data->sizes.num_insts;
+  mod->data_segments[ofs].expr.len = 0;
+
+  // build expr parsing callback data
+  pt_wasm_module_add_segment_expr_t expr_data = {
+    .init_data  = init_data,
+    .ofs        = ofs,
+    .success    = true,
+  };
+
+  // parse expression
+  // FIXME: should limit to constant expr here
+  (void) pt_wasm_parse_expr(
+    src,
+    &PT_WASM_MODULE_ADD_SEGMENT_EXPR_CBS,
+    &expr_data
+  );
+
+  return expr_data.success;
+}
+
+
+static void
+pt_wasm_module_init_on_data_segments(
+  const pt_wasm_data_segment_t * const rows,
+  const size_t num,
+  void * const cb_data
+) {
+  pt_wasm_module_init_t * const data = cb_data;
+  pt_wasm_module_t * const mod = data->mod;
+
+  for (size_t i = 0; i < num; i++) {
+    // get offset
+    const size_t ofs = data->sizes.num_data_segments + i;
+
+    // set memory ID
+    mod->data_segments[ofs].mem_id = rows[i].mem_id;
+    mod->data_segments[ofs].data = rows[i].data;
+
+    // add expression, check for error
+    if (!pt_wasm_module_add_segment_expr(mod, data, ofs, rows[i].expr.buf)) {
+      // add failed, exit
+      return;
+    }
+  }
+
+  // increment count
+  data->sizes.num_data_segments += num;
+}
+
+
+static const pt_wasm_parse_module_cbs_t
+PT_WASM_MOD_INIT_CBS = {
+  .on_error           = pt_wasm_module_init_on_error,
+  .on_custom_section  = pt_wasm_module_init_on_custom_section,
+  .on_function_types  = pt_wasm_module_init_on_function_types,
+  .on_imports         = pt_wasm_module_init_on_imports,
+  .on_functions       = pt_wasm_module_init_on_functions,
+  .on_tables          = pt_wasm_module_init_on_tables,
+  .on_memories        = pt_wasm_module_init_on_memories,
+  .on_globals         = pt_wasm_module_init_on_globals,
+  .on_exports         = pt_wasm_module_init_on_exports,
+  .on_start           = pt_wasm_module_init_on_start,
+  .on_elements        = pt_wasm_module_init_on_elements,
+  .on_data_segments   = pt_wasm_module_init_on_data_segments,
+  // TODO
+  .on_function_codes  = pt_wasm_module_init_on_function_codes,
+};
+
+bool
+pt_wasm_module_init(
+  pt_wasm_module_t * const mod,
+  const pt_wasm_module_init_cbs_t * const cbs,
+  void *cb_data
+) {
+  mod->has_start = false;
+  pt_wasm_module_init_t data = {
+    .mod = mod,
+    .sizes = {},
+    .success = true,
+    .cbs = cbs,
+    .cb_data = cb_data,
+  };
+
+  // parse module, check for error
+  if (!pt_wasm_parse_module(mod->src.ptr, mod->src.len, &PT_WASM_MOD_INIT_CBS, &data)) {
+    // return failure
+    return false;
   }
 
   // return success
