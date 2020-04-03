@@ -2,6 +2,8 @@
 #include <string.h> // memcmp()
 #include "pt-wasm.h"
 
+#define PT_WASM_STACK_CHECK_MAX_DEPTH 512
+
 #define MIN(a, b) (((a) < (b)) ? (a) : (b))
 #define LEN(ary) (sizeof(ary) / sizeof((ary)[0]))
 
@@ -3466,4 +3468,438 @@ pt_wasm_module_init(
 
   // return success
   return true;
+}
+
+static const char *
+PT_WASM_CHECK_TYPE_NAMES[] = {
+#define PT_WASM_CHECK_TYPE(type, name, c) name,
+PT_WASM_CHECK_TYPES
+#undef PT_WASM_CHECK_TYPE
+};
+
+const char *
+pt_wasm_check_type_get_name(
+  const pt_wasm_check_type_t type
+) {
+  const size_t ofs = MIN(PT_WASM_CHECK_TYPE_LAST, type);
+  return PT_WASM_CHECK_TYPE_NAMES[ofs];
+}
+
+typedef struct {
+  const pt_wasm_module_t * const mod;
+  size_t num_errors;
+  const pt_wasm_check_cbs_t * const cbs;
+  void *cb_data;
+} pt_wasm_check_t;
+
+static void
+pt_wasm_check_fail(
+  pt_wasm_check_t * const check,
+  const pt_wasm_check_type_t type,
+  const size_t id,
+  const char * const text
+) {
+  if (check->cbs && check->cbs->on_error) {
+    check->cbs->on_error(type, id, text, check->cb_data);
+  }
+  check->num_errors++;
+}
+
+#define FAIL_CHECK(check, type, id, text) \
+  pt_wasm_check_fail((check), PT_WASM_CHECK_TYPE_ ## type, (id), (text));
+
+static void
+pt_wasm_check_function_types(
+  pt_wasm_check_t * const check
+) {
+  const pt_wasm_function_type_t * const rows = check->mod->function_types;
+  const size_t num = check->mod->num_function_types;
+
+  for (size_t i = 0; i < num; i++) {
+    if (rows[i].results.len > 1) {
+      FAIL_CHECK(check, FUNCTION_TYPE, i, "too many results");
+    }
+  }
+}
+
+static void
+pt_wasm_check_import_function(
+  pt_wasm_check_t * const check,
+  const size_t id,
+  const pt_wasm_import_t row
+) {
+  if (row.func.id >= check->mod->num_functions) {
+    FAIL_CHECK(check, IMPORT, id, "invalid import function id");
+  }
+}
+
+static void
+pt_wasm_check_import_table(
+  pt_wasm_check_t * const check,
+  const size_t id,
+  const pt_wasm_import_t row
+) {
+  const pt_wasm_limits_t limits = row.mem.limits;
+  if (row.table.elem_type != 0x70) {
+    FAIL_CHECK(check, IMPORT, id, "invalid element type");
+  }
+
+  if (limits.has_max) {
+    if (limits.max < limits.min) {
+      FAIL_CHECK(check, IMPORT, id, "maximum is less than minimum");
+    }
+  }
+}
+
+static void
+pt_wasm_check_import_memory(
+  pt_wasm_check_t * const check,
+  const size_t id,
+  const pt_wasm_import_t row
+) {
+  const uint32_t MAX_SIZE = (1 << 16);
+  const pt_wasm_limits_t limits = row.mem.limits;
+
+  if (limits.min > MAX_SIZE) {
+    FAIL_CHECK(check, IMPORT, id, "minimum is greater than 65536");
+  }
+
+  if (limits.has_max) {
+    if (limits.max < limits.min) {
+      FAIL_CHECK(check, IMPORT, id, "maximum is less than minimum");
+    }
+
+    if (limits.max > MAX_SIZE) {
+      FAIL_CHECK(check, IMPORT, id, "maximum is greater than 65536");
+    }
+  }
+}
+
+static void
+pt_wasm_check_import_global(
+  pt_wasm_check_t * const check,
+  const size_t id,
+  const pt_wasm_import_t row
+) {
+  (void) check;
+  (void) id;
+  (void) row;
+  // TODO: do we need any extra validation here?
+}
+
+static void
+pt_wasm_check_import_invalid(
+  pt_wasm_check_t * const check,
+  const size_t id,
+  const pt_wasm_import_t row
+) {
+  (void) row;
+  FAIL_CHECK(check, IMPORT, id, "invalid import type");
+}
+
+#define PT_WASM_IMPORT_TYPE(type, name, suffix) \
+  case PT_WASM_IMPORT_TYPE_ ## type: \
+    pt_wasm_check_import_ ## suffix(check, i, row); \
+    break;
+
+static void
+pt_wasm_check_imports(
+  pt_wasm_check_t * const check
+) {
+  const pt_wasm_import_t * const rows = check->mod->imports;
+  const size_t num = check->mod->num_imports;
+
+  for (size_t i = 0; i < num; i++) {
+    const pt_wasm_import_t row = rows[i];
+
+    // check import module name
+    if (!pt_wasm_utf8_is_valid(row.module)) {
+      FAIL_CHECK(check, IMPORT, i, "invalid import module name");
+    }
+
+    // check import function name
+    if (!pt_wasm_utf8_is_valid(row.name)) {
+      FAIL_CHECK(check, IMPORT, i, "invalid import function name");
+    }
+
+    switch (row.type) {
+    PT_WASM_IMPORT_TYPES
+    default:
+      pt_wasm_check_import_invalid(check, i, row);
+    }
+  }
+}
+
+#undef PT_WASM_IMPORT_TYPE
+
+static void
+pt_wasm_check_start(
+  pt_wasm_check_t * const check
+) {
+  const pt_wasm_module_t * const mod = check->mod;
+
+  if (!mod->has_start) {
+    // no start function, so no check needed
+    return;
+  }
+
+  // check start function index
+  if (mod->start >= mod->num_functions) {
+    FAIL_CHECK(check, START, 0, "invalid start function index");
+    return;
+  }
+
+  // get/check function type offset
+  const size_t type_id = mod->functions[mod->start].type_id;
+  if (type_id >= mod->num_function_types) {
+    FAIL_CHECK(check, START, 0, "invalid start function type index");
+    return;
+  }
+
+  // get function type
+  const pt_wasm_function_type_t type = mod->function_types[type_id];
+
+  // check length of parameters vector
+  if (type.params.len > 0) {
+    FAIL_CHECK(check, START, 0, "start function must take no parameters");
+  }
+
+  // check length of results vector
+  if (type.results.len > 0) {
+    FAIL_CHECK(check, START, 0, "start function must not return results");
+  }
+}
+
+/**
+ * Count the total number of local entries (parameters and locals)
+ * available to this function.
+ *
+ * Note: Performs no error checking; must be called with a valid
+ * function ID, and the function ID must have a valid type.
+ */
+static inline size_t
+pt_wasm_function_get_max_local(
+  const pt_wasm_module_t * const mod,
+  const size_t fn_id
+) {
+  const pt_wasm_function_t fn = mod->functions[fn_id];
+
+  // start with parameter count
+  size_t sum = mod->function_types[fn.type_id].params.len;
+
+  // append number of locals
+  for (size_t i = 0; i < fn.locals.len; i++) {
+    sum += mod->locals[fn.locals.ofs + i].num;
+  }
+
+  // return result
+  return sum;
+}
+
+static void
+pt_wasm_check_function_local_insts(
+  pt_wasm_check_t * const check,
+  const size_t fn_id
+) {
+  const pt_wasm_module_t * const mod = check->mod;
+  const pt_wasm_function_t fn = mod->functions[fn_id];
+
+  // get maximum local ID
+  const size_t max_local = pt_wasm_function_get_max_local(check->mod, fn_id);
+
+  // check local get/set/tee instructions
+  for (size_t i = 0; i < fn.insts.len; i++) {
+    const pt_wasm_inst_t in = mod->insts[i];
+    if (pt_wasm_op_is_local(in.op) && (in.v_index.id >= max_local)) {
+      FAIL_CHECK(check, FUNCTION, fn_id, "invalid local index");
+    }
+  }
+}
+
+static void
+pt_wasm_check_function_call_insts(
+  pt_wasm_check_t * const check,
+  const size_t fn_id
+) {
+  const pt_wasm_module_t * const mod = check->mod;
+  const pt_wasm_function_t fn = mod->functions[fn_id];
+  const size_t num_functions = mod->num_functions;
+
+  // check call instructions
+  for (size_t i = 0; i < fn.insts.len; i++) {
+    const pt_wasm_inst_t in = mod->insts[i];
+    if ((in.op == PT_WASM_OP_CALL) && (in.v_index.id >= num_functions)) {
+      FAIL_CHECK(check, FUNCTION, fn_id, "invalid function call");
+    }
+  }
+}
+
+static void
+pt_wasm_check_function_global_insts(
+  pt_wasm_check_t * const check,
+  const size_t fn_id
+) {
+  const pt_wasm_module_t * const mod = check->mod;
+  const pt_wasm_function_t fn = mod->functions[fn_id];
+  const size_t num_globals = mod->num_globals;
+
+  // check global get/set instructions
+  for (size_t i = 0; i < fn.insts.len; i++) {
+    const pt_wasm_inst_t in = mod->insts[i];
+    if (pt_wasm_op_is_global(in.op) && (in.v_index.id >= num_globals)) {
+      FAIL_CHECK(check, FUNCTION, fn_id, "invalid global index");
+    }
+  }
+}
+
+typedef enum {
+  PT_WASM_STACK_CHECK_ENTRY_INIT,
+  PT_WASM_STACK_CHECK_ENTRY_FRAME,
+  PT_WASM_STACK_CHECK_ENTRY_VALUE,
+  PT_WASM_STACK_CHECK_ENTRY_TRAP,
+  PT_WASM_STACK_CHECK_ENTRY_LAST,
+} pt_wasm_stack_check_entry_t;
+
+#define E(e_type) PT_WASM_STACK_CHECK_ENTRY_ ## e_type
+
+#define TRAP(msg) do { \
+  FAIL_CHECK(check, FUNCTION, fn_id, msg); \
+  stack[0].entry = E(TRAP); \
+  depth = 1; \
+} while (0)
+
+#define PUSH(e_type, v_type) do { \
+  stack[depth].entry = E(e_type); \
+  stack[depth].value = (v_type); \
+  depth++; \
+  if (depth == PT_WASM_STACK_CHECK_MAX_DEPTH) { \
+    TRAP("stack underflow"); \
+  } \
+} while (0)
+
+#define POP() do { \
+  if (depth) { \
+    depth--; \
+  } else { \
+    TRAP("stack underflow"); \
+  } \
+} while (0)
+
+static void
+pt_wasm_check_function_stack(
+  pt_wasm_check_t * const check,
+  const size_t fn_id
+) {
+  const pt_wasm_module_t * const mod = check->mod;
+  const pt_wasm_function_t fn = mod->functions[fn_id];
+  const pt_wasm_buf_t fn_results = mod->function_types[fn.type_id].results;
+
+  size_t depth = 2;
+  struct {
+    uint8_t entry; // type of entry (init, frame, value, or trap)
+    uint8_t value; // type of value (e.g. i32, i64, etc, or 0x40 for none)
+  } stack[PT_WASM_STACK_CHECK_MAX_DEPTH] = {{
+    .entry = E(INIT),
+  }, {
+    .entry = E(FRAME),
+    .value = (fn_results.len > 0) ? fn_results.ptr[0] : 0x40,
+  }};
+
+  for (size_t i = 0; i < fn.insts.len; i++) {
+    const pt_wasm_inst_t in = mod->insts[fn.insts.ofs + i];
+
+    switch (stack[depth - 1].entry) {
+    case E(TRAP):
+      // do nothing
+      break;
+    case E(FRAME):
+    case E(VALUE):
+      if (in.op == PT_WASM_OP_I32_CONST) {
+        PUSH(VALUE, PT_WASM_VALUE_TYPE_I32);
+        stack[depth].entry = E(VALUE);
+        stack[depth].value = E(VALUE);
+      }
+
+      break;
+    default:
+      TRAP("invalid stack entry type");
+    }
+  }
+}
+
+#undef E
+#undef TRAP
+#undef PUSH
+#undef POP
+
+static void
+pt_wasm_check_function(
+  pt_wasm_check_t * const check,
+  const size_t fn_id
+) {
+  const pt_wasm_module_t * const mod = check->mod;
+  const pt_wasm_function_t fn = mod->functions[fn_id];
+
+  // check function source
+  if (fn.source >= PT_WASM_SOURCE_LAST) {
+    FAIL_CHECK(check, FUNCTION, fn_id, "invalid function source");
+  }
+
+  // get/check function type offset
+  if (fn.type_id >= mod->num_function_types) {
+    FAIL_CHECK(check, FUNCTION, fn_id, "invalid function type index");
+    return;
+  }
+
+  // check local instructions
+  pt_wasm_check_function_local_insts(check, fn_id);
+
+  // check call instructions
+  pt_wasm_check_function_call_insts(check, fn_id);
+
+  // check global instructions
+  pt_wasm_check_function_global_insts(check, fn_id);
+
+  // check stack
+  pt_wasm_check_function_stack(check, fn_id);
+
+  // get function type
+  // TODO: check arity, check expr
+  const pt_wasm_function_type_t type = mod->function_types[fn.type_id];
+  (void) type;
+}
+
+static void
+pt_wasm_check_functions(
+  pt_wasm_check_t * const check
+) {
+  const size_t num = check->mod->num_functions;
+
+  for (size_t i = 0; i < num; i++) {
+    pt_wasm_check_function(check, i);
+  }
+}
+
+size_t
+pt_wasm_check(
+  const pt_wasm_module_t * const mod,
+  const pt_wasm_check_cbs_t * const cbs,
+  void *cb_data
+) {
+  // build check data
+  pt_wasm_check_t check = {
+    .mod = mod,
+    .num_errors = 0,
+    .cbs = cbs,
+    .cb_data = cb_data,
+  };
+
+  // TODO: macro this once everything is implemented
+  pt_wasm_check_function_types(&check);
+  pt_wasm_check_imports(&check);
+  pt_wasm_check_functions(&check);
+  pt_wasm_check_start(&check);
+
+  // return total number of errors
+  return check.num_errors;
 }

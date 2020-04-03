@@ -818,6 +818,34 @@ pt_wasm_module_init(
   void *
 );
 
+#define PT_WASM_CHECK_TYPES \
+  PT_WASM_CHECK_TYPE(FUNCTION_TYPE, "function type", function_types) \
+  PT_WASM_CHECK_TYPE(IMPORT, "import", imports) \
+  PT_WASM_CHECK_TYPE(FUNCTION, "function", functions) \
+  PT_WASM_CHECK_TYPE(TABLE, "table", tables) \
+  PT_WASM_CHECK_TYPE(MEMORY, "memory", memories) \
+  PT_WASM_CHECK_TYPE(GLOBAL, "global", globals) \
+  PT_WASM_CHECK_TYPE(EXPORT, "export", exports) \
+  PT_WASM_CHECK_TYPE(START, "start", start) \
+  PT_WASM_CHECK_TYPE(LAST, "invalid", invalid)
+
+typedef enum {
+#define PT_WASM_CHECK_TYPE(type, b, c) PT_WASM_CHECK_TYPE_ ## type,
+PT_WASM_CHECK_TYPES
+#undef PT_WASM_CHECK_TYPE
+} pt_wasm_check_type_t;
+
+const char *pt_wasm_check_type_get_name(const pt_wasm_check_type_t);
+
+typedef struct {
+  void (*on_error)(
+    const pt_wasm_check_type_t, // check type
+    const size_t, // ID of item that failed
+    const char *, // text of error message
+    void * // callback data
+  );
+} pt_wasm_check_cbs_t;
+
 /* 
  * typedef union {
  *   uint32_t i32;
