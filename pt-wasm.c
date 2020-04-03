@@ -197,7 +197,7 @@ pt_wasm_section_type_get_name(
   return PT_WASM_SECTION_TYPE_NAMES[ofs];
 }
 
-#define PT_WASM_IMPORT_TYPE(a, b) b,
+#define PT_WASM_IMPORT_TYPE(a, b, c) b,
 static const char *PT_WASM_IMPORT_TYPE_NAMES[] = {
 PT_WASM_IMPORT_TYPES
 };

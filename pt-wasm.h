@@ -443,13 +443,13 @@ typedef struct {
 } pt_wasm_global_t;
 
 #define PT_WASM_IMPORT_TYPES \
-  PT_WASM_IMPORT_TYPE(FUNC, "function") \
-  PT_WASM_IMPORT_TYPE(TABLE, "table") \
-  PT_WASM_IMPORT_TYPE(MEM, "memory") \
-  PT_WASM_IMPORT_TYPE(GLOBAL, "global") \
-  PT_WASM_IMPORT_TYPE(LAST, "unknown import desc")
+  PT_WASM_IMPORT_TYPE(FUNC, "function", function) \
+  PT_WASM_IMPORT_TYPE(TABLE, "table", table) \
+  PT_WASM_IMPORT_TYPE(MEM, "memory", memory) \
+  PT_WASM_IMPORT_TYPE(GLOBAL, "global", global) \
+  PT_WASM_IMPORT_TYPE(LAST, "unknown import desc", invalid)
 
-#define PT_WASM_IMPORT_TYPE(a, b) PT_WASM_IMPORT_TYPE_##a,
+#define PT_WASM_IMPORT_TYPE(a, b, c) PT_WASM_IMPORT_TYPE_##a,
 typedef enum {
 PT_WASM_IMPORT_TYPES
 } pt_wasm_import_type_t;
