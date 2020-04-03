@@ -870,6 +870,27 @@ pt_wasm_op_is_control(
 }
 
 static inline bool
+pt_wasm_op_is_local(
+  const uint8_t byte
+) {
+  return (
+    (byte == PT_WASM_OP_LOCAL_GET) ||
+    (byte == PT_WASM_OP_LOCAL_SET) ||
+    (byte == PT_WASM_OP_LOCAL_TEE)
+  );
+}
+
+static inline bool
+pt_wasm_op_is_global(
+  const uint8_t byte
+) {
+  return (
+    (byte == PT_WASM_OP_GLOBAL_GET) ||
+    (byte == PT_WASM_OP_GLOBAL_SET)
+  );
+}
+
+static inline bool
 pt_wasm_op_is_const(
   const pt_wasm_op_t op
 ) {
