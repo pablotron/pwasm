@@ -67,7 +67,20 @@ typedef struct {
   pt_wasm_limits_t limits;
 } pt_wasm_table_t;
 
-typedef uint32_t pt_wasm_value_type_t;
+#define PT_WASM_VALUE_TYPE_DEFS \
+  PT_WASM_VALUE_TYPE(I32, "i32") \
+  PT_WASM_VALUE_TYPE(I64, "i64") \
+  PT_WASM_VALUE_TYPE(F32, "f32") \
+  PT_WASM_VALUE_TYPE(F64, "f64") \
+  PT_WASM_VALUE_TYPE(LAST, "unknown type")
+
+typedef enum {
+#define PT_WASM_VALUE_TYPE(a, b) PT_WASM_VALUE_TYPE_ ## a,
+PT_WASM_VALUE_TYPE_DEFS
+#undef PT_WASM_VALUE_TYPE
+} pt_wasm_value_type_t;
+
+// typedef uint32_t pt_wasm_value_type_t;
 
 const char *pt_wasm_value_type_get_name(const pt_wasm_value_type_t);
 

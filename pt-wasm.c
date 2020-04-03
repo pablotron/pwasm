@@ -233,11 +233,9 @@ pt_wasm_is_valid_export_type(
 }
 
 static const char *PT_WASM_VALUE_TYPE_NAMES[] = {
-  "i32",
-  "i64",
-  "f32",
-  "f64",
-  "unknown type",
+#define PT_WASM_VALUE_TYPE(a, b) b,
+PT_WASM_VALUE_TYPE_DEFS
+#undef PT_WASM_VALUE_TYPE
 };
 
 /**
@@ -256,7 +254,7 @@ const char *
 pt_wasm_value_type_get_name(
   const pt_wasm_value_type_t v
 ) {
-  const size_t ofs = MIN(0x7F - (v & 0x7F), LEN(PT_WASM_VALUE_TYPE_NAMES));
+  const size_t ofs = MIN(0x7F - (v & 0x7F), PT_WASM_VALUE_TYPE_LAST);
   return PT_WASM_VALUE_TYPE_NAMES[ofs];
 }
 
