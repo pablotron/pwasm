@@ -51,6 +51,90 @@ typedef struct {
 #define D(fmt, ...)
 #endif /* PT_WASM_DEBUG */
 
+static inline size_t
+pt_wasm_utf8_get_codepoint_size(
+  const uint8_t c
+) {
+  return (
+    (((c & 0x80) == 0x00) ? 1 : 0) |
+    (((c & 0xE0) == 0xC0) ? 2 : 0) |
+    (((c & 0xF0) == 0xE0) ? 3 : 0) |
+    (((c & 0xF8) == 0xF0) ? 4 : 0)
+  );
+}
+
+// is continuing byte
+#define IS_CB(b) (((b) & 0xC0) == 0x80)
+
+// cast, mask, and shift byte
+#define CMS(val, mask, shift) (((uint32_t) ((val) & (mask))) << (shift))
+
+static inline uint32_t
+pt_wasm_utf8_get_codepoint(
+  const uint8_t * const s,
+  const size_t len
+) {
+  if (len == 1) {
+    return s[0];
+  } else if ((len == 2) && IS_CB(s[1])) {
+    return (
+      CMS(s[0], 0x1F, 6) |
+      CMS(s[1], 0x3F, 0)
+    );
+  } else if ((len == 3) && IS_CB(s[1]) && IS_CB(s[2])) {
+    return (
+      CMS(s[0], 0x0F, 12) |
+      CMS(s[1], 0x3F,  6) |
+      CMS(s[2], 0x3F,  0)
+    );
+  } else if ((len == 4) && IS_CB(s[1]) && IS_CB(s[2]) && IS_CB(s[3])) {
+    return (
+      CMS(s[0], 0x03, 18) |
+      CMS(s[1], 0x3F, 12) |
+      CMS(s[2], 0x3F,  6) |
+      CMS(s[3], 0x3F,  0)
+    );
+  } else {
+    // return invalid codepoint
+    return 0xFFFFFFFF;
+  }
+}
+#undef IS_CB
+#undef BMS
+
+static inline bool
+pt_wasm_utf8_is_valid(
+  const pt_wasm_buf_t src
+) {
+  for (size_t i = 0; i < src.len;) {
+    // get codepoint length, in bytes
+    const size_t len = pt_wasm_utf8_get_codepoint_size(src.ptr[i]);
+
+    if (!len) {
+      // invalid codepoint, return failure
+      return false;
+    }
+
+    if (i + len > src.len) {
+      // truncated codepoint, return failure
+      return false;
+    }
+
+    // decode/check codepoint
+    const uint32_t code = pt_wasm_utf8_get_codepoint(src.ptr + i, len);
+    if (code > 0x1FFFFF) {
+      // invalid codepoint, return failure
+      return false;
+    }
+
+    // skip decoded bytes
+    i += len;
+  }
+
+  // return success
+  return true;
+}
+
 #define DEF_VEC_PARSE_FN(FN_NAME, TEXT, EL_TYPE, CBS_TYPE, PARSE_FN, FLUSH_CB) \
 static size_t FN_NAME ( \
   const pt_wasm_buf_t src, \
