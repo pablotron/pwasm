@@ -4,7 +4,7 @@
 #include <string.h> // strlen()
 #include <stdio.h> // fopen()
 #include <err.h> // err()
-#include "pt-wasm.h"
+#include "pwasm.h"
 #include "mod-tests.h"
 #include "func-tests.h"
 
@@ -97,7 +97,7 @@ read_file(
 static void
 dump_limits(
   FILE * fh,
-  const pt_wasm_limits_t * const lim
+  const pwasm_limits_t * const lim
 ) {
   if (lim->has_max) {
     fprintf(fh, "(min = %u, max = %u)", lim->min, lim->max);
@@ -109,7 +109,7 @@ dump_limits(
 static void
 dump_buf(
   FILE * fh,
-  const pt_wasm_buf_t buf
+  const pwasm_buf_t buf
 ) {
   // print header
   fputs("[", fh);
@@ -126,11 +126,11 @@ dump_buf(
 static void
 dump_global(
   FILE * fh,
-  const pt_wasm_global_t * const g
+  const pwasm_global_t * const g
 ) {
   // print global attributes
   fprintf(fh, "{type: \"%s\", mut: %c, expr: ",
-    pt_wasm_value_type_get_name(g->type.type),
+    pwasm_value_type_get_name(g->type.type),
     g->type.mutable ? 't' : 'f'
   );
 
@@ -143,7 +143,7 @@ dump_global(
 
 static void
 parse_mod_test_on_globals(
-  const pt_wasm_global_t * const gs,
+  const pwasm_global_t * const gs,
   const size_t num_gs,
   void * const data
 ) {
@@ -158,7 +158,7 @@ parse_mod_test_on_globals(
 }
 static void
 parse_mod_test_on_memories(
-  const pt_wasm_limits_t * const mems,
+  const pwasm_limits_t * const mems,
   const size_t num_mems,
   void * const data
 ) {
@@ -174,7 +174,7 @@ parse_mod_test_on_memories(
 
 static void
 parse_mod_test_on_tables(
-  const pt_wasm_table_t * const tbls,
+  const pwasm_table_t * const tbls,
   const size_t num_tbls,
   void * const data
 ) {
@@ -206,28 +206,28 @@ parse_mod_test_on_functions(
 static void
 dump_import(
   FILE * fh,
-  const pt_wasm_import_t * const im
+  const pwasm_import_t * const im
 ) {
   fputs("\"", fh);
   fwrite(im->module.ptr, im->module.len, 1, fh);
   fputs(".", fh);
   fwrite(im->name.ptr, im->name.len, 1, fh);
-  fprintf(fh, "\" (%s): ", pt_wasm_import_type_get_name(im->type));
+  fprintf(fh, "\" (%s): ", pwasm_import_type_get_name(im->type));
 
   switch (im->type) {
-  case PT_WASM_IMPORT_TYPE_FUNC:
+  case PWASM_IMPORT_TYPE_FUNC:
     fprintf(fh, "id = %u", im->func.id);
     break;
-  case PT_WASM_IMPORT_TYPE_TABLE:
+  case PWASM_IMPORT_TYPE_TABLE:
     fprintf(fh, "elem_type = %u, ", im->table.elem_type);
     dump_limits(fh, &(im->table.limits));
     break;
-  case PT_WASM_IMPORT_TYPE_MEM:
+  case PWASM_IMPORT_TYPE_MEM:
     dump_limits(fh, &(im->mem.limits));
     break;
-  case PT_WASM_IMPORT_TYPE_GLOBAL:
+  case PWASM_IMPORT_TYPE_GLOBAL:
     {
-      const char * const name = pt_wasm_value_type_get_name(im->global.type);
+      const char * const name = pwasm_value_type_get_name(im->global.type);
       const char mut = im->global.mutable ? 't' : 'f';
       fprintf(fh, "type = %s, mutable = %c", name, mut);
     }
@@ -241,7 +241,7 @@ dump_import(
 
 static void
 parse_mod_test_on_imports(
-  const pt_wasm_import_t * const imports,
+  const pwasm_import_t * const imports,
   const size_t num_imports,
   void * const data
 ) {
@@ -256,7 +256,7 @@ parse_mod_test_on_imports(
 static void
 dump_custom_section(
   FILE * fh,
-  const pt_wasm_custom_section_t * const s
+  const pwasm_custom_section_t * const s
 ) {
   fprintf(fh, "name(%zu) = \"", s->name.len);
   fwrite(s->name.ptr, s->name.len, 1, fh);
@@ -269,7 +269,7 @@ dump_custom_section(
 
 static void
 parse_mod_test_on_custom_section(
-  const pt_wasm_custom_section_t * const s,
+  const pwasm_custom_section_t * const s,
   void * const data
 ) {
   (void) data;
@@ -280,9 +280,9 @@ parse_mod_test_on_custom_section(
 static void
 dump_export(
   FILE * fh,
-  const pt_wasm_export_t * const e
+  const pwasm_export_t * const e
 ) {
-  const char * const type_name = pt_wasm_export_type_get_name(e->type);
+  const char * const type_name = pwasm_export_type_get_name(e->type);
   fputs("{name: \"", fh);
   fwrite(e->name.ptr, e->name.len, 1, fh);
   fprintf(fh, "\", type: %s, id: %u}", type_name, e->id);
@@ -290,7 +290,7 @@ dump_export(
 
 static void
 parse_mod_test_on_exports(
-  const pt_wasm_export_t * const exports,
+  const pwasm_export_t * const exports,
   const size_t num_exports,
   void * const data
 ) {
@@ -306,7 +306,7 @@ parse_mod_test_on_exports(
 
 static void
 parse_mod_test_on_function_codes(
-  const pt_wasm_buf_t * const fns,
+  const pwasm_buf_t * const fns,
   const size_t num_fns,
   void * const data
 ) {
@@ -320,7 +320,7 @@ parse_mod_test_on_function_codes(
 
 static void
 parse_mod_test_on_data_segments(
-  const pt_wasm_data_segment_t * const ds,
+  const pwasm_data_segment_t * const ds,
   const size_t len,
   void * const data
 ) {
@@ -342,7 +342,7 @@ parse_mod_test_on_error(const char * const text, void * const data) {
   warnx("parse mod test = \"%s\", error = \"%s\"", test->name, text);
 }
 
-static const pt_wasm_parse_module_cbs_t
+static const pwasm_parse_module_cbs_t
 PARSE_MOD_TEST_CBS = {
   .on_custom_section  = parse_mod_test_on_custom_section,
   .on_imports         = parse_mod_test_on_imports,
@@ -366,7 +366,7 @@ run_parse_mod_tests(void) {
     const test_t * const test = suite.tests + i;
 
     // run test, get result
-    const bool r = pt_wasm_parse_module(
+    const bool r = pwasm_parse_module(
       (suite.data + test->ofs),
       test->len,
       test->want ? &PARSE_MOD_TEST_CBS : NULL,
@@ -390,14 +390,14 @@ run_parse_mod_tests(void) {
 static void
 dump_inst(
   FILE *fh,
-  const pt_wasm_inst_t in
+  const pwasm_inst_t in
 ) {
-  fprintf(fh, "(%s)", pt_wasm_op_get_name(in.op));
+  fprintf(fh, "(%s)", pwasm_op_get_name(in.op));
 }
 
 static void
 parse_func_test_on_insts(
-  const pt_wasm_inst_t * const ins,
+  const pwasm_inst_t * const ins,
   const size_t len,
   void * const data
 ) {
@@ -417,7 +417,7 @@ parse_func_test_on_error(const char * const text, void * const data) {
   warnx("parse func test = \"%s\", error = \"%s\"", test->name, text);
 }
 
-static const pt_wasm_parse_function_cbs_t
+static const pwasm_parse_function_cbs_t
 PARSE_FUNC_TEST_CBS = {
   .on_insts = parse_func_test_on_insts,
   .on_error = parse_func_test_on_error,
@@ -432,7 +432,7 @@ run_parse_func_tests(void) {
     // get test, run it, and get result
     const test_t * const test = suite.tests + i;
 
-    const pt_wasm_buf_t buf = {
+    const pwasm_buf_t buf = {
       .ptr = suite.data + test->ofs,
       .len = test->len,
     };
@@ -442,7 +442,7 @@ run_parse_func_tests(void) {
     fprintf(stderr, "\n");
 
     // run test, get result
-    const bool r = pt_wasm_parse_function(
+    const bool r = pwasm_parse_function(
       buf,
       test->want ? &PARSE_FUNC_TEST_CBS : NULL,
       (void*) test
@@ -466,7 +466,7 @@ static void
 dump_mod_sizes(
   FILE * fh,
   const char * const test_name,
-  const pt_wasm_module_sizes_t * const sizes
+  const pwasm_module_sizes_t * const sizes
 ) {
   fprintf(fh,
     "\"%s\" = {\n"
@@ -511,21 +511,21 @@ dump_mod_sizes(
     sizes->num_function_results,
     sizes->num_function_types,
 
-    PT_WASM_IMPORT_TYPE_FUNC,
-    sizes->num_import_types[PT_WASM_IMPORT_TYPE_FUNC],
-    pt_wasm_import_type_get_name(PT_WASM_IMPORT_TYPE_FUNC),
+    PWASM_IMPORT_TYPE_FUNC,
+    sizes->num_import_types[PWASM_IMPORT_TYPE_FUNC],
+    pwasm_import_type_get_name(PWASM_IMPORT_TYPE_FUNC),
 
-    PT_WASM_IMPORT_TYPE_TABLE,
-    sizes->num_import_types[PT_WASM_IMPORT_TYPE_TABLE],
-    pt_wasm_import_type_get_name(PT_WASM_IMPORT_TYPE_TABLE),
+    PWASM_IMPORT_TYPE_TABLE,
+    sizes->num_import_types[PWASM_IMPORT_TYPE_TABLE],
+    pwasm_import_type_get_name(PWASM_IMPORT_TYPE_TABLE),
 
-    PT_WASM_IMPORT_TYPE_MEM,
-    sizes->num_import_types[PT_WASM_IMPORT_TYPE_MEM],
-    pt_wasm_import_type_get_name(PT_WASM_IMPORT_TYPE_MEM),
+    PWASM_IMPORT_TYPE_MEM,
+    sizes->num_import_types[PWASM_IMPORT_TYPE_MEM],
+    pwasm_import_type_get_name(PWASM_IMPORT_TYPE_MEM),
 
-    PT_WASM_IMPORT_TYPE_GLOBAL,
-    sizes->num_import_types[PT_WASM_IMPORT_TYPE_GLOBAL],
-    pt_wasm_import_type_get_name(PT_WASM_IMPORT_TYPE_GLOBAL),
+    PWASM_IMPORT_TYPE_GLOBAL,
+    sizes->num_import_types[PWASM_IMPORT_TYPE_GLOBAL],
+    pwasm_import_type_get_name(PWASM_IMPORT_TYPE_GLOBAL),
 
     sizes->num_imports,
     sizes->num_functions,
@@ -555,7 +555,7 @@ get_mod_sizes_test_on_error(
   warnx("get mod sizes test = \"%s\", error = \"%s\"", test->name, text);
 }
 
-static const pt_wasm_get_module_sizes_cbs_t
+static const pwasm_get_module_sizes_cbs_t
 GET_MOD_SIZES_TEST_CBS = {
   .on_error = get_mod_sizes_test_on_error,
 };
@@ -570,8 +570,8 @@ run_get_mod_sizes_tests(void) {
     const test_t * const test = suite.tests + i;
 
     // run test, get result
-    pt_wasm_module_sizes_t sizes;
-    const bool r = pt_wasm_get_module_sizes(
+    pwasm_module_sizes_t sizes;
+    const bool r = pwasm_get_module_sizes(
       &sizes,
       (suite.data + test->ofs),
       test->len,
