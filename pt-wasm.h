@@ -13,6 +13,11 @@ typedef struct {
   size_t len;
 } pt_wasm_buf_t;
 
+typedef struct {
+  size_t ofs;
+  size_t len;
+} pt_wasm_slice_t;
+
 #define PT_WASM_SECTION_TYPES \
   PT_WASM_SECTION_TYPE(CUSTOM, custom) \
   PT_WASM_SECTION_TYPE(TYPE, type) \
@@ -68,14 +73,14 @@ typedef struct {
 } pt_wasm_table_t;
 
 #define PT_WASM_VALUE_TYPE_DEFS \
-  PT_WASM_VALUE_TYPE(I32, "i32") \
-  PT_WASM_VALUE_TYPE(I64, "i64") \
-  PT_WASM_VALUE_TYPE(F32, "f32") \
-  PT_WASM_VALUE_TYPE(F64, "f64") \
-  PT_WASM_VALUE_TYPE(LAST, "unknown type")
+  PT_WASM_VALUE_TYPE(0x7F, I32, "i32") \
+  PT_WASM_VALUE_TYPE(0x7D, I64, "i64") \
+  PT_WASM_VALUE_TYPE(0x7E, F32, "f32") \
+  PT_WASM_VALUE_TYPE(0x7C, F64, "f64") \
+  PT_WASM_VALUE_TYPE(0x00, LAST, "unknown type")
 
 typedef enum {
-#define PT_WASM_VALUE_TYPE(a, b) PT_WASM_VALUE_TYPE_ ## a,
+#define PT_WASM_VALUE_TYPE(a, b, c) PT_WASM_VALUE_TYPE_ ## b = (a),
 PT_WASM_VALUE_TYPE_DEFS
 #undef PT_WASM_VALUE_TYPE
 } pt_wasm_value_type_t;
@@ -367,10 +372,10 @@ const char *pt_wasm_imm_get_name(const pt_wasm_imm_t);
   /* 0xFE */ PT_WASM_OP_RESERVED(_FE, "fe") \
   /* 0xFF */ PT_WASM_OP_RESERVED(_FF, "ff")
 
-#define PT_WASM_OP(a, b, c) PT_WASM_OP_##a,
-#define PT_WASM_OP_CONST(a, b, c) PT_WASM_OP_##a,
-#define PT_WASM_OP_CONTROL(a, b, c) PT_WASM_OP##a,
-#define PT_WASM_OP_RESERVED(a, b) PT_WASM_OP_RESERVED##a,
+#define PT_WASM_OP(a, b, c) PT_WASM_OP_ ## a,
+#define PT_WASM_OP_CONST(a, b, c) PT_WASM_OP_ ## a,
+#define PT_WASM_OP_CONTROL(a, b, c) PT_WASM_OP_ ## a,
+#define PT_WASM_OP_RESERVED(a, b) PT_WASM_OP_RESERVED ## a,
 typedef enum {
 PT_WASM_OP_DEFS
 } pt_wasm_op_t;
@@ -396,7 +401,10 @@ typedef struct {
 
     /* br_table */
     struct {
-      pt_wasm_buf_t labels;
+      union {
+        pt_wasm_buf_t buf;
+        pt_wasm_slice_t slice;
+      } labels;
     } v_br_table;
 
     /* br, br_if, call, call_indirect, local.{get,set,tee}, global.{get,set} */
@@ -582,6 +590,9 @@ typedef struct {
 
   // number of instructions
   size_t num_insts;
+
+  // number of br_table labels
+  size_t num_labels;
 } pt_wasm_function_sizes_t;
 
 /**
@@ -651,6 +662,10 @@ typedef struct {
   // total number of instructions across all function bodies
   size_t num_function_insts;
 
+  // total number of labels in br_table instructions across all
+  // function bodies
+  size_t num_labels;
+
   // total number of function bodies
   size_t num_function_codes;
 
@@ -676,11 +691,6 @@ _Bool pt_wasm_get_module_sizes(
   const pt_wasm_get_module_sizes_cbs_t * const cbs,
   void * const cb_data
 );
-
-typedef struct {
-  size_t ofs;
-  size_t len;
-} pt_wasm_slice_t;
 
 typedef enum {
   PT_WASM_SOURCE_IMPORT, // imported function/global
@@ -755,6 +765,9 @@ typedef struct {
 
   pt_wasm_inst_t * const insts;
   const size_t num_insts;
+
+  uint32_t * const labels;
+  size_t num_labels;
 
   pt_wasm_function_t * const functions;
   const size_t num_functions;

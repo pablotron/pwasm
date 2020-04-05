@@ -235,7 +235,7 @@ pt_wasm_is_valid_export_type(
 }
 
 static const char *PT_WASM_VALUE_TYPE_NAMES[] = {
-#define PT_WASM_VALUE_TYPE(a, b) b,
+#define PT_WASM_VALUE_TYPE(a, b, c) c,
 PT_WASM_VALUE_TYPE_DEFS
 #undef PT_WASM_VALUE_TYPE
 };
@@ -256,7 +256,8 @@ const char *
 pt_wasm_value_type_get_name(
   const pt_wasm_value_type_t v
 ) {
-  const size_t ofs = MIN(0x7F - (v & 0x7F), PT_WASM_VALUE_TYPE_LAST);
+  const size_t last_ofs = LEN(PT_WASM_VALUE_TYPE_NAMES) - 1;
+  const size_t ofs = ((v >= 0x7C) && (v <= 0x7F)) ? (0x7F - v) : last_ofs;
   return PT_WASM_VALUE_TYPE_NAMES[ofs];
 }
 
@@ -505,7 +506,7 @@ typedef struct {
   void (*on_error)(const char *, void *);
 } pt_wasm_parse_u32s_cbs_t;
 
-static bool
+static size_t
 pt_wasm_parse_u32s(
   const pt_wasm_buf_t src,
   const pt_wasm_parse_u32s_cbs_t * const cbs,
@@ -563,7 +564,120 @@ pt_wasm_parse_u32s(
   }
 
   // return success
-  return true;
+  return ofs;
+}
+
+typedef struct {
+  void (*on_count)(const uint32_t, void *);
+  void (*on_labels)(const uint32_t *, const size_t, void *);
+  void (*on_default)(const uint32_t, void *);
+  void (*on_error)(const char *, void *);
+} pt_wasm_parse_br_table_labels_cbs_t;
+
+static size_t
+pt_wasm_parse_br_table_labels(
+  const pt_wasm_buf_t src,
+  const pt_wasm_parse_br_table_labels_cbs_t * const cbs,
+  void *cb_data
+) {
+  size_t ofs = 0;
+
+  // get count, check for error
+  uint32_t num;
+  const size_t n_len = pt_wasm_decode_u32(&num, src.ptr, src.len);
+  if (!n_len) {
+    FAIL("br_table: bad label vector count");
+  }
+
+  if (cbs && cbs->on_count) {
+    cbs->on_count(num, cb_data);
+  }
+
+  // increment offset
+  ofs += n_len;
+
+  uint32_t vals[PT_WASM_BATCH_SIZE];
+
+  size_t vals_ofs = 0;
+  for (size_t i = 0; i < num; i++) {
+    if (ofs > src.len) {
+      FAIL("br_table: label vector buffer overflow");
+    }
+
+    // decode id, check for error
+    const size_t len = pt_wasm_decode_u32(vals + vals_ofs, src.ptr + ofs, src.len - ofs);
+    if (!len) {
+      FAIL("br_table: invalid label");
+    }
+
+    // increment vals offset
+    vals_ofs++;
+    if (vals_ofs == (LEN(vals) - 1)) {
+      if (cbs && cbs->on_labels) {
+        // flush batch
+        cbs->on_labels(vals, PT_WASM_BATCH_SIZE, cb_data);
+      }
+
+      // reset offset
+      vals_ofs = 0;
+    }
+
+    // increment offset
+    ofs += len;
+  }
+
+  if ((vals_ofs > 0) && cbs && cbs->on_labels) {
+    // flush remaining values
+    cbs->on_labels(vals, vals_ofs, cb_data);
+  }
+
+  // get default label, check for error
+  uint32_t default_label;
+  const size_t d_len = pt_wasm_decode_u32(&default_label, src.ptr, src.len);
+  if (!d_len) {
+    FAIL("br_table: bad default label");
+  }
+
+  if (cbs && cbs->on_default) {
+    cbs->on_default(default_label, cb_data);
+  }
+
+  // increment offset
+  ofs += d_len;
+
+
+  // return success
+  return ofs;
+}
+
+static void
+pt_wasm_count_br_table_labels_on_count(
+  const uint32_t count,
+  void *cb_data
+) {
+  uint32_t * const ret = cb_data;
+  *ret = count + 1;
+}
+
+static const pt_wasm_parse_br_table_labels_cbs_t
+PT_WASM_COUNT_BR_TABLE_LABELS_CBS = {
+  .on_count = pt_wasm_count_br_table_labels_on_count,
+};
+
+/**
+ * Count number of labels in a buffer containing the labels for a
+ * br_table instruction.
+ *
+ * Returns 0 on error.
+ */
+static size_t
+pt_wasm_count_br_table_labels(
+  const pt_wasm_buf_t src
+) {
+  uint32_t count = 0;
+
+  const size_t len = pt_wasm_parse_br_table_labels(src, &PT_WASM_COUNT_BR_TABLE_LABELS_CBS, &count);
+  return (len > 0) ? count : 0;
 }
 
 static bool
@@ -899,6 +1013,50 @@ pt_wasm_op_is_const(
   return PT_WASM_OPS[op].is_const;
 }
 
+static const size_t
+PT_WASM_OP_NUM_BITS[] = {
+  // loads
+  32, // i32.load
+  64, // i64.load
+  32, // F32.LOAD
+  64, // F64.LOAD
+   8, // i32.load8_s
+   8, // i32.load8_u
+  16, // i32.load16_s
+  16, // i32.load16_u
+   8, // i64.load8_s
+   8, // i64.load8_u
+  16, // i64.load16_s
+  16, // i64.load16_u
+  32, // i64.load32_s
+  32, // i64.load32_u
+
+  // stores
+  32, // i32.store
+  64, // i64.store
+  32, // f32.store
+  64, // f64.store
+   8, // i32.store8
+  16, // i32.store16
+   8, // i64.store8
+  16, // i64.store16
+  32, // i64.store32
+
+   0, // sentinel
+};
+
+/**
+ * Get the number of bits of the target for the given instruction.
+ */
+static inline uint32_t
+pt_wasm_op_get_num_bits(
+  const pt_wasm_op_t op
+) {
+  const size_t max_ofs = LEN(PT_WASM_OP_NUM_BITS) - 1;
+  const size_t ofs = MIN(op - PT_WASM_OP_I32_LOAD, max_ofs);
+  return PT_WASM_OP_NUM_BITS[ofs];
+}
+
 /**
  * Parse inst into +dst+ from buffer +src+ of length +src_len+.
  *
@@ -948,6 +1106,22 @@ pt_wasm_parse_inst(
       // save result type, increment length
       in.v_block.type = type;
       len += 1;
+    }
+
+    break;
+  case PT_WASM_IMM_BR_TABLE:
+    {
+      // parse labels immediate, check for error
+      const pt_wasm_buf_t tmp = { src.ptr + 1, src.len - 1 };
+      const size_t labels_len = pt_wasm_parse_br_table_labels(tmp, NULL, NULL);
+      if (!labels_len) {
+        INST_FAIL("bad br_table labels immediate");
+      }
+
+      // save labels buffer, increment length
+      in.v_br_table.labels.buf.ptr = src.ptr + 1;
+      in.v_br_table.labels.buf.len = labels_len;
+      len += labels_len;
     }
 
     break;
@@ -2261,6 +2435,13 @@ pt_wasm_get_function_sizes_on_insts(
   pt_wasm_get_function_sizes_t *data = cb_data;
   (void) rows;
   data->sizes.num_insts += num;
+
+  for (size_t i = 0; i < num; i++) {
+    if (rows[i].op == PT_WASM_OP_BR_TABLE) {
+      const pt_wasm_buf_t buf = rows[i].v_br_table.labels.buf;
+      data->sizes.num_labels += pt_wasm_count_br_table_labels(buf);
+    }
+  }
 }
 
 static void
@@ -2399,6 +2580,7 @@ pt_wasm_get_module_sizes_on_function_codes(
       return;
     }
 
+    data->sizes.num_labels += sizes.num_labels;
     data->sizes.num_locals += sizes.num_locals;
     data->sizes.num_function_insts += sizes.num_insts;
     data->sizes.num_insts += sizes.num_insts;
@@ -2589,6 +2771,9 @@ pt_wasm_module_alloc(
     // data segments
     sizeof(pt_wasm_module_data_segment_t) * sizes->num_data_segments +
 
+    // labels in br_table instructions
+    sizeof(uint32_t) * sizes->num_labels +
+
     // sentinel
     0
   );
@@ -2754,6 +2939,24 @@ pt_wasm_module_alloc(
       sizeof(pt_wasm_module_element_t) * sizes->num_elements
     )),
     .num_data_segments = sizes->num_data_segments,
+
+    // br_table instruction labels
+    .labels = (uint32_t*) (mem + (
+      sizeof(pt_wasm_custom_section_t) * sizes->num_custom_sections +
+      sizeof(pt_wasm_function_type_t) * sizes->num_function_types +
+      sizeof(pt_wasm_import_t) * sizes->num_imports +
+      sizeof(pt_wasm_local_t) * sizes->num_locals +
+      sizeof(pt_wasm_inst_t) * sizes->num_insts +
+      sizeof(pt_wasm_function_t) * sizes->num_functions +
+      sizeof(pt_wasm_table_t) * sizes->num_tables +
+      sizeof(pt_wasm_limits_t) * sizes->num_memories +
+      sizeof(pt_wasm_module_global_t) * sizes->num_globals +
+      sizeof(pt_wasm_export_t) * sizes->num_exports +
+      sizeof(uint32_t) * sizes->num_element_func_ids +
+      sizeof(pt_wasm_module_element_t) * sizes->num_elements +
+      sizeof(pt_wasm_module_data_segment_t) * sizes->num_data_segments
+    )),
+    .num_labels = sizes->num_labels,
   };
 
   if (ret) {
@@ -3346,6 +3549,87 @@ pt_wasm_module_add_code_on_locals(
   init_data->mod->functions[data->ofs].locals.len += num;
 }
 
+typedef struct {
+  pt_wasm_module_t * const mod;
+  pt_wasm_inst_t * const inst;
+} pt_wasm_module_add_br_table_t;
+
+static void
+pt_wasm_module_add_br_table_on_count(
+  const uint32_t count,
+  void *cb_data
+) {
+  pt_wasm_module_add_br_table_t * const data = cb_data;
+  data->inst->v_br_table.labels.slice.ofs = data->mod->num_labels;
+  data->inst->v_br_table.labels.slice.len = count;
+}
+
+static void
+pt_wasm_module_add_br_table_on_labels(
+  const uint32_t * const labels,
+  const size_t num,
+  void *cb_data
+) {
+  pt_wasm_module_add_br_table_t * const data = cb_data;
+  uint32_t * const dst = data->mod->labels + data->mod->num_labels;
+  const size_t num_bytes = sizeof(uint32_t) * num;
+
+  memcpy(dst, labels, num_bytes);
+  data->mod->num_labels += num;
+}
+
+static void
+pt_wasm_module_add_br_table_on_default(
+  const uint32_t val,
+  void *cb_data
+) {
+  pt_wasm_module_add_br_table_t * const data = cb_data;
+  data->mod->labels[data->mod->num_labels++] = val;
+  data->inst->v_br_table.labels.slice.len++;
+}
+
+static const pt_wasm_parse_br_table_labels_cbs_t
+PT_WASM_MODULE_ADD_BR_TABLE_CBS = {
+  .on_count   = pt_wasm_module_add_br_table_on_count,
+  .on_labels  = pt_wasm_module_add_br_table_on_labels,
+  .on_default = pt_wasm_module_add_br_table_on_default,
+  // FIXME: need to handle errors
+  // .on_error   = pt_wasm_module_br_table_on_error,
+};
+
+static bool
+pt_wasm_module_add_br_table(
+  pt_wasm_module_t * const mod,
+  pt_wasm_inst_t * const inst
+) {
+  const pt_wasm_buf_t buf = inst->v_br_table.labels.buf;
+  pt_wasm_module_add_br_table_t data = {
+    .mod  = mod,
+    .inst = inst,
+  };
+
+  // add labels, check for error
+  const size_t num_bytes = pt_wasm_parse_br_table_labels(
+    buf,
+    &PT_WASM_MODULE_ADD_BR_TABLE_CBS,
+    &data
+  );
+
+  // return result
+  return num_bytes > 0;
+}
+
+static void
+pt_wasm_module_add_code_on_error(
+  const char * const text,
+  void *cb_data
+) {
+  pt_wasm_module_add_code_t *data = cb_data;
+  pt_wasm_module_init_t * const init_data = data->init_data;
+  data->success = false;
+  pt_wasm_module_init_on_error(text, init_data);
+}
+
 static void
 pt_wasm_module_add_code_on_insts(
   const pt_wasm_inst_t * const rows,
@@ -3363,26 +3647,24 @@ pt_wasm_module_add_code_on_insts(
   memcpy(dst, rows, num_bytes);
   init_data->sizes.num_insts += num;
 
+  for (size_t i = 0; i < num; i++) {
+    if (dst[i].op == PT_WASM_OP_BR_TABLE) {
+      if (!pt_wasm_module_add_br_table(init_data->mod, dst + i)) {
+        pt_wasm_module_add_code_on_error("invalid br_table labels", cb_data);
+        return;
+      }
+    }
+  }
+
   // update function insts slice length
   init_data->mod->functions[data->ofs].insts.len += num;
 }
 
-static void
-pt_wasm_module_add_code_on_error(
-  const char * const text,
-  void *cb_data
-) {
-  pt_wasm_module_add_code_t *data = cb_data;
-  pt_wasm_module_init_t * const init_data = data->init_data;
-  data->success = false;
-  pt_wasm_module_init_on_error(text, init_data);
-}
-
 static const pt_wasm_parse_function_cbs_t
 PT_WASM_MODULE_ADD_CODE_CBS = {
+  .on_error  = pt_wasm_module_add_code_on_error,
   .on_locals = pt_wasm_module_add_code_on_locals,
   .on_insts  = pt_wasm_module_add_code_on_insts,
-  .on_error  = pt_wasm_module_add_code_on_error,
 };
 
 bool
@@ -3669,6 +3951,56 @@ pt_wasm_check_start(
     FAIL_CHECK(check, START, 0, "start function must not return results");
   }
 }
+/**
+ * Get the type of the Nth local.
+ *
+ * Note: Must be called with a valid function ID, and the function ID
+ * must have a valid type.
+ */
+static inline bool
+pt_wasm_function_get_nth_local(
+  const pt_wasm_module_t * const mod,
+  const size_t fn_id,
+  const size_t local_id,
+  pt_wasm_value_type_t * const ret_type
+) {
+  // NOTE: assuming valid function ID and function type
+  const pt_wasm_function_t fn = mod->functions[fn_id];
+
+  // start with parameter count
+  const pt_wasm_buf_t params = mod->function_types[fn.type_id].params;
+  if (local_id < params.len) {
+    if (ret_type) {
+      // copy to result
+      *ret_type = params.ptr[local_id];
+    }
+
+    // return success
+    return true;
+  }
+
+  // append number of locals
+  size_t sum = params.len;
+  for (size_t i = 0; i < fn.locals.len; i++) {
+    const pt_wasm_local_t locals = mod->locals[fn.locals.ofs + i];
+    if ((local_id >= sum) && (local_id < sum + locals.num)) {
+      if (ret_type) {
+        // copy to result
+        *ret_type = params.ptr[local_id];
+      }
+
+      // return success
+      return true;
+    }
+
+    // increment sum
+    sum += locals.num;
+  }
+
+  // no matching local found, return failure
+  return false;
+}
+
 
 /**
  * Count the total number of local entries (parameters and locals)
@@ -3755,17 +4087,89 @@ pt_wasm_check_function_global_insts(
 typedef enum {
   PT_WASM_STACK_CHECK_ENTRY_INIT,
   PT_WASM_STACK_CHECK_ENTRY_FRAME,
+  PT_WASM_STACK_CHECK_ENTRY_BLOCK,
+  PT_WASM_STACK_CHECK_ENTRY_LOOP,
+  PT_WASM_STACK_CHECK_ENTRY_IF,
   PT_WASM_STACK_CHECK_ENTRY_VALUE,
   PT_WASM_STACK_CHECK_ENTRY_TRAP,
   PT_WASM_STACK_CHECK_ENTRY_LAST,
-} pt_wasm_stack_check_entry_t;
+} pt_wasm_stack_check_entry_type_t;
 
-#define E(e_type) PT_WASM_STACK_CHECK_ENTRY_ ## e_type
+static inline bool
+pt_wasm_check_mem_inst(
+  const size_t num_memories,
+  const pt_wasm_inst_t in,
+  const uint8_t head_entry_type,
+  const uint8_t head_value_type
+) {
+  // get alignment immediate and opcode number of bits
+  const size_t align = in.v_mem.align;
+  const size_t num_bits = pt_wasm_op_get_num_bits(in.op);
+
+  return (
+    // check if module has memory
+    (num_memories > 0) &&
+
+    // check for sane alignment
+    (align <= 3) &&
+
+    // check alignment immediate for source (need: 2^align <= bits/8)
+    ((1UL << align) <= (num_bits / 8)) &&
+
+    // is top stack entry a value
+    (head_entry_type == PT_WASM_STACK_CHECK_ENTRY_VALUE) &&
+
+    // is top stack entry value an i32
+    (head_value_type == PT_WASM_VALUE_TYPE_I32)
+  );
+}
+
+static size_t
+pt_wasm_find_block_end(
+  const pt_wasm_module_t * const mod,
+  const size_t fn_id,
+  const size_t in_ofs
+) {
+  const pt_wasm_function_t * const fn = mod->functions + fn_id;
+  const pt_wasm_inst_t * const insts = mod->insts + fn->insts.ofs;
+  const size_t num_insts = fn->insts.len;
+
+  size_t depth = 1;
+  for (size_t i = in_ofs + 1; i < num_insts; i++) {
+    switch (insts[i].op) {
+    case PT_WASM_OP_IF:
+    case PT_WASM_OP_BLOCK:
+    case PT_WASM_OP_LOOP:
+      depth++;
+      break;
+    case PT_WASM_OP_END:
+      depth--;
+
+      if (!depth) {
+        // return result
+        return i;
+      }
+
+      break;
+    default:
+      // do nothing
+      break;
+    }
+  }
+
+  // return failure
+  return in_ofs;
+}
+
+#define E(en) PT_WASM_STACK_CHECK_ENTRY_ ## en
+#define OP(op) PT_WASM_OP_ ## op
+#define VT(vt) PT_WASM_VALUE_TYPE_ ## vt
 
 #define TRAP(msg) do { \
   FAIL_CHECK(check, FUNCTION, fn_id, msg); \
   stack[0].entry = E(TRAP); \
   depth = 1; \
+  goto retry; \
 } while (0)
 
 #define PUSH(e_type, v_type) do { \
@@ -3777,12 +4181,40 @@ typedef enum {
   } \
 } while (0)
 
+#define PEEK(n) (stack[depth - 1 - (n)])
+
 #define POP() do { \
   if (depth) { \
     depth--; \
   } else { \
     TRAP("stack underflow"); \
   } \
+} while (0)
+
+#define CHECK_LOAD(in_name, val_type) do { \
+  if (!pt_wasm_check_mem_inst(mod->num_memories, in, PEEK(0).entry, PEEK(0).value)) { \
+    TRAP(in_name ": invalid memory access"); \
+  } \
+  \
+  POP(); \
+  PUSH(VALUE, VT(val_type)); \
+} while (0)
+
+#define CHECK_STORE(in_name, val_type) do { \
+  if (depth < 2) { \
+    TRAP(in_name ": stack underflow"); \
+  } \
+  \
+  if (!pt_wasm_check_mem_inst(mod->num_memories, in, PEEK(1).entry, PEEK(1).value)) { \
+    TRAP(in_name ": invalid memory access"); \
+  } \
+  \
+  if ((PEEK(0).entry != E(VALUE)) || (PEEK(0).value != VT(val_type))) { \
+    TRAP(in_name ": invalid value operand"); \
+  } \
+  \
+  POP(); /* pop value */ \
+  POP(); /* pop offset */ \
 } while (0)
 
 static void
@@ -3796,8 +4228,14 @@ pt_wasm_check_function_stack(
 
   size_t depth = 2;
   struct {
-    uint8_t entry; // type of entry (init, frame, value, or trap)
-    uint8_t value; // type of value (e.g. i32, i64, etc, or 0x40 for none)
+    // type of entry (init, frame, value, or trap)
+    pt_wasm_stack_check_entry_type_t entry;
+
+    // value (varies by entry type)
+    // * VALUE: the value type
+    // * IF/BLOCK/LOOP: return value type
+    // * FRAME: return value type
+    uint32_t value; // type of value (e.g. i32, i64, etc, or 0x40 for none)
   } stack[PT_WASM_STACK_CHECK_MAX_DEPTH] = {{
     .entry = E(INIT),
   }, {
@@ -3805,19 +4243,919 @@ pt_wasm_check_function_stack(
     .value = (fn_results.len > 0) ? fn_results.ptr[0] : 0x40,
   }};
 
+  // FIXME: should this be one for an implicit label at the end of the
+  // function?
+  size_t num_labels = 0;
+  size_t labels[PT_WASM_STACK_CHECK_MAX_DEPTH];
+
   for (size_t i = 0; i < fn.insts.len; i++) {
     const pt_wasm_inst_t in = mod->insts[fn.insts.ofs + i];
 
+    retry:
     switch (stack[depth - 1].entry) {
     case E(TRAP):
       // do nothing
       break;
     case E(FRAME):
+    case E(BLOCK):
+    case E(LOOP):
+    case E(IF):
     case E(VALUE):
-      if (in.op == PT_WASM_OP_I32_CONST) {
-        PUSH(VALUE, PT_WASM_VALUE_TYPE_I32);
-        stack[depth].entry = E(VALUE);
-        stack[depth].value = E(VALUE);
+      switch (in.op) {
+      case OP(UNREACHABLE):
+      case OP(NOP):
+        break;
+      case OP(BLOCK):
+        PUSH(BLOCK, in.v_block.type);
+
+        {
+          // get end, check for error
+          const size_t end = pt_wasm_find_block_end(mod, fn_id, i);
+          if (end == i) {
+            TRAP("block: missing end");
+          }
+
+          // push label
+          labels[num_labels++] = i;
+        }
+
+        break;
+      case OP(LOOP):
+        PUSH(LOOP, in.v_block.type);
+        labels[num_labels++] = i;
+
+        break;
+      case OP(IF):
+        if ((PEEK(0).entry != E(VALUE)) || (PEEK(0).value != VT(I32))) {
+          TRAP("if: invalid operand");
+        }
+
+        POP();
+        PUSH(IF, in.v_block.type);
+
+        {
+          // get end, check for error
+          const size_t end = pt_wasm_find_block_end(mod, fn_id, i);
+          if (end == i) {
+            TRAP("if: missing end");
+          }
+
+          // push label
+          labels[num_labels++] = i;
+        }
+
+        break;
+      case OP(ELSE):
+        {
+          // cache value type
+          const uint32_t type = (PEEK(0).entry == E(VALUE)) ? PEEK(0).value : 0;
+
+          if (!num_labels) {
+            TRAP("invalid else");
+          }
+
+          const size_t if_ofs = labels[num_labels - 1];
+          if (stack[if_ofs].entry != E(IF)) {
+            TRAP("else outside of if");
+          }
+
+          const uint32_t result_type = stack[if_ofs].value;
+
+          // check value type
+          if (result_type != 0x40 && result_type != type) {
+            TRAP("else: invalid return operand");
+          }
+
+          depth = if_ofs + 1;
+        }
+
+        break;
+      case OP(END):
+        {
+          // cache value type
+          const uint32_t type = (PEEK(0).entry == E(VALUE)) ? PEEK(0).value : 0;
+
+          if (!num_labels) {
+            // FIXME: add frame support
+            TRAP("invalid end");
+          }
+
+          const size_t block_ofs = labels[num_labels - 1];
+          const uint32_t result_type = stack[block_ofs].value;
+
+          // check value type
+          if (result_type != 0x40 && result_type != type) {
+            TRAP("end: invalid return operand");
+          }
+
+          depth = block_ofs;
+          num_labels--;
+
+          if (result_type != 0x40) {
+            // push result type
+            PUSH(VALUE, result_type);
+          }
+        }
+
+        break;
+      case OP(BR):
+        {
+          if (in.v_index.id >= num_labels) {
+            TRAP("br: invalid label index");
+          }
+
+          // cache value type
+          const uint32_t type = (PEEK(0).entry == E(VALUE)) ? PEEK(0).value : 0;
+
+          if (!num_labels) {
+            TRAP("br: unnested");
+          }
+
+          const size_t block_ofs = labels[num_labels - 1 - in.v_index.id];
+
+          if (stack[block_ofs].entry != E(LOOP)) {
+            // check result type
+            const uint32_t result_type = stack[block_ofs].value;
+            if (result_type != 0x40 && result_type != type) {
+              TRAP("br: invalid return operand");
+            }
+          }
+        }
+
+        break;
+      case OP(BR_IF):
+        {
+          if (in.v_index.id >= num_labels) {
+            TRAP("br_if: invalid label index");
+          }
+
+          if ((PEEK(0).entry != E(VALUE)) || (PEEK(0).value != VT(I32))) {
+            TRAP("br_if: mission condition operand");
+          }
+
+          POP();
+
+          // cache value type
+          const uint32_t type = (PEEK(0).entry == E(VALUE)) ? PEEK(0).value : 0;
+
+          if (!num_labels) {
+            TRAP("unnested br_if");
+          }
+
+          const size_t block_ofs = labels[num_labels - 1 - in.v_index.id];
+
+          if (stack[block_ofs].entry != E(LOOP)) {
+            // check result type
+            const uint32_t result_type = stack[block_ofs].value;
+            if (result_type != 0x40 && result_type != type) {
+              TRAP("br_if: invalid return operand");
+            }
+          }
+        }
+
+        break;
+      case OP(BR_TABLE):
+        if ((PEEK(0).entry != E(VALUE)) || (PEEK(0).value != VT(I32))) {
+          TRAP("br_table: missing index operand");
+        }
+
+        POP();
+
+        if (!num_labels) {
+          TRAP("unnested br_table");
+        }
+
+        {
+          // check return types
+          const pt_wasm_slice_t br_labels = in.v_br_table.labels.slice;
+          for (size_t j = 0; j < br_labels.len; j++) {
+            const uint32_t label = mod->labels[br_labels.ofs + j];
+            if (label >= num_labels) {
+              TRAP("br_table: invalid label index");
+            }
+
+            // cache value type
+            const uint32_t type = (PEEK(0).entry == E(VALUE)) ? PEEK(0).value : 0;
+            const size_t block_ofs = labels[num_labels - 1 - label];
+
+            if (stack[block_ofs].entry != E(LOOP)) {
+              // check result type
+              const uint32_t result_type = stack[block_ofs].value;
+              if (result_type != 0x40 && result_type != type) {
+                TRAP("br_table: invalid return operand");
+              }
+            }
+          }
+        }
+
+        break;
+      case OP(RETURN):
+        // TODO
+        break;
+      case OP(CALL):
+        {
+          // get call function
+          const size_t fn_id = in.v_index.id;
+          if (fn_id >= mod->num_functions) {
+            TRAP("call: invalid function index");
+          }
+
+          // get/check type id
+          const size_t type_id = mod->functions[fn_id].type_id;
+          if (type_id >= mod->num_function_types) {
+            TRAP("call: invalid type index");
+          }
+
+          // get function type
+          const pt_wasm_function_type_t type = mod->function_types[type_id];
+
+          // check parameter length
+          if (type.params.len > depth - 1) {
+            TRAP("call: parameter length mismatch");
+          }
+
+          // count parameter type matches
+          size_t num_matches = 0;
+          for (size_t j = 0; j < type.params.len; j++) {
+            const size_t ofs = depth - 1 - type.params.len + j;
+            num_matches += (
+              (stack[ofs].entry == E(VALUE)) &&
+              (stack[ofs].value == type.params.ptr[j])
+            );
+          }
+
+          // check parameter type matches
+          if (num_matches != type.params.len) {
+            TRAP("call: parameter type mismatch");
+          }
+
+          // pop parameters from stack
+          depth -= type.params.len;
+
+          // append results to stack
+          for (size_t j = 0; j < type.results.len; j++) {
+            PUSH(VALUE, type.results.ptr[j]);
+          }
+        }
+
+        break;
+      case OP(CALL_INDIRECT):
+        // TODO
+
+        break;
+      case OP(DROP):
+        if (PEEK(1).entry != E(VALUE)) {
+          TRAP("drop: stack underflow");
+        }
+
+        POP();
+
+        break;
+      case OP(SELECT):
+        // check stack size
+        if (depth < 3) {
+          TRAP("select: stack underflow");
+        }
+
+        // is 1st entry is an i32 value (conditional)
+        if ((PEEK(0).entry != E(VALUE)) || (PEEK(0).value != VT(I32))) {
+          TRAP("select: missing condition operand");
+        }
+
+        // are 2nd and 3rd stack entries values?
+        if ((PEEK(1).entry != E(VALUE)) || (PEEK(2).entry != E(VALUE))) {
+          TRAP("select: missing value operands");
+        }
+        // are 2nd and 3rd stack values the same type?
+        if (PEEK(1).value != PEEK(2).value) {
+          TRAP("select: value operand type mismatch");
+        }
+
+        POP();
+        POP();
+
+        break;
+      case OP(LOCAL_GET):
+        {
+          const size_t id = in.v_index.id;
+
+          pt_wasm_value_type_t type = 0;
+          if (!pt_wasm_function_get_nth_local(mod, fn_id, id, &type)) {
+            TRAP("local.get: invalid local index");
+          }
+
+          PUSH(VALUE, type);
+        }
+
+        break;
+      case OP(LOCAL_SET):
+        {
+          const size_t id = in.v_index.id;
+
+          // get local type
+          pt_wasm_value_type_t type = 0;
+          if (!pt_wasm_function_get_nth_local(mod, fn_id, id, &type)) {
+            TRAP("local.set: invalid local index");
+          }
+
+          // check local type
+          if (type != PEEK(0).value) {
+            TRAP("local.set: type mismatch");
+          }
+
+          // pop value
+          POP();
+        }
+
+        break;
+      case OP(LOCAL_TEE):
+        {
+          const size_t id = in.v_index.id;
+
+          // get local type
+          pt_wasm_value_type_t type = 0;
+          if (!pt_wasm_function_get_nth_local(mod, fn_id, id, &type)) {
+            TRAP("local.tee: invalid local index");
+          }
+
+          // check local type
+          if (type != PEEK(0).value) {
+            TRAP("local.tee: type mismatch");
+          }
+        }
+
+        break;
+      case OP(GLOBAL_GET):
+        {
+          // get global type
+          const size_t id = in.v_index.id;
+          if (id >= mod->num_globals) {
+            TRAP("global.get: invalid global index");
+          }
+
+          PUSH(VALUE, mod->globals[id].type.type);
+        }
+
+        break;
+      case OP(GLOBAL_SET):
+        {
+          // get global index
+          const size_t id = in.v_index.id;
+
+          // check index
+          if (id >= mod->num_globals) {
+            TRAP("global.set: invalid global index");
+          }
+
+          // get type
+          const pt_wasm_global_type_t type = mod->globals[id].type;
+
+          // check immutability
+          if (!type.mutable) {
+            TRAP("global.set: cannot set immutable global");
+          }
+
+          // check value type
+          if (type.type != PEEK(0).value) {
+            TRAP("global.set: type mismatch");
+          }
+
+          // pop value
+          POP();
+        }
+
+        break;
+      case OP(I32_LOAD):
+        CHECK_LOAD("i32.load", I32);
+        break;
+      case OP(I64_LOAD):
+        CHECK_LOAD("i64.load", I64);
+        break;
+      case OP(F32_LOAD):
+        CHECK_LOAD("f32.load", F32);
+        break;
+      case OP(F64_LOAD):
+        CHECK_LOAD("f64.load", F64);
+        break;
+      case OP(I32_LOAD8_S):
+        CHECK_LOAD("i32.load8_s", I32);
+        break;
+      case OP(I32_LOAD8_U):
+        CHECK_LOAD("i32.load8_u", I32);
+        break;
+      case OP(I32_LOAD16_S):
+        CHECK_LOAD("i32.load16_s", I32);
+        break;
+      case OP(I32_LOAD16_U):
+        CHECK_LOAD("i32.load16_u", I32);
+        break;
+      case OP(I64_LOAD8_S):
+        CHECK_LOAD("i64.load8_s", I64);
+        break;
+      case OP(I64_LOAD8_U):
+        CHECK_LOAD("i64.load8_u", I64);
+        break;
+      case OP(I64_LOAD16_S):
+        CHECK_LOAD("i64.load16_s", I64);
+        break;
+      case OP(I64_LOAD16_U):
+        CHECK_LOAD("i64.load16_u", I64);
+        break;
+      case OP(I64_LOAD32_S):
+        CHECK_LOAD("i64.load32_s", I64);
+        break;
+      case OP(I64_LOAD32_U):
+        CHECK_LOAD("i64.load32_u", I64);
+        break;
+      case OP(I32_STORE):
+        CHECK_STORE("i32.store", I32);
+        break;
+      case OP(I64_STORE):
+        CHECK_STORE("i64.store", I64);
+        break;
+      case OP(F32_STORE):
+        CHECK_STORE("f32.store", F32);
+        break;
+      case OP(F64_STORE):
+        CHECK_STORE("f64.store", F64);
+        break;
+      case OP(I32_STORE8):
+        CHECK_STORE("i32.store8", I32);
+        break;
+      case OP(I32_STORE16):
+        CHECK_STORE("i32.store16", I32);
+        break;
+      case OP(I64_STORE8):
+        CHECK_STORE("i64.store8", I64);
+        break;
+      case OP(I64_STORE16):
+        CHECK_STORE("i64.store16", I64);
+        break;
+      case OP(I64_STORE32):
+        CHECK_STORE("i64.store32", I64);
+        break;
+      case OP(MEMORY_SIZE):
+        PUSH(VALUE, VT(I32));
+        break;
+      case OP(MEMORY_GROW):
+        // is the top stack entry an i32 value?
+        if ((PEEK(0).entry != E(VALUE)) || (PEEK(0).value != VT(I32))) {
+          TRAP("memory.grow: missing size operand");
+        }
+
+        // redundant, but whatever
+        POP();
+        PUSH(VALUE, VT(I32));
+
+        break;
+      case OP(I32_CONST):
+        PUSH(VALUE, VT(I32));
+        break;
+      case OP(I64_CONST):
+        PUSH(VALUE, VT(I64));
+        break;
+      case OP(F32_CONST):
+        PUSH(VALUE, VT(F32));
+        break;
+      case OP(F64_CONST):
+        PUSH(VALUE, VT(F64));
+        break;
+      case OP(I32_EQZ): // i32 tests
+        // is the top stack entry an i32 value?
+        if ((PEEK(0).entry != E(VALUE)) || (PEEK(0).value != VT(I32))) {
+          TRAP("missing test operand");
+        }
+
+        // redundant
+        POP();
+        PUSH(VALUE, VT(I32));
+
+        break;
+      case OP(I32_EQ): // i32 relops
+      case OP(I32_NE):
+      case OP(I32_LT_S):
+      case OP(I32_LT_U):
+      case OP(I32_GT_S):
+      case OP(I32_GT_U):
+      case OP(I32_LE_S):
+      case OP(I32_LE_U):
+      case OP(I32_GE_S):
+      case OP(I32_GE_U):
+        // are the top stack entries i32 values?
+        if (
+          (depth < 2) ||
+          (PEEK(0).entry != E(VALUE)) || (PEEK(0).value != VT(I32)) ||
+          (PEEK(1).entry != E(VALUE)) || (PEEK(1).value != VT(I32))
+        ) {
+          TRAP("missing operand(s)");
+        }
+
+        POP();
+        POP();
+        PUSH(VALUE, VT(I32));
+
+        break;
+      case OP(I64_EQZ):
+        // is the top stack entry an i64 value?
+        if ((PEEK(0).entry != E(VALUE)) || (PEEK(0).value != VT(I64))) {
+          TRAP("missing test operand");
+        }
+
+        POP();
+        PUSH(VALUE, VT(I32));
+
+        break;
+      case OP(I64_EQ): // i64 tests
+      case OP(I64_NE):
+      case OP(I64_LT_S):
+      case OP(I64_LT_U):
+      case OP(I64_GT_S):
+      case OP(I64_GT_U):
+      case OP(I64_LE_S):
+      case OP(I64_LE_U):
+      case OP(I64_GE_S):
+      case OP(I64_GE_U):
+        // are the top stack entries i64 values?
+        if (
+          (depth < 2) ||
+          (PEEK(0).entry != E(VALUE)) || (PEEK(0).value != VT(I64)) ||
+          (PEEK(1).entry != E(VALUE)) || (PEEK(1).value != VT(I64))
+        ) {
+          TRAP("missing operand(s)");
+        }
+
+        POP();
+        POP();
+        PUSH(VALUE, VT(I32));
+
+        break;
+      case OP(F32_EQ): // f32 relops
+      case OP(F32_NE):
+      case OP(F32_LT):
+      case OP(F32_GT):
+      case OP(F32_LE):
+      case OP(F32_GE):
+        // are the top stack entries f32 values?
+        if (
+          (depth < 2) ||
+          (PEEK(0).entry != E(VALUE)) || (PEEK(0).value != VT(F32)) ||
+          (PEEK(1).entry != E(VALUE)) || (PEEK(1).value != VT(F32))
+        ) {
+          TRAP("missing operand(s)");
+        }
+
+        POP();
+        POP();
+        PUSH(VALUE, VT(I32));
+
+        break;
+      case OP(F64_EQ): // f64 relops
+      case OP(F64_NE):
+      case OP(F64_LT):
+      case OP(F64_GT):
+      case OP(F64_LE):
+      case OP(F64_GE):
+        // are the top stack entries f64 values?
+        if (
+          (depth < 2) ||
+          (PEEK(0).entry != E(VALUE)) || (PEEK(0).value != VT(F64)) ||
+          (PEEK(1).entry != E(VALUE)) || (PEEK(1).value != VT(F64))
+        ) {
+          TRAP("missing operand(s)");
+        }
+
+        POP();
+        POP();
+        PUSH(VALUE, VT(I32));
+
+        break;
+      case OP(I32_CLZ): // i32 unops
+      case OP(I32_CTZ):
+      case OP(I32_POPCNT):
+        // is the top stack entry an i32?
+        if ((PEEK(0).entry != E(VALUE)) || (PEEK(0).value != VT(I32))) {
+          TRAP("i32 unop: missing operand");
+        }
+
+        POP();
+        PUSH(VALUE, VT(I32));
+
+        break;
+      case OP(I32_ADD): // i32 binops
+      case OP(I32_SUB):
+      case OP(I32_MUL):
+      case OP(I32_DIV_S):
+      case OP(I32_DIV_U):
+      case OP(I32_REM_S):
+      case OP(I32_REM_U):
+      case OP(I32_AND):
+      case OP(I32_OR):
+      case OP(I32_XOR):
+      case OP(I32_SHL):
+      case OP(I32_SHR_S):
+      case OP(I32_SHR_U):
+      case OP(I32_ROTL):
+      case OP(I32_ROTR):
+        // are the top stack entries i32 values?
+        if (
+          (depth < 2) ||
+          (PEEK(0).entry != E(VALUE)) || (PEEK(0).value != VT(I32)) ||
+          (PEEK(1).entry != E(VALUE)) || (PEEK(1).value != VT(I32))
+        ) {
+          TRAP("i32 binop: missing operand(s)");
+        }
+
+        POP();
+        POP();
+        PUSH(VALUE, VT(I32));
+
+        break;
+      case OP(I64_CLZ): // i64 unops
+      case OP(I64_CTZ):
+      case OP(I64_POPCNT):
+        // is the top stack entry an i64?
+        if ((PEEK(0).entry != E(VALUE)) || (PEEK(0).value != VT(I64))) {
+          TRAP("i64 unop: missing operand");
+        }
+
+        POP();
+        PUSH(VALUE, VT(I64));
+
+        break;
+      case OP(I64_ADD): // i64 binops
+      case OP(I64_SUB):
+      case OP(I64_MUL):
+      case OP(I64_DIV_S):
+      case OP(I64_DIV_U):
+      case OP(I64_REM_S):
+      case OP(I64_REM_U):
+      case OP(I64_AND):
+      case OP(I64_OR):
+      case OP(I64_XOR):
+      case OP(I64_SHL):
+      case OP(I64_SHR_S):
+      case OP(I64_SHR_U):
+      case OP(I64_ROTL):
+      case OP(I64_ROTR):
+        // are the top stack entries i64 values?
+        if (
+          (depth < 2) ||
+          (PEEK(0).entry != E(VALUE)) || (PEEK(0).value != VT(I64)) ||
+          (PEEK(1).entry != E(VALUE)) || (PEEK(1).value != VT(I64))
+        ) {
+          TRAP("i64 binop: missing operand(s)");
+        }
+
+        POP();
+        POP();
+        PUSH(VALUE, VT(I64));
+
+        break;
+      case OP(F32_ABS): // f32 unops
+      case OP(F32_NEG):
+      case OP(F32_CEIL):
+      case OP(F32_FLOOR):
+      case OP(F32_TRUNC):
+      case OP(F32_NEAREST):
+      case OP(F32_SQRT):
+        // is the top stack entry an f32?
+        if ((PEEK(0).entry != E(VALUE)) || (PEEK(0).value != VT(F32))) {
+          TRAP("f32 unop: missing operand");
+        }
+
+        POP();
+        PUSH(VALUE, VT(F32));
+
+        break;
+      case OP(F32_ADD): // f32 binops
+      case OP(F32_SUB):
+      case OP(F32_MUL):
+      case OP(F32_DIV):
+      case OP(F32_MIN):
+      case OP(F32_MAX):
+      case OP(F32_COPYSIGN):
+        // are the top stack entries f32 values?
+        if (
+          (depth < 2) ||
+          (PEEK(0).entry != E(VALUE)) || (PEEK(0).value != VT(F32)) ||
+          (PEEK(1).entry != E(VALUE)) || (PEEK(1).value != VT(F32))
+        ) {
+          TRAP("f32 binop: missing operand(s)");
+        }
+
+        POP();
+        POP();
+        PUSH(VALUE, VT(F32));
+
+        break;
+      case OP(F64_ABS): // f64 unops
+      case OP(F64_NEG):
+      case OP(F64_CEIL):
+      case OP(F64_FLOOR):
+      case OP(F64_TRUNC):
+      case OP(F64_NEAREST):
+      case OP(F64_SQRT):
+        // is the top stack entry an f64?
+        if ((PEEK(0).entry != E(VALUE)) || (PEEK(0).value != VT(F64))) {
+          TRAP("f64 unop: missing operand");
+        }
+
+        POP();
+        PUSH(VALUE, VT(F64));
+
+        break;
+      case OP(F64_ADD): // f64 binops
+      case OP(F64_SUB):
+      case OP(F64_MUL):
+      case OP(F64_DIV):
+      case OP(F64_MIN):
+      case OP(F64_MAX):
+      case OP(F64_COPYSIGN):
+        // are the top stack entries f64 values?
+        if (
+          (depth < 2) ||
+          (PEEK(0).entry != E(VALUE)) || (PEEK(0).value != VT(F64)) ||
+          (PEEK(1).entry != E(VALUE)) || (PEEK(1).value != VT(F64))
+        ) {
+          TRAP("f64 binop: missing operand(s)");
+        }
+
+        POP();
+        POP();
+        PUSH(VALUE, VT(F64));
+
+        break;
+      case OP(I32_WRAP_I64):
+        // is the top stack entry an i64?
+        if ((PEEK(0).entry != E(VALUE)) || (PEEK(0).value != VT(I64))) {
+          TRAP("i32.wrap_i64: invalid operand");
+        }
+
+        POP();
+        PUSH(VALUE, VT(I32));
+
+        break;
+      case OP(I32_TRUNC_F32_S):
+      case OP(I32_TRUNC_F32_U):
+        // is the top stack entry an f32?
+        if ((PEEK(0).entry != E(VALUE)) || (PEEK(0).value != VT(F32))) {
+          TRAP("i32.trunc_f32: invalid operand");
+        }
+
+        POP();
+        PUSH(VALUE, VT(I32));
+
+        break;
+      case OP(I32_TRUNC_F64_S):
+      case OP(I32_TRUNC_F64_U):
+        // is the top stack entry an f64?
+        if ((PEEK(0).entry != E(VALUE)) || (PEEK(0).value != VT(F64))) {
+          TRAP("i32.trunc_f64: invalid operand");
+        }
+
+        POP();
+        PUSH(VALUE, VT(I32));
+
+        break;
+      case OP(I64_EXTEND_I32_S):
+      case OP(I64_EXTEND_I32_U):
+        // is the top stack entry an i32?
+        if ((PEEK(0).entry != E(VALUE)) || (PEEK(0).value != VT(I32))) {
+          TRAP("i64.extend_i32: invalid operand");
+        }
+
+        POP();
+        PUSH(VALUE, VT(I64));
+
+        break;
+      case OP(I64_TRUNC_F32_S):
+      case OP(I64_TRUNC_F32_U):
+        // is the top stack entry an f32?
+        if ((PEEK(0).entry != E(VALUE)) || (PEEK(0).value != VT(F32))) {
+          TRAP("i64.trunc_f32: invalid operand");
+        }
+
+        POP();
+        PUSH(VALUE, VT(I64));
+
+        break;
+      case OP(I64_TRUNC_F64_S):
+      case OP(I64_TRUNC_F64_U):
+        // is the top stack entry an f64?
+        if ((PEEK(0).entry != E(VALUE)) || (PEEK(0).value != VT(F64))) {
+          TRAP("i64.trunc_f64: invalid operand");
+        }
+
+        POP();
+        PUSH(VALUE, VT(I64));
+
+        break;
+      case OP(F32_CONVERT_I32_S):
+      case OP(F32_CONVERT_I32_U):
+        // is the top stack entry an i32?
+        if ((PEEK(0).entry != E(VALUE)) || (PEEK(0).value != VT(I32))) {
+          TRAP("f32.convert_i32: invalid operand");
+        }
+
+        POP();
+        PUSH(VALUE, VT(F32));
+
+        break;
+      case OP(F32_CONVERT_I64_S):
+      case OP(F32_CONVERT_I64_U):
+        // is the top stack entry an i64?
+        if ((PEEK(0).entry != E(VALUE)) || (PEEK(0).value != VT(I64))) {
+          TRAP("f32.convert_i32: invalid operand");
+        }
+
+        POP();
+        PUSH(VALUE, VT(F32));
+
+        break;
+      case OP(F32_DEMOTE_F64):
+        // is the top stack entry an f64?
+        if ((PEEK(0).entry != E(VALUE)) || (PEEK(0).value != VT(F64))) {
+          TRAP("f32.demote_f64: invalid operand");
+        }
+
+        POP();
+        PUSH(VALUE, VT(F32));
+
+        break;
+      case OP(F64_CONVERT_I32_S):
+      case OP(F64_CONVERT_I32_U):
+        // is the top stack entry an i32?
+        if ((PEEK(0).entry != E(VALUE)) || (PEEK(0).value != VT(I32))) {
+          TRAP("f64.convert_i32: invalid operand");
+        }
+
+        POP();
+        PUSH(VALUE, VT(F64));
+
+        break;
+      case OP(F64_CONVERT_I64_S):
+      case OP(F64_CONVERT_I64_U):
+        // is the top stack entry an i64?
+        if ((PEEK(0).entry != E(VALUE)) || (PEEK(0).value != VT(I64))) {
+          TRAP("f64.convert_i32: invalid operand");
+        }
+
+        POP();
+        PUSH(VALUE, VT(F64));
+
+        break;
+      case OP(F64_PROMOTE_F32):
+        // is the top stack entry an f32?
+        if ((PEEK(0).entry != E(VALUE)) || (PEEK(0).value != VT(F32))) {
+          TRAP("f64.promote_f32: invalid operand");
+        }
+
+        POP();
+        PUSH(VALUE, VT(F64));
+
+        break;
+      case OP(I32_REINTERPRET_F32):
+        // is the top stack entry an f32?
+        if ((PEEK(0).entry != E(VALUE)) || (PEEK(0).value != VT(F32))) {
+          TRAP("i32.reinterpret_f32: invalid operand");
+        }
+
+        POP();
+        PUSH(VALUE, VT(I32));
+
+        break;
+      case OP(I64_REINTERPRET_F64):
+        // is the top stack entry an f64?
+        if ((PEEK(0).entry != E(VALUE)) || (PEEK(0).value != VT(F64))) {
+          TRAP("i64.reinterpret_f64: invalid operand");
+        }
+
+        POP();
+        PUSH(VALUE, VT(I64));
+
+        break;
+      case OP(F32_REINTERPRET_I32):
+        // is the top stack entry an i32?
+        if ((PEEK(0).entry != E(VALUE)) || (PEEK(0).value != VT(I32))) {
+          TRAP("f32.reinterpret_i32: invalid operand");
+        }
+
+        POP();
+        PUSH(VALUE, VT(F32));
+
+        break;
+      case OP(F64_REINTERPRET_I64):
+        // is the top stack entry an i64?
+        if ((PEEK(0).entry != E(VALUE)) || (PEEK(0).value != VT(I64))) {
+          TRAP("f64.reinterpret_i64: invalid operand");
+        }
+
+        POP();
+        PUSH(VALUE, VT(F64));
+
+        break;
+      default:
+        TRAP("invalid opcode");
       }
 
       break;
@@ -3831,6 +5169,9 @@ pt_wasm_check_function_stack(
 #undef TRAP
 #undef PUSH
 #undef POP
+#undef PEEK
+#undef CHECK_LOAD
+#undef CHECK_STORE
 
 static void
 pt_wasm_check_function(
