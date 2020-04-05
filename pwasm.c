@@ -1,6 +1,6 @@
 #include <stdbool.h> // bool
 #include <string.h> // memcmp()
-#include "pt-wasm.h"
+#include "pwasm.h"
 
 #define PWASM_STACK_CHECK_MAX_DEPTH 512
 
