@@ -195,16 +195,6 @@ pwasm_u32_scan(
   return pwasm_u32_decode(NULL, src);
 }
 
-// FIXME: remove this
-static inline size_t
-pwasm_decode_u32(
-  uint32_t * const dst,
-  const void * const src_ptr,
-  const size_t src_len
-) {
-  return pwasm_u32_decode(dst, (pwasm_buf_t) { src_ptr, src_len });
-}
-
 static inline size_t
 pwasm_decode_u64(
   uint64_t * const dst,
@@ -434,7 +424,7 @@ static size_t FN_NAME ( \
 ) { \
   /* get count, check for error */ \
   uint32_t num_els = 0; \
-  size_t src_ofs = pwasm_decode_u32(&num_els, src.ptr, src.len); \
+  size_t src_ofs = pwasm_u32_decode(&num_els, src); \
   if (!src_ofs) { \
     FAIL(TEXT ": invalid vector length"); \
   } \
@@ -734,7 +724,7 @@ pwasm_parse_name(
 
   // decode name length, check for error
   uint32_t len = 0;
-  const size_t len_ofs = pwasm_decode_u32(&len, src.ptr, src.len);
+  const size_t len_ofs = pwasm_u32_decode(&len, src);
   if (!len_ofs) {
     FAIL("bad name length");
   }
@@ -777,7 +767,7 @@ pwasm_parse_value_type_list(
 
   // decode buffer length, check for error
   uint32_t len = 0;
-  const size_t len_ofs = pwasm_decode_u32(&len, src, src_len);
+  const size_t len_ofs = pwasm_u32_decode(&len, (pwasm_buf_t) { src, src_len });
   if (!len_ofs) {
     FAIL("bad value type list length");
   }
@@ -828,7 +818,7 @@ pwasm_parse_u32s(
 
   // get count, check for error
   uint32_t num;
-  const size_t n_len = pwasm_decode_u32(&num, src.ptr, src.len);
+  const size_t n_len = pwasm_u32_decode(&num, src);
   if (!n_len) {
     FAIL("bad u32 vector count");
   }
@@ -849,7 +839,7 @@ pwasm_parse_u32s(
     }
 
     // decode id, check for error
-    const size_t len = pwasm_decode_u32(vals + vals_ofs, src.ptr + ofs, src.len - ofs);
+    const size_t len = pwasm_u32_decode(vals + vals_ofs, pwasm_buf_step(src, ofs));
     if (!len) {
       FAIL("bad u32 in u32 vector");
     }
@@ -896,7 +886,7 @@ pwasm_parse_br_table_labels(
 
   // get count, check for error
   uint32_t num;
-  const size_t n_len = pwasm_decode_u32(&num, src.ptr, src.len);
+  const size_t n_len = pwasm_u32_decode(&num, src);
   if (!n_len) {
     FAIL("br_table: bad label vector count");
   }
@@ -917,7 +907,7 @@ pwasm_parse_br_table_labels(
     }
 
     // decode id, check for error
-    const size_t len = pwasm_decode_u32(vals + vals_ofs, src.ptr + ofs, src.len - ofs);
+    const size_t len = pwasm_u32_decode(vals + vals_ofs, pwasm_buf_step(src, ofs));
     if (!len) {
       FAIL("br_table: invalid label");
     }
@@ -1127,6 +1117,8 @@ pwasm_parse_limits(
   const size_t src_len,
   void * const cb_data
 ) {
+  const pwasm_buf_t src_buf = { src, src_len };
+
   if (src_len < 2) {
     FAIL("truncated limits");
   }
@@ -1144,7 +1136,7 @@ pwasm_parse_limits(
   };
 
   // parse min, check for error
-  const size_t min_len = pwasm_decode_u32(&(tmp.min), src + 1, src_len - 1);
+  const size_t min_len = pwasm_u32_decode(&(tmp.min), pwasm_buf_step(src_buf, 1));
   if (!min_len) {
     FAIL("bad limits minimum");
   }
@@ -1154,7 +1146,7 @@ pwasm_parse_limits(
 
   if (src[0] == 1) {
     // parse max, check for error
-    const size_t max_len = pwasm_decode_u32(&(tmp.max), src + num_bytes, src_len - num_bytes);
+    const size_t max_len = pwasm_u32_decode(&(tmp.max), pwasm_buf_step(src_buf, num_bytes));
     if (!max_len) {
       FAIL("bad limits maximum");
     }
@@ -1290,7 +1282,7 @@ pwasm_parse_inst(
     {
       // get index, check for error
       uint32_t id = 0;
-      const size_t id_len = pwasm_decode_u32(&id, src.ptr + 1, src.len - 1);
+      const size_t id_len = pwasm_u32_decode(&id, pwasm_buf_step(src, 1));
       if (!id_len) {
         INST_FAIL("bad immediate index value");
       }
@@ -1305,7 +1297,7 @@ pwasm_parse_inst(
     {
       // get index, check for error
       uint32_t id = 0;
-      const size_t id_len = pwasm_decode_u32(&id, src.ptr + 1, src.len - 1);
+      const size_t id_len = pwasm_u32_decode(&id, pwasm_buf_step(src, 1));
       if (!id_len) {
         INST_FAIL("bad immediate index value");
       }
@@ -1330,14 +1322,14 @@ pwasm_parse_inst(
     {
       // get align value, check for error
       uint32_t align = 0;
-      const size_t a_len = pwasm_decode_u32(&align, src.ptr + 1, src.len - 1);
+      const size_t a_len = pwasm_u32_decode(&align, pwasm_buf_step(src, 1));
       if (!a_len) {
         INST_FAIL("bad align value");
       }
 
       // get offset value, check for error
       uint32_t offset = 0;
-      const size_t o_len = pwasm_decode_u32(&offset, src.ptr + 1 + a_len, src.len - 1 - a_len);
+      const size_t o_len = pwasm_u32_decode(&offset, pwasm_buf_step(src, 1 + a_len));
       if (!o_len) {
         INST_FAIL("bad offset value");
       }
@@ -1353,7 +1345,7 @@ pwasm_parse_inst(
     {
       // get value, check for error
       uint32_t val = 0;
-      const size_t v_len = pwasm_decode_u32(&val, src.ptr + 1, src.len - 1);
+      const size_t v_len = pwasm_u32_decode(&val, pwasm_buf_step(src, 1));
       if (!v_len) {
         INST_FAIL("bad align value");
       }
@@ -1531,7 +1523,7 @@ pwasm_parse_global_type(
 
   // parse value type, check for error
   pwasm_value_type_t type;
-  const size_t len = pwasm_decode_u32(&type, src, src_len);
+  const size_t len = pwasm_u32_decode(&type, (pwasm_buf_t) { src, src_len });
   if (!len) {
     FAIL("bad global value type");
   }
@@ -1673,7 +1665,10 @@ pwasm_parse_import(
   switch (type) {
   case PWASM_IMPORT_TYPE_FUNC:
     {
-      const size_t len = pwasm_decode_u32(&(tmp.func.id), data_ptr, data_len);
+      const size_t len = pwasm_u32_decode(&(tmp.func.id), (pwasm_buf_t) {
+        data_ptr,
+        data_len
+      });
       if (!len) {
         FAIL("invalid function import type");
       }
@@ -1762,7 +1757,7 @@ pwasm_function_section_parse_fn(
   void * const cb_data
 ) {
   // parse index, check for error
-  const size_t len = pwasm_decode_u32(dst, src, src_len);
+  const size_t len = pwasm_u32_decode(dst, (pwasm_buf_t) { src, src_len });
   if (!len) {
     FAIL("invalid function index");
   }
@@ -1857,14 +1852,14 @@ pwasm_parse_export(
   const size_t src_len,
   void * const cb_data
 ) {
-  const pwasm_buf_t name_src = {
+  const pwasm_buf_t name_buf = {
     .ptr = src,
     .len = src_len,
   };
 
   // parse export name, check for error
   pwasm_buf_t name;
-  const size_t n_len = pwasm_parse_name(&name, cbs, name_src, cb_data);
+  const size_t n_len = pwasm_parse_name(&name, cbs, name_buf, cb_data);
   if (!n_len) {
     return 0;
   }
@@ -1882,7 +1877,7 @@ pwasm_parse_export(
 
   // parse id, check for error
   uint32_t id;
-  const size_t id_len = pwasm_decode_u32(&id, src + 1 + n_len, src_len - 1 - n_len);
+  const size_t id_len = pwasm_u32_decode(&id, pwasm_buf_step(name_buf, 1 + n_len));
   if (!id_len) {
     FAIL("bad export index");
   }
@@ -1934,7 +1929,7 @@ pwasm_parse_start_section(
 
   // get id, check for error
   uint32_t id = 0;
-  const size_t len = pwasm_decode_u32(&id, src.ptr, src.len);
+  const size_t len = pwasm_u32_decode(&id, src);
   if (!len) {
     FAIL("bad start section function index");
   }
@@ -1961,9 +1956,11 @@ pwasm_parse_element(
   const size_t src_len,
   void * const cb_data
 ) {
+  const pwasm_buf_t src_buf = { src, src_len };
+
   // get table_id, check for error
   uint32_t t_id = 0;
-  const size_t t_len = pwasm_decode_u32(&t_id, src, src_len);
+  const size_t t_len = pwasm_u32_decode(&t_id, src_buf);
   if (!t_len) {
     FAIL("bad element table id");
   }
@@ -1980,7 +1977,7 @@ pwasm_parse_element(
 
   // get function index count, check for error
   uint32_t num_fns;
-  const size_t n_len = pwasm_decode_u32(&num_fns, src + ofs, src_len - ofs);
+  const size_t n_len = pwasm_u32_decode(&num_fns, pwasm_buf_step(src_buf, ofs));
   if (!n_len) {
     FAIL("bad element function index count");
   }
@@ -1991,7 +1988,7 @@ pwasm_parse_element(
   size_t data_len = 0;
   for (size_t i = 0; i < num_fns; i++) {
     uint32_t id = 0;
-    const size_t len = pwasm_decode_u32(&id, src + ofs, src_len - ofs);
+    const size_t len = pwasm_u32_decode(&id, pwasm_buf_step(src_buf, ofs));
     if (!len) {
       FAIL("bad element function index");
     }
@@ -2059,7 +2056,7 @@ pwasm_parse_fn_code(
 
   // get size, check for error
   uint32_t size = 0;
-  const size_t size_len = pwasm_decode_u32(&size, src, src_len);
+  const size_t size_len = pwasm_u32_decode(&size, (pwasm_buf_t) { src, src_len });
   if (!size_len) {
     FAIL("bad code size");
   }
@@ -2110,9 +2107,11 @@ pwasm_parse_data_segment(
   const size_t src_len,
   void * const cb_data
 ) {
+  const pwasm_buf_t src_buf = { src, src_len };
+
   // get memory index, check for error
   uint32_t id = 0;
-  const size_t id_len = pwasm_decode_u32(&id, src, src_len);
+  const size_t id_len = pwasm_u32_decode(&id, src_buf);
   if (!id_len) {
     FAIL("bad data section memory index");
   }
@@ -2131,7 +2130,7 @@ pwasm_parse_data_segment(
 
   // get size, check for error
   uint32_t size = 0;
-  const size_t size_len = pwasm_decode_u32(&size, src + data_ofs, src_len - data_ofs);
+  const size_t size_len = pwasm_u32_decode(&size, pwasm_buf_step(src_buf, data_ofs));
   if (!size_len) {
     FAIL("bad data section data size");
   }
@@ -2233,7 +2232,7 @@ pwasm_header_parse(
   // get section length
   // FIXME: add pwasm_u32_decode_buf(dst_num, src_buf)
   uint32_t len;
-  const size_t ofs = pwasm_decode_u32(&len, len_buf.ptr, len_buf.len);
+  const size_t ofs = pwasm_u32_decode(&len, len_buf);
   if (!ofs) {
     return 0;
   }
@@ -2893,7 +2892,7 @@ pwasm_parse_module(
 
     // parse section data length, check for error
     uint32_t data_len = 0;
-    const size_t len_ofs = pwasm_decode_u32(&data_len, u32_ptr, u32_len);
+    const size_t len_ofs = pwasm_u32_decode(&data_len, (pwasm_buf_t) { u32_ptr, u32_len });
     if (!len_ofs) {
       FAIL("invalid section length");
     }
@@ -3067,7 +3066,7 @@ pwasm_parse_local(
 
   // parse local count, check for error
   uint32_t num;
-  const size_t n_len = pwasm_decode_u32(&num, src.ptr, src.len);
+  const size_t n_len = pwasm_u32_decode(&num, src);
   if (!n_len) {
     FAIL("bad local count");
   }
@@ -3105,7 +3104,7 @@ pwasm_parse_function_locals(
 ) {
   // get number of locals, check for error
   uint32_t num_locals = 0;
-  const size_t num_len = pwasm_decode_u32(&num_locals, src.ptr, src.len);
+  const size_t num_len = pwasm_u32_decode(&num_locals, src);
   if (!num_len) {
     FAIL("bad locals count");
   }
