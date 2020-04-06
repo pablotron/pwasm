@@ -65,6 +65,10 @@ pwasm_buf_step(
   return (pwasm_buf_t) { src.ptr + ofs, src.len - ofs };
 }
 
+/**
+ * Get the size (in bytes) of the UTF-8 codepoint beginning with the
+ * given byte.
+ */
 static inline size_t
 pwasm_utf8_get_codepoint_size(
   const uint8_t c
@@ -83,6 +87,13 @@ pwasm_utf8_get_codepoint_size(
 // cast, mask, and shift byte
 #define CMS(val, mask, shift) (((uint32_t) ((val) & (mask))) << (shift))
 
+/**
+ * Decode the UTF-8 codepoint of length +len+ from the string pointed to
+ * by +s+.
+ *
+ * Returns 0xFFFFFFFF if the length or the continuation bytes are
+ * invalid.
+ */
 static inline uint32_t
 pwasm_utf8_get_codepoint(
   const uint8_t * const s,
@@ -114,21 +125,25 @@ pwasm_utf8_get_codepoint(
   }
 }
 #undef IS_CB
-#undef BMS
+#undef CMS
 
+/**
+ * Returns true if the given buffer contains a sequence of valid UTF_8
+ * codepoints, and false otherwise.
+ */
 static inline bool
 pwasm_utf8_is_valid(
   const pwasm_buf_t src
 ) {
   for (size_t i = 0; i < src.len;) {
-    // get codepoint length, in bytes
+    // get length of next utf-8 codepoint (in bytes), check for error
     const size_t len = pwasm_utf8_get_codepoint_size(src.ptr[i]);
-
     if (!len) {
       // invalid codepoint, return failure
       return false;
     }
 
+    // make sure codepoint isn't truncated
     if (i + len > src.len) {
       // truncated codepoint, return failure
       return false;
@@ -149,6 +164,12 @@ pwasm_utf8_is_valid(
   return true;
 }
 
+/**
+ * Decode the LEB128-encoded unsigned 32-bit integer at the beginning of
+ * the buffer +src+ and return the value in +dst+.
+ *
+ * Returns the number of bytes consumed, or 0 on error.
+ */
 static inline size_t
 pwasm_u32_decode(
   uint32_t * const dst,
@@ -195,6 +216,12 @@ pwasm_u32_scan(
   return pwasm_u32_decode(NULL, src);
 }
 
+/**
+ * Decode the LEB128-encoded unsigned 64-bit integer at the beginning of
+ * the buffer +src+ and return the value in +dst+.
+ *
+ * Returns the number of bytes consumed, or 0 on error.
+ */
 static inline size_t
 pwasm_u64_decode(
   uint64_t * const dst,
