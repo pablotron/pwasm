@@ -157,6 +157,52 @@ pwasm_u32_decode(
   const size_t len = MIN(5, src.len);
 
   if (dst) {
+    uint32_t val = 0, shift = 0;
+
+    for (size_t i = 0; i < len; i++) {
+      const uint32_t b = src.ptr[i];
+      val |= ((b & 0x7F) << shift);
+
+      if (!(b & 0x80)) {
+        // write result
+        *dst = val;
+
+        // return length (success)
+        return i + 1;
+      }
+
+      shift += 7;
+    }
+  } else {
+    for (size_t i = 0; i < len; i++) {
+      const uint32_t b = src.ptr[i];
+
+      if (!(b & 0x80)) {
+        // return length (success)
+        return i + 1;
+      }
+    }
+  }
+
+  // return zero (failure)
+  return 0;
+}
+
+static inline size_t
+pwasm_u32_scan(
+  const pwasm_buf_t src
+) {
+  return pwasm_u32_decode(NULL, src);
+}
+
+static inline size_t
+pwasm_u64_decode(
+  uint64_t * const dst,
+  const pwasm_buf_t src
+) {
+  const size_t len = MIN(10, src.len);
+
+  if (dst) {
     uint64_t val = 0, shift = 0;
 
     for (size_t i = 0; i < len; i++) {
@@ -188,42 +234,6 @@ pwasm_u32_decode(
   return 0;
 }
 
-static inline size_t
-pwasm_u32_scan(
-  const pwasm_buf_t src
-) {
-  return pwasm_u32_decode(NULL, src);
-}
-
-static inline size_t
-pwasm_decode_u64(
-  uint64_t * const dst,
-  const void * const src_ptr,
-  const size_t src_len
-) {
-  const uint8_t * const src = src_ptr;
-  uint64_t val = 0, shift = 0;
-
-  for (size_t i = 0; i < MIN(10, src_len); i++) {
-    const uint64_t b = src[i];
-    val |= ((b & 0x7F) << shift);
-
-    if (!(b & 0x80)) {
-      if (dst) {
-        // write result
-        *dst = val;
-      }
-
-      // return length (success)
-      return i + 1;
-    }
-
-    shift += 7;
-  }
-
-  // return zero (failure)
-  return 0;
-}
 
 // static size_t
 // pwasm_decode_i32(
@@ -1360,7 +1370,7 @@ pwasm_parse_inst(
     {
       // get value, check for error
       uint64_t val = 0;
-      const size_t v_len = pwasm_decode_u64(&val, src.ptr + 1, src.len - 1);
+      const size_t v_len = pwasm_u64_decode(&val, pwasm_buf_step(src, 1));
       if (!v_len) {
         INST_FAIL("bad align value");
       }
