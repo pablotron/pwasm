@@ -53,6 +53,18 @@ typedef struct {
 #define D(fmt, ...)
 #endif /* PWASM_DEBUG */
 
+/**
+ * Create new buffer by advancing existing buffer the given number of
+ * bytes.
+ */
+static inline pwasm_buf_t
+pwasm_buf_step(
+  const pwasm_buf_t src,
+  const size_t ofs
+) {
+  return (pwasm_buf_t) { src.ptr + ofs, src.len - ofs };
+}
+
 static inline size_t
 pwasm_utf8_get_codepoint_size(
   const uint8_t c
@@ -136,6 +148,283 @@ pwasm_utf8_is_valid(
   // return success
   return true;
 }
+
+static inline size_t
+pwasm_u32_decode(
+  uint32_t * const dst,
+  const pwasm_buf_t src
+) {
+  const size_t len = MIN(5, src.len);
+
+  if (dst) {
+    uint64_t val = 0, shift = 0;
+
+    for (size_t i = 0; i < len; i++) {
+      const uint64_t b = src.ptr[i];
+      val |= ((b & 0x7F) << shift);
+
+      if (!(b & 0x80)) {
+        // write result
+        *dst = val;
+
+        // return length (success)
+        return i + 1;
+      }
+
+      shift += 7;
+    }
+  } else {
+    for (size_t i = 0; i < len; i++) {
+      const uint64_t b = src.ptr[i];
+
+      if (!(b & 0x80)) {
+        // return length (success)
+        return i + 1;
+      }
+    }
+  }
+
+  // return zero (failure)
+  return 0;
+}
+
+static inline size_t
+pwasm_u32_scan(
+  const pwasm_buf_t src
+) {
+  return pwasm_u32_decode(NULL, src);
+}
+
+// FIXME: remove this
+static inline size_t
+pwasm_decode_u32(
+  uint32_t * const dst,
+  const void * const src_ptr,
+  const size_t src_len
+) {
+  return pwasm_u32_decode(dst, (pwasm_buf_t) { src_ptr, src_len });
+}
+
+static inline size_t
+pwasm_decode_u64(
+  uint64_t * const dst,
+  const void * const src_ptr,
+  const size_t src_len
+) {
+  const uint8_t * const src = src_ptr;
+  uint64_t val = 0, shift = 0;
+
+  for (size_t i = 0; i < MIN(10, src_len); i++) {
+    const uint64_t b = src[i];
+    val |= ((b & 0x7F) << shift);
+
+    if (!(b & 0x80)) {
+      if (dst) {
+        // write result
+        *dst = val;
+      }
+
+      // return length (success)
+      return i + 1;
+    }
+
+    shift += 7;
+  }
+
+  // return zero (failure)
+  return 0;
+}
+
+// static size_t
+// pwasm_decode_i32(
+//   int32_t * const dst,
+//   void * const src_ptr,
+//   const size_t src_len
+// ) {
+//   const size_t num_bits = sizeof(int32_t) * 8;
+//   const uint8_t * const src = src_ptr;
+//   uint64_t shift = 0;
+//   int64_t val = 0;
+// 
+//   for (size_t i = 0; i < MIN(5, src_len); i++, shift += 7) {
+//     const uint64_t b = src[i];
+//     val |= (b & 0x7F) << shift;
+// 
+//     if (!(b & 0x80)) {
+//       if ((shift < num_bits) && (b & 0x40)) {
+//         val |= ~((((uint64_t) 1) << (shift + 7)) - 1);
+//       }
+// 
+//       if (dst) {
+//         // write result
+//         *dst = val;
+//       }
+// 
+//       // return length (success)
+//       return i + 1;
+//     }
+//   }
+// 
+//   // return zero (failure)
+//   return 0;
+// }
+// 
+// static size_t
+// pwasm_decode_i64(
+//   int64_t * const dst,
+//   void * const src_ptr,
+//   const size_t src_len
+// ) {
+//   const size_t num_bits = sizeof(int64_t) * 8;
+//   const uint8_t * const src = src_ptr;
+//   uint64_t shift = 0;
+//   int64_t val = 0;
+// 
+//   for (size_t i = 0; i < MIN(10, src_len); i++, shift += 7) {
+//     const uint64_t b = src[i];
+//     val |= (b & 0x7F) << shift;
+// 
+//     if (!(b & 0x80)) {
+//       if ((shift < num_bits) && (b & 0x40)) {
+//         val |= ~((((uint64_t) 1) << (shift + 7)) - 1);
+//       }
+// 
+//       if (dst) {
+//         // write result
+//         *dst = val;
+//       }
+// 
+//       // return length (success)
+//       return i + 1;
+//     }
+//   }
+// 
+//   // return zero (failure)
+//   return 0;
+// }
+
+#define DEF_VEC_PARSER(TYPE) \
+  typedef struct { \
+    void (*on_count)(const size_t, void *); \
+    void (*on_items)( \
+      const pwasm_ ## TYPE ## _t *, \
+      const size_t, \
+      void * \
+    ); \
+    void (*on_error)(const char *, void *); \
+  } pwasm_parse_ ## TYPE ## s_cbs_t; \
+  \
+  typedef struct { \
+    const pwasm_parse_ ## TYPE ## s_cbs_t * const cbs; \
+    void * cb_data; \
+  } pwasm_parse_ ## TYPE ## s_ctx_t; \
+  \
+  static void \
+  pwasm_parse_ ## TYPE ## s_null_on_count( \
+    const size_t count, \
+    void * cb_data \
+  ) { \
+    (void) count; \
+    (void) cb_data; \
+  } \
+  \
+  static void \
+  pwasm_parse_ ## TYPE ## s_null_on_items( \
+    const pwasm_ ## TYPE ## _t * const items, \
+    const size_t num, \
+    void * cb_data \
+  ) { \
+    (void) items; \
+    (void) num; \
+    (void) cb_data; \
+  } \
+  \
+  static void \
+  pwasm_parse_ ## TYPE ## s_null_on_error( \
+    const char * const text, \
+    void * cb_data \
+  ) { \
+    (void) text; \
+    (void) cb_data; \
+  } \
+  \
+  /* forward declaration */ \
+  static size_t \
+  pwasm_parse_ ## TYPE ( \
+    pwasm_parse_ ## TYPE ## s_ctx_t * const, \
+    pwasm_foobar_t * const dst, \
+    const pwasm_buf_t src \
+  ); \
+  \
+  static size_t \
+  pwasm_parse_ ## TYPE ## s ( \
+    pwasm_parse_ ## TYPE ## s_ctx_t * const ctx, \
+    const pwasm_buf_t src \
+  ) { \
+    const pwasm_parse_ ## TYPE ## s_cbs_t cbs = { \
+      .on_count = (ctx->cbs && ctx->cbs->on_count) ? \
+        ctx->cbs->on_count : \
+        pwasm_parse_ ## TYPE ## s_null_on_count, \
+      \
+      .on_items = (ctx->cbs && ctx->cbs->on_items) ? \
+        ctx->cbs->on_items : \
+        pwasm_parse_ ## TYPE ## s_null_on_items, \
+      \
+      .on_error = (ctx->cbs && ctx->cbs->on_error) ? \
+        ctx->cbs->on_error : \
+        pwasm_parse_ ## TYPE ## s_null_on_error, \
+    }; \
+    \
+    /* get count, check for error */ \
+    uint32_t count = 0; \
+    size_t num_bytes = pwasm_u32_decode(&count, src); \
+    if (!num_bytes) { \
+      cbs.on_error(#TYPE "s: invalid count", ctx->cb_data); \
+      return 0; \
+    } \
+    \
+    /* emit count */ \
+    cbs.on_count(count, ctx->cb_data); \
+    \
+    pwasm_buf_t curr = pwasm_buf_step(src, num_bytes); \
+    \
+    /* element buffer and offset */ \
+    pwasm_ ## TYPE ## _t dst[PWASM_BATCH_SIZE]; \
+    size_t ofs = 0; \
+    \
+    /* parse items */ \
+    for (size_t left = count; left > 0; left--) { \
+      /* check for underflow */ \
+      if (!curr.len) { \
+        cbs.on_error(#TYPE "s: underflow", ctx->cb_data); \
+        return 0; \
+      } \
+      /* parse element, check for error */ \
+      const size_t len = pwasm_parse_ ## TYPE (ctx, dst + ofs, curr); \
+      if (!len) { \
+        return 0; \
+      } \
+      \
+      /* increment num_bytes, increment offset, advance buffer */ \
+      num_bytes += len; \
+      ofs++; \
+      curr = pwasm_buf_step(curr, len); \
+      \
+      if (ofs == PWASM_BATCH_SIZE) { \
+        /* flush batch */ \
+        cbs.on_items(dst, PWASM_BATCH_SIZE, ctx->cb_data); \
+        ofs = 0; \
+      } \
+    } \
+    \
+    if (ofs > 0) { \
+      /* flush remaining items */ \
+      cbs.on_items(dst, ofs, ctx->cb_data); \
+    } \
+    \
+    /* return number of bytes consumed */ \
+    return num_bytes; \
+  }
 
 #define DEF_VEC_PARSE_FN(FN_NAME, TEXT, EL_TYPE, CBS_TYPE, PARSE_FN, FLUSH_CB) \
 static size_t FN_NAME ( \
@@ -280,158 +569,156 @@ pwasm_is_valid_result_type(
   return ((v == 0x40) || pwasm_is_valid_value_type(v));
 }
 
-static inline size_t
-pwasm_u32_decode(
-  uint32_t * const dst,
-  const pwasm_buf_t src
+static const char *PWASM_IMM_NAMES[] = {
+#define PWASM_IMM(a, b) b,
+PWASM_IMM_DEFS
+#undef PWASM_IMM
+};
+
+const char *
+pwasm_imm_get_name(
+  const pwasm_imm_t v
 ) {
-  const size_t len = MIN(5, src.len);
-
-  if (dst) {
-    uint64_t val = 0, shift = 0;
-
-    for (size_t i = 0; i < len; i++) {
-      const uint64_t b = src.ptr[i];
-      val |= ((b & 0x7F) << shift);
-
-      if (!(b & 0x80)) {
-        // write result
-        *dst = val;
-
-        // return length (success)
-        return i + 1;
-      }
-
-      shift += 7;
-    }
-  } else {
-    for (size_t i = 0; i < len; i++) {
-      const uint64_t b = src.ptr[i];
-
-      if (!(b & 0x80)) {
-        // return length (success)
-        return i + 1;
-      }
-    }
-  }
-
-  // return zero (failure)
-  return 0;
+  return PWASM_IMM_NAMES[MIN(v, PWASM_IMM_LAST)];
 }
 
-static inline size_t
-pwasm_u32_scan(
-  const pwasm_buf_t src
+#define PWASM_OP(a, b, c) { \
+  .name = (b), \
+  .is_valid = true, \
+  .imm = PWASM_IMM_##c, \
+},
+
+#define PWASM_OP_CONST(a, b, c) { \
+  .name = (b), \
+  .is_valid = true, \
+  .is_const = true, \
+  .imm = PWASM_IMM_##c, \
+},
+
+#define PWASM_OP_CONTROL(a, b, c) { \
+  .name = (b), \
+  .is_valid = true, \
+  .is_control = true, \
+  .imm = PWASM_IMM_##c, \
+},
+
+#define PWASM_OP_RESERVED(a, b) { \
+  .name = ("reserved." b), \
+  .imm = PWASM_IMM_LAST, \
+},
+
+static const struct {
+  const char * name;
+  bool is_control;
+  bool is_valid;
+  bool is_const;
+  pwasm_imm_t imm;
+} PWASM_OPS[] = {
+PWASM_OP_DEFS
+};
+#undef PWASM_OP
+#undef PWASM_OP_CONTROL
+#undef PWASM_OP_RESERVED
+
+const char *
+pwasm_op_get_name(
+  const pwasm_op_t op
 ) {
-  return pwasm_u32_decode(NULL, src);
+  return PWASM_OPS[op].name;
 }
 
-static inline size_t
-pwasm_decode_u32(
-  uint32_t * const dst,
-  const void * const src_ptr,
-  const size_t src_len
+static inline bool
+pwasm_op_is_valid(
+  const uint8_t byte
 ) {
-  return pwasm_u32_decode(dst, (pwasm_buf_t) { src_ptr, src_len });
+  return PWASM_OPS[byte].is_valid;
 }
 
-static inline size_t
-pwasm_decode_u64(
-  uint64_t * const dst,
-  const void * const src_ptr,
-  const size_t src_len
+static inline pwasm_imm_t
+pwasm_op_get_imm(
+  const pwasm_op_t op
 ) {
-  const uint8_t * const src = src_ptr;
-  uint64_t val = 0, shift = 0;
-
-  for (size_t i = 0; i < MIN(10, src_len); i++) {
-    const uint64_t b = src[i];
-    val |= ((b & 0x7F) << shift);
-
-    if (!(b & 0x80)) {
-      if (dst) {
-        // write result
-        *dst = val;
-      }
-
-      // return length (success)
-      return i + 1;
-    }
-
-    shift += 7;
-  }
-
-  // return zero (failure)
-  return 0;
+  return PWASM_OPS[op].imm;
 }
 
-// static size_t
-// pwasm_decode_i32(
-//   int32_t * const dst,
-//   void * const src_ptr,
-//   const size_t src_len
-// ) {
-//   const size_t num_bits = sizeof(int32_t) * 8;
-//   const uint8_t * const src = src_ptr;
-//   uint64_t shift = 0;
-//   int64_t val = 0;
-// 
-//   for (size_t i = 0; i < MIN(5, src_len); i++, shift += 7) {
-//     const uint64_t b = src[i];
-//     val |= (b & 0x7F) << shift;
-// 
-//     if (!(b & 0x80)) {
-//       if ((shift < num_bits) && (b & 0x40)) {
-//         val |= ~((((uint64_t) 1) << (shift + 7)) - 1);
-//       }
-// 
-//       if (dst) {
-//         // write result
-//         *dst = val;
-//       }
-// 
-//       // return length (success)
-//       return i + 1;
-//     }
-//   }
-// 
-//   // return zero (failure)
-//   return 0;
-// }
-// 
-// static size_t
-// pwasm_decode_i64(
-//   int64_t * const dst,
-//   void * const src_ptr,
-//   const size_t src_len
-// ) {
-//   const size_t num_bits = sizeof(int64_t) * 8;
-//   const uint8_t * const src = src_ptr;
-//   uint64_t shift = 0;
-//   int64_t val = 0;
-// 
-//   for (size_t i = 0; i < MIN(10, src_len); i++, shift += 7) {
-//     const uint64_t b = src[i];
-//     val |= (b & 0x7F) << shift;
-// 
-//     if (!(b & 0x80)) {
-//       if ((shift < num_bits) && (b & 0x40)) {
-//         val |= ~((((uint64_t) 1) << (shift + 7)) - 1);
-//       }
-// 
-//       if (dst) {
-//         // write result
-//         *dst = val;
-//       }
-// 
-//       // return length (success)
-//       return i + 1;
-//     }
-//   }
-// 
-//   // return zero (failure)
-//   return 0;
-// }
+static inline bool
+pwasm_op_is_control(
+  const pwasm_op_t op
+) {
+  return PWASM_OPS[op].is_control;
+}
+
+static inline bool
+pwasm_op_is_local(
+  const uint8_t byte
+) {
+  return (
+    (byte == PWASM_OP_LOCAL_GET) ||
+    (byte == PWASM_OP_LOCAL_SET) ||
+    (byte == PWASM_OP_LOCAL_TEE)
+  );
+}
+
+static inline bool
+pwasm_op_is_global(
+  const uint8_t byte
+) {
+  return (
+    (byte == PWASM_OP_GLOBAL_GET) ||
+    (byte == PWASM_OP_GLOBAL_SET)
+  );
+}
+
+static inline bool
+pwasm_op_is_const(
+  const pwasm_op_t op
+) {
+  return PWASM_OPS[op].is_const;
+}
+
+static const size_t
+PWASM_OP_NUM_BITS[] = {
+  // loads
+  32, // i32.load
+  64, // i64.load
+  32, // F32.LOAD
+  64, // F64.LOAD
+   8, // i32.load8_s
+   8, // i32.load8_u
+  16, // i32.load16_s
+  16, // i32.load16_u
+   8, // i64.load8_s
+   8, // i64.load8_u
+  16, // i64.load16_s
+  16, // i64.load16_u
+  32, // i64.load32_s
+  32, // i64.load32_u
+
+  // stores
+  32, // i32.store
+  64, // i64.store
+  32, // f32.store
+  64, // f64.store
+   8, // i32.store8
+  16, // i32.store16
+   8, // i64.store8
+  16, // i64.store16
+  32, // i64.store32
+
+   0, // sentinel
+};
+
+/**
+ * Get the number of bits of the target for the given instruction.
+ */
+static inline uint32_t
+pwasm_op_get_num_bits(
+  const pwasm_op_t op
+) {
+  const size_t max_ofs = LEN(PWASM_OP_NUM_BITS) - 1;
+  const size_t ofs = MIN(op - PWASM_OP_I32_LOAD, max_ofs);
+  return PWASM_OP_NUM_BITS[ofs];
+}
 
 static size_t
 pwasm_parse_name(
@@ -658,7 +945,7 @@ pwasm_parse_br_table_labels(
 
   // get default label, check for error
   uint32_t default_label;
-  const size_t d_len = pwasm_decode_u32(&default_label, src.ptr, src.len);
+  const size_t d_len = pwasm_u32_decode(&default_label, src);
   if (!d_len) {
     FAIL("br_table: bad default label");
   }
@@ -929,157 +1216,6 @@ pwasm_parse_table(
 
   // return number of bytes consumed
   return 1 + len;
-}
-
-static const char *PWASM_IMM_NAMES[] = {
-#define PWASM_IMM(a, b) b,
-PWASM_IMM_DEFS
-#undef PWASM_IMM
-};
-
-const char *
-pwasm_imm_get_name(
-  const pwasm_imm_t v
-) {
-  return PWASM_IMM_NAMES[MIN(v, PWASM_IMM_LAST)];
-}
-
-#define PWASM_OP(a, b, c) { \
-  .name = (b), \
-  .is_valid = true, \
-  .imm = PWASM_IMM_##c, \
-},
-
-#define PWASM_OP_CONST(a, b, c) { \
-  .name = (b), \
-  .is_valid = true, \
-  .is_const = true, \
-  .imm = PWASM_IMM_##c, \
-},
-
-#define PWASM_OP_CONTROL(a, b, c) { \
-  .name = (b), \
-  .is_valid = true, \
-  .is_control = true, \
-  .imm = PWASM_IMM_##c, \
-},
-
-#define PWASM_OP_RESERVED(a, b) { \
-  .name = ("reserved." b), \
-  .imm = PWASM_IMM_LAST, \
-},
-
-static const struct {
-  const char * name;
-  bool is_control;
-  bool is_valid;
-  bool is_const;
-  pwasm_imm_t imm;
-} PWASM_OPS[] = {
-PWASM_OP_DEFS
-};
-#undef PWASM_OP
-#undef PWASM_OP_CONTROL
-#undef PWASM_OP_RESERVED
-
-const char *
-pwasm_op_get_name(
-  const pwasm_op_t op
-) {
-  return PWASM_OPS[op].name;
-}
-
-static inline bool
-pwasm_op_is_valid(
-  const uint8_t byte
-) {
-  return PWASM_OPS[byte].is_valid;
-}
-
-static inline pwasm_imm_t
-pwasm_op_get_imm(
-  const pwasm_op_t op
-) {
-  return PWASM_OPS[op].imm;
-}
-
-static inline bool
-pwasm_op_is_control(
-  const pwasm_op_t op
-) {
-  return PWASM_OPS[op].is_control;
-}
-
-static inline bool
-pwasm_op_is_local(
-  const uint8_t byte
-) {
-  return (
-    (byte == PWASM_OP_LOCAL_GET) ||
-    (byte == PWASM_OP_LOCAL_SET) ||
-    (byte == PWASM_OP_LOCAL_TEE)
-  );
-}
-
-static inline bool
-pwasm_op_is_global(
-  const uint8_t byte
-) {
-  return (
-    (byte == PWASM_OP_GLOBAL_GET) ||
-    (byte == PWASM_OP_GLOBAL_SET)
-  );
-}
-
-static inline bool
-pwasm_op_is_const(
-  const pwasm_op_t op
-) {
-  return PWASM_OPS[op].is_const;
-}
-
-static const size_t
-PWASM_OP_NUM_BITS[] = {
-  // loads
-  32, // i32.load
-  64, // i64.load
-  32, // F32.LOAD
-  64, // F64.LOAD
-   8, // i32.load8_s
-   8, // i32.load8_u
-  16, // i32.load16_s
-  16, // i32.load16_u
-   8, // i64.load8_s
-   8, // i64.load8_u
-  16, // i64.load16_s
-  16, // i64.load16_u
-  32, // i64.load32_s
-  32, // i64.load32_u
-
-  // stores
-  32, // i32.store
-  64, // i64.store
-  32, // f32.store
-  64, // f64.store
-   8, // i32.store8
-  16, // i32.store16
-   8, // i64.store8
-  16, // i64.store16
-  32, // i64.store32
-
-   0, // sentinel
-};
-
-/**
- * Get the number of bits of the target for the given instruction.
- */
-static inline uint32_t
-pwasm_op_get_num_bits(
-  const pwasm_op_t op
-) {
-  const size_t max_ofs = LEN(PWASM_OP_NUM_BITS) - 1;
-  const size_t ofs = MIN(op - PWASM_OP_I32_LOAD, max_ofs);
-  return PWASM_OP_NUM_BITS[ofs];
 }
 
 /**
@@ -2074,14 +2210,6 @@ pwasm_parse_section(
 static const uint8_t PWASM_HEADER[] = { 0, 0x61, 0x73, 0x6d, 1, 0, 0, 0 };
 
 #if 0
-pwasm_buf_t
-pwasm_buf_step(
-  const pwasm_buf_t src,
-  const size_t ofs
-) {
-  pwasm_buf_t ret = { src.ptr + ofs, src.len - ofs };
-}
-
 typedef struct {
   pwasm_section_type_t id;
   uint32_t len;
