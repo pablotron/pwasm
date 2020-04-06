@@ -281,33 +281,58 @@ pwasm_is_valid_result_type(
 }
 
 static inline size_t
+pwasm_u32_decode(
+  uint32_t * const dst,
+  const pwasm_buf_t src
+) {
+  const size_t len = MIN(5, src.len);
+
+  if (dst) {
+    uint64_t val = 0, shift = 0;
+
+    for (size_t i = 0; i < len; i++) {
+      const uint64_t b = src.ptr[i];
+      val |= ((b & 0x7F) << shift);
+
+      if (!(b & 0x80)) {
+        // write result
+        *dst = val;
+
+        // return length (success)
+        return i + 1;
+      }
+
+      shift += 7;
+    }
+  } else {
+    for (size_t i = 0; i < len; i++) {
+      const uint64_t b = src.ptr[i];
+
+      if (!(b & 0x80)) {
+        // return length (success)
+        return i + 1;
+      }
+    }
+  }
+
+  // return zero (failure)
+  return 0;
+}
+
+static inline size_t
+pwasm_u32_scan(
+  const pwasm_buf_t src
+) {
+  return pwasm_u32_decode(NULL, src);
+}
+
+static inline size_t
 pwasm_decode_u32(
   uint32_t * const dst,
   const void * const src_ptr,
   const size_t src_len
 ) {
-  const uint8_t * const src = src_ptr;
-  uint64_t val = 0, shift = 0;
-
-  for (size_t i = 0; i < MIN(5, src_len); i++) {
-    const uint64_t b = src[i];
-    val |= ((b & 0x7F) << shift);
-
-    if (!(b & 0x80)) {
-      if (dst) {
-        // write result
-        *dst = val;
-      }
-
-      // return length (success)
-      return i + 1;
-    }
-
-    shift += 7;
-  }
-
-  // return zero (failure)
-  return 0;
+  return pwasm_u32_decode(dst, (pwasm_buf_t) { src_ptr, src_len });
 }
 
 static inline size_t
@@ -2047,6 +2072,643 @@ pwasm_parse_section(
 }
 
 static const uint8_t PWASM_HEADER[] = { 0, 0x61, 0x73, 0x6d, 1, 0, 0, 0 };
+
+#if 0
+pwasm_buf_t
+pwasm_buf_step(
+  const pwasm_buf_t src,
+  const size_t ofs
+) {
+  pwasm_buf_t ret = { src.ptr + ofs, src.len - ofs };
+}
+
+typedef struct {
+  pwasm_section_type_t id;
+  uint32_t len;
+} pwasm_header_t;
+
+static inline size_t
+pwasm_header_parse(
+  pwasm_section_header_t * const dst,
+  const pwasm_buf_t src
+) {
+  if (src.len < 2) {
+    return 0;
+  }
+
+  // get section type
+  const pwasm_section_type_t type = src.ptr[0];
+
+  // build length buffer
+  const pwasm_buf_t len_buf = pwasm_buf_step(src, 1);
+
+  // get section length
+  // FIXME: add pwasm_u32_decode_buf(dst_num, src_buf)
+  uint32_t len;
+  const size_t ofs = pwasm_decode_u32(&len, len_buf.ptr, len_buf.len);
+  if (!ofs) {
+    return 0;
+  }
+
+  if (dst) {
+    // build result, copy result to destination
+    const pwasm_section_header_t tmp = { type, len };
+    *dst = tmp;
+  }
+
+  // return number of bytes consumed
+  return ofs + 1;
+}
+
+typedef struct {
+  void (*on_error)(const char *, void *);
+} pwasm_scan_cbs_t;
+
+typedef struct {
+  const pwasm_scan_cbs_t *cbs;
+  void *cb_data;
+} pwasm_scan_ctx_t;
+
+static inline size_t
+pwasm_scan_u32s(
+  const pwasm_scan_ctx_t * const ctx
+  uint32_t * const ret,
+  const pwasm_buf_t src
+) {
+  // get size, check for error
+  uint32_t size = 0;
+  const size_t size_len = pwasm_u32_decode(&size, src);
+  if (!size_len) {
+    FAIL("bad u32 vector size");
+  }
+
+  size_t num_bytes = size_len;
+  pwasm_buf_t curr = pwasm_buf_step(src, size_len);
+  uint32_t left = size;
+  while (left > 0) {
+    if (!curr.len) {
+      FAIL("incomplete u32 vector");
+    }
+
+    // get value, check for error
+    const size_t len = pwasm_u32_scan(curr);
+    if (!val_len) {
+      FAIL("bad u32 vector value");
+    }
+
+    // advance buffer, increment byte count, decriment item count
+    curr = pwasm_buf_step(curr, val_len);
+    num_bytes += val_len;
+    left--;
+  }
+
+  if (ret) {
+    // copy number of items to destination
+    *ret = size;
+  }
+
+  // return number of bytes consumed
+  return num_bytes;
+}
+
+static inline size_t
+pwasm_scan_name(
+  const pwasm_buf_t src
+) {
+  // get size, check for error
+  uint32_t size = 0;
+  const size_t size_len = pwasm_u32_decode(&size, src);
+  if (!size_len) {
+    return 0;
+  }
+
+  // return total number of bytes consumed
+  return size_len + size;
+}
+
+typedef struct {
+} pwasm_mod_stats_t;
+
+static inline size_t
+pwasm_scan_type(
+  const pwasm_scan_ctx_t * const ctx,
+  pwasm_mod_stats_t * const dst,
+  const pwasm_buf_t src
+) {
+  if (!src.len < 3) {
+    FAIL("incomplete type");
+  }
+
+  if (src.ptr[0] != 0x60) {
+    FAIL("bad function type");
+  }
+
+  // scan parameters
+  pwasm_buf_t curr = pwasm_buf_step(src, 1);
+  uint32_t num_params = 0;
+  const size_t params_len = pwasm_scan_u32s(ctx, &num_params, curr);
+  if (!params_len) {
+    FAIL("bad function type parameters");
+  }
+
+  // scan results
+  curr = pwasm_buf_step(curr, params_len);
+  uint32_t num_results = 0;
+  const size_t results_len = pwasm_scan_u32s(ctx, &num_results, curr);
+  if (!results_len) {
+    FAIL("bad function type results");
+  }
+
+  // increment counts
+  dst->num_params += num_params;
+  dst->num_results += num_results;
+  dst->num_types++;
+
+  // return number of bytes consumed
+  return 1 + params_len + results_len;
+}
+
+static inline size_t
+pwasm_scan_limits(
+  const pwasm_scan_ctx_t * const ctx,
+  pwasm_mod_stats_t * const dst,
+  const pwasm_buf_t src
+) {
+  size_t num_bytes = 0;
+
+  if (src.len < 2) {
+    FAIL("empty limits");
+  }
+
+  const uint8_t max_flag = src.ptr[0];
+  pwasm_buf_t curr = pwasm_buf_step(src, 1);
+  num_bytes += 1;
+
+  if (max_flag > 1) {
+    FAIL("bad limits flag");
+  }
+
+  // scan min, check for error
+  const size_t min_len = pwasm_u32_scan(curr);
+  if (!min_len) {
+    FAIL("bad limits min");
+  }
+  curr = pwasm_buf_step(curr, min_len);
+  num_bytes += min_len;
+
+
+  if (max_flag) {
+    // scan max, check for error
+    const size_t max_len = pwasm_u32_scan(curr);
+    if (!min_len) {
+      FAIL("bad limits min");
+    }
+    num_bytes += max_len;
+  }
+
+  dst->num_limits++;
+
+  // return number of bytes consumed
+  return num_bytes;
+}
+
+static inline size_t
+pwasm_scan_table_type(
+  const pwasm_scan_ctx_t * const ctx,
+  pwasm_mod_stats_t * const dst,
+  const pwasm_buf_t src
+) {
+  if (!src.len) {
+    FAIL("missing element type");
+  }
+
+  if (src.ptr[0] != 0x70) {
+    FAIL("bad table element type");
+  }
+
+  return 1 + pwasm_scan_limits(ctx, dst, pwasm_buf_step(src, 1));
+}
+
+static inline size_t
+pwasm_scan_global_type(
+  const pwasm_scan_ctx_t * const ctx,
+  pwasm_mod_stats_t * const dst,
+  const pwasm_buf_t src
+) {
+  if (src.len < 2) {
+    FAIL("incomplete global type");
+  }
+
+  return 2;
+}
+
+static inline size_t
+pwasm_scan_global(
+  const pwasm_scan_ctx_t * const ctx,
+  pwasm_mod_stats_t * const dst,
+  const pwasm_buf_t src
+) {
+  if (src.len < 2) {
+    FAIL("incomplete global type");
+  }
+
+  return 2;
+}
+
+static inline size_t
+pwasm_scan_function_import(
+  const pwasm_scan_ctx_t * const ctx,
+  pwasm_mod_stats_t * const dst,
+  const pwasm_buf_t src
+) {
+  (void) dst;
+  (void) ctx;
+  return pwasm_u32_scan(src);
+}
+
+static inline size_t
+pwasm_scan_table_import(
+  const pwasm_scan_ctx_t * const ctx,
+  pwasm_mod_stats_t * const dst,
+  const pwasm_buf_t src
+) {
+  return pwasm_scan_table_type(ctx, dst, src);
+}
+
+static inline size_t
+pwasm_scan_memory_import(
+  const pwasm_scan_ctx_t * const ctx,
+  pwasm_mod_stats_t * const dst,
+  const pwasm_buf_t src
+) {
+  return pwasm_scan_limits(ctx, dst, src);
+}
+
+static inline size_t
+pwasm_scan_global_import(
+  const pwasm_scan_ctx_t * const ctx,
+  pwasm_mod_stats_t * const dst,
+  const pwasm_buf_t src
+) {
+  return pwasm_scan_global_type(ctx, dst, src);
+}
+
+static inline size_t
+pwasm_scan_import(
+  const pwasm_scan_ctx_t * const ctx,
+  pwasm_mod_stats_t * const dst,
+  const pwasm_buf_t src
+) {
+  pwasm_buf_t curr = pwasm_buf_step(src, 0);
+  size_t num_bytes = 0;
+
+  if (!src.len < 4) {
+    FAIL("incomplete import");
+  }
+
+  // get module name, check for error
+  const size_t mod_len = pwasm_scan_name(curr);
+  if (!mod_len) {
+    FAIL("bad import module name");
+  }
+  curr = pwasm_buf_step(curr, mod_len);
+  num_bytes += mod_len;
+
+  // get import name, check for error
+  const size_t name_len = pwasm_scan_name(name_buf);
+  if (!name_len) {
+    FAIL("bad import module name");
+  }
+  curr = pwasm_buf_step(curr, name_len);
+  num_bytes += name_len;
+
+  // get type, check for error
+  if (!curr.len) {
+    FAIL("missing import type");
+  }
+  const uint8_t type = curr.ptr[0];
+  curr = pwasm_buf_step(curr, 1);
+  num_bytes++;
+
+  switch (type) {
+#define PWASM_IMPORT_TYPE(a, b, c) \
+  case PWASM_IMPORT_TYPE ## a: \
+    { \
+      const size_t len = pwasm_scan_ ## c ## _import(ctx, dst, curr); \
+      if (!len) { \
+        return 0; \
+      } \
+      num_bytes += len; \
+    } \
+    break;
+  default:
+    FAIL("invalid import type");
+  }
+
+  // increment counts
+  dst->num_import_types[type]++;
+  dst->num_imports++;
+
+  // return number of bytes consumed
+  return num_bytes;
+}
+
+static inline size_t
+pwasm_scan_custom_section(
+  const pwasm_scan_ctx_t * const ctx,
+  pwasm_mod_stats_t * const dst,
+  const pwasm_buf_t src
+) {
+  (void) ctx;
+  (void) dst;
+  return src.len;
+}
+
+static inline size_t
+pwasm_scan_type_section(
+  const pwasm_scan_ctx_t * const ctx,
+  pwasm_mod_stats_t * const dst,
+  const pwasm_buf_t src
+) {
+  // get count, check for error
+  uint32_t count = 0;
+  size_t num_bytes = pwasm_u32_decode(&count, src);
+  if (!num_bytes) {
+    FAIL("bad vector size");
+  }
+
+  uint32_t left = count;
+  pwasm_buf_t curr = pwasm_buf_step(src, num_bytes);
+  while (left > 0) {
+    // scan item, check for error
+    const size_t len = pwasm_scan_type(ctx, dst, curr);
+    if (!len) {
+      return 0;
+    }
+
+    // advance buffer
+    num_bytes += len;
+    curr = pwasm_buf_step(curr, len);
+  }
+
+  // return number of bytes consumed
+  return num_bytes;
+}
+
+static inline size_t
+pwasm_scan_import_section(
+  const pwasm_scan_ctx_t * const ctx,
+  pwasm_mod_stats_t * const dst,
+  const pwasm_buf_t src
+) {
+  // get count, check for error
+  uint32_t count = 0;
+  size_t num_bytes = pwasm_u32_decode(&count, src);
+  if (!num_bytes) {
+    FAIL("bad vector size");
+  }
+
+  uint32_t left = count;
+  pwasm_buf_t curr = pwasm_buf_step(src, num_bytes);
+  while (left > 0) {
+    // scan item, check for error
+    const size_t len = pwasm_scan_import(ctx, dst, curr);
+    if (!len) {
+      return 0;
+    }
+
+    // advance buffer
+    num_bytes += len;
+    curr = pwasm_buf_step(curr, len);
+  }
+
+  // return number of bytes consumed
+  return num_bytes;
+}
+
+static inline size_t
+pwasm_scan_function_section(
+  const pwasm_scan_ctx_t * const ctx,
+  pwasm_mod_stats_t * const dst,
+  const pwasm_buf_t src
+) {
+  uint32_t num = 0;
+
+  const size_t len = pwasm_scan_u32s(ctx, &num, curr);
+  if (!len) {
+    return 0;
+  }
+
+  // FIXME: += or =?
+  dst->num_funcs = num;
+
+  // return number of bytes consumed
+  return len;
+}
+
+static inline size_t
+pwasm_scan_table_section(
+  const pwasm_scan_ctx_t * const ctx,
+  pwasm_mod_stats_t * const dst,
+  const pwasm_buf_t src
+) {
+  // get count, check for error
+  uint32_t count = 0;
+  size_t num_bytes = pwasm_u32_decode(&count, src);
+  if (!num_bytes) {
+    FAIL("bad vector size");
+  }
+
+  uint32_t left = count;
+  pwasm_buf_t curr = pwasm_buf_step(src, num_bytes);
+  while (left > 0) {
+    // scan item, check for error
+    const size_t len = pwasm_scan_table_type(ctx, dst, curr);
+    if (!len) {
+      return 0;
+    }
+
+    // advance buffer
+    num_bytes += len;
+    curr = pwasm_buf_step(curr, len);
+  }
+
+  // FIXME: += or =?
+  dst->num_tables = count;
+
+  // return number of bytes consumed
+  return num_bytes;
+}
+
+static inline size_t
+pwasm_scan_memory_section(
+  const pwasm_scan_ctx_t * const ctx,
+  pwasm_mod_stats_t * const dst,
+  const pwasm_buf_t src
+) {
+  // get count, check for error
+  uint32_t count = 0;
+  size_t num_bytes = pwasm_u32_decode(&count, src);
+  if (!num_bytes) {
+    FAIL("bad vector size");
+  }
+
+  uint32_t left = count;
+  pwasm_buf_t curr = pwasm_buf_step(src, num_bytes);
+  while (left > 0) {
+    // scan item, check for error
+    const size_t len = pwasm_scan_limits(ctx, dst, curr);
+    if (!len) {
+      return 0;
+    }
+
+    // advance buffer
+    num_bytes += len;
+    curr = pwasm_buf_step(curr, len);
+  }
+
+  // FIXME: += or =?
+  dst->num_mems = count;
+
+  // return number of bytes consumed
+  return num_bytes;
+}
+
+static inline size_t
+pwasm_scan_global_section(
+  const pwasm_scan_ctx_t * const ctx,
+  pwasm_mod_stats_t * const dst,
+  const pwasm_buf_t src
+) {
+  // get count, check for error
+  uint32_t count = 0;
+  size_t num_bytes = pwasm_u32_decode(&count, src);
+  if (!num_bytes) {
+    FAIL("bad vector size");
+  }
+
+  uint32_t left = count;
+  pwasm_buf_t curr = pwasm_buf_step(src, num_bytes);
+  while (left > 0) {
+    // scan item, check for error
+    const size_t len = pwasm_scan_global(ctx, dst, curr);
+    if (!len) {
+      return 0;
+    }
+
+    // advance buffer
+    num_bytes += len;
+    curr = pwasm_buf_step(curr, len);
+  }
+
+  // FIXME: += or =?
+  dst->num_globals = count;
+
+  // return number of bytes consumed
+  return num_bytes;
+}
+
+static inline size_t
+pwasm_scan_section(
+  const pwasm_scan_ctx_t * const ctx,
+  pwasm_mod_stats_t * const dst,
+  const pwasm_section_type_t type,
+  const pwasm_buf_t src
+) {
+  switch (type) {
+#define PWASM_SECTION_TYPE(a, b) \
+  case PWASM_SECTION_TYPE ## a: \
+    return pwasm_ scan_ ## b ## _section(dst, src);
+PWASM_SECTION_TYPES
+#undef PWASM_SECTION_TYPE
+  default:
+    return pwasm_scan_invalid_section(ctx, dst, src);
+  }
+}
+
+static bool
+pwasm_mod_scan(
+  const pwasm_scan_ctx_t * const ctx,
+  pwasm_mod_stats_t * const dst,
+  const pwasm_buf_t src
+) {
+  // cache callbacks locally
+  // FIXME: replace FAIL
+  const pwasm_scan_cbs_t cbs = {
+    .on_error = (ctx->cbs && ctx->cbs->on_error) ? ctx->cbs->on_error : pwasm_scan_on_error,
+  };
+  // check source length
+  if (src.len < 8) {
+    FAIL("source too small");
+  }
+
+  // check magic and version
+  if (memcmp(src, PWASM_HEADER, sizeof(PWASM_HEADER))) {
+    FAIL("invalid module header");
+  }
+
+  pwasm_mod_stats_t stats = {};
+  pwasm_section_type_t max_type = 0;
+
+  pwasm_buf_t curr = pwasm_buf_step(src, 8);
+  while (curr.len > 0) {
+    // get section header, check for error
+    pwasm_header_t head;
+    const size_t hd_len = pwasm_header_parse(&head, curr);
+    if (!head_len) {
+      FAIL("invalid section header");
+    }
+
+    // check section type
+    if (head.type >= PWASM_SECTION_TYPE_LAST) {
+      FAIL("invalid section type");
+    }
+
+    // check section order for non-custom sections
+    if (head.type != PWASM_SECTION_TYPE_CUSTOM) {
+      if (head.type < max_type) {
+        FAIL("invalid section order");
+      } else if (head.type == max_type) {
+        FAIL("duplicate section");
+      }
+
+      // update maximum section type
+      max_type = head.type;
+    }
+
+    if (head.len > 0) {
+      // build body buffer
+      const pwasm_buf_t body = { curr.ptr + head_len, head.len };
+
+      const size_t bd_len = pwasm_scan_section(ctx, &stats, head.type, body);
+      if (!bd_len) {
+        // return failure
+        return 0;
+      }
+
+      if (head.type > 0) {
+        // save reference to section body
+        stats.section_bodies[head.type - 1] = body;
+      }
+    }
+
+    // increment section counters
+    stats.num_section_types[type]++;
+    stats.num_sections++;
+
+    // advance buffer
+    curr = pwasm_buf_step(curr, bd_len);
+  }
+
+  if (dst) {
+    // copy results to destination
+    *dst = stats;
+  }
+
+  // return result
+  return src.len;
+}
+#endif /* 0 */
 
 bool
 pwasm_parse_module(
