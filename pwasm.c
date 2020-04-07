@@ -747,46 +747,83 @@ pwasm_op_get_num_bits(
   return PWASM_OP_NUM_BITS[ofs];
 }
 
-static size_t
-pwasm_parse_name(
-  pwasm_buf_t * const ret_buf,
-  const pwasm_parse_module_cbs_t * const cbs,
-  const pwasm_buf_t src,
+static void
+pwasm_parse_buf_null_on_error(
+  const char * const text,
   void * const cb_data
 ) {
+  (void) text;
+  (void) cb_data;
+}
+
+typedef struct {
+  void (*on_error)(const char *, void *);
+} pwasm_parse_buf_cbs_t;
+
+typedef struct {
+  const pwasm_parse_buf_cbs_t *cbs;
+  void *cb_data;
+} pwasm_parse_buf_ctx_t;
+
+static size_t
+pwasm_parse_buf(
+  const pwasm_parse_buf_ctx_t * const ctx,
+  pwasm_buf_t * const dst,
+  const pwasm_buf_t src
+) {
+  const pwasm_parse_buf_cbs_t cbs = {
+    .on_error = (ctx->cbs && ctx->cbs->on_error) ? ctx->cbs->on_error : pwasm_parse_buf_null_on_error,
+  };
+
   // check source length
   if (!src.len) {
-    FAIL("empty name");
+    cbs.on_error("empty name", ctx->cb_data);
+    return 0;
   }
 
-  // decode name length, check for error
-  uint32_t len = 0;
-  const size_t len_ofs = pwasm_u32_decode(&len, src);
-  if (!len_ofs) {
-    FAIL("bad name length");
+  // decode count, check for error
+  uint32_t count = 0;
+  const size_t len = pwasm_u32_decode(&count, src);
+  if (!len) {
+    cbs.on_error("bad name length", ctx->cb_data);
+    return 0;
   }
 
   // D("src: %p, src_len = %zu, len = %u, len_ofs = %zu", src, src_len, len, len_ofs);
 
-  // calculate total length, check for error
-  const size_t num_bytes = len_ofs + len;
+  // calculate total number of bytes, check for overflow
+  const size_t num_bytes = count + len;
   if (num_bytes > src.len) {
-    FAIL("truncated name");
+    cbs.on_error("truncated name", ctx->cb_data);
+    return 0;
   }
 
-  // build result
-  const pwasm_buf_t buf = {
-    .ptr = src.ptr + len_ofs,
-    .len = len,
+  if (dst) {
+    // build result, save result to destination
+    *dst = (pwasm_buf_t) { src.ptr + len, count };
+  }
+
+  // return number of bytes consumed
+  return num_bytes;
+}
+
+static size_t
+pwasm_parse_name(
+  pwasm_buf_t * const dst,
+  const pwasm_parse_module_cbs_t * const mod_cbs,
+  const pwasm_buf_t src,
+  void * const cb_data
+) {
+  const pwasm_parse_buf_cbs_t cbs = {
+    .on_error = mod_cbs ? mod_cbs->on_error : NULL,
   };
 
-  if (ret_buf) {
-    // save to result
-    *ret_buf = buf;
-  }
+  const pwasm_parse_buf_ctx_t ctx = {
+    .cbs      = &cbs,
+    .cb_data  = cb_data,
+  };
 
-  // return section length, in bytes
-  return num_bytes;
+  return pwasm_parse_buf(&ctx, dst, src);
 }
 
 static size_t
