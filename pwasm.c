@@ -1072,6 +1072,9 @@ PWASM_COUNT_BR_TABLE_LABELS_CBS = {
  * Count number of labels in a buffer containing the labels for a
  * br_table instruction.
  *
+ * Note: The count includes the default value, so a successful result
+ * will always be greater than zero.
+ *
  * Returns 0 on error.
  */
 static size_t
@@ -1372,16 +1375,17 @@ pwasm_parse_inst(
   case PWASM_IMM_BR_TABLE:
     {
       // parse labels immediate, check for error
-      pwasm_parse_u32s_ctx_t tmp_ctx = { NULL, NULL };
-      const size_t labels_len = pwasm_parse_br_table_labels(&tmp_ctx, pwasm_buf_step(src, 1));
-      if (!labels_len) {
+      pwasm_parse_u32s_ctx_t l_ctx = { NULL, NULL };
+      const pwasm_buf_t l_buf = pwasm_buf_step(src, 1);
+      const size_t l_len = pwasm_parse_br_table_labels(&l_ctx, l_buf);
+      if (!l_len) {
         INST_FAIL("bad br_table labels immediate");
       }
 
       // save labels buffer, increment length
       in.v_br_table.labels.buf.ptr = src.ptr + 1;
-      in.v_br_table.labels.buf.len = labels_len;
-      len += labels_len;
+      in.v_br_table.labels.buf.len = l_len;
+      len += l_len;
     }
 
     break;
