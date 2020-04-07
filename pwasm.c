@@ -903,7 +903,7 @@ typedef struct {
 } pwasm_parse_u32s_cbs_t;
 
 typedef struct {
-  const pwasm_parse_u32s_cbs_t * cbs;
+  const pwasm_parse_u32s_cbs_t *cbs;
   void *cb_data;
 } pwasm_parse_u32s_ctx_t;
 
@@ -976,7 +976,7 @@ pwasm_parse_u32s(
 }
 
 static void
-pwasm_parse_br_table_labels_on_count(
+pwasm_parse_labels_on_count(
   const uint32_t count,
   void *cb_data
 ) {
@@ -988,7 +988,7 @@ pwasm_parse_br_table_labels_on_count(
 }
 
 static void
-pwasm_parse_br_table_labels_on_items(
+pwasm_parse_labels_on_items(
   const uint32_t * const rows,
   const size_t num,
   void *cb_data
@@ -1001,7 +1001,7 @@ pwasm_parse_br_table_labels_on_items(
 }
 
 static void
-pwasm_parse_br_table_labels_on_error(
+pwasm_parse_labels_on_error(
   const char * const text,
   void *cb_data
 ) {
@@ -1013,20 +1013,20 @@ pwasm_parse_br_table_labels_on_error(
 }
 
 static const pwasm_parse_u32s_cbs_t
-PWASM_PARSE_BR_TABLE_LABELS_CBS = {
-  .on_count = pwasm_parse_br_table_labels_on_count,
-  .on_items = pwasm_parse_br_table_labels_on_items,
-  .on_error = pwasm_parse_br_table_labels_on_error,
+PWASM_PARSE_LABELS_CBS = {
+  .on_count = pwasm_parse_labels_on_count,
+  .on_items = pwasm_parse_labels_on_items,
+  .on_error = pwasm_parse_labels_on_error,
 };
 
 static size_t
-pwasm_parse_br_table_labels(
+pwasm_parse_labels(
   pwasm_parse_u32s_ctx_t * const src_ctx,
   const pwasm_buf_t src
 ) {
   // build context
   const pwasm_parse_u32s_ctx_t ctx = {
-    .cbs      = &PWASM_PARSE_BR_TABLE_LABELS_CBS,
+    .cbs      = &PWASM_PARSE_LABELS_CBS,
     .cb_data  = src_ctx,
   };
 
@@ -1043,19 +1043,19 @@ pwasm_parse_br_table_labels(
   const size_t label_len = pwasm_u32_decode(&label, buf);
   if (!label_len) {
     const char * const text = "br_table: bad default label";
-    pwasm_parse_br_table_labels_on_error(text, src_ctx);
+    pwasm_parse_labels_on_error(text, src_ctx);
     return 0;
   }
 
   // pass default label to callback
-  pwasm_parse_br_table_labels_on_items(&label, 1, src_ctx);
+  pwasm_parse_labels_on_items(&label, 1, src_ctx);
 
   // return total number of bytes consumed
   return len + label_len;
 }
 
 static void
-pwasm_count_br_table_labels_on_count(
+pwasm_count_labels_on_count(
   const uint32_t count,
   void *cb_data
 ) {
@@ -1064,8 +1064,8 @@ pwasm_count_br_table_labels_on_count(
 }
 
 static const pwasm_parse_u32s_cbs_t
-PWASM_COUNT_BR_TABLE_LABELS_CBS = {
-  .on_count = pwasm_count_br_table_labels_on_count,
+PWASM_COUNT_LABELS_CBS = {
+  .on_count = pwasm_count_labels_on_count,
 };
 
 /**
@@ -1078,17 +1078,17 @@ PWASM_COUNT_BR_TABLE_LABELS_CBS = {
  * Returns 0 on error.
  */
 static size_t
-pwasm_count_br_table_labels(
+pwasm_count_labels(
   const pwasm_buf_t src
 ) {
   uint32_t count = 0;
 
   pwasm_parse_u32s_ctx_t ctx = {
-    .cbs = &PWASM_COUNT_BR_TABLE_LABELS_CBS,
+    .cbs = &PWASM_COUNT_LABELS_CBS,
     .cb_data = &count,
   };
 
-  const size_t len = pwasm_parse_br_table_labels(&ctx, src);
+  const size_t len = pwasm_parse_labels(&ctx, src);
   return (len > 0) ? count : 0;
 }
 
@@ -1377,7 +1377,7 @@ pwasm_parse_inst(
       // parse labels immediate, check for error
       pwasm_parse_u32s_ctx_t l_ctx = { NULL, NULL };
       const pwasm_buf_t l_buf = pwasm_buf_step(src, 1);
-      const size_t l_len = pwasm_parse_br_table_labels(&l_ctx, l_buf);
+      const size_t l_len = pwasm_parse_labels(&l_ctx, l_buf);
       if (!l_len) {
         INST_FAIL("bad br_table labels immediate");
       }
@@ -3339,7 +3339,7 @@ pwasm_get_function_sizes_on_insts(
   for (size_t i = 0; i < num; i++) {
     if (rows[i].op == PWASM_OP_BR_TABLE) {
       const pwasm_buf_t buf = rows[i].v_br_table.labels.buf;
-      data->sizes.num_labels += pwasm_count_br_table_labels(buf);
+      data->sizes.num_labels += pwasm_count_labels(buf);
     }
   }
 }
@@ -4504,7 +4504,7 @@ pwasm_module_add_br_table(
 
   // add labels, check for error
   pwasm_parse_u32s_ctx_t ctx = { &PWASM_MODULE_ADD_BR_TABLE_CBS, &data };
-  const size_t num_bytes = pwasm_parse_br_table_labels(&ctx, buf);
+  const size_t num_bytes = pwasm_parse_labels(&ctx, buf);
 
   // return result
   return num_bytes > 0;
