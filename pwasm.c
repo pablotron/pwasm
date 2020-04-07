@@ -748,7 +748,7 @@ pwasm_op_get_num_bits(
 }
 
 static void
-pwasm_parse_buf_null_on_error(
+pwasm_null_on_error(
   const char * const text,
   void * const cb_data
 ) {
@@ -772,7 +772,7 @@ pwasm_parse_buf(
   const pwasm_buf_t src
 ) {
   const pwasm_parse_buf_cbs_t cbs = {
-    .on_error = (ctx->cbs && ctx->cbs->on_error) ? ctx->cbs->on_error : pwasm_parse_buf_null_on_error,
+    .on_error = (ctx->cbs && ctx->cbs->on_error) ? ctx->cbs->on_error : pwasm_null_on_error,
   };
 
   // check source length
@@ -876,71 +876,98 @@ pwasm_parse_value_type_list(
   return num_bytes;
 }
 
+static void
+pwasm_parse_u32s_null_on_count(
+  const uint32_t count,
+  void *cb_data
+) {
+  (void) count;
+  (void) cb_data;
+}
+
+static void
+pwasm_parse_u32s_null_on_items(
+  const uint32_t * const items,
+  const size_t num,
+  void *cb_data
+) {
+  (void) items;
+  (void) num;
+  (void) cb_data;
+}
+
 typedef struct {
   void (*on_count)(const uint32_t, void *);
-  void (*on_vals)(const uint32_t *, const size_t, void *);
+  void (*on_items)(const uint32_t *, const size_t, void *);
   void (*on_error)(const char *, void *);
 } pwasm_parse_u32s_cbs_t;
 
+typedef struct {
+  const pwasm_parse_u32s_cbs_t * cbs;
+  void *cb_data;
+} pwasm_parse_u32s_ctx_t;
+
 static size_t
 pwasm_parse_u32s(
-  const pwasm_buf_t src,
-  const pwasm_parse_u32s_cbs_t * const cbs,
-  void *cb_data
+  const pwasm_parse_u32s_ctx_t * const ctx,
+  const pwasm_buf_t src
 ) {
-  size_t ofs = 0;
+  const pwasm_parse_u32s_cbs_t cbs = {
+    .on_count = (ctx->cbs && ctx->cbs->on_count) ? ctx->cbs->on_count : pwasm_parse_u32s_null_on_count,
+    .on_items = (ctx->cbs && ctx->cbs->on_items) ? ctx->cbs->on_items : pwasm_parse_u32s_null_on_items,
+    .on_error = (ctx->cbs && ctx->cbs->on_error) ? ctx->cbs->on_error : pwasm_null_on_error,
+  };
 
   // get count, check for error
-  uint32_t num;
-  const size_t n_len = pwasm_u32_decode(&num, src);
-  if (!n_len) {
-    FAIL("bad u32 vector count");
+  uint32_t count;
+  const size_t count_len = pwasm_u32_decode(&count, src);
+  if (!count_len) {
+    cbs.on_error("bad u32 vector count", ctx->cb_data);
+    return 0;
   }
 
-  if (cbs && cbs->on_count) {
-    cbs->on_count(num, cb_data);
-  }
+  cbs.on_count(count, ctx->cb_data);
 
-  // increment offset
-  ofs += n_len;
+  // track number of bytes and current buffer
+  size_t num_bytes = count_len;
+  pwasm_buf_t curr = pwasm_buf_step(src, count_len);
+  uint32_t items[PWASM_BATCH_SIZE];
 
-  uint32_t vals[PWASM_BATCH_SIZE];
-
-  size_t vals_ofs = 0;
-  for (size_t i = 0; i < num; i++) {
-    if (ofs > src.len) {
-      FAIL("u32 vector buffer overflow");
+  size_t ofs = 0;
+  for (size_t i = 0; i < count; i++) {
+    if (!curr.len) {
+    }
+    if (num_bytes > src.len) {
+      cbs.on_error("u32 vector buffer overflow", ctx->cb_data);
+      return 0;
     }
 
-    // decode id, check for error
-    const size_t len = pwasm_u32_decode(vals + vals_ofs, pwasm_buf_step(src, ofs));
+    // decode value, check for error
+    const size_t len = pwasm_u32_decode(items + ofs, curr);
     if (!len) {
-      FAIL("bad u32 in u32 vector");
+      cbs.on_error("bad u32 in u32 vector", ctx->cb_data);
+      return 0;
     }
 
-    // increment vals offset
-    vals_ofs++;
-    if (vals_ofs == (LEN(vals) - 1)) {
-      if (cbs && cbs->on_vals) {
-        // flush batch
-        cbs->on_vals(vals, PWASM_BATCH_SIZE, cb_data);
-      }
+    // increment buffer, byte count, and offset
+    curr = pwasm_buf_step(curr, len);
+    num_bytes += len;
+    ofs++;
 
-      // reset offset
-      vals_ofs = 0;
+    if (ofs == LEN(items)) {
+      // flush batch, reset offset
+      cbs.on_items(items, PWASM_BATCH_SIZE, ctx->cb_data);
+      ofs = 0;
     }
-
-    // increment offset
-    ofs += len;
   }
 
-  if ((vals_ofs > 0) && cbs && cbs->on_vals) {
+  if (ofs > 0) {
     // flush remaining values
-    cbs->on_vals(vals, vals_ofs, cb_data);
+    cbs.on_items(items, ofs, ctx->cb_data);
   }
 
   // return success
-  return ofs;
+  return num_bytes;
 }
 
 typedef struct {
@@ -4178,7 +4205,7 @@ typedef struct {
 } pwasm_module_add_element_fns_t;
 
 static void
-pwasm_module_add_element_fns_on_vals(
+pwasm_module_add_element_fns_on_items(
   const uint32_t * const ids,
   const size_t num,
   void *cb_data
@@ -4216,7 +4243,7 @@ pwasm_module_add_element_fns_on_error(
 
 static const pwasm_parse_u32s_cbs_t
 PWASM_MODULE_ADD_ELEMENT_FNS_CBS = {
-  .on_vals  = pwasm_module_add_element_fns_on_vals,
+  .on_items = pwasm_module_add_element_fns_on_items,
   .on_error = pwasm_module_add_element_fns_on_error,
 };
 
@@ -4238,8 +4265,13 @@ pwasm_module_add_element_fns(
     .success    = true,
   };
 
+  const pwasm_parse_u32s_ctx_t ctx = {
+    .cbs = &PWASM_MODULE_ADD_ELEMENT_FNS_CBS,
+    .cb_data = &fns_data,
+  };
+
   // parse function IDs
-  pwasm_parse_u32s(src, &PWASM_MODULE_ADD_ELEMENT_FNS_CBS, &fns_data);
+  pwasm_parse_u32s(&ctx, src);
 
   // return result
   return fns_data.success;
