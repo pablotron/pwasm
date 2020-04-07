@@ -907,6 +907,11 @@ typedef struct {
   void *cb_data;
 } pwasm_parse_u32s_ctx_t;
 
+/**
+ * Parse a vector of u32s.
+ *
+ * Returns number of bytes consumed, or 0 on error.
+ */
 static size_t
 pwasm_parse_u32s(
   const pwasm_parse_u32s_ctx_t * const ctx,
@@ -970,87 +975,83 @@ pwasm_parse_u32s(
   return num_bytes;
 }
 
-typedef struct {
-  void (*on_count)(const uint32_t, void *);
-  void (*on_labels)(const uint32_t *, const size_t, void *);
-  void (*on_default)(const uint32_t, void *);
-  void (*on_error)(const char *, void *);
-} pwasm_parse_br_table_labels_cbs_t;
+static void
+pwasm_parse_br_table_labels_on_count(
+  const uint32_t count,
+  void *cb_data
+) {
+  pwasm_parse_u32s_ctx_t * const ctx = cb_data;
+
+  if (ctx->cbs && ctx->cbs->on_count) {
+    ctx->cbs->on_count(count + 1, ctx->cb_data);
+  }
+}
+
+static void
+pwasm_parse_br_table_labels_on_items(
+  const uint32_t * const rows,
+  const size_t num,
+  void *cb_data
+) {
+  pwasm_parse_u32s_ctx_t * const ctx = cb_data;
+
+  if (ctx->cbs && ctx->cbs->on_items) {
+    ctx->cbs->on_items(rows, num, ctx->cb_data);
+  }
+}
+
+static void
+pwasm_parse_br_table_labels_on_error(
+  const char * const text,
+  void *cb_data
+) {
+  pwasm_parse_u32s_ctx_t * const ctx = cb_data;
+
+  if (ctx->cbs && ctx->cbs->on_error) {
+    ctx->cbs->on_error(text, ctx->cb_data);
+  }
+}
+
+static const pwasm_parse_u32s_cbs_t
+PWASM_PARSE_BR_TABLE_LABELS_CBS = {
+  .on_count = pwasm_parse_br_table_labels_on_count,
+  .on_items = pwasm_parse_br_table_labels_on_items,
+  .on_error = pwasm_parse_br_table_labels_on_error,
+};
 
 static size_t
 pwasm_parse_br_table_labels(
-  const pwasm_buf_t src,
-  const pwasm_parse_br_table_labels_cbs_t * const cbs,
-  void *cb_data
+  pwasm_parse_u32s_ctx_t * const src_ctx,
+  const pwasm_buf_t src
 ) {
-  size_t ofs = 0;
+  // build context
+  const pwasm_parse_u32s_ctx_t ctx = {
+    .cbs      = &PWASM_PARSE_BR_TABLE_LABELS_CBS,
+    .cb_data  = src_ctx,
+  };
 
-  // get count, check for error
-  uint32_t num;
-  const size_t n_len = pwasm_u32_decode(&num, src);
-  if (!n_len) {
-    FAIL("br_table: bad label vector count");
+  // parse labels, check for error
+  const size_t len = pwasm_parse_u32s(&ctx, src);
+  if (!len) {
+    return 0;
   }
 
-  if (cbs && cbs->on_count) {
-    cbs->on_count(num, cb_data);
-  }
-
-  // increment offset
-  ofs += n_len;
-
-  uint32_t vals[PWASM_BATCH_SIZE];
-
-  size_t vals_ofs = 0;
-  for (size_t i = 0; i < num; i++) {
-    if (ofs > src.len) {
-      FAIL("br_table: label vector buffer overflow");
-    }
-
-    // decode id, check for error
-    const size_t len = pwasm_u32_decode(vals + vals_ofs, pwasm_buf_step(src, ofs));
-    if (!len) {
-      FAIL("br_table: invalid label");
-    }
-
-    // increment vals offset
-    vals_ofs++;
-    if (vals_ofs == (LEN(vals) - 1)) {
-      if (cbs && cbs->on_labels) {
-        // flush batch
-        cbs->on_labels(vals, PWASM_BATCH_SIZE, cb_data);
-      }
-
-      // reset offset
-      vals_ofs = 0;
-    }
-
-    // increment offset
-    ofs += len;
-  }
-
-  if ((vals_ofs > 0) && cbs && cbs->on_labels) {
-    // flush remaining values
-    cbs->on_labels(vals, vals_ofs, cb_data);
-  }
+  const pwasm_buf_t buf = pwasm_buf_step(src, len);
 
   // get default label, check for error
-  uint32_t default_label;
-  const size_t d_len = pwasm_u32_decode(&default_label, src);
-  if (!d_len) {
-    FAIL("br_table: bad default label");
+  uint32_t label;
+  const size_t label_len = pwasm_u32_decode(&label, buf);
+  if (!label_len) {
+    const char * const text = "br_table: bad default label";
+    pwasm_parse_br_table_labels_on_error(text, src_ctx);
+    return 0;
   }
 
-  if (cbs && cbs->on_default) {
-    cbs->on_default(default_label, cb_data);
-  }
+  // pass default label to callback
+  pwasm_parse_br_table_labels_on_items(&label, 1, src_ctx);
 
-  // increment offset
-  ofs += d_len;
-
-
-  // return success
-  return ofs;
+  // return total number of bytes consumed
+  return len + label_len;
 }
 
 static void
@@ -1059,10 +1060,10 @@ pwasm_count_br_table_labels_on_count(
   void *cb_data
 ) {
   uint32_t * const ret = cb_data;
-  *ret = count + 1;
+  *ret = count;
 }
 
-static const pwasm_parse_br_table_labels_cbs_t
+static const pwasm_parse_u32s_cbs_t
 PWASM_COUNT_BR_TABLE_LABELS_CBS = {
   .on_count = pwasm_count_br_table_labels_on_count,
 };
@@ -1079,7 +1080,12 @@ pwasm_count_br_table_labels(
 ) {
   uint32_t count = 0;
 
-  const size_t len = pwasm_parse_br_table_labels(src, &PWASM_COUNT_BR_TABLE_LABELS_CBS, &count);
+  pwasm_parse_u32s_ctx_t ctx = {
+    .cbs = &PWASM_COUNT_BR_TABLE_LABELS_CBS,
+    .cb_data = &count,
+  };
+
+  const size_t len = pwasm_parse_br_table_labels(&ctx, src);
   return (len > 0) ? count : 0;
 }
 
@@ -1366,8 +1372,8 @@ pwasm_parse_inst(
   case PWASM_IMM_BR_TABLE:
     {
       // parse labels immediate, check for error
-      const pwasm_buf_t tmp = { src.ptr + 1, src.len - 1 };
-      const size_t labels_len = pwasm_parse_br_table_labels(tmp, NULL, NULL);
+      pwasm_parse_u32s_ctx_t tmp_ctx = { NULL, NULL };
+      const size_t labels_len = pwasm_parse_br_table_labels(&tmp_ctx, pwasm_buf_step(src, 1));
       if (!labels_len) {
         INST_FAIL("bad br_table labels immediate");
       }
@@ -4460,7 +4466,7 @@ pwasm_module_add_br_table_on_count(
 }
 
 static void
-pwasm_module_add_br_table_on_labels(
+pwasm_module_add_br_table_on_items(
   const uint32_t * const labels,
   const size_t num,
   void *cb_data
@@ -4473,21 +4479,10 @@ pwasm_module_add_br_table_on_labels(
   data->mod->num_labels += num;
 }
 
-static void
-pwasm_module_add_br_table_on_default(
-  const uint32_t val,
-  void *cb_data
-) {
-  pwasm_module_add_br_table_t * const data = cb_data;
-  data->mod->labels[data->mod->num_labels++] = val;
-  data->inst->v_br_table.labels.slice.len++;
-}
-
-static const pwasm_parse_br_table_labels_cbs_t
+static const pwasm_parse_u32s_cbs_t
 PWASM_MODULE_ADD_BR_TABLE_CBS = {
-  .on_count   = pwasm_module_add_br_table_on_count,
-  .on_labels  = pwasm_module_add_br_table_on_labels,
-  .on_default = pwasm_module_add_br_table_on_default,
+  .on_count = pwasm_module_add_br_table_on_count,
+  .on_items = pwasm_module_add_br_table_on_items,
   // FIXME: need to handle errors
   // .on_error   = pwasm_module_br_table_on_error,
 };
@@ -4504,11 +4499,8 @@ pwasm_module_add_br_table(
   };
 
   // add labels, check for error
-  const size_t num_bytes = pwasm_parse_br_table_labels(
-    buf,
-    &PWASM_MODULE_ADD_BR_TABLE_CBS,
-    &data
-  );
+  pwasm_parse_u32s_ctx_t ctx = { &PWASM_MODULE_ADD_BR_TABLE_CBS, &data };
+  const size_t num_bytes = pwasm_parse_br_table_labels(&ctx, buf);
 
   // return result
   return num_bytes > 0;
