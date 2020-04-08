@@ -2312,7 +2312,7 @@ pwasm_old_parse_global(
  * Returns number of bytes consumed, or 0 on error.
  */
 static size_t
-pwasm_parse_import(
+pwasm_old_parse_import(
   pwasm_import_t * const dst_import,
   const pwasm_parse_module_cbs_t * const cbs,
   const uint8_t * const src,
@@ -2432,11 +2432,11 @@ pwasm_parse_import(
 }
 
 DEF_VEC_PARSE_FN(
-  pwasm_parse_imports,
+  pwasm_old_parse_imports,
   "parse imports",
   pwasm_import_t,
   pwasm_parse_module_cbs_t,
-  pwasm_parse_import,
+  pwasm_old_parse_import,
   on_imports
 );
 
@@ -2446,7 +2446,7 @@ pwasm_parse_import_section(
   const pwasm_buf_t src,
   void * const cb_data
 ) {
-  return pwasm_parse_imports(src, cbs, cb_data) > 0;
+  return pwasm_old_parse_imports(src, cbs, cb_data) > 0;
 }
 
 static inline size_t
@@ -2543,6 +2543,153 @@ typedef struct {
   pwasm_slice_t (*on_bytes)(const uint8_t *, size_t, void *);
   void (*on_error)(const char *, void *);
 } pwasm_parse_export_cbs_t;
+
+typedef struct {
+  pwasm_slice_t (*on_bytes)(const uint8_t *, size_t, void *);
+  void (*on_error)(const char *, void *);
+} pwasm_parse_import_cbs_t;
+
+static inline size_t
+pwasm_parse_import_function( // FIXME: rename to "func"
+  pwasm_new_import_t * const dst,
+  const pwasm_buf_t src,
+  const pwasm_parse_import_cbs_t * const cbs,
+  void *cb_data
+) {
+  (void) cbs;
+  (void) cb_data;
+  return pwasm_u32_decode(&(dst->func), src);
+}
+
+static inline size_t
+pwasm_parse_import_table(
+  pwasm_new_import_t * const dst,
+  const pwasm_buf_t src,
+  const pwasm_parse_import_cbs_t * const cbs,
+  void *cb_data
+) {
+  return pwasm_parse_table(&(dst->table), src, cbs->on_error, cb_data);
+}
+
+static inline size_t
+pwasm_parse_import_memory( // FIXME: rename to "mem"
+  pwasm_new_import_t * const dst,
+  const pwasm_buf_t src,
+  const pwasm_parse_import_cbs_t * const cbs,
+  void *cb_data
+) {
+  return pwasm_parse_limits(&(dst->mem), src, cbs->on_error, cb_data);
+}
+
+static inline size_t
+pwasm_parse_import_global(
+  pwasm_new_import_t * const dst,
+  const pwasm_buf_t src,
+  const pwasm_parse_import_cbs_t * const cbs,
+  void *cb_data
+) {
+  return pwasm_parse_global_type(&(dst->global), src, cbs->on_error, cb_data);
+}
+
+static inline size_t
+pwasm_parse_import_invalid(
+  pwasm_new_import_t * const dst,
+  const pwasm_buf_t src,
+  const pwasm_parse_import_cbs_t * const cbs,
+  void *cb_data
+) {
+  (void) dst;
+  (void) src;
+  if (cbs->on_error) {
+    cbs->on_error("bad import type", cb_data);
+  }
+  return 0;
+}
+
+static inline size_t
+pwasm_parse_import_data(
+  const pwasm_import_type_t type,
+  pwasm_new_import_t * const dst,
+  const pwasm_buf_t src,
+  const pwasm_parse_import_cbs_t * const cbs,
+  void *cb_data
+) {
+  switch (type) {
+#define PWASM_IMPORT_TYPE(ID, TEXT, NAME) \
+  case PWASM_IMPORT_TYPE_ ## ID: \
+    return pwasm_parse_import_ ## NAME (dst, src, cbs, cb_data);
+PWASM_IMPORT_TYPES
+#undef PWASM_IMPORT_TYPE
+  default:
+    return pwasm_parse_import_invalid(dst, src, cbs, cb_data);
+  }
+}
+
+static size_t
+pwasm_parse_import(
+  pwasm_new_import_t * const dst,
+  const pwasm_buf_t src,
+  const pwasm_parse_import_cbs_t * const cbs,
+  void * const cb_data
+) {
+  pwasm_buf_t curr = src;
+  size_t num_bytes = 0;
+
+  // parse module name, check for error
+  // FIXME: handle on_error here
+  pwasm_slice_t names[2];
+  for (size_t i = 0; i < 2; i++) {
+    pwasm_buf_t buf;
+    const size_t len = pwasm_parse_buf(&buf, curr, NULL, cb_data);
+    if (!len) {
+      return 0;
+    }
+
+    // add bytes
+    names[i] = cbs->on_bytes(buf.ptr, buf.len, cb_data);
+    if (names[i].len) {
+      return 0;
+    }
+
+    // advance buffer, increment byte count
+    curr = pwasm_buf_step(curr, len);
+    num_bytes += len;
+  }
+
+  if (curr.len < 2) {
+    cbs->on_error("missing import type", cb_data);
+    return 0;
+  }
+
+  // get import type
+  const pwasm_import_type_t type = curr.ptr[0];
+
+  // build result
+  pwasm_new_import_t tmp = {
+    .module = names[0],
+    .name = names[1],
+    .type = type,
+  };
+
+  curr = pwasm_buf_step(curr, 1);
+  num_bytes += 1;
+
+  const size_t len = pwasm_parse_import_data(type, &(tmp), curr, cbs, cb_data);
+  if (!len) {
+    cbs->on_error("invalid import data", cb_data);
+    return 0;
+  }
+
+  // add length to result
+  curr = pwasm_buf_step(curr, len);
+  num_bytes += len;
+
+  // save result to destination
+  *dst = tmp;
+
+  // return number of bytes consumed
+  return num_bytes;
+}
 
 /**
  * Parse export into +dst+ from source buffer +src+, consuming a
@@ -7776,82 +7923,6 @@ pwasm_mod_parse_type(
   return num_bytes;
 }
 
-static inline size_t
-pwasm_mod_parse_import_function( // FIXME: rename to "func"
-  pwasm_new_import_t * const dst,
-  const pwasm_buf_t src,
-  const pwasm_mod_parse_cbs_t * const cbs,
-  void *cb_data
-) {
-  (void) cbs;
-  (void) cb_data;
-  return pwasm_u32_decode(&(dst->func), src);
-}
-
-static inline size_t
-pwasm_mod_parse_import_table(
-  pwasm_new_import_t * const dst,
-  const pwasm_buf_t src,
-  const pwasm_mod_parse_cbs_t * const cbs,
-  void *cb_data
-) {
-  return pwasm_mod_parse_table(&(dst->table), src, cbs, cb_data);
-}
-
-static inline size_t
-pwasm_mod_parse_import_memory( // FIXME: rename to "mem"
-  pwasm_new_import_t * const dst,
-  const pwasm_buf_t src,
-  const pwasm_mod_parse_cbs_t * const cbs,
-  void *cb_data
-) {
-  return pwasm_parse_limits(&(dst->mem), src, cbs->on_error, cb_data);
-}
-
-static inline size_t
-pwasm_mod_parse_import_global(
-  pwasm_new_import_t * const dst,
-  const pwasm_buf_t src,
-  const pwasm_mod_parse_cbs_t * const cbs,
-  void *cb_data
-) {
-  return pwasm_parse_global_type(&(dst->global), src, cbs->on_error, cb_data);
-}
-
-static inline size_t
-pwasm_mod_parse_import_invalid(
-  pwasm_new_import_t * const dst,
-  const pwasm_buf_t src,
-  const pwasm_mod_parse_cbs_t * const cbs,
-  void *cb_data
-) {
-  (void) dst;
-  (void) src;
-  if (cbs->on_error) {
-    cbs->on_error("bad import type", cb_data);
-  }
-  return 0;
-}
-
-static inline size_t
-pwasm_mod_parse_import_data(
-  const pwasm_import_type_t type,
-  pwasm_new_import_t * const dst,
-  const pwasm_buf_t src,
-  const pwasm_mod_parse_cbs_t * const cbs,
-  void *cb_data
-) {
-  switch (type) {
-#define PWASM_IMPORT_TYPE(ID, TEXT, NAME) \
-  case PWASM_IMPORT_TYPE_ ## ID: \
-    return pwasm_mod_parse_import_ ## NAME (dst, src, cbs, cb_data);
-PWASM_IMPORT_TYPES
-#undef PWASM_IMPORT_TYPE
-  default:
-    return pwasm_mod_parse_import_invalid(dst, src, cbs, cb_data);
-  }
-}
-
 /**
  * Parse import into +dst_import+ from source buffer +src+, consuming a
  * maximum of +src_len+ bytes.
@@ -7864,66 +7935,15 @@ static size_t
 pwasm_mod_parse_import(
   pwasm_new_import_t * const dst,
   const pwasm_buf_t src,
-  const pwasm_mod_parse_cbs_t * const cbs,
+  const pwasm_mod_parse_cbs_t * const src_cbs,
   void * const cb_data
 ) {
-  pwasm_buf_t curr = src;
-  size_t num_bytes = 0;
-
-  // parse module name, check for error
-  // FIXME: handle on_error here
-  pwasm_slice_t names[2];
-  for (size_t i = 0; i < 2; i++) {
-    pwasm_buf_t buf;
-    const size_t len = pwasm_parse_buf(&buf, curr, NULL, cb_data);
-    if (!len) {
-      return 0;
-    }
-
-    // add bytes
-    names[i] = cbs->on_bytes(buf.ptr, buf.len, cb_data);
-    if (names[i].len) {
-      return 0;
-    }
-
-    // advance buffer, increment byte count
-    curr = pwasm_buf_step(curr, len);
-    num_bytes += len;
-  }
-
-  if (curr.len < 2) {
-    cbs->on_error("missing import type", cb_data);
-    return 0;
-  }
-
-  // get import type
-  const pwasm_import_type_t type = curr.ptr[0];
-
-  // build result
-  pwasm_new_import_t tmp = {
-    .module = names[0],
-    .name = names[1],
-    .type = type,
+  const pwasm_parse_import_cbs_t cbs = {
+    .on_bytes = src_cbs->on_bytes,
+    .on_error = src_cbs->on_error,
   };
 
-  curr = pwasm_buf_step(curr, 1);
-  num_bytes += 1;
-
-  const size_t len = pwasm_mod_parse_import_data(type, &(tmp), curr, cbs, cb_data);
-  if (!len) {
-    cbs->on_error("invalid import data", cb_data);
-    return 0;
-  }
-
-  // add length to result
-  curr = pwasm_buf_step(curr, len);
-  num_bytes += len;
-
-  // save result to destination
-  *dst = tmp;
-
-  // return number of bytes consumed
-  return num_bytes;
+  return pwasm_parse_import(dst, src, &cbs, cb_data);
 }
 
 static size_t
