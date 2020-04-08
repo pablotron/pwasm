@@ -22,15 +22,15 @@ typedef struct {
   PWASM_SECTION_TYPE(CUSTOM, custom) \
   PWASM_SECTION_TYPE(TYPE, type) \
   PWASM_SECTION_TYPE(IMPORT, import) \
-  PWASM_SECTION_TYPE(FUNCTION, function) \
+  PWASM_SECTION_TYPE(FUNCTION, func) \
   PWASM_SECTION_TYPE(TABLE, table) \
-  PWASM_SECTION_TYPE(MEMORY, memory) \
+  PWASM_SECTION_TYPE(MEMORY, mem) \
   PWASM_SECTION_TYPE(GLOBAL, global) \
   PWASM_SECTION_TYPE(EXPORT, export) \
   PWASM_SECTION_TYPE(START, start) \
-  PWASM_SECTION_TYPE(ELEMENT, element) \
+  PWASM_SECTION_TYPE(ELEMENT, elem) \
   PWASM_SECTION_TYPE(CODE, code) \
-  PWASM_SECTION_TYPE(DATA, data) \
+  PWASM_SECTION_TYPE(SEGMENT, segment) \
   PWASM_SECTION_TYPE(LAST, invalid)
 
 #define PWASM_SECTION_TYPE(a, b) PWASM_SECTION_TYPE_##a,
@@ -450,6 +450,7 @@ typedef struct {
   pwasm_expr_t expr;
 } pwasm_global_t;
 
+// FIXME: s/function/func/, s/memory/mem/
 #define PWASM_IMPORT_TYPES \
   PWASM_IMPORT_TYPE(FUNC, "function", function) \
   PWASM_IMPORT_TYPE(TABLE, "table", table) \
@@ -551,11 +552,11 @@ _Bool pwasm_parse_module(
 typedef struct {
   void (*on_insts)(const pwasm_inst_t *, const size_t, void *);
   void (*on_error)(const char *, void *);
-} pwasm_parse_expr_cbs_t;
+} pwasm_old_parse_expr_cbs_t;
 
-size_t pwasm_parse_expr(
+size_t pwasm_old_parse_expr(
   const pwasm_buf_t src,
-  const pwasm_parse_expr_cbs_t * const cbs,
+  const pwasm_old_parse_expr_cbs_t * const cbs,
   void * const data
 );
 
@@ -796,6 +797,258 @@ typedef struct {
   pwasm_module_data_segment_t * const data_segments;
   const size_t num_data_segments;
 } pwasm_module_t;
+
+/*************/
+/* new stuff */
+/*************/
+
+typedef struct {
+  void *(*on_realloc)(void *, size_t, void *);
+  void (*on_error)(const char *, void *);
+} pwasm_mem_cbs_t;
+
+typedef struct {
+  const pwasm_mem_cbs_t *cbs;
+  void *cb_data;
+} pwasm_mem_ctx_t;
+
+pwasm_mem_ctx_t pwasm_mem_ctx_init_defaults(void *);
+
+void *pwasm_realloc(pwasm_mem_ctx_t *, void *, const size_t);
+
+typedef struct {
+  pwasm_mem_ctx_t * const mem_ctx;
+  uint8_t *rows;
+  size_t stride,
+         num_rows,
+         max_rows;
+} pwasm_vec_t;
+
+_Bool pwasm_vec_init(
+  pwasm_mem_ctx_t * const,
+  pwasm_vec_t *,
+  const size_t
+);
+
+_Bool pwasm_vec_fini(pwasm_vec_t *);
+
+size_t pwasm_vec_get_size(const pwasm_vec_t *);
+const void *pwasm_vec_get_data(const pwasm_vec_t *);
+
+typedef struct {
+  pwasm_section_type_t type;
+  uint32_t len;
+} pwasm_header_t;
+
+typedef struct {
+  pwasm_slice_t name;
+  pwasm_slice_t data;
+} pwasm_new_custom_section_t;
+
+typedef struct {
+  pwasm_slice_t params;
+  pwasm_slice_t results;
+} pwasm_type_t;
+
+typedef struct {
+  pwasm_slice_t module;
+  pwasm_slice_t name;
+  pwasm_import_type_t type;
+
+  union {
+    /* type index */
+    uint32_t func;
+
+    pwasm_table_t table;
+
+    pwasm_limits_t mem;
+
+    pwasm_global_type_t global;
+  };
+} pwasm_new_import_t;
+
+typedef struct {
+  pwasm_global_type_t type;
+
+  // slice of insts with offset init instructions
+  pwasm_slice_t expr;
+} pwasm_new_global_t;
+
+typedef struct {
+  // offset of function prototype in function_types
+  size_t type_id;
+
+  // local variable types (only used for module functions)
+  pwasm_slice_t locals;
+
+  // instructions
+  pwasm_slice_t expr;
+} pwasm_func_t;
+
+typedef struct {
+  pwasm_slice_t name;
+  pwasm_export_type_t type;
+  uint32_t id;
+} pwasm_new_export_t;
+
+typedef struct {
+  uint32_t table_id;
+
+  // slice of insts with expr instructions
+  pwasm_slice_t expr;
+
+  // slice of u32s with function IDs
+  pwasm_slice_t funcs;
+} pwasm_elem_t;
+
+typedef struct {
+  uint32_t mem_id;
+
+  // slice of insts with expr instructions
+  pwasm_slice_t expr;
+
+  // slice of bytes with data
+  pwasm_slice_t data;
+} pwasm_segment_t;
+
+typedef struct {
+  pwasm_slice_t (*on_u32s)(const uint32_t *, const size_t, void *);
+  pwasm_slice_t (*on_bytes)(const uint8_t *, const size_t, void *);
+  pwasm_slice_t (*on_insts)(const pwasm_inst_t *, const size_t, void *);
+
+  void (*on_section)(const pwasm_header_t *, void *);
+  void (*on_custom_section)(const pwasm_new_custom_section_t *, void *);
+  void (*on_types)(const pwasm_type_t *, const size_t, void *);
+  void (*on_imports)(const pwasm_new_import_t *, const size_t, void *);
+  void (*on_funcs)(const uint32_t *, const size_t, void *);
+
+  void (*on_tables)(const pwasm_table_t *, const size_t, void *);
+  void (*on_mems)(const pwasm_limits_t *, const size_t, void *);
+  void (*on_globals)(const pwasm_new_global_t *, const size_t, void *);
+  void (*on_exports)(const pwasm_new_export_t *, const size_t, void *);
+  void (*on_elems)(const pwasm_elem_t *, const size_t, void *);
+  void (*on_start)(const uint32_t, void *);
+
+  // FIXME: do i want this?
+  pwasm_slice_t (*on_locals)(const pwasm_local_t *, const size_t, void *);
+
+  void (*on_codes)(const pwasm_func_t *, const size_t, void *);
+  void (*on_segments)(const pwasm_segment_t *, const size_t, void *);
+
+  void (*on_error)(const char *, void *);
+} pwasm_mod_parse_cbs_t;
+
+size_t pwasm_mod_parse(
+  const pwasm_buf_t src,
+  const pwasm_mod_parse_cbs_t *,
+  void *cb_data
+);
+
+typedef struct {
+  pwasm_mem_ctx_t * const mem_ctx;
+
+  pwasm_buf_t mem;
+
+  const uint32_t * const u32s;
+  const size_t num_u32s;
+
+  const uint32_t * const sections;
+  const size_t num_sections;
+
+  const pwasm_new_custom_section_t * const custom_sections;
+  const size_t num_custom_sections;
+
+  const pwasm_type_t * const types;
+  const size_t num_types;
+
+  const pwasm_new_import_t * const imports;
+  const size_t num_imports;
+
+  const pwasm_inst_t * const insts;
+  const size_t num_insts;
+
+  const pwasm_new_global_t * const globals;
+  const size_t num_globals;
+
+  const uint32_t * const funcs;
+  const size_t num_funcs;
+
+  const pwasm_table_t * const tables;
+  const size_t num_tables;
+
+  const pwasm_limits_t * const mems;
+  const size_t num_mems;
+
+  const pwasm_new_export_t * const exports;
+  const size_t num_exports;
+
+  const pwasm_local_t * const locals;
+  const size_t num_locals;
+
+  const pwasm_func_t * const codes;
+  const size_t num_codes;
+
+  const pwasm_elem_t * const elems;
+  const size_t num_elems;
+
+  const pwasm_segment_t * const segments;
+  const size_t num_segments;
+
+  const uint8_t * const bytes;
+  const size_t num_bytes;
+} pwasm_mod_t;
+
+typedef struct {
+  pwasm_mem_ctx_t * const mem_ctx;
+
+  size_t num_import_types[PWASM_IMPORT_TYPE_LAST];
+  size_t num_export_types[PWASM_EXPORT_TYPE_LAST];
+
+  // custom section name/data, import mod/name, export name, segment
+  // and data
+  pwasm_vec_t bytes;
+
+  // contains type params/results, local num/type pairs, br_table
+  // labels, function IDs, and element function IDs
+  pwasm_vec_t u32s;
+
+  // section IDs
+  pwasm_vec_t sections;
+
+  pwasm_vec_t custom_sections;
+  pwasm_vec_t types;
+  pwasm_vec_t imports;
+
+  // contains function code, element offset exprs, and global init
+  // exprs, and segment offset init exprs
+  pwasm_vec_t insts;
+
+  pwasm_vec_t tables;
+  pwasm_vec_t mems;
+  pwasm_vec_t funcs;
+
+  pwasm_vec_t globals;
+  pwasm_vec_t exports;
+  pwasm_vec_t locals;
+  pwasm_vec_t codes;
+  pwasm_vec_t elems;
+  pwasm_vec_t segments;
+
+  _Bool has_start;
+  uint32_t start;
+} pwasm_builder_t;
+
+_Bool pwasm_builder_init(
+  pwasm_mem_ctx_t *,
+  pwasm_builder_t *
+);
+
+void pwasm_builder_fini(pwasm_builder_t *);
+
+_Bool pwasm_build(
+  const pwasm_builder_t *,
+  pwasm_mod_t *
+);
 
 typedef struct {
   void *(*on_alloc)(const size_t, void *);

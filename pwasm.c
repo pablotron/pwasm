@@ -1,5 +1,7 @@
 #include <stdbool.h> // bool
 #include <string.h> // memcmp()
+#include <stdlib.h> // realloc()
+#include <unistd.h> // sysconf()
 #include "pwasm.h"
 
 #define PWASM_STACK_CHECK_MAX_DEPTH 512
@@ -29,7 +31,12 @@
 typedef struct {
   void (*on_error)(const char *, void *);
   void *cb_data;
-} pwasm_parse_inst_ctx_t;
+} pwasm_old_parse_inst_ctx_t;
+
+typedef struct {
+  pwasm_slice_t (*on_labels)(const uint32_t *, const size_t, void *);
+  void (*on_error)(const char *, void *);
+} pwasm_parse_inst_cbs_t;
 
 /**
  * Batch size.
@@ -330,104 +337,45 @@ pwasm_u64_decode(
 //   return 0;
 // }
 
-#define DEF_VEC_PARSER(TYPE) \
-  typedef struct { \
-    void (*on_count)(const size_t, void *); \
-    void (*on_items)( \
-      const pwasm_ ## TYPE ## _t *, \
-      const size_t, \
-      void * \
-    ); \
-    void (*on_error)(const char *, void *); \
-  } pwasm_parse_ ## TYPE ## s_cbs_t; \
-  \
-  typedef struct { \
-    const pwasm_parse_ ## TYPE ## s_cbs_t * const cbs; \
-    void * cb_data; \
-  } pwasm_parse_ ## TYPE ## s_ctx_t; \
-  \
-  static void \
-  pwasm_parse_ ## TYPE ## s_null_on_count( \
-    const size_t count, \
-    void * cb_data \
-  ) { \
-    (void) count; \
-    (void) cb_data; \
-  } \
-  \
-  static void \
-  pwasm_parse_ ## TYPE ## s_null_on_items( \
-    const pwasm_ ## TYPE ## _t * const items, \
-    const size_t num, \
-    void * cb_data \
-  ) { \
-    (void) items; \
-    (void) num; \
-    (void) cb_data; \
-  } \
-  \
-  static void \
-  pwasm_parse_ ## TYPE ## s_null_on_error( \
-    const char * const text, \
-    void * cb_data \
-  ) { \
-    (void) text; \
-    (void) cb_data; \
-  } \
-  \
+#define DEF_VEC_PARSER(NAME, TYPE) \
   /* forward declaration */ \
   static size_t \
-  pwasm_parse_ ## TYPE ( \
-    pwasm_parse_ ## TYPE ## s_ctx_t * const, \
-    pwasm_foobar_t * const dst, \
-    const pwasm_buf_t src \
+  pwasm_mod_parse_ ## NAME ( \
+    TYPE * const dst, \
+    const pwasm_buf_t src, \
+    const pwasm_mod_parse_cbs_t * const cbs, \
+    void *cb_data \
   ); \
   \
   static size_t \
-  pwasm_parse_ ## TYPE ## s ( \
-    pwasm_parse_ ## TYPE ## s_ctx_t * const ctx, \
-    const pwasm_buf_t src \
+  pwasm_mod_parse_ ## NAME ## s ( \
+    const pwasm_buf_t src, \
+    const pwasm_mod_parse_cbs_t * const cbs, \
+    void *cb_data \
   ) { \
-    const pwasm_parse_ ## TYPE ## s_cbs_t cbs = { \
-      .on_count = (ctx->cbs && ctx->cbs->on_count) ? \
-        ctx->cbs->on_count : \
-        pwasm_parse_ ## TYPE ## s_null_on_count, \
-      \
-      .on_items = (ctx->cbs && ctx->cbs->on_items) ? \
-        ctx->cbs->on_items : \
-        pwasm_parse_ ## TYPE ## s_null_on_items, \
-      \
-      .on_error = (ctx->cbs && ctx->cbs->on_error) ? \
-        ctx->cbs->on_error : \
-        pwasm_parse_ ## TYPE ## s_null_on_error, \
-    }; \
-    \
     /* get count, check for error */ \
     uint32_t count = 0; \
     size_t num_bytes = pwasm_u32_decode(&count, src); \
     if (!num_bytes) { \
-      cbs.on_error(#TYPE "s: invalid count", ctx->cb_data); \
+      cbs->on_error(#NAME "s: invalid count", cb_data); \
       return 0; \
     } \
-    \
-    /* emit count */ \
-    cbs.on_count(count, ctx->cb_data); \
     \
     pwasm_buf_t curr = pwasm_buf_step(src, num_bytes); \
     \
     /* element buffer and offset */ \
-    pwasm_ ## TYPE ## _t dst[PWASM_BATCH_SIZE]; \
+    TYPE dst[PWASM_BATCH_SIZE]; \
     size_t ofs = 0; \
     \
     /* parse items */ \
     for (size_t left = count; left > 0; left--) { \
       /* check for underflow */ \
       if (!curr.len) { \
-        cbs.on_error(#TYPE "s: underflow", ctx->cb_data); \
+        cbs->on_error(#NAME "s: underflow", cb_data); \
         return 0; \
       } \
-      /* parse element, check for error */ \
-      const size_t len = pwasm_parse_ ## TYPE (ctx, dst + ofs, curr); \
+      /* parse element, check for error (FIXME: remove NULLs) */ \
+      const size_t len = pwasm_mod_parse_ ## NAME (dst + ofs, curr, NULL, NULL); \
       if (!len) { \
         return 0; \
       } \
@@ -439,14 +387,14 @@ pwasm_u64_decode(
       \
       if (ofs == PWASM_BATCH_SIZE) { \
         /* flush batch */ \
-        cbs.on_items(dst, PWASM_BATCH_SIZE, ctx->cb_data); \
+        cbs->on_ ## NAME ## s(dst, PWASM_BATCH_SIZE, cb_data); \
         ofs = 0; \
       } \
     } \
     \
     if (ofs > 0) { \
       /* flush remaining items */ \
-      cbs.on_items(dst, ofs, ctx->cb_data); \
+      cbs->on_ ## NAME ## s(dst, ofs, cb_data); \
     } \
     \
     /* return number of bytes consumed */ \
@@ -760,24 +708,22 @@ typedef struct {
   void (*on_error)(const char *, void *);
 } pwasm_parse_buf_cbs_t;
 
-typedef struct {
-  const pwasm_parse_buf_cbs_t *cbs;
-  void *cb_data;
-} pwasm_parse_buf_ctx_t;
-
 static size_t
 pwasm_parse_buf(
-  const pwasm_parse_buf_ctx_t * const ctx,
   pwasm_buf_t * const dst,
-  const pwasm_buf_t src
+  const pwasm_buf_t src,
+  const pwasm_parse_buf_cbs_t * const src_cbs,
+  void *cb_data
 ) {
   const pwasm_parse_buf_cbs_t cbs = {
-    .on_error = (ctx->cbs && ctx->cbs->on_error) ? ctx->cbs->on_error : pwasm_null_on_error,
+    .on_error = (src_cbs && src_cbs->on_error) ?
+                src_cbs->on_error :
+                pwasm_null_on_error,
   };
 
   // check source length
   if (!src.len) {
-    cbs.on_error("empty name", ctx->cb_data);
+    cbs.on_error("empty name", cb_data);
     return 0;
   }
 
@@ -785,7 +731,7 @@ pwasm_parse_buf(
   uint32_t count = 0;
   const size_t len = pwasm_u32_decode(&count, src);
   if (!len) {
-    cbs.on_error("bad name length", ctx->cb_data);
+    cbs.on_error("bad name length", cb_data);
     return 0;
   }
 
@@ -794,7 +740,7 @@ pwasm_parse_buf(
   // calculate total number of bytes, check for overflow
   const size_t num_bytes = count + len;
   if (num_bytes > src.len) {
-    cbs.on_error("truncated name", ctx->cb_data);
+    cbs.on_error("truncated name", cb_data);
     return 0;
   }
 
@@ -818,12 +764,7 @@ pwasm_parse_name(
     .on_error = mod_cbs ? mod_cbs->on_error : NULL,
   };
 
-  const pwasm_parse_buf_ctx_t ctx = {
-    .cbs      = &cbs,
-    .cb_data  = cb_data,
-  };
-
-  return pwasm_parse_buf(&ctx, dst, src);
+  return pwasm_parse_buf(dst, src, &cbs, cb_data);
 }
 
 static size_t
@@ -902,11 +843,6 @@ typedef struct {
   void (*on_error)(const char *, void *);
 } pwasm_parse_u32s_cbs_t;
 
-typedef struct {
-  const pwasm_parse_u32s_cbs_t *cbs;
-  void *cb_data;
-} pwasm_parse_u32s_ctx_t;
-
 /**
  * Parse a vector of u32s.
  *
@@ -914,24 +850,25 @@ typedef struct {
  */
 static size_t
 pwasm_parse_u32s(
-  const pwasm_parse_u32s_ctx_t * const ctx,
-  const pwasm_buf_t src
+  const pwasm_buf_t src,
+  const pwasm_parse_u32s_cbs_t * const src_cbs,
+  void *cb_data
 ) {
   const pwasm_parse_u32s_cbs_t cbs = {
-    .on_count = (ctx->cbs && ctx->cbs->on_count) ? ctx->cbs->on_count : pwasm_parse_u32s_null_on_count,
-    .on_items = (ctx->cbs && ctx->cbs->on_items) ? ctx->cbs->on_items : pwasm_parse_u32s_null_on_items,
-    .on_error = (ctx->cbs && ctx->cbs->on_error) ? ctx->cbs->on_error : pwasm_null_on_error,
+    .on_count = (src_cbs && src_cbs->on_count) ? src_cbs->on_count : pwasm_parse_u32s_null_on_count,
+    .on_items = (src_cbs && src_cbs->on_items) ? src_cbs->on_items : pwasm_parse_u32s_null_on_items,
+    .on_error = (src_cbs && src_cbs->on_error) ? src_cbs->on_error : pwasm_null_on_error,
   };
 
   // get count, check for error
   uint32_t count;
   const size_t count_len = pwasm_u32_decode(&count, src);
   if (!count_len) {
-    cbs.on_error("bad u32 vector count", ctx->cb_data);
+    cbs.on_error("bad u32 vector count", cb_data);
     return 0;
   }
 
-  cbs.on_count(count, ctx->cb_data);
+  cbs.on_count(count, cb_data);
 
   // track number of bytes and current buffer
   size_t num_bytes = count_len;
@@ -943,14 +880,14 @@ pwasm_parse_u32s(
     if (!curr.len) {
     }
     if (num_bytes > src.len) {
-      cbs.on_error("u32 vector buffer overflow", ctx->cb_data);
+      cbs.on_error("u32 vector buffer overflow", cb_data);
       return 0;
     }
 
     // decode value, check for error
     const size_t len = pwasm_u32_decode(items + ofs, curr);
     if (!len) {
-      cbs.on_error("bad u32 in u32 vector", ctx->cb_data);
+      cbs.on_error("bad u32 in u32 vector", cb_data);
       return 0;
     }
 
@@ -961,29 +898,41 @@ pwasm_parse_u32s(
 
     if (ofs == LEN(items)) {
       // flush batch, reset offset
-      cbs.on_items(items, PWASM_BATCH_SIZE, ctx->cb_data);
+      cbs.on_items(items, PWASM_BATCH_SIZE, cb_data);
       ofs = 0;
     }
   }
 
   if (ofs > 0) {
     // flush remaining values
-    cbs.on_items(items, ofs, ctx->cb_data);
+    cbs.on_items(items, ofs, cb_data);
   }
 
   // return success
   return num_bytes;
 }
 
+typedef struct {
+  void (*on_count)(const size_t, void *);
+  pwasm_slice_t (*on_labels)(const uint32_t *, const size_t, void *);
+  void (*on_error)(const char *, void *);
+} pwasm_parse_labels_cbs_t;
+
+typedef struct {
+  const pwasm_parse_labels_cbs_t * const cbs;
+  void *cb_data;
+  pwasm_slice_t slice;
+} pwasm_parse_labels_t;
+
 static void
 pwasm_parse_labels_on_count(
   const uint32_t count,
   void *cb_data
 ) {
-  pwasm_parse_u32s_ctx_t * const ctx = cb_data;
+  pwasm_parse_labels_t *data = cb_data;
 
-  if (ctx->cbs && ctx->cbs->on_count) {
-    ctx->cbs->on_count(count + 1, ctx->cb_data);
+  if (data->cbs && data->cbs->on_count) {
+    data->cbs->on_count(count + 1, data->cb_data);
   }
 }
 
@@ -993,10 +942,16 @@ pwasm_parse_labels_on_items(
   const size_t num,
   void *cb_data
 ) {
-  pwasm_parse_u32s_ctx_t * const ctx = cb_data;
+  pwasm_parse_labels_t *data = cb_data;
 
-  if (ctx->cbs && ctx->cbs->on_items) {
-    ctx->cbs->on_items(rows, num, ctx->cb_data);
+  if (data->cbs && data->cbs->on_labels) {
+    const pwasm_slice_t slice = data->cbs->on_labels(rows, num, data->cb_data);
+
+    if (data->slice.len) {
+      data->slice.len += slice.len;
+    } else {
+      data->slice = slice;
+    }
   }
 }
 
@@ -1005,10 +960,10 @@ pwasm_parse_labels_on_error(
   const char * const text,
   void *cb_data
 ) {
-  pwasm_parse_u32s_ctx_t * const ctx = cb_data;
+  pwasm_parse_labels_t *data = cb_data;
 
-  if (ctx->cbs && ctx->cbs->on_error) {
-    ctx->cbs->on_error(text, ctx->cb_data);
+  if (data->cbs && data->cbs->on_error) {
+    data->cbs->on_error(text, data->cb_data);
   }
 }
 
@@ -1021,17 +976,118 @@ PWASM_PARSE_LABELS_CBS = {
 
 static size_t
 pwasm_parse_labels(
-  pwasm_parse_u32s_ctx_t * const src_ctx,
-  const pwasm_buf_t src
+  pwasm_slice_t * const dst,
+  const pwasm_buf_t src,
+  const pwasm_parse_labels_cbs_t * const cbs,
+  void *cb_data
 ) {
-  // build context
-  const pwasm_parse_u32s_ctx_t ctx = {
-    .cbs      = &PWASM_PARSE_LABELS_CBS,
-    .cb_data  = src_ctx,
+  pwasm_buf_t curr = src;
+  size_t num_bytes = 0;
+
+  pwasm_parse_labels_t data = {
+    .cbs = cbs,
+    .cb_data = cb_data,
+    .slice = { 0, 0 },
+  };
+
+  {
+    // parse labels, check for error
+    const size_t len = pwasm_parse_u32s(curr, &PWASM_PARSE_LABELS_CBS, &data);
+    if (!len) {
+      return 0;
+    }
+
+    // advance
+    curr = pwasm_buf_step(curr, len);
+    num_bytes += len;
+  }
+
+  // get default label, check for error
+  uint32_t label;
+  {
+    const size_t len = pwasm_u32_decode(&label, curr);
+    if (!len) {
+      const char * const text = "br_table: bad default label";
+      cbs->on_error(text, cb_data);
+      return 0;
+    }
+
+    // advance
+    curr = pwasm_buf_step(curr, len);
+    num_bytes += len;
+  }
+
+  // pass default label to callback
+  pwasm_parse_labels_on_items(&label, 1, &data);
+
+  *dst = data.slice;
+
+  // return total number of bytes consumed
+  return num_bytes;
+}
+
+typedef struct {
+  const pwasm_parse_u32s_cbs_t * const cbs;
+  void *cb_data;
+} pwasm_old_parse_labels_t;
+
+static void
+pwasm_old_parse_labels_on_count(
+  const uint32_t count,
+  void *cb_data
+) {
+  pwasm_old_parse_labels_t * const data = cb_data;
+
+  if (data->cbs && data->cbs->on_count) {
+    data->cbs->on_count(count + 1, data->cb_data);
+  }
+}
+
+static void
+pwasm_old_parse_labels_on_items(
+  const uint32_t * const rows,
+  const size_t num,
+  void *cb_data
+) {
+  pwasm_old_parse_labels_t * const data = cb_data;
+
+  if (data->cbs && data->cbs->on_items) {
+    data->cbs->on_items(rows, num, data->cb_data);
+  }
+}
+
+static void
+pwasm_old_parse_labels_on_error(
+  const char * const text,
+  void *cb_data
+) {
+  pwasm_old_parse_labels_t * const data = cb_data;
+
+  if (data->cbs && data->cbs->on_error) {
+    data->cbs->on_error(text, data->cb_data);
+  }
+}
+
+static const pwasm_parse_u32s_cbs_t
+PWASM_OLD_PARSE_LABELS_CBS = {
+  .on_count = pwasm_old_parse_labels_on_count,
+  .on_items = pwasm_old_parse_labels_on_items,
+  .on_error = pwasm_old_parse_labels_on_error,
+};
+
+static size_t
+pwasm_old_parse_labels(
+  const pwasm_buf_t src,
+  const pwasm_parse_u32s_cbs_t * const cbs,
+  void *cb_data
+) {
+  pwasm_old_parse_labels_t data = {
+    .cbs = cbs,
+    .cb_data = cb_data,
   };
 
   // parse labels, check for error
-  const size_t len = pwasm_parse_u32s(&ctx, src);
+  const size_t len = pwasm_parse_u32s(src, &PWASM_OLD_PARSE_LABELS_CBS, &data);
   if (!len) {
     return 0;
   }
@@ -1043,12 +1099,12 @@ pwasm_parse_labels(
   const size_t label_len = pwasm_u32_decode(&label, buf);
   if (!label_len) {
     const char * const text = "br_table: bad default label";
-    pwasm_parse_labels_on_error(text, src_ctx);
+    pwasm_old_parse_labels_on_error(text, &data);
     return 0;
   }
 
   // pass default label to callback
-  pwasm_parse_labels_on_items(&label, 1, src_ctx);
+  pwasm_old_parse_labels_on_items(&label, 1, &data);
 
   // return total number of bytes consumed
   return len + label_len;
@@ -1083,12 +1139,7 @@ pwasm_count_labels(
 ) {
   uint32_t count = 0;
 
-  pwasm_parse_u32s_ctx_t ctx = {
-    .cbs = &PWASM_COUNT_LABELS_CBS,
-    .cb_data = &count,
-  };
-
-  const size_t len = pwasm_parse_labels(&ctx, src);
+  const size_t len = pwasm_old_parse_labels(src, &PWASM_COUNT_LABELS_CBS, &count);
   return (len > 0) ? count : 0;
 }
 
@@ -1222,102 +1273,140 @@ pwasm_parse_type_section(
 static size_t
 pwasm_parse_limits(
   pwasm_limits_t * const dst,
-  const pwasm_parse_module_cbs_t * const cbs,
-  const uint8_t * const src,
-  const size_t src_len,
+  const pwasm_buf_t src,
+  void (*on_error)(const char *, void *),
   void * const cb_data
 ) {
-  const pwasm_buf_t src_buf = { src, src_len };
+  pwasm_buf_t curr = src;
+  size_t num_bytes = 0;
 
-  if (src_len < 2) {
-    FAIL("truncated limits");
+  // check length
+  if (src.len < 2) {
+    on_error("truncated limits", cb_data);
+    return 0;
   }
 
-  // check limits flag
-  if ((src[0] != 0) && (src[0] != 1)) {
-    FAIL("bad limits flag");
+  // get/check has_max flag
+  const uint8_t flag = src.ptr[0];
+  if ((flag != 0) && (flag != 1)) {
+    on_error("truncated limits", cb_data);
+    return 0;
   }
 
-  // build result
-  pwasm_limits_t tmp = {
-    .has_max = (src[0] == 1),
-    .min = 0,
-    .max = 0,
-  };
+  // advance buffer
+  curr = pwasm_buf_step(curr, 1);
+  num_bytes += 1;
 
-  // parse min, check for error
-  const size_t min_len = pwasm_u32_decode(&(tmp.min), pwasm_buf_step(src_buf, 1));
-  if (!min_len) {
-    FAIL("bad limits minimum");
-  }
-
-  // build return value
-  size_t num_bytes = 1 + min_len;
-
-  if (src[0] == 1) {
-    // parse max, check for error
-    const size_t max_len = pwasm_u32_decode(&(tmp.max), pwasm_buf_step(src_buf, num_bytes));
-    if (!max_len) {
-      FAIL("bad limits maximum");
+  uint32_t vals[2] = { 0, 0 };
+  for (size_t i = 0; i < (flag ? 2 : 1); i++) {
+    // parse value, check for error
+    const size_t len = pwasm_u32_decode(vals + i, curr);
+    if (!len) {
+      on_error("bad limits value", cb_data);
+      return 0;
     }
 
-    // increment number of bytes
-    num_bytes += max_len;
+    // advance buffer
+    curr = pwasm_buf_step(curr, len);
+    num_bytes += len;
   }
 
-  if (dst) {
-    // save to result
-    *dst = tmp;
-  }
+  // write result
+  *dst = (pwasm_limits_t) {
+    .has_max = (flag == 1),
+    .min = vals[0],
+    .max = vals[1],
+  };
 
   // return number of bytes consumed
   return num_bytes;
 }
+/**
+ * Parse limits into +dst+ from buffer +src+.
+ *
+ * Returns number of bytes consumed, or 0 on error.
+ */
+static size_t
+pwasm_old_parse_limits(
+  pwasm_limits_t * const dst,
+  const pwasm_parse_module_cbs_t * const cbs,
+  const uint8_t * const src_ptr,
+  const size_t src_len,
+  void * const cb_data
+) {
+  const pwasm_buf_t src = { src_ptr, src_len };
+  const void (*cb) = cbs && cbs->on_error ? cbs->on_error : pwasm_null_on_error;
+  return pwasm_parse_limits(dst, src, cb, cb_data);
+}
 
 /**
- * Parse table into +dst+ from buffer +src+ of length +src_len+.
+ * Parse table into +dst+ from buffer +src+.
  *
  * Returns number of bytes consumed, or 0 on error.
  */
 static size_t
 pwasm_parse_table(
   pwasm_table_t * const dst,
-  const pwasm_parse_module_cbs_t * const cbs,
-  const uint8_t * const src,
-  const size_t src_len,
+  const pwasm_buf_t src,
+  void (*on_error)(const char *, void *),
   void * const cb_data
 ) {
-  if (src_len < 3) {
-    FAIL("incomplete table type");
+  pwasm_buf_t curr = src;
+  size_t num_bytes = 0;
+
+  if (src.len < 3) {
+    on_error("incomplete table type", cb_data);
+    return 0;
   }
 
   // get element type, check for error
   // NOTE: at the moment only one element type is supported
-  const pwasm_table_elem_type_t elem_type = src[0];
+  const pwasm_table_elem_type_t elem_type = curr.ptr[0];
   if (elem_type != 0x70) {
-    FAIL("invalid table element type");
+    on_error("invalid table element type", cb_data);
+    return 0;
   }
+
+  // advance
+  curr = pwasm_buf_step(curr, 1);
+  num_bytes += 1;
 
   // parse limits, check for error
   pwasm_limits_t limits;
-  const size_t len = pwasm_parse_limits(&limits, cbs, src + 1, src_len - 1, cb_data);
+  const size_t len = pwasm_parse_limits(&limits, curr, on_error, cb_data);
   if (!len) {
     return 0;
   }
 
-  // build temp table
-  const pwasm_table_t tmp = {
+  // advance
+  curr = pwasm_buf_step(curr, len);
+  num_bytes += len;
+
+  // write result
+  *dst = (pwasm_table_t) {
     .elem_type  = elem_type,
     .limits     = limits,
   };
 
-  if (dst) {
-    // copy result
-    *dst = tmp;
-  }
-
   // return number of bytes consumed
-  return 1 + len;
+  return num_bytes;
+}
+/**
+ * Parse table into +dst+ from buffer +src+ of length +src_len+.
+ *
+ * Returns number of bytes consumed, or 0 on error.
+ */
+static size_t
+pwasm_old_parse_table(
+  pwasm_table_t * const dst,
+  const pwasm_parse_module_cbs_t * const cbs,
+  const uint8_t * const src_ptr,
+  const size_t src_len,
+  void * const cb_data
+) {
+  const pwasm_buf_t src = { src_ptr, src_len };
+  const void (*cb) = cbs && cbs->on_error ? cbs->on_error : pwasm_null_on_error;
+  return pwasm_parse_table(dst, src, cb, cb_data);
 }
 
 /**
@@ -1328,7 +1417,274 @@ pwasm_parse_table(
 static size_t
 pwasm_parse_inst(
   pwasm_inst_t * const dst,
-  const pwasm_parse_inst_ctx_t ctx,
+  const pwasm_buf_t src,
+  const pwasm_parse_inst_cbs_t * const cbs,
+  void *cb_data
+) {
+  pwasm_buf_t curr = src;
+  size_t num_bytes = 0;
+
+  // check source length
+  if (src.len < 1) {
+    cbs->on_error("short instruction", cb_data);
+    return 0;
+  }
+
+  // get op, check for error
+  const pwasm_op_t op = curr.ptr[0];
+  if (!pwasm_op_is_valid(op)) {
+    cbs->on_error("invalid op", cb_data);
+    return 0;
+  }
+
+  // advance
+  curr = pwasm_buf_step(curr, 1);
+  num_bytes += 1;
+
+  // build instruction
+  pwasm_inst_t in = {
+    .op = op,
+  };
+
+  // get op immediate
+  switch (pwasm_op_get_imm(in.op)) {
+  case PWASM_IMM_NONE:
+    // do nothing
+    break;
+  case PWASM_IMM_BLOCK:
+    {
+      // check length
+      if (!curr.len) {
+        cbs->on_error("missing result type immediate", cb_data);
+        return 0;
+      }
+
+      // get block result type, check for error
+      const uint8_t type = curr.ptr[0];
+      if (!pwasm_is_valid_result_type(type)) {
+        cbs->on_error("invalid result type", cb_data);
+      }
+
+      // save result type
+      in.v_block.type = type;
+
+      // advance
+      curr = pwasm_buf_step(curr, 1);
+      num_bytes += 1;
+    }
+
+    break;
+  case PWASM_IMM_BR_TABLE:
+    {
+      // build labels callbacks
+      const pwasm_parse_labels_cbs_t labels_cbs = {
+        .on_labels = cbs->on_labels,
+        .on_error  = cbs->on_error,
+      };
+
+      // parse labels immediate, check for error
+      pwasm_slice_t labels = { 0, 0 };
+      const size_t len = pwasm_parse_labels(&labels, curr, &labels_cbs, NULL);
+      if (!len) {
+        cbs->on_error("bad br_table labels immediate", cb_data);
+        return 0;
+      }
+
+      // save labels buffer, increment length
+      in.v_br_table.labels.slice = labels;
+
+      // advance
+      curr = pwasm_buf_step(curr, len);
+      num_bytes += len;
+    }
+
+    break;
+  case PWASM_IMM_INDEX:
+    {
+      // get index, check for error
+      uint32_t id = 0;
+      const size_t len = pwasm_u32_decode(&id, curr);
+      if (!len) {
+        cbs->on_error("bad immediate index value", cb_data);
+        return 0;
+      }
+
+      // save index
+      in.v_index.id = id;
+
+      // advance
+      curr = pwasm_buf_step(curr, len);
+      num_bytes += len;
+    }
+
+    break;
+  case PWASM_IMM_CALL_INDIRECT:
+    {
+      // get index, check for error
+      uint32_t id = 0;
+      const size_t len = pwasm_u32_decode(&id, curr);
+      if (!len) {
+        cbs->on_error("bad immediate index value", cb_data);
+        return 0;
+      }
+
+      // save index
+      in.v_index.id = id;
+
+      // advance
+      curr = pwasm_buf_step(curr, len);
+      num_bytes += len;
+    }
+
+    break;
+  case PWASM_IMM_MEM:
+    {
+      // get align value, check for error
+      uint32_t align = 0;
+      {
+        const size_t len = pwasm_u32_decode(&align, curr);
+        if (!len) {
+          cbs->on_error("bad align value", cb_data);
+          return 0;
+        }
+
+        // advance
+        curr = pwasm_buf_step(curr, len);
+        num_bytes += len;
+      }
+
+      // get offset value, check for error
+      uint32_t offset = 0;
+      {
+        const size_t len = pwasm_u32_decode(&offset, curr);
+        if (!len) {
+          cbs->on_error("bad offset value", cb_data);
+          return 0;
+        }
+
+        // advance
+        curr = pwasm_buf_step(curr, len);
+        num_bytes += len;
+      }
+
+      // save alignment and offset
+      in.v_mem.align = align;
+      in.v_mem.offset = offset;
+    }
+
+    break;
+  case PWASM_IMM_I32_CONST:
+    {
+      // get value, check for error
+      uint32_t val = 0;
+      const size_t len = pwasm_u32_decode(&val, curr);
+      if (!len) {
+        cbs->on_error("bad i32 value", cb_data);
+        return 0;
+      }
+
+      // save value
+      in.v_i32.val = val;
+
+      // advance
+      curr = pwasm_buf_step(curr, len);
+      num_bytes += len;
+    }
+
+    break;
+  case PWASM_IMM_I64_CONST:
+    {
+      // get value, check for error
+      uint64_t val = 0;
+      const size_t len = pwasm_u64_decode(&val, curr);
+      if (!len) {
+        cbs->on_error("bad i64 value", cb_data);
+        return 0;
+      }
+
+      // save value
+      in.v_i64.val = val;
+
+      // advance
+      curr = pwasm_buf_step(curr, len);
+      num_bytes += len;
+    }
+
+    break;
+  case PWASM_IMM_F32_CONST:
+    {
+      // immediate size, in bytes
+      const size_t len = 4;
+
+      // check length
+      if (curr.len < len) {
+        cbs->on_error("incomplete f32", cb_data);
+        return 0;
+      }
+
+      union {
+        uint8_t u8[len];
+        float f32;
+      } u;
+      memcpy(u.u8, curr.ptr, len);
+
+      // save value, increment length
+      in.v_f32.val = u.f32;
+
+      // advance
+      curr = pwasm_buf_step(curr, len);
+      num_bytes += len;
+    }
+
+    break;
+  case PWASM_IMM_F64_CONST:
+    {
+      // immediate size, in bytes
+      const size_t len = 8;
+
+      // check length
+      if (curr.len < len) {
+        cbs->on_error("incomplete f64", cb_data);
+        return 0;
+      }
+
+      union {
+        uint8_t u8[len];
+        float f64;
+      } u;
+      memcpy(u.u8, curr.ptr, len);
+
+      // save value, increment length
+      in.v_f64.val = u.f64;
+
+      // advance
+      curr = pwasm_buf_step(curr, len);
+      num_bytes += len;
+    }
+
+    break;
+  default:
+    // never reached
+    cbs->on_error("invalid immediate type", cb_data);
+    return 0;
+  }
+
+  // save to result
+  *dst = in;
+
+  // return number of bytes consumed
+  return num_bytes;
+}
+
+/**
+ * Parse inst into +dst+ from buffer +src+ of length +src_len+.
+ *
+ * Returns number of bytes consumed, or 0 on error.
+ */
+static size_t
+pwasm_old_parse_inst(
+  pwasm_inst_t * const dst,
+  const pwasm_old_parse_inst_ctx_t ctx,
   const pwasm_buf_t src
 ) {
   // check source length
@@ -1375,9 +1731,8 @@ pwasm_parse_inst(
   case PWASM_IMM_BR_TABLE:
     {
       // parse labels immediate, check for error
-      pwasm_parse_u32s_ctx_t l_ctx = { NULL, NULL };
       const pwasm_buf_t l_buf = pwasm_buf_step(src, 1);
-      const size_t l_len = pwasm_parse_labels(&l_ctx, l_buf);
+      const size_t l_len = pwasm_old_parse_labels(l_buf, NULL, NULL);
       if (!l_len) {
         INST_FAIL("bad br_table labels immediate");
       }
@@ -1539,6 +1894,118 @@ pwasm_parse_inst(
   return len;
 }
 
+typedef struct {
+  pwasm_slice_t (*on_labels)(const uint32_t *, const size_t, void *);
+  pwasm_slice_t (*on_insts)(const pwasm_inst_t *, const size_t, void *);
+  void (*on_error)(const char *, void *);
+} pwasm_parse_expr_cbs_t;
+
+/**
+ * Parse expr into +dst+ from buffer +src+ of length +src_len+.
+ *
+ * Returns number of bytes consumed, or 0 on error.
+ */
+static size_t
+pwasm_parse_expr(
+  pwasm_slice_t * const dst,
+  const pwasm_buf_t src,
+  const pwasm_parse_expr_cbs_t * const cbs,
+  void * const cb_data
+) {
+  pwasm_buf_t curr = src;
+  size_t num_bytes = 0;
+
+  // check source length
+  if (src.len < 1) {
+    cbs->on_error("invalid expr", cb_data);
+    return 0;
+  }
+
+  // build instruction parser callbacks
+  const pwasm_parse_inst_cbs_t in_cbs = {
+    .on_labels  = cbs->on_labels,
+    .on_error   = cbs->on_error,
+  };
+
+  pwasm_inst_t insts[PWASM_BATCH_SIZE];
+  pwasm_slice_t in_slice = { 0, 0 };
+
+  size_t depth = 1;
+  size_t ofs = 0;
+  while (depth && curr.len) {
+    // parse instruction, check for error
+    pwasm_inst_t in;
+    const size_t len = pwasm_parse_inst(&in, curr, &in_cbs, cb_data);
+    if (!len) {
+      return 0;
+    }
+
+/* 
+ *     // check op
+ *     if (!pwasm_op_is_const(in.op)) {
+ *       D("in.op = %u", in.op);
+ *       FAIL("non-constant instruction in expr");
+ *     }
+ */ 
+
+    // update depth (FIXME: check for underflow?)
+    depth += pwasm_op_is_control(in.op) ? 1 : 0;
+    depth -= (in.op == PWASM_OP_END) ? 1 : 0;
+
+    // advance
+    curr = pwasm_buf_step(curr, len);
+    num_bytes += len;
+
+    ofs++;
+    if (ofs == PWASM_BATCH_SIZE) {
+      // clear offset
+      ofs = 0;
+
+      // flush batch, check for error
+      const pwasm_slice_t slice = cbs->on_insts(insts, LEN(insts), cb_data);
+      if (!slice.len) {
+        return 0;
+      }
+
+      if (in_slice.len) {
+        // keep offset, increment slice length (not first batch)
+        in_slice.len += slice.len;
+      } else {
+        // set offset and length (first batch)
+        in_slice = slice;
+      }
+    }
+  }
+
+  if (ofs > 0) {
+    // flush batch, check for error
+    const pwasm_slice_t slice = cbs->on_insts(insts, ofs, cb_data);
+    if (!slice.len) {
+      return 0;
+    }
+
+    if (in_slice.len) {
+      // keep offset, increment slice length (not first batch)
+      in_slice.len += slice.len;
+    } else {
+      // set offset and length (first batch)
+      in_slice = slice;
+    }
+  }
+
+  // check for error
+  if (depth > 0) {
+    cbs->on_error("unterminated const expression", cb_data);
+    return 0;
+  }
+
+  // save result to destination
+  *dst = in_slice;
+
+  // return number of bytes consumed
+  return num_bytes;
+}
+
 /**
  * Parse constant expr into +dst+ from buffer +src+ of length +src_len+.
  *
@@ -1546,6 +2013,112 @@ pwasm_parse_inst(
  */
 static size_t
 pwasm_parse_const_expr(
+  pwasm_slice_t * const dst,
+  const pwasm_buf_t src,
+  const pwasm_parse_expr_cbs_t * const cbs,
+  void * const cb_data
+) {
+  pwasm_buf_t curr = src;
+  size_t num_bytes = 0;
+
+  // check source length
+  if (src.len < 1) {
+    cbs->on_error("invalid const expr", cb_data);
+    return 0;
+  }
+
+  // build instruction parser callbacks
+  const pwasm_parse_inst_cbs_t in_cbs = {
+    .on_labels  = cbs->on_labels,
+    .on_error   = cbs->on_error,
+  };
+
+  pwasm_inst_t insts[PWASM_BATCH_SIZE];
+  pwasm_slice_t in_slice = { 0, 0 };
+
+  size_t depth = 1;
+  size_t ofs = 0;
+  while (depth && curr.len) {
+    // parse instruction, check for error
+    pwasm_inst_t in;
+    const size_t len = pwasm_parse_inst(&in, curr, &in_cbs, cb_data);
+    if (!len) {
+      return 0;
+    }
+
+/* 
+ *     // check op
+ *     if (!pwasm_op_is_const(in.op)) {
+ *       D("in.op = %u", in.op);
+ *       FAIL("non-constant instruction in expr");
+ *     }
+ */ 
+
+    // update depth (FIXME: check for underflow?)
+    depth += pwasm_op_is_control(in.op) ? 1 : 0;
+    depth -= (in.op == PWASM_OP_END) ? 1 : 0;
+
+    // advance
+    curr = pwasm_buf_step(curr, len);
+    num_bytes += len;
+
+    ofs++;
+    if (ofs == PWASM_BATCH_SIZE) {
+      // clear offset
+      ofs = 0;
+
+      // flush batch, check for error
+      const pwasm_slice_t slice = cbs->on_insts(insts, LEN(insts), cb_data);
+      if (!slice.len) {
+        return 0;
+      }
+
+      if (in_slice.len) {
+        // keep offset, increment slice length (not first batch)
+        in_slice.len += slice.len;
+      } else {
+        // set offset and length (first batch)
+        in_slice = slice;
+      }
+    }
+  }
+
+  if (ofs > 0) {
+    // flush batch, check for error
+    const pwasm_slice_t slice = cbs->on_insts(insts, ofs, cb_data);
+    if (!slice.len) {
+      return 0;
+    }
+
+    if (in_slice.len) {
+      // keep offset, increment slice length (not first batch)
+      in_slice.len += slice.len;
+    } else {
+      // set offset and length (first batch)
+      in_slice = slice;
+    }
+  }
+
+  // check for error
+  if (depth > 0) {
+    cbs->on_error("unterminated const expression", cb_data);
+    return 0;
+  }
+
+  // save result to destination
+  *dst = in_slice;
+
+  // return number of bytes consumed
+  return num_bytes;
+}
+
+/**
+ * Parse constant expr into +dst+ from buffer +src+ of length +src_len+.
+ *
+ * Returns number of bytes consumed, or 0 on error.
+ */
+static size_t
+pwasm_old_parse_const_expr(
   pwasm_expr_t * const dst,
   const pwasm_parse_module_cbs_t * const cbs,
   const uint8_t * const src,
@@ -1558,7 +2131,7 @@ pwasm_parse_const_expr(
   }
 
   // build instruction parser context
-  const pwasm_parse_inst_ctx_t in_ctx = {
+  const pwasm_old_parse_inst_ctx_t in_ctx = {
     .on_error = cbs->on_error,
     .cb_data  = cb_data,
   };
@@ -1574,7 +2147,7 @@ pwasm_parse_const_expr(
 
     // parse instruction, check for error
     pwasm_inst_t in;
-    const size_t len = pwasm_parse_inst(&in, in_ctx, in_src);
+    const size_t len = pwasm_old_parse_inst(&in, in_ctx, in_src);
     if (!len) {
       return 0;
     }
@@ -1622,51 +2195,81 @@ pwasm_parse_const_expr(
 static size_t
 pwasm_parse_global_type(
   pwasm_global_type_t * const dst,
-  const pwasm_parse_module_cbs_t * const cbs,
-  const uint8_t * const src,
-  const size_t src_len,
+  const pwasm_buf_t src,
+  void (*on_error)(const char *, void *),
   void * const cb_data
 ) {
+  pwasm_buf_t curr = src;
+  size_t num_bytes = 0;
+
   // check source length
-  if (src_len < 2) {
-    FAIL("incomplete global type");
+  if (src.len < 2) {
+    on_error("incomplete global type", cb_data);
+    return 0;
   }
 
   // parse value type, check for error
   pwasm_value_type_t type;
-  const size_t len = pwasm_u32_decode(&type, (pwasm_buf_t) { src, src_len });
-  if (!len) {
-    FAIL("bad global value type");
+  {
+    const size_t len = pwasm_u32_decode(&type, curr);
+    if (!len) {
+      on_error("bad global value type", cb_data);
+      return 0;
+    }
+
+    // advance buffer
+    curr = pwasm_buf_step(curr, len);
+    num_bytes += len;
   }
 
   // check value type
   if (!pwasm_is_valid_value_type(type)) {
-    FAIL("bad global value type");
+    on_error("bad global value type", cb_data);
+    return 0;
   }
 
-  // check for overflow
-  if (len >= src_len) {
-    FAIL("missing global mutable flag");
+  if (!curr.len) {
+    on_error("missing global mutable flag", cb_data);
+    return 0;
   }
 
   // get mutable flag, check for error
-  const uint8_t mut = src[len];
+  const uint8_t mut = curr.ptr[0];
   if ((mut != 0) && (mut != 1)) {
-    FAIL("bad global mutable flag value");
+    on_error("bad global mutable flag value", cb_data);
+    return 0;
   }
 
-  const pwasm_global_type_t tmp = {
+  // advance buffer
+  curr = pwasm_buf_step(curr, 1);
+  num_bytes += 1;
+
+  // write result
+  *dst = (pwasm_global_type_t) {
     .type = type,
     .mutable = (mut == 1),
   };
 
-  if (dst) {
-    // copy to result
-    *dst = tmp;
-  }
-
   // return number of bytes consumed
-  return len + 1;
+  return num_bytes;
+}
+
+/**
+ * Parse global type into +dst+ from buffer +src+ of length +src_len+.
+ *
+ * Returns number of bytes consumed, or 0 on error.
+ */
+static size_t
+pwasm_old_parse_global_type(
+  pwasm_global_type_t * const dst,
+  const pwasm_parse_module_cbs_t * const cbs,
+  const uint8_t * const src_ptr,
+  const size_t src_len,
+  void * const cb_data
+) {
+  const pwasm_buf_t src = { src_ptr, src_len };
+  const void (*cb) = cbs && cbs->on_error ? cbs->on_error : pwasm_null_on_error;
+  return pwasm_parse_global_type(dst, src, cb, cb_data);
 }
 
 /**
@@ -1676,6 +2279,62 @@ pwasm_parse_global_type(
  */
 static size_t
 pwasm_parse_global(
+  pwasm_new_global_t * const dst,
+  const pwasm_buf_t src,
+  const pwasm_parse_expr_cbs_t * const cbs,
+  void * const cb_data
+) {
+  pwasm_buf_t curr = src;
+  size_t num_bytes = 0;
+
+  // check source length
+  if (src.len < 3) {
+    cbs->on_error("incomplete global", cb_data);
+    return 0;
+  }
+
+  pwasm_global_type_t type;
+  {
+    // parse type, check for error
+    const size_t len = pwasm_parse_global_type(&type, curr, cbs->on_error, cb_data);
+    if (!len) {
+      return 0;
+    }
+
+    // advance
+    curr = pwasm_buf_step(curr, len);
+    num_bytes += len;
+  }
+
+  pwasm_slice_t expr;
+  {
+    // parse expr, check for error
+    const size_t len = pwasm_parse_const_expr(&expr, curr, cbs, cb_data);
+    if (!len) {
+      return 0;
+    }
+
+    // advance
+    curr = pwasm_buf_step(curr, len);
+    num_bytes += len;
+  }
+
+  *dst = (pwasm_new_global_t) {
+    .type = type,
+    .expr = expr,
+  };
+
+  // return total number of bytes consumed
+  return num_bytes;
+}
+
+/**
+ * Parse global into +dst+ from buffer +src+ of length +src_len+.
+ *
+ * Returns number of bytes consumed, or 0 on error.
+ */
+static size_t
+pwasm_old_parse_global(
   pwasm_global_t * const dst,
   const pwasm_parse_module_cbs_t * const cbs,
   const uint8_t * const src,
@@ -1689,14 +2348,14 @@ pwasm_parse_global(
 
   // parse type, check for error
   pwasm_global_type_t type;
-  const size_t type_len = pwasm_parse_global_type(&type, cbs, src, src_len, cb_data);
+  const size_t type_len = pwasm_old_parse_global_type(&type, cbs, src, src_len, cb_data);
   if (!type_len) {
     return 0;
   }
 
   // parse expr, check for error
   pwasm_expr_t expr;
-  const size_t expr_len = pwasm_parse_const_expr(&expr, cbs, src + type_len, src_len - type_len, cb_data);
+  const size_t expr_len = pwasm_old_parse_const_expr(&expr, cbs, src + type_len, src_len - type_len, cb_data);
   if (!expr_len) {
     return 0;
   }
@@ -1792,7 +2451,7 @@ pwasm_parse_import(
   case PWASM_IMPORT_TYPE_TABLE:
     {
       // parse table, check for error
-      const size_t len = pwasm_parse_table(&(tmp.table), cbs, data_ptr, data_len, cb_data);
+      const size_t len = pwasm_old_parse_table(&(tmp.table), cbs, data_ptr, data_len, cb_data);
       if (!len) {
         return false;
       }
@@ -1805,7 +2464,7 @@ pwasm_parse_import(
   case PWASM_IMPORT_TYPE_MEM:
     {
       // parse memory limits, check for error
-      const size_t len = pwasm_parse_limits(&(tmp.mem.limits), cbs, data_ptr, data_len, cb_data);
+      const size_t len = pwasm_old_parse_limits(&(tmp.mem.limits), cbs, data_ptr, data_len, cb_data);
       if (!len) {
         return false;
       }
@@ -1818,7 +2477,7 @@ pwasm_parse_import(
   case PWASM_IMPORT_TYPE_GLOBAL:
     {
       // parse global, check for error
-      const size_t len = pwasm_parse_global_type(&(tmp.global), cbs, data_ptr, data_len, cb_data);
+      const size_t len = pwasm_old_parse_global_type(&(tmp.global), cbs, data_ptr, data_len, cb_data);
       if (!len) {
         return false;
       }
@@ -1887,7 +2546,7 @@ DEF_VEC_PARSE_FN(
 );
 
 static bool
-pwasm_parse_function_section(
+pwasm_parse_func_section(
   const pwasm_parse_module_cbs_t * const cbs,
   const pwasm_buf_t src,
   void * const cb_data
@@ -1900,7 +2559,7 @@ DEF_VEC_PARSE_FN(
   "parse tables",
   pwasm_table_t,
   pwasm_parse_module_cbs_t,
-  pwasm_parse_table,
+  pwasm_old_parse_table,
   on_tables
 );
 
@@ -1918,12 +2577,12 @@ DEF_VEC_PARSE_FN(
   "parse memories",
   pwasm_limits_t,
   pwasm_parse_module_cbs_t,
-  pwasm_parse_limits,
+  pwasm_old_parse_limits,
   on_memories
 );
 
 static bool
-pwasm_parse_memory_section(
+pwasm_parse_mem_section(
   const pwasm_parse_module_cbs_t * const cbs,
   const pwasm_buf_t src,
   void * const cb_data
@@ -1936,7 +2595,7 @@ DEF_VEC_PARSE_FN(
   "parse globals",
   pwasm_global_t,
   pwasm_parse_module_cbs_t,
-  pwasm_parse_global,
+  pwasm_old_parse_global,
   on_globals
 );
 
@@ -1949,6 +2608,11 @@ pwasm_parse_global_section(
   return pwasm_parse_globals(src, cbs, cb_data) > 0;
 }
 
+typedef struct {
+  pwasm_slice_t (*on_bytes)(const uint8_t *, size_t, void *);
+  void (*on_error)(const char *, void *);
+} pwasm_parse_export_cbs_t;
+
 /**
  * Parse export into +dst+ from source buffer +src+, consuming a
  * maximum of +src_len+ bytes.
@@ -1957,6 +2621,76 @@ pwasm_parse_global_section(
  */
 static size_t
 pwasm_parse_export(
+  pwasm_new_export_t * const dst,
+  const pwasm_buf_t src,
+  const pwasm_parse_export_cbs_t * const cbs,
+  void * const cb_data
+) {
+  pwasm_buf_t curr = src;
+  size_t num_bytes = 0;
+
+  pwasm_buf_t name_buf;
+  {
+    // parse name, check for error
+    const size_t len = pwasm_parse_buf(&name_buf, curr, NULL, NULL);
+    if (!len) {
+      cbs->on_error("bad export name", cb_data);
+      return 0;
+    }
+
+    // advance
+    curr = pwasm_buf_step(curr, len);
+    num_bytes += len;
+  }
+
+  // get name slice
+  pwasm_slice_t name = cbs->on_bytes(name_buf.ptr, name_buf.len, cb_data);
+  if (!name.len) {
+    return 0;
+  }
+
+  // get export type, check for error
+  const pwasm_export_type_t type = curr.ptr[0];
+  if (!pwasm_is_valid_export_type(type)) {
+    cbs->on_error("bad export type", cb_data);
+  }
+
+  // advance
+  curr = pwasm_buf_step(curr, 1);
+  num_bytes += 1;
+
+  // parse id, check for error
+  uint32_t id;
+  {
+    const size_t len = pwasm_u32_decode(&id, curr);
+    if (!len) {
+      cbs->on_error("bad export index", cb_data);
+      return 0;
+    }
+
+    // advance
+    curr = pwasm_buf_step(curr, len);
+    num_bytes += len;
+  }
+
+  *dst = (pwasm_new_export_t) {
+    .name = name,
+    .type = type,
+    .id   = id,
+  };
+
+  // return number of bytes consumed
+  return num_bytes;
+}
+
+/**
+ * Parse export into +dst+ from source buffer +src+, consuming a
+ * maximum of +src_len+ bytes.
+ *
+ * Returns number of bytes consumed, or 0 on error.
+ */
+static size_t
+pwasm_old_parse_export(
   pwasm_export_t * const dst,
   const pwasm_parse_module_cbs_t * const cbs,
   const uint8_t * const src,
@@ -2010,11 +2744,11 @@ pwasm_parse_export(
 }
 
 DEF_VEC_PARSE_FN(
-  pwasm_parse_exports,
+  pwasm_old_parse_exports,
   "parse exports",
   pwasm_export_t,
   pwasm_parse_module_cbs_t,
-  pwasm_parse_export,
+  pwasm_old_parse_export,
   on_exports
 );
 
@@ -2024,7 +2758,7 @@ pwasm_parse_export_section(
   const pwasm_buf_t src,
   void * const cb_data
 ) {
-  return pwasm_parse_exports(src, cbs, cb_data) > 0;
+  return pwasm_old_parse_exports(src, cbs, cb_data) > 0;
 }
 
 static bool
@@ -2054,13 +2788,141 @@ pwasm_parse_start_section(
   return true;
 }
 
+typedef struct {
+  pwasm_slice_t (*on_funcs)(const uint32_t *, const size_t, void *);
+  // pwasm_slice_t (*on_labels)(const pwasm_inst_t *, const size_t, void *);
+  pwasm_slice_t (*on_insts)(const pwasm_inst_t *, const size_t, void *);
+  void (*on_error)(const char *, void *);
+} pwasm_parse_elem_cbs_t;
+
+typedef struct {
+  const pwasm_parse_elem_cbs_t * cbs;
+  void *cb_data;
+  pwasm_slice_t funcs;
+  bool success;
+} pwasm_parse_elem_t;
+
+static void
+pwasm_parse_elem_on_items(
+  const uint32_t * const rows,
+  const size_t num,
+  void *cb_data
+) {
+  pwasm_parse_elem_t *data = cb_data;
+
+  if (!data->success) {
+    return;
+  }
+
+  // add ids, check for error
+  const pwasm_slice_t funcs = data->cbs->on_funcs(rows, num, data->cb_data);
+  if (!funcs.len) {
+    // mark failure and return
+    data->success = false;
+    return;
+  }
+
+  if (data->funcs.len) {
+    // sucessive set, append to length
+    data->funcs.len += funcs.len;
+  } else {
+    // initial slice, set offset and length
+    data->funcs = funcs;
+  }
+}
+
 /**
  * Parse element into +dst+ from source buffer +src+.
  *
  * Returns number of bytes consumed, or 0 on error.
  */
 static size_t
-pwasm_parse_element(
+pwasm_parse_elem(
+  pwasm_elem_t * const dst,
+  const pwasm_buf_t src,
+  const pwasm_parse_elem_cbs_t * const cbs,
+  void * const cb_data
+) {
+  pwasm_buf_t curr = src;
+  size_t num_bytes = 0;
+
+  uint32_t table_id = 0;
+  {
+    // get table_id, check for error
+    const size_t len = pwasm_u32_decode(&table_id, curr);
+    if (!len) {
+      cbs->on_error("bad element table id", cb_data);
+      return 0;
+    }
+
+    // advance
+    curr = pwasm_buf_step(curr, len);
+    num_bytes += len;
+  }
+
+  pwasm_slice_t expr = { 0, 0 };
+  {
+    // build parse expr callbacks
+    const pwasm_parse_expr_cbs_t expr_cbs = {
+      .on_insts = cbs->on_insts,
+      .on_error = cbs->on_error,
+    };
+
+    // parse expr, check for error
+    const size_t len = pwasm_parse_const_expr(&expr, curr, &expr_cbs, cb_data);
+    if (!len) {
+      return 0;
+    }
+
+    // advance
+    curr = pwasm_buf_step(curr, len);
+    num_bytes += len;
+  }
+
+  // build parse func ids callback data
+  pwasm_parse_elem_t data = {
+    .cbs = cbs,
+    .cb_data = cb_data,
+    .success = true,
+    .funcs = { 0, 0 },
+  };
+
+  {
+    // build parse func ids callbacks
+    const pwasm_parse_u32s_cbs_t u32s_cbs = {
+      .on_items = pwasm_parse_elem_on_items,
+      .on_error = cbs->on_error,
+    };
+
+    // parse function ids, check for error
+    const size_t len = pwasm_parse_u32s(curr, &u32s_cbs, &data);
+    if (!len || !data.success) {
+      return 0;
+    }
+
+    // advance
+    curr = pwasm_buf_step(curr, len);
+    num_bytes += len;
+  }
+
+  // save result
+  *dst = (pwasm_elem_t) {
+    .table_id = table_id,
+    .expr     = expr,
+    .funcs    = data.funcs,
+  };
+
+  // return number of bytes consumed
+  return num_bytes;
+}
+
+/**
+ * Parse element into +dst+ from source buffer +src+.
+ *
+ * Returns number of bytes consumed, or 0 on error.
+ */
+static size_t
+pwasm_old_parse_element(
   pwasm_element_t * const dst,
   const pwasm_parse_module_cbs_t * const cbs,
   const uint8_t * const src,
@@ -2078,7 +2940,7 @@ pwasm_parse_element(
 
   // parse expr, check for error
   pwasm_expr_t expr;
-  const size_t expr_len = pwasm_parse_const_expr(&expr, cbs, src + t_len, src_len - t_len, cb_data);
+  const size_t expr_len = pwasm_old_parse_const_expr(&expr, cbs, src + t_len, src_len - t_len, cb_data);
   if (!expr_len) {
     return 0;
   }
@@ -2129,22 +2991,327 @@ pwasm_parse_element(
 }
 
 DEF_VEC_PARSE_FN(
-  pwasm_parse_elements,
+  pwasm_old_parse_elements,
   "parse elements",
   pwasm_element_t,
   pwasm_parse_module_cbs_t,
-  pwasm_parse_element,
+  pwasm_old_parse_element,
   on_elements
 );
 
 static bool
-pwasm_parse_element_section(
+pwasm_parse_elem_section(
   const pwasm_parse_module_cbs_t * const cbs,
   const pwasm_buf_t src,
   void * const cb_data
 ) {
-  return pwasm_parse_elements(src, cbs, cb_data) > 0;
+  return pwasm_old_parse_elements(src, cbs, cb_data) > 0;
 }
+
+typedef struct {
+  pwasm_slice_t (*on_locals)(const pwasm_local_t *, size_t, void *);
+  pwasm_slice_t (*on_labels)(const uint32_t *, const size_t, void *);
+  pwasm_slice_t (*on_insts)(const pwasm_inst_t *, const size_t, void *);
+  void (*on_error)(const char *, void *);
+} pwasm_parse_code_cbs_t;
+
+static size_t
+pwasm_parse_code_locals_local(
+  pwasm_local_t * const dst,
+  const pwasm_buf_t src,
+  const pwasm_parse_code_cbs_t * const cbs,
+  void * const cb_data
+) {
+  pwasm_buf_t curr = src;
+  size_t num_bytes = 0;
+
+  if (curr.len < 2) {
+    cbs->on_error("empty local", cb_data);
+    return 0;
+  }
+
+  // get local num, check for error
+  uint32_t num;
+  {
+    const size_t len = pwasm_u32_decode(&num, curr);
+    if (!len) {
+      cbs->on_error("invalid local num", cb_data);
+      return 0;
+    }
+
+    // advance
+    curr = pwasm_buf_step(curr, len);
+    num_bytes += len;
+  }
+
+  if (!curr.len) {
+    cbs->on_error("missing local type", cb_data);
+    return 0;
+  }
+
+  // get value type, check for error
+  const pwasm_value_type_t type = curr.ptr[0];
+  if (!pwasm_is_valid_value_type(type)) {
+    cbs->on_error("invalid local type", cb_data);
+    return 0;
+  }
+
+  // advance
+  curr = pwasm_buf_step(curr, 1);
+  num_bytes += 1;
+
+  // populate result
+  *dst = (pwasm_local_t) {
+    .num  = num,
+    .type = type,
+  };
+
+  // return number of bytes consumed
+  return num_bytes;
+}
+
+static size_t
+pwasm_parse_code_locals(
+  pwasm_slice_t * const dst,
+  const pwasm_buf_t src,
+  const pwasm_parse_code_cbs_t * const cbs,
+  void * const cb_data
+) {
+  pwasm_buf_t curr = src;
+  size_t num_bytes = 0;
+  pwasm_slice_t local = { 0, 0 };
+
+  uint32_t count = 0;
+  {
+    // get local count, check for error
+    const size_t len = pwasm_u32_decode(&count, curr);
+    if (!len) {
+      cbs->on_error("invalid locals count", cb_data);
+      return 0;
+    }
+
+    // advance
+    curr = pwasm_buf_step(curr, len);
+    num_bytes += len;
+  }
+
+  // locals buffer
+  pwasm_local_t locals[PWASM_BATCH_SIZE];
+
+  size_t ofs = 0;
+  for (size_t i = 0; i < count; i++) {
+    // get local, check for error
+    const size_t len = pwasm_parse_code_locals_local(locals + ofs, curr, cbs, cb_data);
+    if (!len) {
+      return 0;
+    }
+
+    // advance
+    curr = pwasm_buf_step(curr, len);
+    num_bytes += len;
+
+    // increment offset
+    ofs++;
+    if (ofs == LEN(locals)) {
+      ofs = 0;
+
+      // flush queue
+      const pwasm_slice_t slice = cbs->on_locals(locals, LEN(locals), cb_data);
+
+      if (local.len > 0) {
+        // successive set, append to length
+        local.len += slice.len;
+      } else {
+        // initial set, copy offset and length
+        local = slice;
+      }
+    }
+  }
+
+  if (ofs) {
+    // flush queue
+    const pwasm_slice_t slice = cbs->on_locals(locals, ofs, cb_data);
+
+    if (local.len > 0) {
+      // successive set, append to length
+      local.len += slice.len;
+    } else {
+      // initial set, copy offset and length
+      local = slice;
+    }
+  }
+
+  // copy result to destination
+  *dst = local;
+
+  // return number of bytes read
+  return num_bytes;
+}
+
+typedef struct {
+  const pwasm_parse_code_cbs_t * const cbs;
+  void *cb_data;
+  pwasm_slice_t insts;
+  bool success;
+} pwasm_parse_code_expr_t;
+
+
+static size_t
+pwasm_parse_code_expr(
+  pwasm_slice_t * const dst,
+  const pwasm_buf_t src,
+  const pwasm_parse_code_cbs_t * const src_cbs,
+  void * const cb_data
+) {
+  // build callbacks
+  const pwasm_parse_expr_cbs_t cbs = {
+    .on_labels  = src_cbs->on_labels,
+    .on_insts   = src_cbs->on_insts,
+    .on_error   = src_cbs->on_error,
+  };
+
+  // parse expr, check for error
+  pwasm_slice_t expr;
+  const size_t len = pwasm_parse_expr(&expr, src, &cbs, cb_data);
+  if (!len) {
+    return 0;
+  }
+
+  // copy result to destination
+  *dst = expr;
+
+  // return number of bytes consumed
+  return len;
+}
+
+static size_t
+pwasm_parse_code(
+  pwasm_func_t * const dst,
+  const pwasm_buf_t src,
+  const pwasm_parse_code_cbs_t * const cbs,
+  void * const cb_data
+) {
+  pwasm_buf_t curr = src;
+  size_t num_bytes = 0;
+
+  pwasm_slice_t locals;
+  {
+    // parse locals, check for error
+    const size_t len = pwasm_parse_code_locals(&locals, curr, cbs, cb_data);
+    if (!len) {
+      return 0;
+    }
+
+    // advance
+    curr = pwasm_buf_step(curr, len);
+    num_bytes += len;
+  }
+
+  pwasm_slice_t expr;
+  {
+    // parse expr, check for error
+    const size_t len = pwasm_parse_code_expr(&expr, curr, cbs, cb_data);
+    if (!len) {
+      return 0;
+    }
+
+    // advance
+    curr = pwasm_buf_step(curr, len);
+    num_bytes += len;
+  }
+
+  *dst = (pwasm_func_t) {
+    .locals = locals,
+    .expr = expr,
+  };
+
+  // return number of bytes consumed
+  return num_bytes;
+}
+
+typedef struct {
+  pwasm_slice_t (*on_bytes)(const uint8_t *, const size_t, void *);
+  pwasm_slice_t (*on_insts)(const pwasm_inst_t *, const size_t, void *);
+  void (*on_error)(const char *, void *);
+} pwasm_parse_segment_cbs_t;
+
+static size_t
+pwasm_parse_segment(
+  pwasm_segment_t * const dst,
+  const pwasm_buf_t src,
+  const pwasm_parse_segment_cbs_t * const cbs,
+  void * const cb_data
+) {
+  pwasm_buf_t curr = src;
+  size_t num_bytes = 0;
+
+  uint32_t mem_id;
+  {
+    // parse memory ID, check for error
+    const size_t len = pwasm_u32_decode(&mem_id, curr);
+    if (!len) {
+      cbs->on_error("invalid memory id", cb_data);
+      return 0;
+    }
+
+    // advance
+    curr = pwasm_buf_step(curr, len);
+    num_bytes += len;
+  }
+
+  pwasm_slice_t expr;
+  {
+    // build expr parse cbs
+    const pwasm_parse_expr_cbs_t expr_cbs = {
+      .on_insts = cbs->on_insts,
+      .on_error = cbs->on_error,
+    };
+
+    // parse expr, check for error
+    const size_t len = pwasm_parse_expr(&expr, curr, &expr_cbs, cb_data);
+    if (!len) {
+      return 0;
+    }
+
+    // advance
+    curr = pwasm_buf_step(curr, len);
+    num_bytes += len;
+  }
+
+  pwasm_buf_t data_buf;
+  {
+    // build buf parse cbs
+    const pwasm_parse_buf_cbs_t buf_cbs = {
+      .on_error = cbs->on_error,
+    };
+
+    // parse buf, check for error
+    const size_t len = pwasm_parse_buf(&data_buf, curr, &buf_cbs, cb_data);
+    if (!len) {
+      return 0;
+    }
+
+    // advance
+    curr = pwasm_buf_step(curr, len);
+    num_bytes += len;
+  }
+
+  // append bytes, get slice, check for error
+  pwasm_slice_t data = cbs->on_bytes(data_buf.ptr, data_buf.len, cb_data);
+  if (data_buf.len != data.len) {
+    return 0;
+  }
+
+  *dst = (pwasm_segment_t) {
+    .mem_id = mem_id,
+    .expr   = expr,
+    .data   = data,
+  };
+
+  // return number of bytes consumed
+  return num_bytes;
+}
+
 
 /**
  * Parse function code into +dst+ from source buffer +src+, consuming a
@@ -2153,7 +3320,7 @@ pwasm_parse_element_section(
  * Returns number of bytes consumed, or 0 on error.
  */
 static size_t
-pwasm_parse_fn_code(
+pwasm_old_parse_fn_code(
   pwasm_buf_t * const dst,
   const pwasm_parse_module_cbs_t * const cbs,
   const uint8_t * const src,
@@ -2193,11 +3360,11 @@ pwasm_parse_fn_code(
 }
 
 DEF_VEC_PARSE_FN(
-  pwasm_parse_codes,
+  pwasm_old_parse_codes,
   "parse function codes",
   pwasm_buf_t,
   pwasm_parse_module_cbs_t,
-  pwasm_parse_fn_code,
+  pwasm_old_parse_fn_code,
   on_function_codes
 );
 
@@ -2207,7 +3374,7 @@ pwasm_parse_code_section(
   const pwasm_buf_t src,
   void * const cb_data
 ) {
-  return pwasm_parse_codes(src, cbs, cb_data) > 0;
+  return pwasm_old_parse_codes(src, cbs, cb_data) > 0;
 }
 
 static size_t
@@ -2229,7 +3396,7 @@ pwasm_parse_data_segment(
 
   // parse expr, check for error
   pwasm_expr_t expr;
-  const size_t expr_len = pwasm_parse_const_expr(&expr, cbs, src + id_len, src_len - id_len, cb_data);
+  const size_t expr_len = pwasm_old_parse_const_expr(&expr, cbs, src + id_len, src_len - id_len, cb_data);
   if (!expr_len) {
     return 0;
   }
@@ -2275,7 +3442,7 @@ DEF_VEC_PARSE_FN(
 );
 
 static bool
-pwasm_parse_data_section(
+pwasm_parse_segment_section(
   const pwasm_parse_module_cbs_t * const cbs,
   const pwasm_buf_t src,
   void * const cb_data
@@ -2319,15 +3486,9 @@ pwasm_parse_section(
 
 static const uint8_t PWASM_HEADER[] = { 0, 0x61, 0x73, 0x6d, 1, 0, 0, 0 };
 
-#if 0
-typedef struct {
-  pwasm_section_type_t id;
-  uint32_t len;
-} pwasm_header_t;
-
 static inline size_t
 pwasm_header_parse(
-  pwasm_section_header_t * const dst,
+  pwasm_header_t * const dst,
   const pwasm_buf_t src
 ) {
   if (src.len < 2) {
@@ -2337,27 +3498,26 @@ pwasm_header_parse(
   // get section type
   const pwasm_section_type_t type = src.ptr[0];
 
-  // build length buffer
-  const pwasm_buf_t len_buf = pwasm_buf_step(src, 1);
+  // advance past type, build length buffer
+  const pwasm_buf_t buf = pwasm_buf_step(src, 1);
 
-  // get section length
-  // FIXME: add pwasm_u32_decode_buf(dst_num, src_buf)
+  // get section length, check for error
   uint32_t len;
-  const size_t ofs = pwasm_u32_decode(&len, len_buf);
+  const size_t ofs = pwasm_u32_decode(&len, buf);
   if (!ofs) {
     return 0;
   }
 
   if (dst) {
     // build result, copy result to destination
-    const pwasm_section_header_t tmp = { type, len };
-    *dst = tmp;
+    *dst = (pwasm_header_t) { type, len };
   }
 
   // return number of bytes consumed
   return ofs + 1;
 }
 
+#if 0
 typedef struct {
   void (*on_error)(const char *, void *);
 } pwasm_scan_cbs_t;
@@ -3042,9 +4202,9 @@ pwasm_parse_module(
  * Returns number of bytes consumed, or 0 on error.
  */
 size_t
-pwasm_parse_expr(
+pwasm_old_parse_expr(
   const pwasm_buf_t src,
-  const pwasm_parse_expr_cbs_t * const cbs,
+  const pwasm_old_parse_expr_cbs_t * const cbs,
   void * const cb_data
 ) {
   // check source length
@@ -3053,7 +4213,7 @@ pwasm_parse_expr(
   }
 
   // build instruction parser context
-  const pwasm_parse_inst_ctx_t in_ctx = {
+  const pwasm_old_parse_inst_ctx_t in_ctx = {
     .on_error = cbs->on_error,
     .cb_data  = cb_data,
   };
@@ -3074,7 +4234,7 @@ pwasm_parse_expr(
 
     // parse instruction, check for error
     pwasm_inst_t * const dst = ins + ins_ofs;
-    const size_t len = pwasm_parse_inst(dst, in_ctx, in_src);
+    const size_t len = pwasm_old_parse_inst(dst, in_ctx, in_src);
     if (!len) {
       return 0;
     }
@@ -3136,7 +4296,7 @@ pwasm_get_expr_size_on_error(
   data->success = false;
 }
 
-static const pwasm_parse_expr_cbs_t
+static const pwasm_old_parse_expr_cbs_t
 PWASM_GET_EXPR_SIZE_CBS = {
   .on_insts = pwasm_get_expr_size_on_insts,
   .on_error = pwasm_get_expr_size_on_error,
@@ -3153,7 +4313,7 @@ pwasm_get_expr_size(
   };
 
   // count instructions, ignore result (number of bytes)
-  (void) pwasm_parse_expr(src, &PWASM_GET_EXPR_SIZE_CBS, &data);
+  (void) pwasm_old_parse_expr(src, &PWASM_GET_EXPR_SIZE_CBS, &data);
 
   if (data.success && ret_size) {
     // copy size to output
@@ -3272,12 +4432,12 @@ pwasm_parse_function_expr(
   const pwasm_parse_function_cbs_t * const fn_cbs,
   void * const cb_data
 ) {
-  const pwasm_parse_expr_cbs_t expr_cbs = {
+  const pwasm_old_parse_expr_cbs_t expr_cbs = {
     .on_insts = fn_cbs ? fn_cbs->on_insts : NULL,
     .on_error = fn_cbs ? fn_cbs->on_error : NULL,
   };
 
-  return pwasm_parse_expr(src, &expr_cbs, cb_data);
+  return pwasm_old_parse_expr(src, &expr_cbs, cb_data);
 }
 
 bool
@@ -4055,7 +5215,7 @@ pwasm_module_init_on_globals_on_error(
   pwasm_module_init_on_error(text, init_data);
 }
 
-static const pwasm_parse_expr_cbs_t
+static const pwasm_old_parse_expr_cbs_t
 PWASM_MODULE_INIT_ON_GLOBALS_CBS = {
   .on_insts = pwasm_module_init_on_globals_on_insts,
   .on_error = pwasm_module_init_on_globals_on_error,
@@ -4086,7 +5246,7 @@ pwasm_module_init_on_globals(
 
     // parse expression
     // FIXME: should limit to constant expr here
-    (void) pwasm_parse_expr(
+    (void) pwasm_old_parse_expr(
       rows[i].expr.buf,
       &PWASM_MODULE_INIT_ON_GLOBALS_CBS,
       &expr_data
@@ -4173,7 +5333,7 @@ pwasm_module_add_element_expr_on_error(
   pwasm_module_init_on_error(text, init_data);
 }
 
-static const pwasm_parse_expr_cbs_t
+static const pwasm_old_parse_expr_cbs_t
 PWASM_MODULE_ADD_ELEMENT_EXPR_CBS = {
   .on_insts = pwasm_module_add_element_expr_on_insts,
   .on_error = pwasm_module_add_element_expr_on_error,
@@ -4199,7 +5359,7 @@ pwasm_module_add_element_expr(
 
   // parse expression
   // FIXME: should limit to constant expr here
-  (void) pwasm_parse_expr(
+  (void) pwasm_old_parse_expr(
     src,
     &PWASM_MODULE_ADD_ELEMENT_EXPR_CBS,
     &expr_data
@@ -4275,13 +5435,8 @@ pwasm_module_add_element_fns(
     .success    = true,
   };
 
-  const pwasm_parse_u32s_ctx_t ctx = {
-    .cbs = &PWASM_MODULE_ADD_ELEMENT_FNS_CBS,
-    .cb_data = &fns_data,
-  };
-
   // parse function IDs
-  pwasm_parse_u32s(&ctx, src);
+  pwasm_parse_u32s(src, &PWASM_MODULE_ADD_ELEMENT_FNS_CBS, &fns_data);
 
   // return result
   return fns_data.success;
@@ -4363,7 +5518,7 @@ pwasm_module_add_segment_expr_on_error(
   pwasm_module_init_on_error(text, init_data);
 }
 
-static const pwasm_parse_expr_cbs_t
+static const pwasm_old_parse_expr_cbs_t
 PWASM_MODULE_ADD_SEGMENT_EXPR_CBS = {
   .on_insts = pwasm_module_add_segment_expr_on_insts,
   .on_error = pwasm_module_add_segment_expr_on_error,
@@ -4389,7 +5544,7 @@ pwasm_module_add_segment_expr(
 
   // parse expression
   // FIXME: should limit to constant expr here
-  (void) pwasm_parse_expr(
+  (void) pwasm_old_parse_expr(
     src,
     &PWASM_MODULE_ADD_SEGMENT_EXPR_CBS,
     &expr_data
@@ -4503,8 +5658,7 @@ pwasm_module_add_br_table(
   };
 
   // add labels, check for error
-  pwasm_parse_u32s_ctx_t ctx = { &PWASM_MODULE_ADD_BR_TABLE_CBS, &data };
-  const size_t num_bytes = pwasm_parse_labels(&ctx, buf);
+  const size_t num_bytes = pwasm_old_parse_labels(buf, &PWASM_MODULE_ADD_BR_TABLE_CBS, &data);
 
   // return result
   return num_bytes > 0;
@@ -6134,4 +7288,1352 @@ pwasm_check(
 
   // return total number of errors
   return check.num_errors;
+}
+
+static void *
+pwasm_mem_ctx_init_defaults_on_realloc(
+  void *ptr,
+  const size_t len,
+  void *cb_data
+) {
+  (void) cb_data;
+  return realloc(ptr, len);
+}
+
+static const pwasm_mem_cbs_t
+PWASM_MEM_CTX_INIT_DEFAULTS_CBS = {
+  .on_realloc = pwasm_mem_ctx_init_defaults_on_realloc,
+  .on_error   = pwasm_null_on_error,
+};
+
+pwasm_mem_ctx_t
+pwasm_mem_ctx_init_defaults(
+  void *cb_data
+) {
+  return (pwasm_mem_ctx_t) {
+    .cbs      = &PWASM_MEM_CTX_INIT_DEFAULTS_CBS,
+    .cb_data  = cb_data,
+  };
+}
+
+void *
+pwasm_realloc(
+  pwasm_mem_ctx_t * const mem_ctx,
+  void *ptr,
+  const size_t len
+) {
+  return mem_ctx->cbs->on_realloc(ptr, len, mem_ctx->cb_data);
+}
+
+void
+pwasm_fail(
+  pwasm_mem_ctx_t * const mem_ctx,
+  const char * const text
+) {
+  mem_ctx->cbs->on_error(text, mem_ctx->cb_data);
+}
+
+static inline size_t
+pwasm_get_num_bytes(
+  const size_t stride,
+  const size_t num_items
+) {
+  const size_t page_size = sysconf(_SC_PAGESIZE);
+  const size_t num_bytes = stride * num_items;
+
+  return page_size * (
+    (num_bytes / page_size) + ((num_bytes % page_size) ? 1 : 0)
+  );
+}
+
+static bool
+pwasm_vec_resize(
+  pwasm_vec_t * const vec,
+  const size_t new_capacity
+) {
+  const size_t num_bytes = pwasm_get_num_bytes(vec->stride, new_capacity);
+  uint8_t * const ptr = pwasm_realloc(vec->mem_ctx, vec->rows, num_bytes);
+  if (!ptr && num_bytes > 0) {
+    // return failure
+    return false;
+  }
+
+  // update vector pointer, capacity, and row count
+  vec->rows = ptr;
+  vec->max_rows = num_bytes / vec->stride;
+  vec->num_rows = (vec->num_rows < vec->max_rows) ? vec->num_rows : vec->max_rows;
+
+  // return success
+  return true;
+}
+
+bool
+pwasm_vec_init(
+  pwasm_mem_ctx_t * const mem_ctx,
+  pwasm_vec_t * ret,
+  const size_t stride
+) {
+  pwasm_vec_t vec = {
+    .mem_ctx = mem_ctx,
+    .max_rows = 10,
+    .stride = stride,
+  };
+
+  if (!pwasm_vec_resize(&vec, vec.max_rows)) {
+    return false;
+  }
+
+  if (ret) {
+    // copy result to destination
+    memcpy(ret, &vec, sizeof(pwasm_vec_t));
+  }
+
+  // return success
+  return true;
+}
+
+bool
+pwasm_vec_fini(
+  pwasm_vec_t * const vec
+) {
+  return pwasm_vec_resize(vec, 0);
+}
+
+size_t
+pwasm_vec_get_size(
+  const pwasm_vec_t * const vec
+) {
+  return vec->num_rows;
+}
+
+size_t
+pwasm_vec_get_stride(
+  const pwasm_vec_t * const vec
+) {
+  return vec->stride;
+}
+
+const void *
+pwasm_vec_get_data(
+  const pwasm_vec_t * const vec
+) {
+  return vec->rows;
+}
+
+bool
+pwasm_vec_push_uninitialized(
+  pwasm_vec_t * const vec,
+  const size_t num_rows,
+  size_t * const ret_ofs
+) {
+  // calculate new length, check for overflow
+  const size_t new_len = vec->num_rows + num_rows;
+  if (new_len <= vec->num_rows) {
+    // return failure
+    return false;
+  }
+
+  // resize (if necessary), check for error
+  if ((new_len >= vec->max_rows) && !pwasm_vec_resize(vec, new_len)) {
+    // return failure
+    return false;
+  }
+
+  if (ret_ofs) {
+    // return offset
+    *ret_ofs = vec->num_rows;
+  }
+
+  // save new length
+  vec->num_rows = new_len;
+
+  // return success
+  return true;
+}
+
+bool
+pwasm_vec_push(
+  pwasm_vec_t * const vec,
+  const size_t num_rows,
+  const void * const src,
+  size_t * const ret_ofs
+) {
+  size_t dst_ofs = 0;
+  if (!pwasm_vec_push_uninitialized(vec, num_rows, &dst_ofs)) {
+    return false;
+  }
+
+  if (ret_ofs) {
+    // return offset
+    *ret_ofs = dst_ofs;
+  }
+
+  if (src) {
+    // copy data
+    uint8_t * const dst = vec->rows + vec->stride * dst_ofs;
+    memcpy(dst, src, num_rows * vec->stride);
+  }
+
+  // return success
+  return true;
+}
+
+#define BUILDER_VECS \
+  BUILDER_VEC(u32, uint32_t, dummy) \
+  BUILDER_VEC(section, uint32_t, u32) \
+  BUILDER_VEC(custom_section, pwasm_new_custom_section_t, section) \
+  BUILDER_VEC(type, pwasm_type_t, custom_section) \
+  BUILDER_VEC(import, pwasm_new_import_t, type) \
+  BUILDER_VEC(inst, pwasm_inst_t, import) \
+  BUILDER_VEC(global, pwasm_new_global_t, inst) \
+  BUILDER_VEC(func, uint32_t, global) \
+  BUILDER_VEC(table, pwasm_table_t, func) \
+  BUILDER_VEC(mem, pwasm_limits_t, table) \
+  BUILDER_VEC(export, pwasm_new_export_t, mem) \
+  BUILDER_VEC(local, pwasm_local_t, export) \
+  BUILDER_VEC(code, pwasm_func_t, local) \
+  BUILDER_VEC(elem, pwasm_elem_t, code) \
+  BUILDER_VEC(segment, pwasm_segment_t, elem) \
+  BUILDER_VEC(byte, uint8_t, segment) // note: keep at tail for alignment
+
+bool
+pwasm_builder_init(
+  pwasm_mem_ctx_t * const mem_ctx,
+  pwasm_builder_t * const ret
+) {
+  pwasm_builder_t b = {
+    .mem_ctx = mem_ctx,
+  };
+
+#define BUILDER_VEC(name, type, prev) \
+  if (!pwasm_vec_init(mem_ctx, &(b.name ## s), sizeof(type))) { \
+    return false; \
+  }
+BUILDER_VECS
+#undef BUILDER_VEC
+
+  // FIXME: double-check list above
+  memcpy(ret, &b, sizeof(pwasm_builder_t));
+
+  // return success
+  return true;
+}
+
+void
+pwasm_builder_fini(
+  pwasm_builder_t * const builder
+) {
+#define BUILDER_VEC(name, type, prev) \
+  if (!pwasm_vec_fini(&(builder->name ## s))) { \
+    /* TODO: log error */ \
+  }
+BUILDER_VECS
+#undef BUILDER_VEC
+}
+
+#define BUILDER_VEC(name, type, prev) \
+  pwasm_slice_t \
+  pwasm_builder_push_ ## name ## s( \
+    pwasm_builder_t * const builder, \
+    const type * const src_ptr, \
+    const size_t src_len \
+  ) { \
+    pwasm_vec_t * const vec = &(builder->name ## s); \
+    const size_t size = sizeof(type); \
+    const size_t ofs = pwasm_vec_get_size(vec) / size; \
+    const size_t len = src_len * size; \
+    const bool ok = pwasm_vec_push(vec, len, src_ptr, NULL); \
+    return (pwasm_slice_t) { ok ? ofs : 0, ok ? src_len : 0 }; \
+  }
+BUILDER_VECS
+#undef BUILDER_VEC
+
+size_t
+pwasm_builder_get_size(
+  const pwasm_builder_t * const builder
+) {
+#define BUILDER_VEC(name, type, prev) \
+  pwasm_vec_get_size(&(builder->name ## s)) * sizeof(type) +
+  return (
+BUILDER_VECS
+  0 /* sentinel */
+  );
+#undef BUILDER_VEC
+}
+
+bool
+pwasm_builder_build_mod(
+  const pwasm_builder_t * const builder,
+  pwasm_mod_t * const dst
+) {
+  const size_t total_num_bytes = pwasm_builder_get_size(builder);
+  uint8_t * const ptr = pwasm_realloc(builder->mem_ctx, NULL, total_num_bytes);
+  if (!ptr) {
+    // return failure
+    return false;
+  }
+
+  // get item counts
+#define BUILDER_VEC(name, type, prev) \
+  const size_t num_ ## name ## s = pwasm_vec_get_size(&(builder->name ## s));
+BUILDER_VECS
+#undef BUILDER_VEC
+
+  // get output byte sizes
+#define BUILDER_VEC(name, type, prev) \
+  const size_t name ## s_size = num_ ## name ## s * sizeof(type);
+BUILDER_VECS
+#undef BUILDER_VEC
+
+  // get source pointers
+#define BUILDER_VEC(name, type, prev) \
+  const uint8_t * const name ## s_src = pwasm_vec_get_data(&(builder->name ## s));
+BUILDER_VECS
+#undef BUILDER_VEC
+
+  // dummy (used to expand macro below)
+  uint8_t * const dummys_dst = ptr;
+  const size_t dummys_size = 0;
+
+  // get dest pointers
+#define BUILDER_VEC(name, type, prev) \
+  uint8_t * const name ## s_dst = prev ## s_dst + prev ## s_size;
+BUILDER_VECS
+#undef BUILDER_VEC
+
+  // populate result
+  const pwasm_mod_t mod = {
+    .mem = { ptr, total_num_bytes },
+
+#define BUILDER_VEC(name, type, prev) \
+    .name ## s = memcpy(name ## s_dst, name ## s_src, name ## s_size), \
+    .num_ ## name ## s = num_ ## name ## s,
+BUILDER_VECS
+#undef BUILDER_VEC
+  };
+
+  // copy result to output
+  memcpy(dst, &mod, sizeof(pwasm_mod_t));
+
+  // return success
+  return true;
+}
+
+#if 0
+#define DEF_VEC_SECTION(NAME, TYPE) \
+  typedef struct { \
+    const pwasm_mod_parse_cbs_t * const cbs; \
+    void *cb_data; \
+    bool success; \
+  } pwasm_mod_parse_ ## NAME ## _section_items_t; \
+   \
+  static void pwasm_mod_parse_ ## NAME ## _on_error( \
+    const char * const text, \
+    void *cb_data \
+  ) { \
+    pwasm_mod_parse_ ## NAME ## _section_items_t * const data = cb_data; \
+   \
+    if (data->success) { \
+      if (data->cbs && data-cbs->on_error) { \
+        data->cbs->on_error(text, data->cb_data); \
+      } \
+   \
+      data->success = false; \
+    } \
+  } \
+   \
+  static void pwasm_mod_parse_ ## NAME ## _section_on_items( \
+    const TYPE * const rows, \
+    const size_t num, \
+    void *cb_data \
+  ) { \
+    pwasm_mod_parse_ ## NAME ## _section_items_t * const data = cb_data; \
+    if (!pwasm_builder_push_ ## NAME ## s(data->builder, rows, num).len) { \
+      const char * const text = "push " #NAME "s failed"; \
+      pwasm_mod_parse_ ## NAME ## _section_items_on_error(text, data); \
+    } \
+  } \
+   \
+  static const pwasm_parse_ ## NAME ## _cbs_t  \
+  PWASM_MOD_PARSE_ ## NAME ## _SECTION_ITEMS_CBS = { \
+    .on_items = pwasm_mod_parse_ ## NAME ## _section_items_on_items, \
+    .on_error = pwasm_mod_parse_ ## NAME ## _section_items_on_error, \
+  }; \
+   \
+  static size_t pwasm_mod_parse_ ## NAME ## _section( \
+    const pwasm_buf_t src \
+    const pwasm_mod_parse_cbs_t * const cbs,  \
+    void *cb_data  \
+  ) { \
+    pwasm_mod_parse_ ## NAME ## _section_items_t data = { \
+      .cbs = cbs, \
+      .cb_data = cb_data, \
+      .success = true; \
+    }; \
+   \
+    const size_t len = pwasm_parse_ ## NAME ## s(src, &PWASM_MOD_PARSE_ ## NAME ## _SECTION_ITEMS_CBS, &data); \
+    return data.success ? len : 0; \
+  }
+
+DEF_VEC_SECTION(type, pwasm_type_t)
+#endif /* 0 */
+
+typedef struct {
+  const pwasm_mod_parse_cbs_t * const cbs;
+  void *cb_data;
+  bool success;
+} pwasm_mod_parse_custom_section_t;
+
+static void
+pwasm_mod_parse_custom_section_on_error(
+  const char * const text,
+  void *cb_data
+) {
+  pwasm_mod_parse_custom_section_t * const data = cb_data;
+
+  if (data->success) {
+    data->success = false;
+    data->cbs->on_error(text, data->cb_data);
+  }
+}
+
+static const pwasm_parse_buf_cbs_t
+PWASM_MOD_PARSE_CUSTOM_SECTION_CBS = {
+  .on_error = pwasm_mod_parse_custom_section_on_error,
+};
+
+static size_t
+pwasm_mod_parse_custom_section(
+  const pwasm_buf_t src,
+  const pwasm_mod_parse_cbs_t * const cbs,
+  void *cb_data
+) {
+  pwasm_slice_t slices[2];
+  pwasm_buf_t curr = src;
+  size_t num_bytes = 0;
+
+  pwasm_mod_parse_custom_section_t data = {
+    .cbs = cbs,
+    .cb_data = cb_data,
+    .success = true,
+  };
+
+  for (size_t i = 0; i < 2; i++) {
+    // parse to buffer, check for error
+    pwasm_buf_t buf;
+    const size_t len = pwasm_parse_buf(&buf, src, &PWASM_MOD_PARSE_CUSTOM_SECTION_CBS, &data);
+    if (!len) {
+      return 0;
+    }
+
+    // pass bytes to callback
+    slices[i] = cbs->on_bytes(buf.ptr, buf.len, cb_data);
+    if (!slices[i].len) {
+      return 0;
+    }
+
+    // advance curr, increment number of bytes
+    curr = pwasm_buf_step(curr, len + buf.len);
+    num_bytes += len + buf.len;
+  }
+
+  // build section
+  const pwasm_new_custom_section_t section = {
+    .name = slices[0],
+    .data = slices[1],
+  };
+
+  // pass section to callback
+  cbs->on_custom_section(&section, cb_data);
+
+  // return result
+  return data.success ? num_bytes : 0;
+}
+
+DEF_VEC_PARSER(type, pwasm_type_t);
+DEF_VEC_PARSER(import, pwasm_new_import_t);
+DEF_VEC_PARSER(func, uint32_t);
+DEF_VEC_PARSER(table, pwasm_table_t);
+DEF_VEC_PARSER(mem, pwasm_limits_t);
+DEF_VEC_PARSER(global, pwasm_new_global_t);
+DEF_VEC_PARSER(export, pwasm_new_export_t);
+DEF_VEC_PARSER(elem, pwasm_elem_t);
+DEF_VEC_PARSER(code, pwasm_func_t); // FIXME
+DEF_VEC_PARSER(segment, pwasm_segment_t);
+
+typedef struct {
+  const pwasm_mod_parse_cbs_t * const cbs;
+  void *cb_data;
+  bool success;
+  pwasm_slice_t * const slice;
+} pwasm_mod_parse_type_t;
+
+static void
+pwasm_mod_parse_type_on_items(
+  const uint32_t * const rows,
+  const size_t num,
+  void *cb_data
+) {
+  pwasm_mod_parse_type_t * const data = cb_data;
+  const pwasm_slice_t slice = data->cbs->on_u32s(rows, num, data->cb_data);
+
+  if (data->slice->len > 0) {
+    // already have offset, increment length
+    data->slice->len += num;
+  } else {
+    // save initial slice
+    *(data->slice) = slice;
+  }
+}
+
+static void
+pwasm_mod_parse_type_on_error(
+  const char * const text,
+  void *cb_data
+) {
+  pwasm_mod_parse_type_t * const data = cb_data;
+
+  if (data->success) {
+    data->success = false;
+    data->cbs->on_error(text, data->cb_data);
+  }
+}
+
+static const pwasm_parse_u32s_cbs_t
+PWASM_MOD_PARSE_TYPE_CBS = {
+  .on_items = pwasm_mod_parse_type_on_items,
+  .on_error = pwasm_mod_parse_type_on_error,
+};
+
+static size_t
+pwasm_mod_parse_type(
+  pwasm_type_t * const dst,
+  const pwasm_buf_t src,
+  const pwasm_mod_parse_cbs_t * const cbs,
+  void *cb_data
+) {
+  pwasm_slice_t slices[2];
+  pwasm_buf_t curr = src;
+  size_t num_bytes = 0;
+
+  for (size_t i = 0; i < 2; i++) {
+    // build context
+    pwasm_mod_parse_type_t data = {
+      .cbs = cbs,
+      .cb_data = cb_data,
+      .success = true,
+      .slice = slices + i,
+    };
+
+    // parse params, check for error
+    const size_t len = pwasm_parse_u32s(src, &PWASM_MOD_PARSE_TYPE_CBS, &data);
+    if (!len) {
+      return 0;
+    }
+
+    curr = pwasm_buf_step(curr, len);
+    num_bytes += len;
+  }
+
+  // save result to output
+  *dst = (pwasm_type_t) {
+    .params = slices[0],
+    .results = slices[1],
+  };
+
+  // return success
+  return num_bytes;
+}
+
+static inline size_t
+pwasm_mod_parse_import_function( // FIXME: rename to "func"
+  pwasm_new_import_t * const dst,
+  const pwasm_buf_t src,
+  const pwasm_mod_parse_cbs_t * const cbs,
+  void *cb_data
+) {
+  (void) cbs;
+  (void) cb_data;
+  return pwasm_u32_decode(&(dst->func), src);
+}
+
+static inline size_t
+pwasm_mod_parse_import_table(
+  pwasm_new_import_t * const dst,
+  const pwasm_buf_t src,
+  const pwasm_mod_parse_cbs_t * const cbs,
+  void *cb_data
+) {
+  return pwasm_mod_parse_table(&(dst->table), src, cbs, cb_data);
+}
+
+static inline size_t
+pwasm_mod_parse_import_memory( // FIXME: rename to "mem"
+  pwasm_new_import_t * const dst,
+  const pwasm_buf_t src,
+  const pwasm_mod_parse_cbs_t * const cbs,
+  void *cb_data
+) {
+  return pwasm_parse_limits(&(dst->mem), src, cbs->on_error, cb_data);
+}
+
+static inline size_t
+pwasm_mod_parse_import_global(
+  pwasm_new_import_t * const dst,
+  const pwasm_buf_t src,
+  const pwasm_mod_parse_cbs_t * const cbs,
+  void *cb_data
+) {
+  return pwasm_parse_global_type(&(dst->global), src, cbs->on_error, cb_data);
+}
+
+static inline size_t
+pwasm_mod_parse_import_invalid(
+  pwasm_new_import_t * const dst,
+  const pwasm_buf_t src,
+  const pwasm_mod_parse_cbs_t * const cbs,
+  void *cb_data
+) {
+  (void) dst;
+  (void) src;
+  if (cbs->on_error) {
+    cbs->on_error("bad import type", cb_data);
+  }
+  return 0;
+}
+
+static inline size_t
+pwasm_mod_parse_import_data(
+  const pwasm_import_type_t type,
+  pwasm_new_import_t * const dst,
+  const pwasm_buf_t src,
+  const pwasm_mod_parse_cbs_t * const cbs,
+  void *cb_data
+) {
+  switch (type) {
+#define PWASM_IMPORT_TYPE(ID, TEXT, NAME) \
+  case PWASM_IMPORT_TYPE_ ## ID: \
+    return pwasm_mod_parse_import_ ## NAME (dst, src, cbs, cb_data);
+PWASM_IMPORT_TYPES
+#undef PWASM_IMPORT_TYPE
+  default:
+    return pwasm_mod_parse_import_invalid(dst, src, cbs, cb_data);
+  }
+}
+
+/**
+ * Parse import into +dst_import+ from source buffer +src+, consuming a
+ * maximum of +src_len+ bytes.
+ *
+ * Returns number of bytes consumed, or 0 on error.
+ *
+ * FIXME: copied from pwasm_parse_import
+ */
+static size_t
+pwasm_mod_parse_import(
+  pwasm_new_import_t * const dst,
+  const pwasm_buf_t src,
+  const pwasm_mod_parse_cbs_t * const cbs,
+  void * const cb_data
+) {
+  pwasm_buf_t curr = src;
+  size_t num_bytes = 0;
+
+  // parse module name, check for error
+  // FIXME: handle on_error here
+  pwasm_slice_t names[2];
+  for (size_t i = 0; i < 2; i++) {
+    pwasm_buf_t buf;
+    const size_t len = pwasm_parse_buf(&buf, curr, NULL, cb_data);
+    if (!len) {
+      return 0;
+    }
+
+    // add bytes
+    names[i] = cbs->on_bytes(buf.ptr, buf.len, cb_data);
+    if (names[i].len) {
+      return 0;
+    }
+
+    // advance buffer, increment byte count
+    curr = pwasm_buf_step(curr, len);
+    num_bytes += len;
+  }
+
+  if (curr.len < 2) {
+    cbs->on_error("missing import type", cb_data);
+    return 0;
+  }
+
+  // get import type
+  const pwasm_import_type_t type = curr.ptr[0];
+
+  // build result
+  pwasm_new_import_t tmp = {
+    .module = names[0],
+    .name = names[1],
+    .type = type,
+  };
+
+  curr = pwasm_buf_step(curr, 1);
+  num_bytes += 1;
+
+  const size_t len = pwasm_mod_parse_import_data(type, &(tmp), curr, cbs, cb_data);
+  if (!len) {
+    cbs->on_error("invalid import data", cb_data);
+    return 0;
+  }
+
+  // add length to result
+  curr = pwasm_buf_step(curr, len);
+  num_bytes += len;
+
+  // save result to destination
+  *dst = tmp;
+
+  // return number of bytes consumed
+  return num_bytes;
+}
+
+static size_t
+pwasm_mod_parse_func(
+  uint32_t * const dst,
+  const pwasm_buf_t src,
+  const pwasm_mod_parse_cbs_t * const cbs,
+  void * const cb_data
+) {
+  const size_t len = pwasm_u32_decode(dst, src);
+  if (!len) {
+    cbs->on_error("invalid function id", cb_data);
+  }
+
+  return len;
+}
+
+static size_t
+pwasm_mod_parse_table(
+  pwasm_table_t * const dst,
+  const pwasm_buf_t src,
+  const pwasm_mod_parse_cbs_t * const cbs,
+  void * const cb_data
+) {
+  return pwasm_parse_table(dst, src, cbs->on_error, cb_data);
+}
+
+static size_t
+pwasm_mod_parse_mem(
+  pwasm_limits_t * const dst,
+  const pwasm_buf_t src,
+  const pwasm_mod_parse_cbs_t * const cbs,
+  void * const cb_data
+) {
+  return pwasm_parse_limits(dst, src, cbs->on_error, cb_data);
+}
+
+static size_t
+pwasm_mod_parse_global(
+  pwasm_new_global_t * const dst,
+  const pwasm_buf_t src,
+  const pwasm_mod_parse_cbs_t * const src_cbs,
+  void * const cb_data
+) {
+  const pwasm_parse_expr_cbs_t cbs = {
+    .on_insts = src_cbs->on_insts,
+    .on_error = src_cbs->on_error,
+  };
+
+  return pwasm_parse_global(dst, src, &cbs, cb_data);
+}
+
+static size_t
+pwasm_mod_parse_export(
+  pwasm_new_export_t * const dst,
+  const pwasm_buf_t src,
+  const pwasm_mod_parse_cbs_t * const src_cbs,
+  void * const cb_data
+) {
+  const pwasm_parse_export_cbs_t cbs = {
+    .on_bytes = src_cbs->on_bytes,
+    .on_error = src_cbs->on_error,
+  };
+  return pwasm_parse_export(dst, src, &cbs, cb_data);
+}
+
+static size_t
+pwasm_mod_parse_elem(
+  pwasm_elem_t * const dst,
+  const pwasm_buf_t src,
+  const pwasm_mod_parse_cbs_t * const src_cbs,
+  void * const cb_data
+) {
+  const pwasm_parse_elem_cbs_t cbs = {
+    .on_funcs = src_cbs->on_u32s,
+    .on_insts = src_cbs->on_insts,
+    .on_error = src_cbs->on_error,
+  };
+  return pwasm_parse_elem(dst, src, &cbs, cb_data);
+}
+
+static size_t
+pwasm_mod_parse_code(
+  pwasm_func_t * const dst,
+  const pwasm_buf_t src,
+  const pwasm_mod_parse_cbs_t * const src_cbs,
+  void * const cb_data
+) {
+  const pwasm_parse_code_cbs_t cbs = {
+    .on_labels  = src_cbs->on_u32s,
+    .on_locals  = src_cbs->on_locals,
+    .on_insts   = src_cbs->on_insts,
+    .on_error   = src_cbs->on_error,
+  };
+  return pwasm_parse_code(dst, src, &cbs, cb_data);
+}
+
+static size_t
+pwasm_mod_parse_segment(
+  pwasm_segment_t * const dst,
+  const pwasm_buf_t src,
+  const pwasm_mod_parse_cbs_t * const src_cbs,
+  void * const cb_data
+) {
+  const pwasm_parse_segment_cbs_t cbs = {
+    .on_bytes   = src_cbs->on_bytes,
+    .on_insts   = src_cbs->on_insts,
+    .on_error   = src_cbs->on_error,
+  };
+  return pwasm_parse_segment(dst, src, &cbs, cb_data);
+}
+
+#define DEF_VEC_SECTION(NAME) \
+  static size_t pwasm_mod_parse_ ## NAME ## _section( \
+    const pwasm_buf_t src, \
+    const pwasm_mod_parse_cbs_t * const cbs, \
+    void *cb_data \
+  ) { \
+    return pwasm_mod_parse_ ## NAME ## s(src, cbs, cb_data); \
+  }
+
+DEF_VEC_SECTION(type)
+DEF_VEC_SECTION(import)
+DEF_VEC_SECTION(func)
+DEF_VEC_SECTION(table)
+DEF_VEC_SECTION(mem)
+DEF_VEC_SECTION(global)
+DEF_VEC_SECTION(export)
+DEF_VEC_SECTION(elem)
+DEF_VEC_SECTION(code)
+DEF_VEC_SECTION(segment)
+
+static size_t
+pwasm_mod_parse_start_section(
+  const pwasm_buf_t src,
+  const pwasm_mod_parse_cbs_t * const cbs,
+  void *cb_data
+) {
+  uint32_t id = 0;
+
+  const size_t len = pwasm_u32_decode(&id, src);
+  if (len > 0) {
+    cbs->on_start(id, cb_data);
+  }
+
+  return len;
+}
+
+static size_t
+pwasm_mod_parse_invalid_section(
+  const pwasm_buf_t src,
+  const pwasm_mod_parse_cbs_t * const cbs,
+  void *cb_data
+) {
+  (void) src;
+
+  cbs->on_error("invalid section", cb_data);
+
+  // return failure
+  return 0;
+}
+
+static inline size_t
+pwasm_mod_parse_section(
+  const pwasm_section_type_t type,
+  const pwasm_buf_t src,
+  const pwasm_mod_parse_cbs_t * const cbs,
+  void *cb_data
+) {
+  switch (type) {
+#define PWASM_SECTION_TYPE(a, b) \
+    case PWASM_SECTION_TYPE_ ## a: \
+      return pwasm_mod_parse_ ## b ## _section(src, cbs, cb_data);
+PWASM_SECTION_TYPES
+#undef PWASM_SECTION_TYPE
+  default:
+    return pwasm_mod_parse_invalid_section(src, cbs, cb_data);
+  }
+}
+
+static pwasm_slice_t
+pwasm_mod_parse_null_on_u32s(
+  const uint32_t * const ptr,
+  const size_t len,
+  void *cb_data
+) {
+  (void) ptr;
+  (void) len;
+  (void) cb_data;
+  return (pwasm_slice_t) { 0, 0 };
+}
+
+static pwasm_slice_t
+pwasm_mod_parse_null_on_bytes(
+  const uint8_t * const ptr,
+  const size_t len,
+  void *cb_data
+) {
+  (void) ptr;
+  (void) len;
+  (void) cb_data;
+  return (pwasm_slice_t) { 0, 0 };
+}
+
+static void
+pwasm_mod_parse_null_on_section(
+  const pwasm_header_t * const header,
+  void *cb_data
+) {
+  (void) header;
+  (void) cb_data;
+}
+
+static void
+pwasm_mod_parse_null_on_custom_section(
+  const pwasm_new_custom_section_t * const section,
+  void *cb_data
+) {
+  (void) section;
+  (void) cb_data;
+}
+
+static inline pwasm_mod_parse_cbs_t
+pwasm_mod_parse_get_cbs(
+  const pwasm_mod_parse_cbs_t * const cbs
+) {
+  // return callbacks
+  return (pwasm_mod_parse_cbs_t) {
+    .on_error = (cbs && cbs->on_error) ? cbs->on_error : pwasm_null_on_error,
+    .on_bytes = (cbs && cbs->on_bytes) ? cbs->on_bytes : pwasm_mod_parse_null_on_bytes,
+    .on_u32s = (cbs && cbs->on_u32s) ? cbs->on_u32s : pwasm_mod_parse_null_on_u32s,
+    .on_section = (cbs && cbs->on_section) ? cbs->on_section : pwasm_mod_parse_null_on_section,
+    .on_custom_section = (cbs && cbs->on_custom_section) ? cbs->on_custom_section : pwasm_mod_parse_null_on_custom_section,
+  };
+}
+
+size_t
+pwasm_mod_parse(
+  const pwasm_buf_t src,
+  const pwasm_mod_parse_cbs_t * const src_cbs,
+  void *cb_data
+) {
+  // cache callbacks locally
+  const pwasm_mod_parse_cbs_t cbs = pwasm_mod_parse_get_cbs(src_cbs);
+
+  // check source length
+  if (src.len < 8) {
+    cbs.on_error("source too small", cb_data);
+    return 0;
+  }
+
+  // check magic and version
+  if (memcmp(src.ptr, PWASM_HEADER, sizeof(PWASM_HEADER))) {
+    cbs.on_error("invalid module header", cb_data);
+    return 0;
+  }
+
+  pwasm_section_type_t max_type = 0;
+
+  pwasm_buf_t curr = pwasm_buf_step(src, 8);
+  while (curr.len > 0) {
+    // get section header, check for error
+    pwasm_header_t head;
+    const size_t head_len = pwasm_header_parse(&head, curr);
+    if (!head_len) {
+      cbs.on_error("invalid section header", cb_data);
+      return 0;
+    }
+
+    // check section type
+    if (head.type >= PWASM_SECTION_TYPE_LAST) {
+      cbs.on_error("invalid section type", cb_data);
+      return 0;
+    }
+
+    // check section order for non-custom sections
+    if (head.type != PWASM_SECTION_TYPE_CUSTOM) {
+      if (head.type <= max_type) {
+        const char * const text = (head.type < max_type) ? "invalid section order" : "duplicate section";
+        cbs.on_error(text, cb_data);
+        return 0;
+      }
+
+      // update maximum section type
+      max_type = head.type;
+    }
+
+    // invoke section header callback
+    cbs.on_section(&head, cb_data);
+
+    if (head.len > 0) {
+      // build body buffer
+      const pwasm_buf_t body = { curr.ptr + head_len, head.len };
+
+      // parse section, check for error
+      const size_t body_len = pwasm_mod_parse_section(head.type, body, &cbs, cb_data);
+      if (!body_len) {
+        // return failure
+        return 0;
+      }
+    }
+
+    // advance buffer
+    curr = pwasm_buf_step(curr, head_len + head.len);
+  }
+
+  // return number of bytes consumed
+  return src.len;
+}
+
+typedef struct {
+  pwasm_builder_t * const builder;
+  bool success;
+} pwasm_mod_init_unsafe_t;
+
+static void
+pwasm_mod_init_unsafe_on_error(
+  const char * const text,
+  void *cb_data
+) {
+  pwasm_mod_init_unsafe_t * const data = cb_data;
+
+  if (data->success) {
+    pwasm_fail(data->builder->mem_ctx, text);
+    data->success = false;
+  }
+}
+
+static void
+pwasm_mod_init_unsafe_on_section(
+  const pwasm_header_t * const header,
+  void *cb_data
+) {
+  pwasm_mod_init_unsafe_t * const data = cb_data;
+  if (!pwasm_builder_push_sections(data->builder, &(header->type), 1).len) {
+    pwasm_mod_init_unsafe_on_error("push sections failed", data);
+  }
+}
+
+static void
+pwasm_mod_init_unsafe_on_custom_section(
+  const pwasm_new_custom_section_t * const section,
+  void *cb_data
+) {
+  pwasm_mod_init_unsafe_t * const data = cb_data;
+  if (!pwasm_builder_push_custom_sections(data->builder, section, 1).len) {
+    pwasm_mod_init_unsafe_on_error("push custom sections failed", data);
+  }
+}
+
+static void
+pwasm_mod_init_unsafe_on_types(
+  const pwasm_type_t * const rows,
+  const size_t num,
+  void *cb_data
+) {
+  pwasm_mod_init_unsafe_t * const data = cb_data;
+  if (!pwasm_builder_push_types(data->builder, rows, num).len) {
+    pwasm_mod_init_unsafe_on_error("push types failed", data);
+  }
+}
+
+static void
+pwasm_mod_init_unsafe_on_imports(
+  const pwasm_new_import_t * const rows,
+  const size_t num,
+  void *cb_data
+) {
+  pwasm_mod_init_unsafe_t * const data = cb_data;
+
+  if (!pwasm_builder_push_imports(data->builder, rows, num).len) {
+    pwasm_mod_init_unsafe_on_error("push imports failed", data);
+    return;
+  }
+
+  for (size_t i = 0; i < num; i++) {
+    switch (rows[i].type) {
+    case PWASM_IMPORT_TYPE_FUNC:
+      {
+        if (!pwasm_builder_push_funcs(data->builder, &(rows[i].func), 1).len) {
+          pwasm_mod_init_unsafe_on_error("push func import failed", data);
+          return;
+        }
+      }
+
+      break;
+    case PWASM_IMPORT_TYPE_TABLE:
+      {
+        if (!pwasm_builder_push_tables(data->builder, &(rows[i].table), 1).len) {
+          pwasm_mod_init_unsafe_on_error("push table import failed", data);
+          return;
+        }
+      }
+
+      break;
+    case PWASM_IMPORT_TYPE_MEM:
+      {
+        if (!pwasm_builder_push_mems(data->builder, &(rows[i].mem), 1).len) {
+          pwasm_mod_init_unsafe_on_error("push mem import failed", data);
+          return;
+        }
+      }
+
+      break;
+    case PWASM_IMPORT_TYPE_GLOBAL:
+      {
+        const pwasm_new_global_t global = {
+          .type = rows[i].global,
+          .expr = { 0, 0 },
+        };
+
+        if (!pwasm_builder_push_globals(data->builder, &global, 1).len) {
+          pwasm_mod_init_unsafe_on_error("push global import failed", data);
+          return;
+        }
+      }
+
+      break;
+    default:
+      pwasm_mod_init_unsafe_on_error("unknown import type", data);
+      return;
+    }
+
+    data->builder->num_import_types[rows[i].type]++;
+  }
+}
+
+static void
+pwasm_mod_init_unsafe_on_funcs(
+  const uint32_t * const rows,
+  const size_t num,
+  void *cb_data
+) {
+  pwasm_mod_init_unsafe_t * const data = cb_data;
+
+  for (size_t i = 0; i < num; i += PWASM_BATCH_SIZE) {
+    const size_t len = MIN((num - i), PWASM_BATCH_SIZE);
+
+    uint32_t funcs[PWASM_BATCH_SIZE];
+    for (size_t j = 0; j < len; j++) {
+      funcs[j] = rows[i + j];
+    }
+
+    if (!pwasm_builder_push_funcs(data->builder, funcs, len).len) {
+      pwasm_mod_init_unsafe_on_error("push funcs failed", data);
+    }
+  }
+}
+
+static void
+pwasm_mod_init_unsafe_on_tables(
+  const pwasm_table_t * const rows,
+  const size_t num,
+  void *cb_data
+) {
+  pwasm_mod_init_unsafe_t * const data = cb_data;
+  if (!pwasm_builder_push_tables(data->builder, rows, num).len) {
+    pwasm_mod_init_unsafe_on_error("push tables failed", data);
+  }
+}
+
+static pwasm_slice_t
+pwasm_mod_init_unsafe_on_insts(
+  const pwasm_inst_t * const rows,
+  const size_t num,
+  void *cb_data
+) {
+  pwasm_mod_init_unsafe_t * const data = cb_data;
+
+  const pwasm_slice_t ret = pwasm_builder_push_insts(data->builder, rows, num);
+  if (!ret.len) {
+    pwasm_mod_init_unsafe_on_error("push insts failed", data);
+  }
+
+  return ret;
+}
+
+static void
+pwasm_mod_init_unsafe_on_mems(
+  const pwasm_limits_t * const rows,
+  const size_t num,
+  void *cb_data
+) {
+  pwasm_mod_init_unsafe_t * const data = cb_data;
+  if (!pwasm_builder_push_mems(data->builder, rows, num).len) {
+    pwasm_mod_init_unsafe_on_error("push mems failed", data);
+  }
+}
+
+static void
+pwasm_mod_init_unsafe_on_globals(
+  const pwasm_new_global_t * const rows,
+  const size_t num,
+  void *cb_data
+) {
+  pwasm_mod_init_unsafe_t * const data = cb_data;
+  if (!pwasm_builder_push_globals(data->builder, rows, num).len) {
+    pwasm_mod_init_unsafe_on_error("push globals failed", data);
+  }
+}
+
+static void
+pwasm_mod_init_unsafe_on_exports(
+  const pwasm_new_export_t * const rows,
+  const size_t num,
+  void *cb_data
+) {
+  pwasm_mod_init_unsafe_t * const data = cb_data;
+  if (!pwasm_builder_push_exports(data->builder, rows, num).len) {
+    pwasm_mod_init_unsafe_on_error("push exports failed", data);
+  }
+
+  for (size_t i = 0; i < num; i++) {
+    data->builder->num_export_types[rows[i].type]++;
+  }
+}
+
+static void
+pwasm_mod_init_unsafe_on_start(
+  const uint32_t id,
+  void *cb_data
+) {
+  pwasm_mod_init_unsafe_t * const data = cb_data;
+  data->builder->has_start = true;
+  data->builder->start = id;
+}
+
+static pwasm_slice_t
+pwasm_mod_init_unsafe_on_locals(
+  const pwasm_local_t * const rows,
+  const size_t num,
+  void *cb_data
+) {
+  pwasm_mod_init_unsafe_t * const data = cb_data;
+
+  pwasm_slice_t ret = pwasm_builder_push_locals(data->builder, rows, num);
+  if (!ret.len) {
+    pwasm_mod_init_unsafe_on_error("push locals failed", data);
+  }
+
+  return ret;
+}
+
+static void
+pwasm_mod_init_unsafe_on_codes(
+  const pwasm_func_t * const rows,
+  const size_t num,
+  void *cb_data
+) {
+  pwasm_mod_init_unsafe_t * const data = cb_data;
+  if (!pwasm_builder_push_codes(data->builder, rows, num).len) {
+    pwasm_mod_init_unsafe_on_error("push codes failed", data);
+  }
+}
+
+static void
+pwasm_mod_init_unsafe_on_elems(
+  const pwasm_elem_t * const rows,
+  const size_t num,
+  void *cb_data
+) {
+  pwasm_mod_init_unsafe_t * const data = cb_data;
+  if (!pwasm_builder_push_elems(data->builder, rows, num).len) {
+    pwasm_mod_init_unsafe_on_error("push elems failed", data);
+  }
+}
+
+static void
+pwasm_mod_init_unsafe_on_segments(
+  const pwasm_segment_t * const rows,
+  const size_t num,
+  void *cb_data
+) {
+  pwasm_mod_init_unsafe_t * const data = cb_data;
+  if (!pwasm_builder_push_segments(data->builder, rows, num).len) {
+    pwasm_mod_init_unsafe_on_error("push segments failed", data);
+  }
+}
+
+static const pwasm_mod_parse_cbs_t
+PWASM_MOD_INIT_UNSAFE_PARSE_CBS = {
+  .on_error           = pwasm_mod_init_unsafe_on_error,
+  .on_section         = pwasm_mod_init_unsafe_on_section,
+  .on_custom_section  = pwasm_mod_init_unsafe_on_custom_section,
+  .on_types           = pwasm_mod_init_unsafe_on_types,
+  .on_imports         = pwasm_mod_init_unsafe_on_imports,
+  .on_insts           = pwasm_mod_init_unsafe_on_insts,
+  .on_funcs           = pwasm_mod_init_unsafe_on_funcs,
+  .on_tables          = pwasm_mod_init_unsafe_on_tables,
+  .on_mems            = pwasm_mod_init_unsafe_on_mems,
+  .on_globals         = pwasm_mod_init_unsafe_on_globals,
+  .on_exports         = pwasm_mod_init_unsafe_on_exports,
+  .on_start           = pwasm_mod_init_unsafe_on_start,
+  .on_locals          = pwasm_mod_init_unsafe_on_locals,
+  .on_codes           = pwasm_mod_init_unsafe_on_codes,
+  .on_elems           = pwasm_mod_init_unsafe_on_elems,
+  .on_segments        = pwasm_mod_init_unsafe_on_segments,
+};
+
+size_t
+pwasm_mod_init_unsafe(
+  pwasm_mem_ctx_t * const mem_ctx,
+  pwasm_mod_t * const mod,
+  pwasm_buf_t src
+) {
+  // init builder, check for error
+  pwasm_builder_t builder;
+  if (!pwasm_builder_init(mem_ctx, &builder)) {
+    return 0;
+  }
+
+  // build mod init context
+  pwasm_mod_init_unsafe_t ctx = {
+    .builder = &builder,
+    .success = true,
+  };
+
+  // parse mod into builder, check for error
+  const size_t len = pwasm_mod_parse(src, &PWASM_MOD_INIT_UNSAFE_PARSE_CBS, &ctx);
+  if (!len) {
+    return 0;
+  }
+
+  // build mod, check for error
+  if (!pwasm_builder_build_mod(&builder, mod)) {
+    return 0;
+  }
+
+  // finalize builder
+  pwasm_builder_fini(&builder);
+
+  // return number of bytes consumed
+  return len;
+}
+
+size_t
+pwasm_mod_init(
+  pwasm_mem_ctx_t * const mem_ctx,
+  pwasm_mod_t * const mod,
+  pwasm_buf_t src
+) {
+  // TODO add checks
+  return pwasm_mod_init_unsafe(mem_ctx, mod, src);
 }
