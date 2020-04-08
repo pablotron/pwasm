@@ -8252,6 +8252,38 @@ pwasm_mod_init_unsafe_on_error(
   }
 }
 
+static pwasm_slice_t
+pwasm_mod_init_unsafe_on_u32s(
+  const uint32_t * const rows,
+  const size_t num,
+  void *cb_data
+) {
+  pwasm_mod_init_unsafe_t * const data = cb_data;
+
+  const pwasm_slice_t ret = pwasm_builder_push_u32s(data->builder, rows, num);
+  if (!ret.len) {
+    pwasm_mod_init_unsafe_on_error("push u32s failed", data);
+  }
+
+  return ret;
+}
+
+static pwasm_slice_t
+pwasm_mod_init_unsafe_on_bytes(
+  const uint8_t * const bytes,
+  const size_t num,
+  void *cb_data
+) {
+  pwasm_mod_init_unsafe_t * const data = cb_data;
+
+  const pwasm_slice_t ret = pwasm_builder_push_bytes(data->builder, bytes, num);
+  if (!ret.len) {
+    pwasm_mod_init_unsafe_on_error("push bytes failed", data);
+  }
+
+  return ret;
+}
+
 static void
 pwasm_mod_init_unsafe_on_section(
   const pwasm_header_t * const header,
@@ -8506,11 +8538,15 @@ pwasm_mod_init_unsafe_on_segments(
 static const pwasm_mod_parse_cbs_t
 PWASM_MOD_INIT_UNSAFE_PARSE_CBS = {
   .on_error           = pwasm_mod_init_unsafe_on_error,
+
+  .on_u32s            = pwasm_mod_init_unsafe_on_u32s,
+  .on_bytes           = pwasm_mod_init_unsafe_on_bytes,
+  .on_insts           = pwasm_mod_init_unsafe_on_insts,
+
   .on_section         = pwasm_mod_init_unsafe_on_section,
   .on_custom_section  = pwasm_mod_init_unsafe_on_custom_section,
   .on_types           = pwasm_mod_init_unsafe_on_types,
   .on_imports         = pwasm_mod_init_unsafe_on_imports,
-  .on_insts           = pwasm_mod_init_unsafe_on_insts,
   .on_funcs           = pwasm_mod_init_unsafe_on_funcs,
   .on_tables          = pwasm_mod_init_unsafe_on_tables,
   .on_mems            = pwasm_mod_init_unsafe_on_mems,
