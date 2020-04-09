@@ -622,6 +622,9 @@ run_mod_init_tests(void) {
       // warn on failure
       warnx("FAIL mod_init test: %s", test->name);
     }
+
+    // free mod
+    pwasm_mod_fini(&mod);
   }
 
   // return results

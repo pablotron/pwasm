@@ -7760,6 +7760,7 @@ pwasm_builder_build_mod(
 
   // populate result
   const pwasm_mod_t mod = {
+    .mem_ctx = builder->mem_ctx,
     .mem = { ptr, total_num_bytes },
 
   #define BUILDER_VEC(name, type, prev) \
@@ -8716,4 +8717,15 @@ pwasm_mod_init(
 ) {
   // TODO add checks
   return pwasm_mod_init_unsafe(mem_ctx, mod, src);
+}
+
+void
+pwasm_mod_fini(
+  pwasm_mod_t * const mod
+) {
+  if (mod->mem.ptr) {
+    pwasm_realloc(mod->mem_ctx, (void*) mod->mem.ptr, 0);
+    mod->mem.ptr = 0;
+    mod->mem.len = 0;
+  }
 }

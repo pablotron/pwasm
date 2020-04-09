@@ -947,8 +947,12 @@ size_t pwasm_mod_parse(
 typedef struct {
   pwasm_mem_ctx_t * const mem_ctx;
 
+  // single block of contiguous memory that serves as the backing store
+  // for all of the items below
   pwasm_buf_t mem;
 
+  // internal array of u32s, referenced by slices from several other
+  // sections below
   const uint32_t * const u32s;
   const size_t num_u32s;
 
@@ -998,17 +1002,21 @@ typedef struct {
   const size_t num_bytes;
 } pwasm_mod_t;
 
-size_t pwasm_mod_init_unsafe(
-  pwasm_mem_ctx_t * const mem_ctx,
-  pwasm_mod_t * const mod,
-  pwasm_buf_t src
-);
-
+/**
+ * Parse a module from source +src+ into the module +mod+.
+ *
+ * Returns 0 on error.
+ */
 size_t pwasm_mod_init(
   pwasm_mem_ctx_t * const mem_ctx,
   pwasm_mod_t * const mod,
   pwasm_buf_t src
 );
+
+/**
+ * Free memory associated with module.
+ */
+void pwasm_mod_fini(pwasm_mod_t *);
 
 typedef struct {
   pwasm_mem_ctx_t * const mem_ctx;
