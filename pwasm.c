@@ -4,6 +4,19 @@
 #include <unistd.h> // sysconf()
 #include "pwasm.h"
 
+/**
+ * Batch size.
+ *
+ * Used to batch up function types, imports, functions,
+ * etc, when dispatching to parsing callbacks.
+ *
+ * Note: must be a power of two.
+ */
+#define PWASM_BATCH_SIZE (1 << 7)
+
+/**
+ * Maximum depth of checking stack.
+ */
 #define PWASM_STACK_CHECK_MAX_DEPTH 512
 
 #define MIN(a, b) (((a) < (b)) ? (a) : (b))
@@ -27,26 +40,6 @@
   } \
   return 0; \
 } while (0)
-
-typedef struct {
-  void (*on_error)(const char *, void *);
-  void *cb_data;
-} pwasm_old_parse_inst_ctx_t;
-
-typedef struct {
-  pwasm_slice_t (*on_labels)(const uint32_t *, const size_t, void *);
-  void (*on_error)(const char *, void *);
-} pwasm_parse_inst_cbs_t;
-
-/**
- * Batch size.
- *
- * Used to batch up function types, imports, functions,
- * etc, when dispatching to parsing callbacks.
- *
- * Note: must be a power of two.
- */
-#define PWASM_BATCH_SIZE 128
 
 #ifdef PWASM_DEBUG
 // FIXME: limit to DEBUG
@@ -1593,6 +1586,11 @@ pwasm_old_parse_table(
   return pwasm_parse_table(dst, src, cb, cb_data);
 }
 
+typedef struct {
+  pwasm_slice_t (*on_labels)(const uint32_t *, const size_t, void *);
+  void (*on_error)(const char *, void *);
+} pwasm_parse_inst_cbs_t;
+
 /**
  * Parse inst into +dst+ from buffer +src+ of length +src_len+.
  *
@@ -1861,6 +1859,11 @@ pwasm_parse_inst(
   // return number of bytes consumed
   return num_bytes;
 }
+
+typedef struct {
+  void (*on_error)(const char *, void *);
+  void *cb_data;
+} pwasm_old_parse_inst_ctx_t;
 
 /**
  * Parse inst into +dst+ from buffer +src+ of length +src_len+.
@@ -4894,7 +4897,7 @@ pwasm_get_function_sizes(
 ) {
   // build callback data
   pwasm_get_function_sizes_t data = {
-    .sizes = { 0, 0 },
+    .sizes = { },
     .success = true,
   };
 
