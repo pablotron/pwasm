@@ -8226,6 +8226,7 @@ pwasm_mod_parse_section(
   }
 }
 
+#if 0
 static pwasm_slice_t
 pwasm_mod_parse_null_on_u32s(
   const uint32_t * const ptr,
@@ -8284,6 +8285,7 @@ pwasm_mod_parse_get_cbs(
     .on_custom_section = (cbs && cbs->on_custom_section) ? cbs->on_custom_section : pwasm_mod_parse_null_on_custom_section,
   };
 }
+#endif /* 0 */
 
 size_t
 pwasm_mod_parse(
