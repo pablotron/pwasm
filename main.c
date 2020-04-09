@@ -595,11 +595,44 @@ run_get_mod_sizes_tests(void) {
   return result(num_fails, suite.num_tests);
 }
 
+static result_t
+run_mod_init_tests(void) {
+  pwasm_mem_ctx_t ctx = pwasm_mem_ctx_init_defaults(NULL);
+  const suite_t suite = get_mod_tests();
+  size_t num_fails = 0;
+
+  for (size_t i = 0; i < suite.num_tests; i++) {
+    // get test, run it, and get result
+    const test_t * const test = suite.tests + i;
+    const pwasm_buf_t buf = {
+      (suite.data + test->ofs),
+      test->len,
+    };
+
+    warnx("running mod_init test: %s", test->name);
+    // run test, get result
+    pwasm_mod_t mod;
+    const size_t len = pwasm_mod_init(&ctx, &mod, buf);
+
+    // check result, increment failure count
+    const bool ok = ((len > 0) == test->want);
+    num_fails += ok ? 0 : 1;
+
+    if (!ok) {
+      // warn on failure
+      warnx("FAIL mod_init test: %s", test->name);
+    }
+  }
+
+  // return results
+  return result(num_fails, suite.num_tests);
+}
 
 static result_t (*SUITES[])(void) = {
   run_parse_mod_tests,
   run_parse_func_tests,
   run_get_mod_sizes_tests,
+  run_mod_init_tests,
 };
 
 static bool

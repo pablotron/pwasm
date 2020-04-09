@@ -929,8 +929,8 @@ typedef struct {
   void (*on_elems)(const pwasm_elem_t *, const size_t, void *);
   void (*on_start)(const uint32_t, void *);
 
-  // FIXME: do i want this?
   pwasm_slice_t (*on_locals)(const pwasm_local_t *, const size_t, void *);
+  pwasm_slice_t (*on_labels)(const uint32_t *, const size_t, void *);
 
   void (*on_codes)(const pwasm_func_t *, const size_t, void *);
   void (*on_segments)(const pwasm_segment_t *, const size_t, void *);
@@ -997,6 +997,18 @@ typedef struct {
   const uint8_t * const bytes;
   const size_t num_bytes;
 } pwasm_mod_t;
+
+size_t pwasm_mod_init_unsafe(
+  pwasm_mem_ctx_t * const mem_ctx,
+  pwasm_mod_t * const mod,
+  pwasm_buf_t src
+);
+
+size_t pwasm_mod_init(
+  pwasm_mem_ctx_t * const mem_ctx,
+  pwasm_mod_t * const mod,
+  pwasm_buf_t src
+);
 
 typedef struct {
   pwasm_mem_ctx_t * const mem_ctx;
