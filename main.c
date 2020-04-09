@@ -631,11 +631,127 @@ run_mod_init_tests(void) {
   return result(num_fails, suite.num_tests);
 }
 
+static bool
+run_env_test_on_add_one(
+  pwasm_env_t * const env,
+  pwasm_stack_t * const stack
+) {
+  (void) env;
+  stack->ptr[stack->pos - 1].i32 += 1;
+  return true;
+}
+
+static bool
+run_env_test_on_mul_two(
+  pwasm_env_t * const env,
+  pwasm_stack_t * const stack
+) {
+  (void) env;
+
+  const uint32_t a = stack->ptr[stack->pos - 2].i32;
+  const uint32_t b = stack->ptr[stack->pos - 1].i32;
+  stack->ptr[stack->pos - 2].i32 = a * b;
+  stack->pos--;
+
+  return true;
+}
+
+static const pwasm_value_type_t
+NATIVE_VALS_ONE_I32[] = { PWASM_VALUE_TYPE_I32 };
+
+static const pwasm_value_type_t
+NATIVE_VALS_TWO_I32S[] = {
+  PWASM_VALUE_TYPE_I32,
+  PWASM_VALUE_TYPE_I32,
+};
+
+static const pwasm_native_func_t
+NATIVE_FUNCS[] = {{
+  .name = "add_one",
+  .func = run_env_test_on_add_one,
+  .type = {
+    { NATIVE_VALS_ONE_I32, 1 },
+    { NATIVE_VALS_ONE_I32, 1 },
+  },
+}, {
+  .name = "mul_two",
+  .func = run_env_test_on_mul_two,
+  .type = {
+    { NATIVE_VALS_TWO_I32S, 2 },
+    { NATIVE_VALS_ONE_I32, 1 },
+  },
+}};
+
+static const pwasm_native_t
+NATIVE = {
+  .num_funcs = 2,
+  .funcs = NATIVE_FUNCS,
+};
+
+static result_t
+run_env_tests(void) {
+  const size_t num_fails = 0,
+               num_tests = 1;
+
+  // create a memory context
+  pwasm_mem_ctx_t mem_ctx = pwasm_mem_ctx_init_defaults(NULL);
+  pwasm_val_t stack_vals[10];
+  pwasm_stack_t stack = {
+    .ptr = stack_vals,
+    .len = 10,
+  };
+
+  // get interpreter callbacks
+  const pwasm_env_cbs_t * const cbs = pwasm_interpreter_get_cbs();
+
+  // create environment, check for error
+  pwasm_env_t env;
+  if (!pwasm_env_init(&env, &mem_ctx, cbs, &stack, NULL)) {
+    errx(EXIT_FAILURE, "pwasm_env_init() failed");
+  }
+  warnx("env.cbs = %p", env.cbs);
+
+  // add native mod
+  if (!pwasm_env_add_native(&env, "native", &NATIVE)) {
+    errx(EXIT_FAILURE, "pwasm_env_add_native() failed");
+  }
+
+  // init params
+  stack.ptr[0].i32 = 3;
+  stack.pos = 1;
+
+  // call native.add_one
+  if (!pwasm_env_call(&env, "native", "add_one")) {
+    errx(EXIT_FAILURE, "pwasm_env_call() failed");
+  }
+
+  printf("native.add_one(3) = %u\n", stack.ptr[0].i32);
+
+  // init params
+  stack.ptr[0].i32 = 3;
+  stack.ptr[1].i32 = 4;
+  stack.pos = 2;
+
+  // call native.add_one
+  if (!pwasm_env_call(&env, "native", "mul_two")) {
+    errx(EXIT_FAILURE, "pwasm_env_call() failed");
+  }
+
+  printf("native.mul_two(3, 4) = %u\n", stack.ptr[0].i32);
+
+  // finalize environment
+  pwasm_env_fini(&env);
+
+  // return results
+  return result(num_fails, num_tests);
+}
+
 static result_t (*SUITES[])(void) = {
   run_parse_mod_tests,
   run_parse_func_tests,
   run_get_mod_sizes_tests,
   run_mod_init_tests,
+  run_env_tests,
 };
 
 static bool

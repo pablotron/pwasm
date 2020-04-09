@@ -1070,6 +1070,122 @@ _Bool pwasm_build(
   pwasm_mod_t *
 );
 
+typedef union {
+  uint32_t i32;
+  uint64_t i64;
+  float    f32;
+  double   f64;
+} pwasm_val_t;
+
+typedef struct {
+  pwasm_val_t * const ptr;
+  const size_t len;
+  size_t pos;
+} pwasm_stack_t;
+
+typedef struct pwasm_env_t pwasm_env_t;
+
+typedef _Bool (*pwasm_native_func_cb_t)(
+  pwasm_env_t *,
+  pwasm_stack_t *
+);
+
+typedef struct {
+  struct {
+    const pwasm_value_type_t *ptr;
+    const size_t len;
+  } params;
+
+  struct {
+    const pwasm_value_type_t *ptr;
+    const size_t len;
+  } results;
+} pwasm_native_type_t;
+
+typedef struct {
+  const char * const name;
+  const pwasm_native_func_cb_t func;
+  const pwasm_native_type_t type;
+} pwasm_native_func_t;
+
+typedef struct {
+  const size_t num_funcs;
+  const pwasm_native_func_t * const funcs;
+
+  size_t num_mems;
+  pwasm_buf_t * const mems;
+
+  size_t num_globals;
+  const pwasm_val_t * const globals;
+
+  // TODO: tables
+} pwasm_native_t;
+
+typedef struct {
+  // init env (alloc memory)
+  _Bool (*init)(pwasm_env_t *);
+
+  // finalize env (free memory)
+  void (*fini)(pwasm_env_t *);
+
+  // add native module with given name
+  uint32_t (*add_native)(pwasm_env_t *, const char *, const pwasm_native_t *);
+
+  // add module
+  uint32_t (*add_mod)(pwasm_env_t *, const char *, const pwasm_mod_t *);
+
+  uint32_t (*find_global)(pwasm_env_t *, const char *, const char *);
+  pwasm_val_t (*get_global)(pwasm_env_t *, const uint32_t);
+  uint32_t (*set_global)(pwasm_env_t *, const uint32_t, const pwasm_val_t);
+
+  // uint32_t (*find_table)(const char *, const char *);
+  // pwasm_val_t (*get_table)(const uint32_t);
+
+  // uint32_t (*find_func)(pwasm_env_t *, const char *, const char *);
+  // _Bool (*call_func)(pwasm_env_t *, uint32_t);
+  _Bool (*call)(pwasm_env_t *, const char *, const char *);
+
+  pwasm_buf_t (*find_mem)(pwasm_env_t *, const char *, const char *);
+} pwasm_env_cbs_t;
+
+struct pwasm_env_t {
+  pwasm_mem_ctx_t *mem_ctx;
+  const pwasm_env_cbs_t *cbs;
+  pwasm_stack_t *stack;
+  void *env_data;
+  void *user_data;
+};
+
+const pwasm_env_cbs_t *pwasm_interpreter_get_cbs(void);
+
+_Bool pwasm_env_init(
+  pwasm_env_t *,
+  pwasm_mem_ctx_t *,
+  const pwasm_env_cbs_t *,
+  pwasm_stack_t * stack,
+  void *user_data
+);
+
+void pwasm_env_fini(pwasm_env_t *);
+
+uint32_t pwasm_env_add_mod(
+  pwasm_env_t *,
+  const char * const,
+  const pwasm_mod_t *
+);
+
+uint32_t pwasm_env_add_native(
+  pwasm_env_t *,
+  const char * const,
+  const pwasm_native_t *
+);
+
+_Bool pwasm_env_call(
+  pwasm_env_t *,
+  const char * const,
+  const char * const
+);
+
 typedef struct {
   void *(*on_alloc)(const size_t, void *);
   void (*on_error)(const char *, void *);

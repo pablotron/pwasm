@@ -8775,3 +8775,275 @@ pwasm_mod_fini(
     mod->mem.len = 0;
   }
 }
+
+bool
+pwasm_env_init(
+  pwasm_env_t * env,
+  pwasm_mem_ctx_t * mem_ctx,
+  const pwasm_env_cbs_t * cbs,
+  pwasm_stack_t * stack,
+  void *user_data
+) {
+  pwasm_env_t tmp = {
+    .mem_ctx    = mem_ctx,
+    .cbs        = cbs,
+    .stack      = stack,
+    .user_data  = user_data,
+  };
+  memcpy(env, &tmp, sizeof(pwasm_env_t));
+
+  return (cbs && cbs->init) ? cbs->init(env) : true;
+}
+
+void
+pwasm_env_fini(
+  pwasm_env_t * const env
+) {
+  if (env->cbs && env->cbs->fini) {
+    env->cbs->fini(env);
+  }
+}
+
+uint32_t
+pwasm_env_add_mod(
+  pwasm_env_t * const env,
+  const char * const name,
+  const pwasm_mod_t * const mod
+) {
+  const pwasm_env_cbs_t * const cbs = env->cbs;
+  return (cbs && cbs->add_mod) ? cbs->add_mod(env, name, mod) : 0;
+}
+
+uint32_t
+pwasm_env_add_native(
+  pwasm_env_t * const env,
+  const char * const name,
+  const pwasm_native_t * const mod
+) {
+  const pwasm_env_cbs_t * const cbs = env->cbs;
+  return (cbs && cbs->add_native) ? cbs->add_native(env, name, mod) : 0;
+}
+
+bool
+pwasm_env_call(
+  pwasm_env_t * const env,
+  const char * const mod,
+  const char * const name
+) {
+  const pwasm_env_cbs_t * const cbs = env->cbs;
+  D("env = %p, mod = \"%s\", name = \"%s\"", env, mod, name);
+  return (cbs && cbs->call) ? cbs->call(env, mod, name) : false;
+}
+
+typedef enum {
+  PWASM_INTERP_ROW_TYPE_MOD,
+  PWASM_INTERP_ROW_TYPE_NATIVE,
+  PWASM_INTERP_ROW_TYPE_GLOBAL,
+  PWASM_INTERP_ROW_TYPE_MEM,
+  PWASM_INTERP_ROW_TYPE_FUNC,
+  PWASM_INTERP_ROW_TYPE_LAST,
+} pwasm_interp_row_type_t;
+
+typedef struct {
+  pwasm_interp_row_type_t type;
+
+  const char * const name;
+
+  union {
+    const pwasm_mod_t *mod;
+    const pwasm_native_t *native;
+    pwasm_buf_t mem;
+    pwasm_val_t global;
+
+    struct {
+      size_t mod_ofs;
+      uint32_t func_id;
+    } func;
+  };
+} pwasm_interp_row_t;
+
+typedef struct {
+  pwasm_vec_t rows;
+} pwasm_interp_t;
+
+static bool
+pwasm_interp_on_init(
+  pwasm_env_t * const env
+) {
+  const size_t data_size = sizeof(pwasm_interp_t);
+  pwasm_mem_ctx_t * const mem_ctx = env->mem_ctx;
+
+  // allocate interpreter data store
+  pwasm_interp_t *data = pwasm_realloc(mem_ctx, NULL, data_size);
+  if (!data) {
+    D("pwasm_realloc() failed (size = %zu)", data_size);
+    return false;
+  }
+
+  // allocate rows
+  if (!pwasm_vec_init(mem_ctx, &(data->rows), sizeof(pwasm_interp_row_t))) {
+    D("pwasm_vec_init() failed (stride = %zu)", sizeof(pwasm_interp_row_t));
+    return false;
+  }
+
+  // save data, return success
+  env->env_data = data;
+  return true;
+}
+
+static void
+pwasm_interp_on_fini(
+  pwasm_env_t * const env
+) {
+  pwasm_mem_ctx_t * const mem_ctx = env->mem_ctx;
+
+  // get interpreter data
+  pwasm_interp_t *data = env->env_data;
+  if (!data) {
+    return;
+  }
+
+  // free rows
+  pwasm_vec_fini(&(data->rows));
+
+  // free backing data
+  pwasm_realloc(mem_ctx, data, 0);
+  env->env_data = NULL;
+}
+
+static uint32_t
+pwasm_interp_add_row(
+  pwasm_env_t * const env,
+  const pwasm_interp_row_t * const row
+) {
+  // get interpreter data
+  pwasm_interp_t * const data = env->env_data;
+  if (!data) {
+    D("pwasm_vec_init() failed (stride = %zu)", sizeof(pwasm_interp_row_t));
+    return 0;
+  }
+
+  // add row, get offset
+  size_t ofs = 0;
+  if (!pwasm_vec_push(&(data->rows), 1, row, &ofs)) {
+    D("pwasm_vec_init() failed %s", "");
+    return 0;
+  }
+
+  // return offset + 1 (to prevent zero IDs)
+  return ofs + 1;
+}
+
+static uint32_t
+pwasm_interp_on_add_mod(
+  pwasm_env_t * const env,
+  const char * const name,
+  const pwasm_mod_t * const mod
+) {
+  // build row
+  const pwasm_interp_row_t row = {
+    .type = PWASM_INTERP_ROW_TYPE_MOD,
+    .name = name,
+    .mod  = mod,
+  };
+
+  return pwasm_interp_add_row(env, &row);
+}
+
+static uint32_t
+pwasm_interp_on_add_native(
+  pwasm_env_t * const env,
+  const char * const name,
+  const pwasm_native_t * const mod
+) {
+  // build row
+  const pwasm_interp_row_t row = {
+    .type     = PWASM_INTERP_ROW_TYPE_NATIVE,
+    .name     = name,
+    .native   = mod,
+  };
+
+  return pwasm_interp_add_row(env, &row);
+}
+
+static bool
+pwasm_interp_call(
+  pwasm_env_t * const env,
+  const pwasm_mod_t * const mod,
+  uint32_t func_id
+) {
+  (void) env;
+  (void) mod;
+  (void) func_id;
+  return false;
+}
+
+static bool
+pwasm_interp_on_call(
+  pwasm_env_t * const env,
+  const char * const mod,
+  const char * const name
+) {
+  pwasm_interp_t * const data = env->env_data;
+  const pwasm_interp_row_t *rows = pwasm_vec_get_data(&(data->rows));
+  const size_t num_rows = pwasm_vec_get_size(&(data->rows));
+  const size_t mod_len = strlen(mod);
+  const size_t name_len = strlen(name);
+
+  // FIXME: everything about this is a horrific slow mess, so fix it
+  for (size_t i = 0; i < num_rows; i++) {
+    switch (rows[i].type) {
+    case PWASM_INTERP_ROW_TYPE_MOD:
+      if (!strncmp(mod, rows[i].name, mod_len)) {
+        for (uint32_t j = 0; j < rows[i].mod->num_exports; j++) {
+          const pwasm_new_export_t export = rows[i].mod->exports[j];
+          if (
+            (export.type == PWASM_EXPORT_TYPE_FUNC) &&
+            (export.name.len == name_len) &&
+            !memcmp(rows[i].mod->bytes + export.name.ofs, name, name_len)
+          ) {
+            return pwasm_interp_call(env, rows[i].mod, export.id);
+          }
+        }
+
+        // return failure
+        return false;
+      }
+
+      break;
+    case PWASM_INTERP_ROW_TYPE_NATIVE:
+      if (!strncmp(mod, rows[i].name, mod_len)) {
+        for (size_t j = 0; j < rows[i].native->num_funcs; j++) {
+          const pwasm_native_func_t * const func = rows[i].native->funcs + j;
+          if (!strncmp(name, func->name, name_len)) {
+            return func->func(env, env->stack);
+          }
+        }
+
+        // return failure
+        return false;
+      }
+
+      break;
+    default:
+      break;
+    }
+  }
+
+  // return failure
+  return false;
+}
+
+static const pwasm_env_cbs_t
+PWASM_INTERP_CBS = {
+  .init       = pwasm_interp_on_init,
+  .fini       = pwasm_interp_on_fini,
+  .add_mod    = pwasm_interp_on_add_mod,
+  .add_native = pwasm_interp_on_add_native,
+  .call       = pwasm_interp_on_call,
+};
+
+const pwasm_env_cbs_t *
+pwasm_interpreter_get_cbs(void) {
+  return &PWASM_INTERP_CBS;
+}
