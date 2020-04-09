@@ -968,6 +968,8 @@ typedef struct {
   const pwasm_new_import_t * const imports;
   const size_t num_imports;
 
+  size_t num_import_types[PWASM_IMPORT_TYPE_LAST];
+
   const pwasm_inst_t * const insts;
   const size_t num_insts;
 

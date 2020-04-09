@@ -2145,7 +2145,7 @@ pwasm_parse_expr(
     curr = pwasm_buf_step(curr, len);
     num_bytes += len;
 
-    ofs++;
+    insts[ofs++] = in;
     if (ofs == PWASM_BATCH_SIZE) {
       // clear offset
       ofs = 0;
@@ -3463,6 +3463,7 @@ pwasm_parse_code_locals(
     curr = pwasm_buf_step(curr, len);
     num_bytes += len;
   }
+  D("num locals = %u", count);
 
   // locals buffer
   pwasm_local_t locals[PWASM_BATCH_SIZE];
@@ -3562,6 +3563,21 @@ pwasm_parse_code(
 ) {
   pwasm_buf_t curr = src;
   size_t num_bytes = 0;
+
+  uint32_t code_len;
+  {
+    // parse code length, check for error
+    const size_t len = pwasm_u32_decode(&code_len, curr);
+    if (!len) {
+      return 0;
+    }
+
+    // advance
+    curr = pwasm_buf_step(curr, len);
+    num_bytes += len;
+  }
+
+  // FIXME: need to adjust curr here based on code_len
 
   pwasm_slice_t locals;
   {
@@ -7968,6 +7984,13 @@ pwasm_builder_build_mod(
     .mem_ctx = builder->mem_ctx,
     .mem = { ptr, total_num_bytes },
 
+    .num_import_types = {
+      builder->num_import_types[PWASM_IMPORT_TYPE_FUNC],
+      builder->num_import_types[PWASM_IMPORT_TYPE_TABLE],
+      builder->num_import_types[PWASM_IMPORT_TYPE_MEM],
+      builder->num_import_types[PWASM_IMPORT_TYPE_GLOBAL],
+    },
+
   #define BUILDER_VEC(name, type, prev) \
     .name ## s = memcpy(name ## s_dst, name ## s_src, name ## s_size), \
     .num_ ## name ## s = num_ ## name ## s,
@@ -8573,6 +8596,10 @@ pwasm_mod_init_unsafe_on_insts(
     pwasm_mod_init_unsafe_on_error("push insts failed", data);
   }
 
+  for (size_t i = 0; i < num; i++) {
+    D("inst[%zu].op = %u", i, rows[i].op);
+  }
+
   return ret;
 }
 
@@ -8847,7 +8874,7 @@ typedef enum {
 typedef struct {
   pwasm_interp_row_type_t type;
 
-  const char * const name;
+  pwasm_buf_t name;
 
   union {
     const pwasm_mod_t *mod;
@@ -8943,7 +8970,12 @@ pwasm_interp_on_add_mod(
   // build row
   const pwasm_interp_row_t row = {
     .type = PWASM_INTERP_ROW_TYPE_MOD,
-    .name = name,
+
+    .name = {
+      .ptr = (uint8_t*) name,
+      .len = strlen(name),
+    },
+
     .mod  = mod,
   };
 
@@ -8959,22 +8991,103 @@ pwasm_interp_on_add_native(
   // build row
   const pwasm_interp_row_t row = {
     .type     = PWASM_INTERP_ROW_TYPE_NATIVE,
-    .name     = name,
+
+    .name = {
+      .ptr = (uint8_t*) name,
+      .len = strlen(name),
+    },
+
     .native   = mod,
   };
 
   return pwasm_interp_add_row(env, &row);
 }
 
+/**
+ * world's shittiest initial interpreter
+ */
 static bool
 pwasm_interp_call(
   pwasm_env_t * const env,
   const pwasm_mod_t * const mod,
   uint32_t func_id
 ) {
-  (void) env;
-  (void) mod;
-  (void) func_id;
+  const size_t num_import_funcs = mod->num_import_types[PWASM_IMPORT_TYPE_FUNC];
+  pwasm_stack_t * const stack = env->stack;
+
+  if (func_id < num_import_funcs) {
+    // TODO
+    D("imported function not supported yet: %u", func_id);
+    return false;
+  }
+
+  // map to internal function ID
+  func_id -= num_import_funcs;
+  if (func_id >= mod->num_funcs) {
+    // TODO: invalid function ID, log error
+    D("invalid function ID: %u", func_id);
+    return false;
+  }
+
+  const pwasm_slice_t params = mod->types[mod->funcs[func_id]].params;
+  const pwasm_slice_t results = mod->types[mod->funcs[func_id]].results;
+  if (stack->pos < params.len) {
+    // TODO: missing parameters
+    D("missing parameters: stack->pos = %zu, params.len = %zu", stack->pos, params.len);
+    return false;
+  }
+
+  const pwasm_slice_t expr = mod->codes[func_id].expr;
+  const pwasm_inst_t * const insts = mod->insts + expr.ofs;
+  D("expr = { .ofs = %zu, .len = %zu }, num_insts = %zu", expr.ofs, expr.len, mod->num_insts);
+  for (size_t i = 0; i < expr.len; i++) {
+    const pwasm_inst_t in = insts[i];
+    D("in.op = %d", in.op);
+    switch (in.op) {
+    case PWASM_OP_END:
+      // FIXME: need to check results here better
+      return (stack->pos == results.len);
+    case PWASM_OP_I32_CONST:
+      stack->ptr[stack->pos++].i32 = in.v_i32.val;
+
+      break;
+    case PWASM_OP_I32_ADD:
+      {
+        const uint32_t a = stack->ptr[stack->pos - 2].i32;
+        const uint32_t b = stack->ptr[stack->pos - 1].i32;
+
+        stack->ptr[stack->pos - 2].i32 = a + b;
+        stack->pos--;
+      }
+
+      break;
+    case PWASM_OP_I32_SUB:
+      {
+        const uint32_t a = stack->ptr[stack->pos - 2].i32;
+        const uint32_t b = stack->ptr[stack->pos - 1].i32;
+
+        stack->ptr[stack->pos - 2].i32 = a - b;
+        stack->pos--;
+      }
+
+      break;
+    case PWASM_OP_I32_MUL:
+      {
+        const uint32_t a = stack->ptr[stack->pos - 2].i32;
+        const uint32_t b = stack->ptr[stack->pos - 1].i32;
+
+        stack->ptr[stack->pos - 2].i32 = a * b;
+        stack->pos--;
+      }
+
+      break;
+    default:
+      // TODO: unsupported inst
+      return false;
+    }
+  }
+
+  // return failure
   return false;
 }
 
@@ -8994,7 +9107,10 @@ pwasm_interp_on_call(
   for (size_t i = 0; i < num_rows; i++) {
     switch (rows[i].type) {
     case PWASM_INTERP_ROW_TYPE_MOD:
-      if (!strncmp(mod, rows[i].name, mod_len)) {
+      if (
+          (rows[i].name.len == mod_len) &&
+          !memcmp(mod, rows[i].name.ptr, mod_len)
+        ) {
         for (uint32_t j = 0; j < rows[i].mod->num_exports; j++) {
           const pwasm_new_export_t export = rows[i].mod->exports[j];
           if (
@@ -9002,6 +9118,7 @@ pwasm_interp_on_call(
             (export.name.len == name_len) &&
             !memcmp(rows[i].mod->bytes + export.name.ofs, name, name_len)
           ) {
+            D("found func, calling it: %u", export.id);
             return pwasm_interp_call(env, rows[i].mod, export.id);
           }
         }
@@ -9012,7 +9129,10 @@ pwasm_interp_on_call(
 
       break;
     case PWASM_INTERP_ROW_TYPE_NATIVE:
-      if (!strncmp(mod, rows[i].name, mod_len)) {
+      if (
+          (rows[i].name.len == mod_len) &&
+          !memcmp(mod, rows[i].name.ptr, mod_len)
+      ) {
         for (size_t j = 0; j < rows[i].native->num_funcs; j++) {
           const pwasm_native_func_t * const func = rows[i].native->funcs + j;
           if (!strncmp(name, func->name, name_len)) {

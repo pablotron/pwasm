@@ -688,6 +688,15 @@ NATIVE = {
   .funcs = NATIVE_FUNCS,
 };
 
+// test module with one method "life" (void -> i32)
+static const uint8_t GUIDE_WASM[] = {
+  0x00, 0x61, 0x73, 0x6d, 0x01, 0x00, 0x00, 0x00,
+  0x01, 0x05, 0x01, 0x60, 0x00, 0x01, 0x7F, 0x03,
+  0x02, 0x01, 0x00, 0x07, 0x08, 0x01, 0x04, 'l',
+  'i',  'f',  'e',  0x00, 0x00, 0x0A, 0x06, 0x01,
+  0x04, 0x00, 0x41, 0x2A, 0x0B,
+};
+
 static result_t
 run_env_tests(void) {
   const size_t num_fails = 0,
@@ -695,6 +704,15 @@ run_env_tests(void) {
 
   // create a memory context
   pwasm_mem_ctx_t mem_ctx = pwasm_mem_ctx_init_defaults(NULL);
+
+  // parse guide.wasm into mod
+  pwasm_mod_t mod;
+  pwasm_buf_t buf = { GUIDE_WASM, sizeof(GUIDE_WASM) };
+  if (!pwasm_mod_init(&mem_ctx, &mod, buf)) {
+    errx(EXIT_FAILURE, "pwasm_env_init() failed");
+  }
+
+  // set up stack
   pwasm_val_t stack_vals[10];
   pwasm_stack_t stack = {
     .ptr = stack_vals,
@@ -714,6 +732,11 @@ run_env_tests(void) {
   // add native mod
   if (!pwasm_env_add_native(&env, "native", &NATIVE)) {
     errx(EXIT_FAILURE, "pwasm_env_add_native() failed");
+  }
+
+  // add mod
+  if (!pwasm_env_add_mod(&env, "guide", &mod)) {
+    errx(EXIT_FAILURE, "pwasm_env_add_mod() failed");
   }
 
   // init params
@@ -738,6 +761,17 @@ run_env_tests(void) {
   }
 
   printf("native.mul_two(3, 4) = %u\n", stack.ptr[0].i32);
+
+  // init params
+  stack.pos = 0;
+
+  // call guide.life
+  if (!pwasm_env_call(&env, "guide", "life")) {
+    errx(EXIT_FAILURE, "pwasm_env_call() failed");
+  }
+
+  // print result
+  printf("guide.life() = %u\n", stack.ptr[0].i32);
 
   // finalize environment
   pwasm_env_fini(&env);
