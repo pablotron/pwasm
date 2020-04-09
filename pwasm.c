@@ -7709,13 +7709,13 @@ size_t
 pwasm_builder_get_size(
   const pwasm_builder_t * const builder
 ) {
-#define BUILDER_VEC(name, type, prev) \
-  pwasm_vec_get_size(&(builder->name ## s)) * sizeof(type) +
   return (
-BUILDER_VECS
+  #define BUILDER_VEC(name, type, prev) \
+    pwasm_vec_get_size(&(builder->name ## s)) * sizeof(type) +
+  BUILDER_VECS
+  #undef BUILDER_VEC
   0 /* sentinel */
   );
-#undef BUILDER_VEC
 }
 
 bool
@@ -7731,42 +7731,42 @@ pwasm_builder_build_mod(
   }
 
   // get item counts
-#define BUILDER_VEC(name, type, prev) \
-  const size_t num_ ## name ## s = pwasm_vec_get_size(&(builder->name ## s));
-BUILDER_VECS
-#undef BUILDER_VEC
+  #define BUILDER_VEC(name, type, prev) \
+    const size_t num_ ## name ## s = pwasm_vec_get_size(&(builder->name ## s));
+  BUILDER_VECS
+  #undef BUILDER_VEC
 
   // get output byte sizes
-#define BUILDER_VEC(name, type, prev) \
-  const size_t name ## s_size = num_ ## name ## s * sizeof(type);
-BUILDER_VECS
-#undef BUILDER_VEC
+  #define BUILDER_VEC(name, type, prev) \
+    const size_t name ## s_size = num_ ## name ## s * sizeof(type);
+  BUILDER_VECS
+  #undef BUILDER_VEC
 
   // get source pointers
-#define BUILDER_VEC(name, type, prev) \
-  const uint8_t * const name ## s_src = pwasm_vec_get_data(&(builder->name ## s));
-BUILDER_VECS
-#undef BUILDER_VEC
+  #define BUILDER_VEC(name, type, prev) \
+    const uint8_t * const name ## s_src = pwasm_vec_get_data(&(builder->name ## s));
+  BUILDER_VECS
+  #undef BUILDER_VEC
 
   // dummy (used to expand macro below)
   uint8_t * const dummys_dst = ptr;
   const size_t dummys_size = 0;
 
   // get dest pointers
-#define BUILDER_VEC(name, type, prev) \
-  uint8_t * const name ## s_dst = prev ## s_dst + prev ## s_size;
-BUILDER_VECS
-#undef BUILDER_VEC
+  #define BUILDER_VEC(name, type, prev) \
+    uint8_t * const name ## s_dst = prev ## s_dst + prev ## s_size;
+  BUILDER_VECS
+  #undef BUILDER_VEC
 
   // populate result
   const pwasm_mod_t mod = {
     .mem = { ptr, total_num_bytes },
 
-#define BUILDER_VEC(name, type, prev) \
+  #define BUILDER_VEC(name, type, prev) \
     .name ## s = memcpy(name ## s_dst, name ## s_src, name ## s_size), \
     .num_ ## name ## s = num_ ## name ## s,
-BUILDER_VECS
-#undef BUILDER_VEC
+  BUILDER_VECS
+  #undef BUILDER_VEC
   };
 
   // copy result to output
@@ -7775,65 +7775,6 @@ BUILDER_VECS
   // return success
   return true;
 }
-
-#if 0
-#define DEF_VEC_SECTION(NAME, TYPE) \
-  typedef struct { \
-    const pwasm_mod_parse_cbs_t * const cbs; \
-    void *cb_data; \
-    bool success; \
-  } pwasm_mod_parse_ ## NAME ## _section_t; \
-   \
-  static void pwasm_mod_parse_ ## NAME ## _on_error( \
-    const char * const text, \
-    void *cb_data \
-  ) { \
-    pwasm_mod_parse_ ## NAME ## _section_t * const data = cb_data; \
-   \
-    if (data->success) { \
-      if (data->cbs && data-cbs->on_error) { \
-        data->cbs->on_error(text, data->cb_data); \
-      } \
-   \
-      data->success = false; \
-    } \
-  } \
-   \
-  static void pwasm_mod_parse_ ## NAME ## _section_on_items( \
-    const TYPE * const rows, \
-    const size_t num, \
-    void *cb_data \
-  ) { \
-    pwasm_mod_parse_ ## NAME ## _section_t * const data = cb_data; \
-    if (!pwasm_builder_push_ ## NAME ## s(data->builder, rows, num).len) { \
-      const char * const text = "push " #NAME "s failed"; \
-      pwasm_mod_parse_ ## NAME ## _section_items_on_error(text, data); \
-    } \
-  } \
-   \
-  static const pwasm_parse_ ## NAME ## _cbs_t  \
-  PWASM_MOD_PARSE_ ## NAME ## _SECTION_CBS = { \
-    .on_items = pwasm_mod_parse_ ## NAME ## _section_on_items, \
-    .on_error = pwasm_mod_parse_ ## NAME ## _section_on_error, \
-  }; \
-   \
-  static size_t pwasm_mod_parse_ ## NAME ## _section( \
-    const pwasm_buf_t src \
-    const pwasm_mod_parse_cbs_t * const cbs,  \
-    void *cb_data  \
-  ) { \
-    pwasm_mod_parse_ ## NAME ## _section_t data = { \
-      .cbs = cbs, \
-      .cb_data = cb_data, \
-      .success = true; \
-    }; \
-   \
-    const size_t len = pwasm_parse_ ## NAME ## s(src, &PWASM_MOD_PARSE_ ## NAME ## _SECTION_CBS, &data); \
-    return data.success ? len : 0; \
-  }
-
-DEF_VEC_SECTION(type, pwasm_type_t)
-#endif /* 0 */
 
 typedef struct {
   const pwasm_mod_parse_cbs_t * const cbs;
@@ -8233,11 +8174,11 @@ pwasm_mod_parse_section(
 ) {
   D("type = src.ptr = %p, type = %u:%s", src.ptr, type, pwasm_section_type_get_name(type));
   switch (type) {
-#define PWASM_SECTION_TYPE(a, b) \
+  #define PWASM_SECTION_TYPE(a, b) \
     case PWASM_SECTION_TYPE_ ## a: \
       return pwasm_mod_parse_ ## b ## _section(src, cbs, cb_data);
-PWASM_SECTION_TYPES
-#undef PWASM_SECTION_TYPE
+  PWASM_SECTION_TYPES
+  #undef PWASM_SECTION_TYPE
   default:
     return pwasm_mod_parse_invalid_section(src, cbs, cb_data);
   }
