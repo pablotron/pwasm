@@ -1,3 +1,4 @@
 *.o
-wasm
-*.sw?
+pwasm
+.*.sw?
+.~lock*
