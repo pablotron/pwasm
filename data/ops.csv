@@ -1,24 +1,24 @@
 id,name,imm,flags,src,dst
 0x00,unreachable,NONE,,,
 0x01,nop,NONE,,,
-0x02,block,BLOCK,control,,
-0x03,loop,BLOCK,control,,
-0x04,if,BLOCK,control,i32,
+0x02,block,BLOCK,control enter,,
+0x03,loop,BLOCK,control enter,,
+0x04,if,BLOCK,control enter,i32,
 0x05,else,NONE,control,,
 0x0B,end,NONE,const control,,
-0x0C,br,INDEX,control,,
-0x0D,br_if,INDEX,control,i32,
+0x0C,br,INDEX,control br,,
+0x0D,br_if,INDEX,control br,i32,
 0x0E,br_table,BR_TABLE,control,i32,
 0x0F,return,NONE,control,,
 0x10,call,INDEX,control,,
 0x11,call_indirect,CALL_INDIRECT,control,i32,
 0x1A,drop,NONE,,any,
-0x1B,select,NONE,,t1 t1 i32,t1
-0x20,local.get,INDEX,local,,local
-0x21,local.set,INDEX,local,local,
-0x22,local.tee,INDEX,local,local,local
-0x23,global.get,INDEX,const global,,global
-0x24,global.set,INDEX,global,global,
+0x1B,select,NONE,,i32,
+0x20,local.get,INDEX,local,,
+0x21,local.set,INDEX,local,,
+0x22,local.tee,INDEX,local,,
+0x23,global.get,INDEX,const global,,
+0x24,global.set,INDEX,global,,
 0x28,i32.load,MEM,mem,i32,i32
 0x29,i64.load,MEM,mem,i32,i64
 0x2A,f32.load,MEM,mem,i32,f32

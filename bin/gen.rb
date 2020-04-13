@@ -87,9 +87,11 @@ module PWASM
         flags = OpFlags.new(row[:flags])
         row.merge({
           id: id,
-          const: to_const(row[:name]),
-          flags: flags.ids,
-          mask: flags.mask,
+          const:  to_const(row[:name]),
+          flags:  flags.ids,
+          mask:   flags.mask,
+          src:    to_src(row[:src]),
+          dst:    to_src(row[:dst]),
         })
       end
 
@@ -113,6 +115,10 @@ module PWASM
 
     def to_const(s)
       s.upcase.gsub('.', '_')
+    end
+
+    def to_src(s)
+      (s || '').strip.split(/\s+/).map { |v| v.intern }
     end
   end
 
@@ -246,6 +252,261 @@ module PWASM
         }
       end
     end
+
+    #
+    # Generate check function for instruction sequence.
+    #
+    class Check < View
+      # row delimiter
+      DELIM = "\n"
+
+      TEMPLATES = {
+        layout: %[
+          typedef enum {
+            PWASM_CHECK_TYPE_I32,
+            PWASM_CHECK_TYPE_I64,
+            PWASM_CHECK_TYPE_I64,
+            PWASM_CHECK_TYPE_F32,
+            PWASM_CHECK_TYPE_F64,
+            PWASM_CHECK_TYPE_UNKNOWN,
+            PWASM_CHECK_TYPE_LAST,
+          } pwasm_check_type_t;
+
+          static inline check_type_t
+          pwasm_value_type_to_check_type(
+            const pwasm_value_type_t type
+          ) {
+            switch (type) {
+
+
+
+          static inline bool
+          pwasm_check_insts(
+            const pwasm_mod_t * const mod,
+            const uint32_t func_id,
+            const pwasm_slice_t insts,
+            void (*on_error)(const char *, void *),
+            void *cb_data
+          ) {
+            for (size_t i = 0; i < insts.len; i++) {
+              const pwasm_inst_t in = insts\[i\];
+
+              switch (in.op) {
+              %<rows>s
+              }
+            }
+
+            // return success
+            return true;
+          }
+        ].gsub(/\n\s{10}/m, "\n").strip,
+
+        row: %[
+          case PWASM_OP_%<const>s:
+            {
+              %<code>s
+            }
+            break;
+        ].gsub(/\n\s{6}/m, "\n").rstrip,
+      }
+
+      def run(args)
+        TEMPLATES[:layout] % {
+          rows: @model.rows.map { |row|
+            TEMPLATES[:row] % row.merge({
+              code: get_code(row),
+            })
+          }.join(DELIM)
+        }
+      end
+
+      private
+
+      OP_CHECKS = {
+        flags: {
+          # block, loop, if
+          enter: %[
+            // add label to control stack
+            CTRL_PUSH(mod, in, OP_DEPTH());
+          ].strip,
+
+          # br, br_if
+          br: %[
+            // check label against control stack depth
+            if (in.v_index.id >= CTRL_DEPTH()) {
+              FAIL("branch target out of bounds");
+            }
+          ].strip,
+
+          local: %[
+            // get check type for local index, check for error
+            pwasm_check_type_t type;
+            if (!pwasm_local_get_check_type(mod, func_id, in.v_index.id, &type, on_error, cb_data)) {
+              return 0;
+            }
+          ].strip,
+
+          global: %[
+            // get check type for global index, check for error
+            pwasm_check_type_t type;
+            if (!pwasm_global_get_check_type(mod, in.v_index.id, &type, on_error, cb_data)) {
+              return 0;
+            }
+          ].strip,
+        },
+
+        ops: {
+          'unreachable' => %[
+            // flag top label as unreachable
+            CTRL_PEEK(0).unreachable = true;
+          ].strip,
+
+          'else' => %[
+            // get instruction and depth
+            const pwasm_inst_t in = CTRL_PEEK(0).in;
+            const size_t depth = CTRL_PEEK(0).depth;
+
+            // check for "if" block
+            if (in.op != PWASM_OP_IF) {
+              FAIL("else without associated if");
+            }
+
+            // TODO: check results
+            if (in.v_block.result_type != 0x40) {
+              const pwasm_check_type_t check_type = pwasm_result_type_get_check_type(in.v_block.result_type);
+              if (OP_PEEK(0) != check_type) {
+                FAIL("result type mismatch before else");
+              }
+            }
+
+            // fix op stack and depth
+            CTRL_PEEK(0).in.op = PWASM_OP_ELSE;
+            OP_SET_DEPTH(CTRL_PEEK(0).depth);
+          ].strip,
+
+          # TODO
+          'end' => %[
+            // TODO
+          ].strip,
+
+          # TODO
+          'br' => %[
+            // flag top label as unreachable
+            CTRL_PEEK(0).unreachable = true;
+
+            // TODO: pop operands
+          ].strip,
+
+          # TODO
+          'br_table' => %[
+            const uint32_t len = in->v_br_table.slice.len;
+            const size_t max_depth = CTRL_DEPTH();
+
+            for (size_t j = 0; j < len; j++) {
+              const size_t label_ofs = in->v_br_table.slice.ofs + j;
+              const uint32_t label = mod->u32s\[label_ofs\];
+
+              // check label depth
+              if (label >= max_depth) {
+                FAIL("branch target out of bounds");
+              }
+
+              // TODO: check label type
+            }
+          ].strip,
+
+          # TODO
+          'return' => %[
+            // TODO
+          ].strip,
+
+          # TODO
+          'call' => %[
+            // TODO
+          ].strip,
+
+          # TODO
+          'call_indirect' => %[
+            // TODO
+          ].strip,
+
+          'select' => %[
+            // check stack depth
+            if (OP_DEPTH() < 2) {
+              FAIL("select operand missing");
+            }
+
+            // check operand types
+            if (OP_PEEK(0) != OP_PEEK(1)) {
+              FAIL("select operand type mismatch");
+            }
+
+            // pop operand from stack
+            OP_POP_ANY();
+          ].strip,
+
+          'local.get' => %[
+            // push type
+            OP_PUSH(type);
+          ].strip,
+
+          'local.set' => %[
+            // pop type
+            OP_POP(type);
+          ].strip,
+
+          'local.tee' => %[
+            // push/pop type
+            OP_POP(type);
+            OP_PUSH(type);
+          ].strip,
+
+          'global.get' => %[
+            // push type
+            OP_PUSH(type);
+          ].strip,
+
+          'global.set' => %[
+            // pop type
+            OP_POP(type);
+          ].strip,
+        },
+      }
+
+      def get_code(row)
+        # pop operands
+        (
+          # pop args
+          row[:src].reverse.map { |type| op_pop(type) } +
+
+          # push results
+          row[:dst].map { |type| op_push(type) } +
+
+          # add custom flag logic
+          row[:flags].map { |flag| OP_CHECKS[:flags][flag] || '' } +
+
+          # add custom op logic
+          [OP_CHECKS[:ops][row[:name]] || '']
+        ).join("\n")
+      end
+
+      def op_pop(type)
+        case type
+        when :any
+          'OP_POP_ANY();'
+        else
+          'OP_STACK_POP(%s);' % [type_name(type)]
+        end
+      end
+
+      def op_push(type)
+        'OP_PUSH(%s);' % [type_name(type)]
+      end
+
+      def type_name(s)
+        'CHECK_TYPE_%s' % [s.upcase]
+      end
+    end
   end
 
   #
@@ -322,6 +583,17 @@ module PWASM
 
         def run(args)
           puts Views::FlagsEnum.run(ops_model, args)
+        end
+      end
+
+      #
+      # Generate validation function for instruction sequence.
+      #
+      class Check < Action
+        NAME = 'check'
+
+        def run(args)
+          puts Views::Check.run(ops_model, args)
         end
       end
 
