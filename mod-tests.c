@@ -36,7 +36,7 @@ static const uint8_t DATA[] = {
   0x00, 0x61, 0x73, 0x6d, 0x01, 0x00, 0x00, 0x00,
   0x00, 0x06, 0x00, 'w',  'o',  'r',  'l',  'd',
 
-  // type section: partial (fail, ofs: 100, len: 10)
+  // type section: blank (pass, ofs: 100, len: 10)
   0x00, 0x61, 0x73, 0x6d, 0x01, 0x00, 0x00, 0x00,
   0x01, 0x00,
 
@@ -126,7 +126,7 @@ static const uint8_t DATA[] = {
   0x00, 0x61, 0x73, 0x6d, 0x01, 0x00, 0x00, 0x00,
   0x03, 0x06, 0x01, 0x80, 0x80, 0x80, 0x80, 0x81,
 
-  // table section: blank (fail, ofs: 444, len: 10)
+  // table section: blank (pass, ofs: 444, len: 10)
   0x00, 0x61, 0x73, 0x6d, 0x01, 0x00, 0x00, 0x00,
   0x04, 0x00,
 
@@ -160,7 +160,7 @@ static const uint8_t DATA[] = {
   0x80, 0x80, 0x01, 0x70, 0x01, 0x83, 0x80, 0x80,
   0x80, 0x01, 0x84, 0x80, 0x80, 0x80, 0x01,
 
-  // memory section: blank (fail, ofs: 582, len: 10)
+  // memory section: blank (pass, ofs: 582, len: 10)
   0x00, 0x61, 0x73, 0x6d, 0x01, 0x00, 0x00, 0x00,
   0x05, 0x00,
 
@@ -180,7 +180,7 @@ static const uint8_t DATA[] = {
   0x08, 0x01, 0x84, 0x80, 0x80, 0x80, 0x08, 0x85,
   0x80, 0x80, 0x80, 0x08,
 
-  // global section: blank (fail, ofs: 660, len: 10)
+  // global section: blank (pass, ofs: 660, len: 10)
   0x00, 0x61, 0x73, 0x6d, 0x01, 0x00, 0x00, 0x00,
   0x06, 0x00,
 
@@ -212,7 +212,7 @@ static const uint8_t DATA[] = {
   0x49, 0x40, 0x0B, 0x7D, 0x00, 0x43, 0x54, 0xF8,
   0x2D, 0x40, 0x0B,
 
-  // export section: blank (fail, ofs: 782, len: 10)
+  // export section: blank (pass, ofs: 782, len: 10)
   0x00, 0x61, 0x73, 0x6d, 0x01, 0x00, 0x00, 0x00,
   0x07, 0x00,
 
@@ -231,7 +231,7 @@ static const uint8_t DATA[] = {
   0x00, 0x61, 0x73, 0x6d, 0x01, 0x00, 0x00, 0x00,
   0x07, 0x01, 0x00, 0x07, 0x01, 0x00,
 
-  // element section: blank (fail, ofs: 853, len: 10)
+  // element section: blank (pass, ofs: 853, len: 10)
   0x00, 0x61, 0x73, 0x6d, 0x01, 0x00, 0x00, 0x00,
   0x08, 0x00,
 
@@ -258,7 +258,7 @@ static const uint8_t DATA[] = {
   0x02, 0x03, 0x04, 0x41, 0x01, 0x0B, 0x02, 0x05,
   0x06,
 
-  // code section: blank (fail, ofs: 950, len: 10)
+  // code section: blank (pass, ofs: 950, len: 10)
   0x00, 0x61, 0x73, 0x6d, 0x01, 0x00, 0x00, 0x00,
   0x0A, 0x00,
 
@@ -266,7 +266,7 @@ static const uint8_t DATA[] = {
   0x00, 0x61, 0x73, 0x6d, 0x01, 0x00, 0x00, 0x00,
   0x0A, 0x01, 0x00,
 
-  // data section: blank (fail, ofs: 971, len: 10)
+  // data section: blank (pass, ofs: 971, len: 10)
   0x00, 0x61, 0x73, 0x6d, 0x01, 0x00, 0x00, 0x00,
   0x0B, 0x00,
 
@@ -315,7 +315,7 @@ static const test_t TESTS[] = {
   { "custom section: hello",              true,    47,   16 },
   { "custom section: hello, there",       true,    63,   21 },
   { "custom section: \"\", world",        true,    84,   16 },
-  { "type section: partial",              false,  100,   10 },
+  { "type section: blank",                true,   100,   10 },
   { "type section: empty",                true,   110,   11 },
   { "type section: i32 -> void",          true,   121,   15 },
   { "type section: junk -> void",         false,  136,   15 },
@@ -335,37 +335,37 @@ static const test_t TESTS[] = {
   { "function section: 1",                true,   390,   12 },
   { "function section: 3 long",           true,   402,   26 },
   { "function section: bad long",         false,  428,   16 },
-  { "table section: blank",               false,  444,   10 },
+  { "table section: blank",               true,   444,   10 },
   { "table section: one short",           false,  454,   12 },
   { "table section: one bad type",        false,  466,   14 },
   { "table section: one",                 true,   480,   14 },
   { "table section: one big",             true,   494,   18 },
   { "table section: one big pair",        true,   512,   23 },
   { "table section: 3 pairs",             true,   535,   47 },
-  { "memory section: blank",              false,  582,   10 },
+  { "memory section: blank",              true,   582,   10 },
   { "memory section: empty",              true,   592,   11 },
   { "memory section: one",                true,   603,   13 },
   { "memory section: 3 pairs",            true,   616,   44 },
-  { "global section: blank",              false,  660,   10 },
+  { "global section: blank",              true,   660,   10 },
   { "global section: empty",              true,   670,   11 },
   { "global section: one mut i32",        true,   681,   16 },
   { "global section: one i64",            true,   697,   16 },
   { "global section: one f32",            true,   713,   19 },
   { "global section: one f64",            true,   732,   23 },
   { "global section: f32 pi, e",          true,   755,   27 },
-  { "export section: blank",              false,  782,   10 },
+  { "export section: blank",              true,   782,   10 },
   { "export section: empty",              true,   792,   11 },
   { "exports: foo, bar, baz, blum",       true,   803,   36 },
   { "duplicate section test",             false,  839,   14 },
-  { "element section: blank",             false,  853,   10 },
+  { "element section: blank",             true,   853,   10 },
   { "element section: empty",             true,   863,   11 },
   { "element section: one",               true,   874,   14 },
   { "element section: two fns",           true,   888,   16 },
   { "two elements, two fns",              true,   904,   21 },
   { "two elements, two i32s",             true,   925,   25 },
-  { "code section: blank",                false,  950,   10 },
+  { "code section: blank",                true,   950,   10 },
   { "code section: empty",                true,   960,   11 },
-  { "data section: blank",                false,  971,   10 },
+  { "data section: blank",                true,   971,   10 },
   { "data section: empty",                true,   981,   11 },
   { "data section: 10 bytes",             true,   992,   26 },
   { "fixed type section: i32 -> void",    true,  1018,   15 },
