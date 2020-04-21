@@ -7,8 +7,8 @@
 /**
  * Batch size.
  *
- * Used to batch up function types, imports, functions,
- * etc, when dispatching to parsing callbacks.
+ * Used to batch up function types, imports, functions, etc, when
+ * dispatching to parsing callbacks.
  *
  * Note: must be a power of two.
  */
@@ -1413,7 +1413,7 @@ pwasm_parse_inst(
   case PWASM_IMM_F32_CONST:
     {
       // immediate size, in bytes
-      const size_t len = 4;
+      const size_t len = sizeof(float);
 
       // check length
       if (curr.len < len) {
@@ -1439,7 +1439,7 @@ pwasm_parse_inst(
   case PWASM_IMM_F64_CONST:
     {
       // immediate size, in bytes
-      const size_t len = 8;
+      const size_t len = sizeof(double);
 
       // check length
       if (curr.len < len) {
@@ -1449,7 +1449,7 @@ pwasm_parse_inst(
 
       union {
         uint8_t u8[len];
-        float f64;
+        double f64;
       } u;
       memcpy(u.u8, curr.ptr, len);
 
@@ -2304,7 +2304,7 @@ pwasm_parse_code_locals(
 
     // increment offset
     ofs++;
-    if (ofs == LEN(locals)) {
+    if (ofs == PWASM_BATCH_SIZE) {
       ofs = 0;
 
       // flush queue
@@ -3435,14 +3435,11 @@ pwasm_mod_init_unsafe_on_funcs(
   pwasm_mod_init_unsafe_t * const data = cb_data;
 
   for (size_t i = 0; i < num; i += PWASM_BATCH_SIZE) {
+    // get number of elements
     const size_t len = MIN((num - i), PWASM_BATCH_SIZE);
 
-    uint32_t funcs[PWASM_BATCH_SIZE];
-    for (size_t j = 0; j < len; j++) {
-      funcs[j] = rows[i + j];
-    }
-
-    if (!pwasm_builder_push_funcs(data->builder, funcs, len).len) {
+    // push function IDs, check for error
+    if (!pwasm_builder_push_funcs(data->builder, rows + i, len).len) {
       pwasm_mod_init_unsafe_on_error("push funcs failed", data);
     }
   }
