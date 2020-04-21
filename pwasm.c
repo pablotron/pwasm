@@ -1000,7 +1000,7 @@ pwasm_parse_type(
 }
 
 typedef struct {
-  void (*on_custom_section)(const pwasm_new_custom_section_t *, void *);
+  void (*on_custom_section)(const pwasm_custom_section_t *, void *);
   pwasm_slice_t (*on_bytes)(const uint8_t *, size_t, void *);
   void (*on_error)(const char *, void *);
 } pwasm_parse_custom_section_cbs_t;
@@ -1073,7 +1073,7 @@ pwasm_parse_custom_section(
   num_bytes += rest.len;
 
   // build section
-  const pwasm_new_custom_section_t section = {
+  const pwasm_custom_section_t section = {
     .name = name,
     .data = rest,
   };
@@ -1778,7 +1778,7 @@ pwasm_parse_global_type(
  */
 static size_t
 pwasm_parse_global(
-  pwasm_new_global_t * const dst,
+  pwasm_global_t * const dst,
   const pwasm_buf_t src,
   const pwasm_parse_expr_cbs_t * const cbs,
   void * const cb_data
@@ -1823,7 +1823,7 @@ pwasm_parse_global(
     num_bytes += len;
   }
 
-  *dst = (pwasm_new_global_t) {
+  *dst = (pwasm_global_t) {
     .type = type,
     .expr = expr,
   };
@@ -1844,7 +1844,7 @@ typedef struct {
 
 static inline size_t
 pwasm_parse_import_function( // FIXME: rename to "func"
-  pwasm_new_import_t * const dst,
+  pwasm_import_t * const dst,
   const pwasm_buf_t src,
   const pwasm_parse_import_cbs_t * const cbs,
   void *cb_data
@@ -1856,7 +1856,7 @@ pwasm_parse_import_function( // FIXME: rename to "func"
 
 static inline size_t
 pwasm_parse_import_table(
-  pwasm_new_import_t * const dst,
+  pwasm_import_t * const dst,
   const pwasm_buf_t src,
   const pwasm_parse_import_cbs_t * const cbs,
   void *cb_data
@@ -1866,7 +1866,7 @@ pwasm_parse_import_table(
 
 static inline size_t
 pwasm_parse_import_memory( // FIXME: rename to "mem"
-  pwasm_new_import_t * const dst,
+  pwasm_import_t * const dst,
   const pwasm_buf_t src,
   const pwasm_parse_import_cbs_t * const cbs,
   void *cb_data
@@ -1876,7 +1876,7 @@ pwasm_parse_import_memory( // FIXME: rename to "mem"
 
 static inline size_t
 pwasm_parse_import_global(
-  pwasm_new_import_t * const dst,
+  pwasm_import_t * const dst,
   const pwasm_buf_t src,
   const pwasm_parse_import_cbs_t * const cbs,
   void *cb_data
@@ -1886,7 +1886,7 @@ pwasm_parse_import_global(
 
 static inline size_t
 pwasm_parse_import_invalid(
-  pwasm_new_import_t * const dst,
+  pwasm_import_t * const dst,
   const pwasm_buf_t src,
   const pwasm_parse_import_cbs_t * const cbs,
   void *cb_data
@@ -1902,7 +1902,7 @@ pwasm_parse_import_invalid(
 static inline size_t
 pwasm_parse_import_data(
   const pwasm_import_type_t type,
-  pwasm_new_import_t * const dst,
+  pwasm_import_t * const dst,
   const pwasm_buf_t src,
   const pwasm_parse_import_cbs_t * const cbs,
   void *cb_data
@@ -1921,7 +1921,7 @@ PWASM_IMPORT_TYPES
 
 static size_t
 pwasm_parse_import(
-  pwasm_new_import_t * const dst,
+  pwasm_import_t * const dst,
   const pwasm_buf_t src,
   const pwasm_parse_import_cbs_t * const cbs,
   void * const cb_data
@@ -1971,7 +1971,7 @@ pwasm_parse_import(
   num_bytes += 1;
 
   // build result
-  pwasm_new_import_t tmp = {
+  pwasm_import_t tmp = {
     .module = names[0],
     .name = names[1],
     .type = type,
@@ -2006,7 +2006,7 @@ pwasm_parse_import(
  */
 static size_t
 pwasm_parse_export(
-  pwasm_new_export_t * const dst,
+  pwasm_export_t * const dst,
   const pwasm_buf_t src,
   const pwasm_parse_export_cbs_t * const cbs,
   void * const cb_data
@@ -2061,7 +2061,7 @@ pwasm_parse_export(
   }
   D("type = %u:%s, id = %u", type, pwasm_export_type_get_name(type), id);
 
-  *dst = (pwasm_new_export_t) {
+  *dst = (pwasm_export_t) {
     .name = name,
     .type = type,
     .id   = id,
@@ -2738,15 +2738,15 @@ pwasm_vec_push(
 #define BUILDER_VECS \
   BUILDER_VEC(u32, uint32_t, dummy) \
   BUILDER_VEC(section, uint32_t, u32) \
-  BUILDER_VEC(custom_section, pwasm_new_custom_section_t, section) \
+  BUILDER_VEC(custom_section, pwasm_custom_section_t, section) \
   BUILDER_VEC(type, pwasm_type_t, custom_section) \
-  BUILDER_VEC(import, pwasm_new_import_t, type) \
+  BUILDER_VEC(import, pwasm_import_t, type) \
   BUILDER_VEC(inst, pwasm_inst_t, import) \
-  BUILDER_VEC(global, pwasm_new_global_t, inst) \
+  BUILDER_VEC(global, pwasm_global_t, inst) \
   BUILDER_VEC(func, uint32_t, global) \
   BUILDER_VEC(table, pwasm_table_t, func) \
   BUILDER_VEC(mem, pwasm_limits_t, table) \
-  BUILDER_VEC(export, pwasm_new_export_t, mem) \
+  BUILDER_VEC(export, pwasm_export_t, mem) \
   BUILDER_VEC(local, pwasm_local_t, export) \
   BUILDER_VEC(code, pwasm_func_t, local) \
   BUILDER_VEC(elem, pwasm_elem_t, code) \
@@ -2883,12 +2883,12 @@ pwasm_builder_build_mod(
 }
 
 DEF_VEC_PARSER(type, pwasm_type_t);
-DEF_VEC_PARSER(import, pwasm_new_import_t);
+DEF_VEC_PARSER(import, pwasm_import_t);
 DEF_VEC_PARSER(func, uint32_t);
 DEF_VEC_PARSER(table, pwasm_table_t);
 DEF_VEC_PARSER(mem, pwasm_limits_t);
-DEF_VEC_PARSER(global, pwasm_new_global_t);
-DEF_VEC_PARSER(export, pwasm_new_export_t);
+DEF_VEC_PARSER(global, pwasm_global_t);
+DEF_VEC_PARSER(export, pwasm_export_t);
 DEF_VEC_PARSER(elem, pwasm_elem_t);
 DEF_VEC_PARSER(code, pwasm_func_t);
 DEF_VEC_PARSER(segment, pwasm_segment_t);
@@ -2933,7 +2933,7 @@ pwasm_mod_parse_type(
  */
 static size_t
 pwasm_mod_parse_import(
-  pwasm_new_import_t * const dst,
+  pwasm_import_t * const dst,
   const pwasm_buf_t src,
   const pwasm_mod_parse_cbs_t * const src_cbs,
   void * const cb_data
@@ -2983,7 +2983,7 @@ pwasm_mod_parse_mem(
 
 static size_t
 pwasm_mod_parse_global(
-  pwasm_new_global_t * const dst,
+  pwasm_global_t * const dst,
   const pwasm_buf_t src,
   const pwasm_mod_parse_cbs_t * const src_cbs,
   void * const cb_data
@@ -3002,7 +3002,7 @@ pwasm_mod_parse_global(
 
 static size_t
 pwasm_mod_parse_export(
-  pwasm_new_export_t * const dst,
+  pwasm_export_t * const dst,
   const pwasm_buf_t src,
   const pwasm_mod_parse_cbs_t * const src_cbs,
   void * const cb_data
@@ -3165,7 +3165,7 @@ pwasm_mod_parse_null_on_section(
 
 static void
 pwasm_mod_parse_null_on_custom_section(
-  const pwasm_new_custom_section_t * const section,
+  const pwasm_custom_section_t * const section,
   void *cb_data
 ) {
   (void) section;
@@ -3340,7 +3340,7 @@ pwasm_mod_init_unsafe_on_section(
 
 static void
 pwasm_mod_init_unsafe_on_custom_section(
-  const pwasm_new_custom_section_t * const section,
+  const pwasm_custom_section_t * const section,
   void *cb_data
 ) {
   pwasm_mod_init_unsafe_t * const data = cb_data;
@@ -3363,7 +3363,7 @@ pwasm_mod_init_unsafe_on_types(
 
 static void
 pwasm_mod_init_unsafe_on_imports(
-  const pwasm_new_import_t * const rows,
+  const pwasm_import_t * const rows,
   const size_t num,
   void *cb_data
 ) {
@@ -3405,7 +3405,7 @@ pwasm_mod_init_unsafe_on_imports(
       break;
     case PWASM_IMPORT_TYPE_GLOBAL:
       {
-        const pwasm_new_global_t global = {
+        const pwasm_global_t global = {
           .type = rows[i].global,
           .expr = { 0, 0 },
         };
@@ -3491,7 +3491,7 @@ pwasm_mod_init_unsafe_on_mems(
 
 static void
 pwasm_mod_init_unsafe_on_globals(
-  const pwasm_new_global_t * const rows,
+  const pwasm_global_t * const rows,
   const size_t num,
   void *cb_data
 ) {
@@ -3503,7 +3503,7 @@ pwasm_mod_init_unsafe_on_globals(
 
 static void
 pwasm_mod_init_unsafe_on_exports(
-  const pwasm_new_export_t * const rows,
+  const pwasm_export_t * const rows,
   const size_t num,
   void *cb_data
 ) {
@@ -3987,7 +3987,7 @@ pwasm_interp_on_call(
           !memcmp(mod, rows[i].name.ptr, mod_len)
         ) {
         for (uint32_t j = 0; j < rows[i].mod->num_exports; j++) {
-          const pwasm_new_export_t export = rows[i].mod->exports[j];
+          const pwasm_export_t export = rows[i].mod->exports[j];
           if (
             (export.type == PWASM_EXPORT_TYPE_FUNC) &&
             (export.name.len == name_len) &&

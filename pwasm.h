@@ -471,10 +471,6 @@ typedef struct {
   pwasm_value_type_t type;
 } pwasm_local_t;
 
-/*************/
-/* new stuff */
-/*************/
-
 typedef struct {
   void *(*on_realloc)(void *, size_t, void *);
   void (*on_error)(const char *, void *);
@@ -516,7 +512,7 @@ typedef struct {
 typedef struct {
   pwasm_slice_t name;
   pwasm_slice_t data;
-} pwasm_new_custom_section_t;
+} pwasm_custom_section_t;
 
 typedef struct {
   pwasm_slice_t params;
@@ -538,14 +534,14 @@ typedef struct {
 
     pwasm_global_type_t global;
   };
-} pwasm_new_import_t;
+} pwasm_import_t;
 
 typedef struct {
   pwasm_global_type_t type;
 
   // slice of insts with offset init instructions
   pwasm_slice_t expr;
-} pwasm_new_global_t;
+} pwasm_global_t;
 
 typedef struct {
   // offset of function prototype in function_types
@@ -562,7 +558,7 @@ typedef struct {
   pwasm_slice_t name;
   pwasm_export_type_t type;
   uint32_t id;
-} pwasm_new_export_t;
+} pwasm_export_t;
 
 typedef struct {
   uint32_t table_id;
@@ -590,15 +586,15 @@ typedef struct {
   pwasm_slice_t (*on_insts)(const pwasm_inst_t *, const size_t, void *);
 
   void (*on_section)(const pwasm_header_t *, void *);
-  void (*on_custom_section)(const pwasm_new_custom_section_t *, void *);
+  void (*on_custom_section)(const pwasm_custom_section_t *, void *);
   void (*on_types)(const pwasm_type_t *, const size_t, void *);
-  void (*on_imports)(const pwasm_new_import_t *, const size_t, void *);
+  void (*on_imports)(const pwasm_import_t *, const size_t, void *);
   void (*on_funcs)(const uint32_t *, const size_t, void *);
 
   void (*on_tables)(const pwasm_table_t *, const size_t, void *);
   void (*on_mems)(const pwasm_limits_t *, const size_t, void *);
-  void (*on_globals)(const pwasm_new_global_t *, const size_t, void *);
-  void (*on_exports)(const pwasm_new_export_t *, const size_t, void *);
+  void (*on_globals)(const pwasm_global_t *, const size_t, void *);
+  void (*on_exports)(const pwasm_export_t *, const size_t, void *);
   void (*on_elems)(const pwasm_elem_t *, const size_t, void *);
   void (*on_start)(const uint32_t, void *);
 
@@ -632,13 +628,13 @@ typedef struct {
   const uint32_t * const sections;
   const size_t num_sections;
 
-  const pwasm_new_custom_section_t * const custom_sections;
+  const pwasm_custom_section_t * const custom_sections;
   const size_t num_custom_sections;
 
   const pwasm_type_t * const types;
   const size_t num_types;
 
-  const pwasm_new_import_t * const imports;
+  const pwasm_import_t * const imports;
   const size_t num_imports;
 
   size_t num_import_types[PWASM_IMPORT_TYPE_LAST];
@@ -646,7 +642,7 @@ typedef struct {
   const pwasm_inst_t * const insts;
   const size_t num_insts;
 
-  const pwasm_new_global_t * const globals;
+  const pwasm_global_t * const globals;
   const size_t num_globals;
 
   const uint32_t * const funcs;
@@ -658,7 +654,7 @@ typedef struct {
   const pwasm_limits_t * const mems;
   const size_t num_mems;
 
-  const pwasm_new_export_t * const exports;
+  const pwasm_export_t * const exports;
   const size_t num_exports;
 
   const pwasm_local_t * const locals;
