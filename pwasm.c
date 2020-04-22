@@ -623,6 +623,38 @@ pwasm_op_get_num_bits(
   return PWASM_OP_NUM_BITS[ofs];
 }
 
+typedef struct {
+  size_t val;
+  size_t max;
+} pwasm_depth_t;
+
+static inline bool
+pwasm_depth_add(
+  pwasm_depth_t * const depth,
+  const size_t num
+) {
+  const size_t new_val = depth->val + num;
+  const bool ok = (new_val >= depth->val);
+  depth->val = ok ? new_val : depth->val;
+  depth->max = (new_val > depth->max) ? new_val : depth->max;
+  return ok;
+}
+
+static inline bool
+pwasm_depth_sub(
+  pwasm_depth_t * const depth,
+  const size_t num
+) {
+  const size_t new_val = depth->val - num;
+  const bool ok = (num >= depth->val);
+  depth->val = ok ? new_val : depth->val;
+  return ok;
+}
+
+/**
+ * no-op on_error callback (used as a fallback to avoid having to do
+ * null ptr checks on error).
+ */
 static void
 pwasm_null_on_error(
   const char * const text,
