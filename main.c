@@ -133,25 +133,28 @@ run_mod_init_tests(void) {
 static bool
 run_env_test_on_add_one(
   pwasm_env_t * const env,
-  pwasm_stack_t * const stack
+  const pwasm_native_instance_t * const instance
 ) {
-  (void) env;
-  stack->ptr[stack->pos - 1].i32 += 1;
+  (void) instance;
+
+  PWASM_PEEK(env->stack, 0).i32 += 1;
+
   return true;
 }
 
 static bool
 run_env_test_on_mul_two(
   pwasm_env_t * const env,
-  pwasm_stack_t * const stack
+  const pwasm_native_instance_t * const instance
 ) {
-  (void) env;
+  (void) instance;
 
-  const uint32_t a = stack->ptr[stack->pos - 2].i32;
-  const uint32_t b = stack->ptr[stack->pos - 1].i32;
-  stack->ptr[stack->pos - 2].i32 = a * b;
-  stack->pos--;
+  const uint32_t a = PWASM_PEEK(env->stack, 1).i32;
+  const uint32_t b = PWASM_PEEK(env->stack, 0).i32;
+  PWASM_PEEK(env->stack, 1).i32 = a * b;
+  env->stack->pos--;
 
+  // return success
   return true;
 }
 

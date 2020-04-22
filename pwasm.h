@@ -786,11 +786,19 @@ typedef struct {
   size_t pos;
 } pwasm_stack_t;
 
+#define PWASM_PEEK(stack, ofs) ((stack)->ptr[(stack)->pos - 1 - (ofs)])
+
 typedef struct pwasm_env_t pwasm_env_t;
+typedef struct pwasm_native_t pwasm_native_t;
+
+typedef struct {
+  const uint32_t * const imports;
+  const pwasm_native_t * const native;
+} pwasm_native_instance_t;
 
 typedef _Bool (*pwasm_native_func_cb_t)(
   pwasm_env_t *,
-  pwasm_stack_t *
+  const pwasm_native_instance_t *
 );
 
 typedef struct {
@@ -818,18 +826,27 @@ typedef struct {
 } pwasm_native_table_t;
 
 typedef struct {
+  pwasm_import_type_t type;
+  const char *mod;
+  const char *name;
+} pwasm_native_import_t;
+
+struct pwasm_native_t {
+  const size_t num_imports;
+  const pwasm_native_import_t * const imports;
+
   const size_t num_funcs;
   const pwasm_native_func_t * const funcs;
 
-  size_t num_mems;
+  const size_t num_mems;
   pwasm_buf_t * const mems;
 
-  size_t num_globals;
+  const size_t num_globals;
   const pwasm_val_t * const globals;
 
-  size_t num_tables;
+  const size_t num_tables;
   const pwasm_native_table_t * const tables;
-} pwasm_native_t;
+};
 
 typedef struct {
   // init env (alloc memory)
@@ -848,18 +865,18 @@ typedef struct {
 
   // get module handle by name
   // (returns zero on error)
-  uint32_t (*find_mod)(pwasm_env_t *, const char *);
+  uint32_t (*find_mod)(pwasm_env_t *, const pwasm_buf_t);
 
   // get global handle by mod_id and name
   // (returns zero on error)
-  uint32_t (*find_global)(pwasm_env_t *, const uint32_t, const char *);
+  uint32_t (*find_global)(pwasm_env_t *, const uint32_t, pwasm_buf_t);
 
   pwasm_val_t (*get_global)(pwasm_env_t *, const uint32_t);
   uint32_t (*set_global)(pwasm_env_t *, const uint32_t, const pwasm_val_t);
 
   // get table handle by mod_id and name
   // (returns zero on error)
-  uint32_t (*find_table)(pwasm_env_t *, const uint32_t, const char *);
+  uint32_t (*find_table)(pwasm_env_t *, const uint32_t, pwasm_buf_t);
 
   // get value of table element by table_id and offset
   // (returns false on error)
@@ -870,14 +887,18 @@ typedef struct {
     uint32_t * // return value
   );
 
+  // find import handle by mod_id, import type, and import name
+  // (returns zero on error)
+  uint32_t (*find_import)(pwasm_env_t *, const uint32_t, pwasm_import_type_t, const pwasm_buf_t);
+
   // get function handle by mod_id and name
   // (returns zero on error)
-  uint32_t (*find_func)(pwasm_env_t *, const uint32_t, const char *);
+  uint32_t (*find_func)(pwasm_env_t *, const uint32_t, pwasm_buf_t);
 
   // _Bool (*call_func)(pwasm_env_t *, uint32_t);
   _Bool (*call)(pwasm_env_t *, const uint32_t);
 
-  pwasm_buf_t (*find_mem)(pwasm_env_t *, const char *, const char *);
+  pwasm_buf_t (*find_mem)(pwasm_env_t *, const uint32_t, pwasm_buf_t);
 
   _Bool (*mem_load)(pwasm_env_t *, const pwasm_inst_t, const uint32_t, pwasm_val_t *);
   _Bool (*mem_store)(pwasm_env_t *, const pwasm_inst_t, const uint32_t, const pwasm_val_t);
@@ -933,6 +954,16 @@ uint32_t pwasm_env_add_native(
  */
 uint32_t pwasm_env_find_mod(
   pwasm_env_t *,
+  const pwasm_buf_t
+);
+
+/**
+ * Find module by name in this environment and return a handle.
+ *
+ * Returns zero if an error occurred or the module could not be found.
+ */
+uint32_t pwasm_env_find_mod_by_name(
+  pwasm_env_t *,
   const char *
 );
 
@@ -942,6 +973,17 @@ uint32_t pwasm_env_find_mod(
  * Returns zero if an error occurred or the function could not be found.
  */
 uint32_t pwasm_env_find_func(
+  pwasm_env_t *,
+  const uint32_t,
+  const pwasm_buf_t
+);
+
+/**
+ * Find function by name in given environment and module and return a handle.
+ *
+ * Returns zero if an error occurred or the function could not be found.
+ */
+uint32_t pwasm_env_find_func_by_name(
   pwasm_env_t *,
   const uint32_t,
   const char *
@@ -991,6 +1033,20 @@ _Bool pwasm_env_mem_grow(
   pwasm_env_t *,
   const uint32_t,
   uint32_t * const
+);
+
+/**
+ * Find import by module ID, import type, and import name.
+ *
+ * Returns 0 if an error occurred.
+ *
+ * FIXME: rename to pwasm_env_link()?
+ */
+uint32_t pwasm_env_find_import(
+  pwasm_env_t * const,
+  const uint32_t,
+  const pwasm_import_type_t,
+  const pwasm_buf_t
 );
 
 /**

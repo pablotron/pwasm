@@ -3716,22 +3716,45 @@ pwasm_env_add_native(
 uint32_t
 pwasm_env_find_mod(
   pwasm_env_t * const env,
-  const char * const name
+  const pwasm_buf_t name
 ) {
   const pwasm_env_cbs_t * const cbs = env->cbs;
-  D("env = %p, name = \"%s\"", env, name);
+  // D("env = %p, name = \"%s\"", env, name);
   return (cbs && cbs->find_mod) ? cbs->find_mod(env, name) : 0;
+}
+
+uint32_t
+pwasm_env_find_mod_by_name(
+  pwasm_env_t * const env,
+  const char * const name
+) {
+  return pwasm_env_find_mod(env, (pwasm_buf_t) {
+    .ptr = (uint8_t*) name,
+    .len = strlen(name),
+  });
 }
 
 uint32_t
 pwasm_env_find_func(
   pwasm_env_t * const env,
   const uint32_t mod_id,
-  const char * const name
+  const pwasm_buf_t name
 ) {
   const pwasm_env_cbs_t * const cbs = env->cbs;
-  D("env = %p, mod_id = %u, name = \"%s\"", env, mod_id, name);
+  // D("env = %p, mod_id = %u, name = \"%s\"", env, mod_id, name);
   return (cbs && cbs->find_func) ? cbs->find_func(env, mod_id, name) : 0;
+}
+
+uint32_t
+pwasm_env_find_func_by_name(
+  pwasm_env_t * const env,
+  const uint32_t mod_id,
+  const char * const name
+) {
+  return pwasm_env_find_func(env, mod_id, (pwasm_buf_t) {
+    .ptr = (uint8_t*) name,
+    .len = strlen(name),
+  });
 }
 
 bool
@@ -3753,13 +3776,13 @@ pwasm_call(
   D("env = %p, mod = \"%s\", func = \"%s\"", env, mod_name, func_name);
 
   // find mod, check for error
-  const uint32_t mod_id = pwasm_env_find_mod(env, mod_name);
+  const uint32_t mod_id = pwasm_env_find_mod_by_name(env, mod_name);
   if (!mod_id) {
     return false;
   }
 
   // find func, check for error
-  const uint32_t func_id = pwasm_env_find_func(env, mod_id, func_name);
+  const uint32_t func_id = pwasm_env_find_func_by_name(env, mod_id, func_name);
   if (!func_id) {
     return false;
   }
@@ -3825,12 +3848,25 @@ pasm_env_get_elem(
   return have_cb ? cbs->get_elem(env, table_id, elem_ofs, ret_id) : false;
 }
 
+uint32_t
+pwasm_env_find_import(
+  pwasm_env_t * const env,
+  const uint32_t mod_id,
+  const pwasm_import_type_t type,
+  const pwasm_buf_t name
+) {
+  const pwasm_env_cbs_t * const cbs = env->cbs;
+  const bool have_cb = (cbs && cbs->find_import);
+  return have_cb ? cbs->find_import(env, mod_id, type, name) : 0;
+}
+
 typedef enum {
   PWASM_INTERP_ROW_TYPE_MOD,
   PWASM_INTERP_ROW_TYPE_NATIVE,
+  PWASM_INTERP_ROW_TYPE_FUNC,
   PWASM_INTERP_ROW_TYPE_GLOBAL,
   PWASM_INTERP_ROW_TYPE_MEM,
-  PWASM_INTERP_ROW_TYPE_FUNC,
+  PWASM_INTERP_ROW_TYPE_TABLE,
   PWASM_INTERP_ROW_TYPE_LAST,
 } pwasm_interp_row_type_t;
 
@@ -3840,19 +3876,44 @@ typedef struct {
   pwasm_buf_t name;
 
   union {
-    const pwasm_mod_t *mod;
-    const pwasm_native_t *native;
-    pwasm_buf_t mem;
-    pwasm_val_t global;
+    struct {
+      const uint32_t * const imports;
+      const pwasm_mod_t * const mod;
+    } mod;
+
+    pwasm_native_instance_t native;
 
     struct {
-      uint32_t mod_id;
-      uint32_t func_id;
+      // externally visible mod_id (e.g. the offset + 1)
+      const uint32_t mod_id;
+
+      // internal func_id
+      //
+      // Note: value depends on mod type. For native mods this is an
+      // offset into funcs, and for regular mods this is an entry in the
+      // exports table.
+      const uint32_t func_id;
     } func;
+
+    pwasm_buf_t mem;
+    pwasm_val_t global;
+    pwasm_buf_t table; // TODO: table
   };
 } pwasm_interp_row_t;
 
 typedef struct {
+  // vector of u32s.
+  //
+  // each module instance contains a pointer into vector which maps
+  // their import IDs (funcs, tables, mems, and globals) to the
+  // handles exported by the interpreter.
+  pwasm_vec_t imports;
+
+  // vector of pwasm_interp_row_ts.
+  //
+  // contains all module instances, function instances, mems, globals,
+  // and tables.  externally visible IDs (handles) are an offset into
+  // this vector, incremented by one.
   pwasm_vec_t rows;
 } pwasm_interp_t;
 
@@ -3867,6 +3928,12 @@ pwasm_interp_on_init(
   pwasm_interp_t *data = pwasm_realloc(mem_ctx, NULL, data_size);
   if (!data) {
     D("pwasm_realloc() failed (size = %zu)", data_size);
+    return false;
+  }
+
+  // allocate imports
+  if (!pwasm_vec_init(mem_ctx, &(data->imports), sizeof(uint32_t))) {
+    D("pwasm_vec_init() failed (stride = %zu)", sizeof(uint32_t));
     return false;
   }
 
@@ -3893,6 +3960,9 @@ pwasm_interp_on_fini(
     return;
   }
 
+  // free imports
+  pwasm_vec_fini(&(data->imports));
+
   // free rows
   pwasm_vec_fini(&(data->rows));
 
@@ -3900,6 +3970,83 @@ pwasm_interp_on_fini(
   pwasm_realloc(mem_ctx, data, 0);
   env->env_data = NULL;
 }
+
+/**
+ * Add import mapping for native module and return a pointer to the
+ * mapping.
+ *
+ * Returns NULL on error, or if there are no imports in the given native
+ * module.
+ */
+static const uint32_t *
+pwasm_interp_add_native_imports(
+  pwasm_env_t * const env,
+  const pwasm_native_t * const mod
+) {
+  pwasm_interp_t * const data = env->env_data;
+  const uint32_t * const imports = pwasm_vec_get_data(&(data->imports));
+
+  uint32_t ids[PWASM_BATCH_SIZE];
+  size_t num_ids = 0;
+
+  // loop over imports and resolve each one
+  for (size_t i = 0; i < mod->num_imports; i++) {
+    // build module name buffer
+    // FIXME: should these be in the external api?
+    const pwasm_buf_t mod_buf = {
+      .ptr = (uint8_t*) mod->imports[i].mod,
+      .len = strlen(mod->imports[i].mod),
+    };
+
+    // find mod, check for error
+    const uint32_t mod_id = pwasm_env_find_mod(env, mod_buf);
+    if (!mod_id) {
+      // return failure
+      return NULL;
+    }
+
+    // build import name buffer
+    // FIXME: should these be in the external api?
+    const pwasm_buf_t name_buf = {
+      .ptr = (uint8_t*) mod->imports[i].name,
+      .len = strlen(mod->imports[i].name),
+    };
+
+    // find import, check for error
+    const uint32_t id = pwasm_env_find_import(env, mod_id, mod->imports[i].type, name_buf);
+    if (!id) {
+      // return failure
+      return NULL;
+    }
+
+    // add to results, increment count
+    ids[num_ids] = id;
+    num_ids++;
+
+    if (num_ids == PWASM_BATCH_SIZE) {
+      // flush results, check for error
+      if (!pwasm_vec_push(&(data->imports), PWASM_BATCH_SIZE, ids, NULL)) {
+        // TODO: log error
+        return NULL;
+      }
+
+      // clear count
+      num_ids = 0;
+    }
+  }
+
+  if (num_ids > 0) {
+    // flush results
+    if (!pwasm_vec_push(&(data->imports), num_ids, ids, NULL)) {
+      // TODO: log error
+      return NULL;
+    }
+  }
+
+  // return result (or NULL if mod->num_imports is zero)
+  return imports;
+}
+
 
 static uint32_t
 pwasm_interp_add_row(
@@ -3930,8 +4077,9 @@ pwasm_interp_on_add_mod(
   const char * const name,
   const pwasm_mod_t * const mod
 ) {
-  // TODO: need to resolve imports and create interp_mod instance, then
-  // add that instead of adding the mod directly
+  // TODO: need to resolve imports
+  const uint32_t * const imports = NULL;
+
 
   // build row
   const pwasm_interp_row_t mod_row = {
@@ -3942,7 +4090,10 @@ pwasm_interp_on_add_mod(
       .len = strlen(name),
     },
 
-    .mod  = mod,
+    .mod = {
+      .imports = imports,
+      .mod = mod,
+    },
   };
 
   // add mod
@@ -4002,8 +4153,12 @@ pwasm_interp_on_add_native(
   const char * const name,
   const pwasm_native_t * const mod
 ) {
-  // TODO: need to resolve imports and create interp_native instance,
-  // then add that instead of adding the native directly
+  // resolve imports, check for error
+  const uint32_t * const imports = pwasm_interp_add_native_imports(env, mod);
+  if (mod->num_imports && !imports) {
+    // return failure
+    return 0;
+  }
 
   // build row
   const pwasm_interp_row_t mod_row = {
@@ -4014,7 +4169,10 @@ pwasm_interp_on_add_native(
       .len = strlen(name),
     },
 
-    .native = mod,
+    .native = {
+      .imports = imports,
+      .native = mod,
+    },
   };
 
   // add mod, check for error
@@ -5612,18 +5770,17 @@ pwasm_interp_call(
 static uint32_t
 pwasm_interp_on_find_mod(
   pwasm_env_t * const env,
-  const char * const name
+  const pwasm_buf_t name
 ) {
   pwasm_interp_t * const data = env->env_data;
   const pwasm_interp_row_t *rows = pwasm_vec_get_data(&(data->rows));
   const size_t num_rows = pwasm_vec_get_size(&(data->rows));
-  const size_t name_len = strlen(name);
 
   for (size_t i = 0; i < num_rows; i++) {
     if (
       (rows[i].type == PWASM_INTERP_ROW_TYPE_MOD || rows[i].type == PWASM_INTERP_ROW_TYPE_NATIVE) &&
-      (rows[i].name.len == name_len) &&
-      !memcmp(name, rows[i].name.ptr, name_len)
+      (rows[i].name.len == name.len) &&
+      !memcmp(name.ptr, rows[i].name.ptr, name.len)
     ) {
       // return offset + 1 (prevent zero IDs)
       return i + 1;
@@ -5638,19 +5795,18 @@ static uint32_t
 pwasm_interp_on_find_func(
   pwasm_env_t * const env,
   const uint32_t mod_id,
-  const char * const name
+  const pwasm_buf_t name
 ) {
   pwasm_interp_t * const data = env->env_data;
   const pwasm_interp_row_t *rows = pwasm_vec_get_data(&(data->rows));
   const size_t num_rows = pwasm_vec_get_size(&(data->rows));
-  const size_t name_len = strlen(name);
   (void) mod_id;
 
   for (size_t i = 0; i < num_rows; i++) {
     if (
       (rows[i].type == PWASM_INTERP_ROW_TYPE_FUNC) &&
-      (rows[i].name.len == name_len) &&
-      !memcmp(name, rows[i].name.ptr, name_len)
+      (rows[i].name.len == name.len) &&
+      !memcmp(name.ptr, rows[i].name.ptr, name.len)
     ) {
       // return offset + 1 (prevent zero IDs)
       return i + 1;
@@ -5688,12 +5844,12 @@ pwasm_interp_on_call(
   switch(mod_row.type) {
   case PWASM_INTERP_ROW_TYPE_MOD:
     D("found func, calling it: %u", func_id);
-    return pwasm_interp_call(env, mod_row.mod, func_row.func.func_id);
+    return pwasm_interp_call(env, mod_row.mod.mod, func_row.func.func_id);
   case PWASM_INTERP_ROW_TYPE_NATIVE:
     D("found native func, calling it: %u", func_id);
     // FIXME: check bounds?
-    const pwasm_native_func_t * const func = mod_row.native->funcs + func_row.func.func_id;
-    return func->func(env, env->stack);
+    const pwasm_native_func_t * const func = mod_row.native.native->funcs + func_row.func.func_id;
+    return func->func(env, &mod_row.native);
   default:
     D("func_id %u maps to invalid mod_id %u", func_id, func_row.func.mod_id);
     return false;
@@ -5779,20 +5935,50 @@ pwasm_interp_on_get_elem(
   return false;
 }
 
+static uint32_t
+pwasm_interp_on_find_import(
+  pwasm_env_t * const env,
+  const uint32_t mod_id,
+  const pwasm_import_type_t type,
+  const pwasm_buf_t name
+) {
+  switch (type) {
+  case PWASM_IMPORT_TYPE_FUNC:
+    return pwasm_env_find_func(env, mod_id, name);
+  case PWASM_IMPORT_TYPE_GLOBAL:
+    // TODO
+    // return pwasm_env_find_global(env, mod_id, name);
+    return 0;
+  case PWASM_IMPORT_TYPE_TABLE:
+    // TODO
+    // return pwasm_env_find_table(env, mod_id, name);
+    return 0;
+  case PWASM_IMPORT_TYPE_MEM:
+    // TODO
+    // return pwasm_env_find_table(env, mod_id, name);
+    return 0;
+  default:
+    // unknown import type, return failure
+    // TODO: log error
+    return 0;
+  }
+}
+
 static const pwasm_env_cbs_t
 PWASM_INTERP_CBS = {
-  .init       = pwasm_interp_on_init,
-  .fini       = pwasm_interp_on_fini,
-  .add_mod    = pwasm_interp_on_add_mod,
-  .add_native = pwasm_interp_on_add_native,
-  .find_mod   = pwasm_interp_on_find_mod,
-  .find_func  = pwasm_interp_on_find_func,
-  .call       = pwasm_interp_on_call,
-  .mem_load   = pwasm_interp_on_mem_load,
-  .mem_store  = pwasm_interp_on_mem_store,
-  .mem_size   = pwasm_interp_on_mem_size,
-  .mem_grow   = pwasm_interp_on_mem_grow,
-  .get_elem   = pwasm_interp_on_get_elem,
+  .init         = pwasm_interp_on_init,
+  .fini         = pwasm_interp_on_fini,
+  .add_mod      = pwasm_interp_on_add_mod,
+  .add_native   = pwasm_interp_on_add_native,
+  .find_mod     = pwasm_interp_on_find_mod,
+  .find_func    = pwasm_interp_on_find_func,
+  .call         = pwasm_interp_on_call,
+  .mem_load     = pwasm_interp_on_mem_load,
+  .mem_store    = pwasm_interp_on_mem_store,
+  .mem_size     = pwasm_interp_on_mem_size,
+  .mem_grow     = pwasm_interp_on_mem_grow,
+  .get_elem     = pwasm_interp_on_get_elem,
+  .find_import  = pwasm_interp_on_find_import,
 };
 
 const pwasm_env_cbs_t *
