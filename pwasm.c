@@ -1216,7 +1216,7 @@ pwasm_parse_table(
 
   // get element type, check for error
   // NOTE: at the moment only one element type is supported
-  const pwasm_table_elem_type_t elem_type = curr.ptr[0];
+  const pwasm_elem_type_t elem_type = curr.ptr[0];
   if (elem_type != 0x70) {
     on_error("invalid table element type", cb_data);
     return 0;
@@ -1584,7 +1584,7 @@ pwasm_parse_expr(
  *       D("in.op = %u", in.op);
  *       FAIL("non-constant instruction in expr");
  *     }
- */ 
+ */
 
     // update control stack depth
     if (pwasm_op_is_enter(in.op) && !pwasm_depth_add(&ctl_depth, 1)) {
@@ -3713,16 +3713,60 @@ pwasm_env_add_native(
   return (cbs && cbs->add_native) ? cbs->add_native(env, name, mod) : 0;
 }
 
-bool
-pwasm_env_call(
+uint32_t
+pwasm_env_find_mod(
   pwasm_env_t * const env,
-  const char * const mod,
   const char * const name
 ) {
   const pwasm_env_cbs_t * const cbs = env->cbs;
-  D("env = %p, mod = \"%s\", name = \"%s\"", env, mod, name);
-  return (cbs && cbs->call) ? cbs->call(env, mod, name) : false;
+  D("env = %p, name = \"%s\"", env, name);
+  return (cbs && cbs->find_mod) ? cbs->find_mod(env, name) : 0;
 }
+
+uint32_t
+pwasm_env_find_func(
+  pwasm_env_t * const env,
+  const uint32_t mod_id,
+  const char * const name
+) {
+  const pwasm_env_cbs_t * const cbs = env->cbs;
+  D("env = %p, mod_id = %u, name = \"%s\"", env, mod_id, name);
+  return (cbs && cbs->find_func) ? cbs->find_func(env, mod_id, name) : 0;
+}
+
+bool
+pwasm_env_call(
+  pwasm_env_t * const env,
+  const uint32_t func_id
+) {
+  const pwasm_env_cbs_t * const cbs = env->cbs;
+  D("env = %p, func_id = %u", env, func_id);
+  return (cbs && cbs->call) ? cbs->call(env, func_id) : false;
+}
+
+bool
+pwasm_call(
+  pwasm_env_t * const env,
+  const char * const mod_name,
+  const char * const func_name
+) {
+  D("env = %p, mod = \"%s\", func = \"%s\"", env, mod_name, func_name);
+
+  // find mod, check for error
+  const uint32_t mod_id = pwasm_env_find_mod(env, mod_name);
+  if (!mod_id) {
+    return false;
+  }
+
+  // find func, check for error
+  const uint32_t func_id = pwasm_env_find_func(env, mod_id, func_name);
+  if (!func_id) {
+    return false;
+  }
+
+  return pwasm_env_call(env, func_id);
+}
+
 
 bool
 pwasm_env_mem_load(
@@ -3769,6 +3813,18 @@ pwasm_env_mem_grow(
   return have_cb ? cbs->mem_grow(env, grow, ret_val) : false;
 }
 
+bool
+pasm_env_get_elem(
+  pwasm_env_t * const env,
+  const uint32_t table_id,
+  const uint32_t elem_ofs,
+  uint32_t * const ret_id
+) {
+  const pwasm_env_cbs_t * const cbs = env->cbs;
+  const bool have_cb = (cbs && cbs->get_elem);
+  return have_cb ? cbs->get_elem(env, table_id, elem_ofs, ret_id) : false;
+}
+
 typedef enum {
   PWASM_INTERP_ROW_TYPE_MOD,
   PWASM_INTERP_ROW_TYPE_NATIVE,
@@ -3790,7 +3846,7 @@ typedef struct {
     pwasm_val_t global;
 
     struct {
-      size_t mod_ofs;
+      uint32_t mod_id;
       uint32_t func_id;
     } func;
   };
@@ -3874,8 +3930,11 @@ pwasm_interp_on_add_mod(
   const char * const name,
   const pwasm_mod_t * const mod
 ) {
+  // TODO: need to resolve imports and create interp_mod instance, then
+  // add that instead of adding the mod directly
+
   // build row
-  const pwasm_interp_row_t row = {
+  const pwasm_interp_row_t mod_row = {
     .type = PWASM_INTERP_ROW_TYPE_MOD,
 
     .name = {
@@ -3886,7 +3945,55 @@ pwasm_interp_on_add_mod(
     .mod  = mod,
   };
 
-  return pwasm_interp_add_row(env, &row);
+  // add mod
+  const uint32_t mod_id = pwasm_interp_add_row(env, &mod_row);
+  if (!mod_id) {
+    // return failure
+    return 0;
+  }
+
+  // add exports
+  for (size_t i = 0; i < mod->num_exports; i++) {
+    const pwasm_export_t export = mod->exports[i];
+
+    switch (export.type) {
+    case PWASM_EXPORT_TYPE_FUNC:
+      {
+        D("adding func %zu", i);
+
+        // build export function row
+        const pwasm_interp_row_t row = {
+          .type = PWASM_INTERP_ROW_TYPE_FUNC,
+
+          .name = {
+            .ptr = mod->bytes + export.name.ofs,
+            .len = export.name.len,
+          },
+
+          .func = {
+            .mod_id = mod_id,
+            .func_id = export.id,
+          },
+        };
+
+        // add function, check for error
+        const uint32_t func_id = pwasm_interp_add_row(env, &row);
+        if (!func_id) {
+          // return failure
+          return 0;
+        }
+      }
+
+      break;
+    default:
+      // TODO: add remaining export types
+      // return failure
+      return false;
+    }
+  }
+
+  // return success
+  return mod_id;
 }
 
 static uint32_t
@@ -3895,8 +4002,11 @@ pwasm_interp_on_add_native(
   const char * const name,
   const pwasm_native_t * const mod
 ) {
+  // TODO: need to resolve imports and create interp_native instance,
+  // then add that instead of adding the native directly
+
   // build row
-  const pwasm_interp_row_t row = {
+  const pwasm_interp_row_t mod_row = {
     .type     = PWASM_INTERP_ROW_TYPE_NATIVE,
 
     .name = {
@@ -3904,10 +4014,45 @@ pwasm_interp_on_add_native(
       .len = strlen(name),
     },
 
-    .native   = mod,
+    .native = mod,
   };
 
-  return pwasm_interp_add_row(env, &row);
+  // add mod, check for error
+  const uint32_t mod_id = pwasm_interp_add_row(env, &mod_row);
+  if (!mod_id) {
+    // return failure
+    return 0;
+  }
+
+  // add funcs
+  for (size_t i = 0; i < mod->num_funcs; i++) {
+    D("adding native func %zu", i);
+
+    // build export function row
+    const pwasm_interp_row_t row = {
+      .type = PWASM_INTERP_ROW_TYPE_FUNC,
+
+      .name = {
+        .ptr = (uint8_t*) mod->funcs[i].name,
+        .len = strlen(mod->funcs[i].name),
+      },
+
+      .func = {
+        .mod_id = mod_id,
+        .func_id = i,
+      },
+    };
+
+    // add function, check for error
+    const uint32_t func_id = pwasm_interp_add_row(env, &row);
+    if (!func_id) {
+      // return failure
+      return 0;
+    }
+  }
+
+  // return success
+  return mod_id;
 }
 
 typedef struct {
@@ -3935,6 +4080,31 @@ typedef struct {
   size_t ofs; // inst ofs
 } pwasm_ctl_stack_entry_t;
 
+// forward reference
+static bool pwasm_interp_call(pwasm_env_t *, const pwasm_mod_t *, uint32_t);
+
+static inline bool
+pwasm_interp_call_indirect(
+  const pwasm_interp_frame_t frame,
+  const uint32_t func_id
+) {
+  // TODO
+  (void) frame;
+  (void) func_id;
+
+/*
+ *   // get func handle, check for error
+ *   const uint32_t func_id = pwasm_interp_get_elem(frame.env, frame.mod_id, table_id, in.v_index.id);
+ *   if (!func_id) {
+ *     // return failure
+ *     return false;
+ *   }
+ */
+
+  // return failure
+  return false;
+}
+
 static bool
 pwasm_interp_eval_expr(
   const pwasm_interp_frame_t frame,
@@ -3945,7 +4115,7 @@ pwasm_interp_eval_expr(
 
   // get total number of globals
   // FIXME: calculate this on mod load
-  const size_t num_globals = frame.mod->num_globals + frame.mod->num_import_types[PWASM_IMPORT_TYPE_GLOBAL];
+  const size_t max_globals = frame.mod->num_globals + frame.mod->num_import_types[PWASM_IMPORT_TYPE_GLOBAL];
 
   // FIXME: move to frame, fix depth
   pwasm_ctl_stack_entry_t ctl_stack[PWASM_STACK_CHECK_MAX_DEPTH];
@@ -4121,14 +4291,24 @@ pwasm_interp_eval_expr(
 
       break;
     case PWASM_OP_RETURN:
-      // TODO: not implemented
-      return false;
+      // FIXME: is this all i need?
+      return true;
     case PWASM_OP_CALL:
-      // TODO: not implemented
-      return false;
+      // call function, check for error
+      if (!pwasm_interp_call(frame.env, frame.mod, in.v_index.id)) {
+        // return failure
+        return false;
+      }
+
+      break;
     case PWASM_OP_CALL_INDIRECT:
-      // TODO: not implemented
-      return false;
+      // call function, check for error
+      if (!pwasm_interp_call_indirect(frame, in.v_index.id)) {
+        // return failure
+        return false;
+      }
+
+      break;
     case PWASM_OP_DROP:
       stack->pos--;
 
@@ -4196,7 +4376,7 @@ pwasm_interp_eval_expr(
         const uint32_t id = in.v_index.id;
 
         // check local index
-        if (id >= num_globals) {
+        if (id >= max_globals) {
           // TODO: log error
           return false;
         }
@@ -4212,7 +4392,7 @@ pwasm_interp_eval_expr(
         const uint32_t id = in.v_index.id;
 
         // check global index
-        if (id >= num_globals) {
+        if (id >= max_globals) {
           // TODO: log error
           return false;
         }
@@ -4636,7 +4816,6 @@ pwasm_interp_eval_expr(
       {
         const uint32_t a = stack->ptr[stack->pos - 2].i32;
         const uint32_t b = stack->ptr[stack->pos - 1].i32;
-
         stack->ptr[stack->pos - 2].i32 = a + b;
         stack->pos--;
       }
@@ -4646,7 +4825,6 @@ pwasm_interp_eval_expr(
       {
         const uint32_t a = stack->ptr[stack->pos - 2].i32;
         const uint32_t b = stack->ptr[stack->pos - 1].i32;
-
         stack->ptr[stack->pos - 2].i32 = a - b;
         stack->pos--;
       }
@@ -4656,7 +4834,6 @@ pwasm_interp_eval_expr(
       {
         const uint32_t a = stack->ptr[stack->pos - 2].i32;
         const uint32_t b = stack->ptr[stack->pos - 1].i32;
-
         stack->ptr[stack->pos - 2].i32 = a * b;
         stack->pos--;
       }
@@ -4666,7 +4843,6 @@ pwasm_interp_eval_expr(
       {
         const int32_t a = (int32_t) stack->ptr[stack->pos - 2].i32;
         const int32_t b = (int32_t) stack->ptr[stack->pos - 1].i32;
-
         stack->ptr[stack->pos - 2].i32 = a / b;
         stack->pos--;
       }
@@ -4676,7 +4852,6 @@ pwasm_interp_eval_expr(
       {
         const uint32_t a = stack->ptr[stack->pos - 2].i32;
         const uint32_t b = stack->ptr[stack->pos - 1].i32;
-
         stack->ptr[stack->pos - 2].i32 = a / b;
         stack->pos--;
       }
@@ -4686,7 +4861,6 @@ pwasm_interp_eval_expr(
       {
         const int32_t a = (int32_t) stack->ptr[stack->pos - 2].i32;
         const int32_t b = (int32_t) stack->ptr[stack->pos - 1].i32;
-
         stack->ptr[stack->pos - 2].i32 = a % b;
         stack->pos--;
       }
@@ -4696,7 +4870,6 @@ pwasm_interp_eval_expr(
       {
         const uint32_t a = stack->ptr[stack->pos - 2].i32;
         const uint32_t b = stack->ptr[stack->pos - 1].i32;
-
         stack->ptr[stack->pos - 2].i32 = a % b;
         stack->pos--;
       }
@@ -4706,7 +4879,6 @@ pwasm_interp_eval_expr(
       {
         const uint32_t a = stack->ptr[stack->pos - 2].i32;
         const uint32_t b = stack->ptr[stack->pos - 1].i32;
-
         stack->ptr[stack->pos - 2].i32 = a & b;
         stack->pos--;
       }
@@ -4716,7 +4888,6 @@ pwasm_interp_eval_expr(
       {
         const uint32_t a = stack->ptr[stack->pos - 2].i32;
         const uint32_t b = stack->ptr[stack->pos - 1].i32;
-
         stack->ptr[stack->pos - 2].i32 = a | b;
         stack->pos--;
       }
@@ -4726,7 +4897,6 @@ pwasm_interp_eval_expr(
       {
         const uint32_t a = stack->ptr[stack->pos - 2].i32;
         const uint32_t b = stack->ptr[stack->pos - 1].i32;
-
         stack->ptr[stack->pos - 2].i32 = a ^ b;
         stack->pos--;
       }
@@ -4736,7 +4906,6 @@ pwasm_interp_eval_expr(
       {
         const uint32_t a = stack->ptr[stack->pos - 2].i32;
         const uint32_t b = stack->ptr[stack->pos - 1].i32;
-
         stack->ptr[stack->pos - 2].i32 = a << b;
         stack->pos--;
       }
@@ -4746,7 +4915,6 @@ pwasm_interp_eval_expr(
       {
         const int32_t a = (int32_t) stack->ptr[stack->pos - 2].i32;
         const uint32_t b = stack->ptr[stack->pos - 1].i32;
-
         stack->ptr[stack->pos - 2].i32 = a >> b;
         stack->pos--;
       }
@@ -4756,7 +4924,6 @@ pwasm_interp_eval_expr(
       {
         const uint32_t a = stack->ptr[stack->pos - 2].i32;
         const uint32_t b = stack->ptr[stack->pos - 1].i32;
-
         stack->ptr[stack->pos - 2].i32 = a >> b;
         stack->pos--;
       }
@@ -4766,7 +4933,6 @@ pwasm_interp_eval_expr(
       {
         const uint32_t a = stack->ptr[stack->pos - 2].i32;
         const uint32_t b = stack->ptr[stack->pos - 1].i32 & 0x3F;
-
         stack->ptr[stack->pos - 2].i32 = (a << b) | (a >> (32 - b));
         stack->pos--;
       }
@@ -4776,7 +4942,6 @@ pwasm_interp_eval_expr(
       {
         const uint32_t a = stack->ptr[stack->pos - 2].i32;
         const uint32_t b = stack->ptr[stack->pos - 1].i32 & 0x3F;
-
         stack->ptr[stack->pos - 2].i32 = (a << (32 - b)) | (a >> b);
         stack->pos--;
       }
@@ -4807,7 +4972,6 @@ pwasm_interp_eval_expr(
       {
         const uint64_t a = stack->ptr[stack->pos - 2].i64;
         const uint64_t b = stack->ptr[stack->pos - 1].i64;
-
         stack->ptr[stack->pos - 2].i64 = a + b;
         stack->pos--;
       }
@@ -4817,7 +4981,6 @@ pwasm_interp_eval_expr(
       {
         const uint64_t a = stack->ptr[stack->pos - 2].i64;
         const uint64_t b = stack->ptr[stack->pos - 1].i64;
-
         stack->ptr[stack->pos - 2].i64 = a - b;
         stack->pos--;
       }
@@ -4827,7 +4990,6 @@ pwasm_interp_eval_expr(
       {
         const uint64_t a = stack->ptr[stack->pos - 2].i64;
         const uint64_t b = stack->ptr[stack->pos - 1].i64;
-
         stack->ptr[stack->pos - 2].i64 = a * b;
         stack->pos--;
       }
@@ -4837,7 +4999,6 @@ pwasm_interp_eval_expr(
       {
         const int64_t a = (int64_t) stack->ptr[stack->pos - 2].i64;
         const int64_t b = (int64_t) stack->ptr[stack->pos - 1].i64;
-
         stack->ptr[stack->pos - 2].i64 = a / b;
         stack->pos--;
       }
@@ -4847,7 +5008,6 @@ pwasm_interp_eval_expr(
       {
         const uint64_t a = stack->ptr[stack->pos - 2].i64;
         const uint64_t b = stack->ptr[stack->pos - 1].i64;
-
         stack->ptr[stack->pos - 2].i64 = a / b;
         stack->pos--;
       }
@@ -4857,7 +5017,6 @@ pwasm_interp_eval_expr(
       {
         const int64_t a = (int64_t) stack->ptr[stack->pos - 2].i64;
         const int64_t b = (int64_t) stack->ptr[stack->pos - 1].i64;
-
         stack->ptr[stack->pos - 2].i64 = a % b;
         stack->pos--;
       }
@@ -4867,7 +5026,6 @@ pwasm_interp_eval_expr(
       {
         const uint64_t a = stack->ptr[stack->pos - 2].i64;
         const uint64_t b = stack->ptr[stack->pos - 1].i64;
-
         stack->ptr[stack->pos - 2].i64 = a % b;
         stack->pos--;
       }
@@ -4877,7 +5035,6 @@ pwasm_interp_eval_expr(
       {
         const uint64_t a = stack->ptr[stack->pos - 2].i64;
         const uint64_t b = stack->ptr[stack->pos - 1].i64;
-
         stack->ptr[stack->pos - 2].i64 = a & b;
         stack->pos--;
       }
@@ -4887,7 +5044,6 @@ pwasm_interp_eval_expr(
       {
         const uint64_t a = stack->ptr[stack->pos - 2].i64;
         const uint64_t b = stack->ptr[stack->pos - 1].i64;
-
         stack->ptr[stack->pos - 2].i64 = a | b;
         stack->pos--;
       }
@@ -4897,7 +5053,6 @@ pwasm_interp_eval_expr(
       {
         const uint64_t a = stack->ptr[stack->pos - 2].i64;
         const uint64_t b = stack->ptr[stack->pos - 1].i64;
-
         stack->ptr[stack->pos - 2].i64 = a ^ b;
         stack->pos--;
       }
@@ -4907,7 +5062,6 @@ pwasm_interp_eval_expr(
       {
         const uint64_t a = stack->ptr[stack->pos - 2].i64;
         const uint64_t b = stack->ptr[stack->pos - 1].i64;
-
         stack->ptr[stack->pos - 2].i64 = a << b;
         stack->pos--;
       }
@@ -4917,7 +5071,6 @@ pwasm_interp_eval_expr(
       {
         const int64_t a = (int64_t) stack->ptr[stack->pos - 2].i64;
         const uint64_t b = stack->ptr[stack->pos - 1].i64;
-
         stack->ptr[stack->pos - 2].i64 = a >> b;
         stack->pos--;
       }
@@ -4927,7 +5080,6 @@ pwasm_interp_eval_expr(
       {
         const uint64_t a = stack->ptr[stack->pos - 2].i64;
         const uint64_t b = stack->ptr[stack->pos - 1].i64;
-
         stack->ptr[stack->pos - 2].i64 = a >> b;
         stack->pos--;
       }
@@ -4937,7 +5089,6 @@ pwasm_interp_eval_expr(
       {
         const uint64_t a = stack->ptr[stack->pos - 2].i64;
         const uint64_t b = stack->ptr[stack->pos - 1].i64 & 0x7F;
-
         stack->ptr[stack->pos - 2].i64 = (a << b) | (a >> (64 - b));
         stack->pos--;
       }
@@ -4947,7 +5098,6 @@ pwasm_interp_eval_expr(
       {
         const uint64_t a = stack->ptr[stack->pos - 2].i64;
         const uint64_t b = stack->ptr[stack->pos - 1].i64 & 0x7F;
-
         stack->ptr[stack->pos - 2].i64 = (a << (64 - b)) | (a >> b);
         stack->pos--;
       }
@@ -5459,67 +5609,95 @@ pwasm_interp_call(
   return true;
 }
 
-static bool
-pwasm_interp_on_call(
+static uint32_t
+pwasm_interp_on_find_mod(
   pwasm_env_t * const env,
-  const char * const mod,
   const char * const name
 ) {
   pwasm_interp_t * const data = env->env_data;
   const pwasm_interp_row_t *rows = pwasm_vec_get_data(&(data->rows));
   const size_t num_rows = pwasm_vec_get_size(&(data->rows));
-  const size_t mod_len = strlen(mod);
   const size_t name_len = strlen(name);
 
-  // FIXME: everything about this is a horrific slow mess, so fix it
   for (size_t i = 0; i < num_rows; i++) {
-    switch (rows[i].type) {
-    case PWASM_INTERP_ROW_TYPE_MOD:
-      if (
-          (rows[i].name.len == mod_len) &&
-          !memcmp(mod, rows[i].name.ptr, mod_len)
-        ) {
-        for (uint32_t j = 0; j < rows[i].mod->num_exports; j++) {
-          const pwasm_export_t export = rows[i].mod->exports[j];
-          if (
-            (export.type == PWASM_EXPORT_TYPE_FUNC) &&
-            (export.name.len == name_len) &&
-            !memcmp(rows[i].mod->bytes + export.name.ofs, name, name_len)
-          ) {
-            D("found func, calling it: %u", export.id);
-            return pwasm_interp_call(env, rows[i].mod, export.id);
-          }
-        }
-
-        // return failure
-        return false;
-      }
-
-      break;
-    case PWASM_INTERP_ROW_TYPE_NATIVE:
-      if (
-          (rows[i].name.len == mod_len) &&
-          !memcmp(mod, rows[i].name.ptr, mod_len)
-      ) {
-        for (size_t j = 0; j < rows[i].native->num_funcs; j++) {
-          const pwasm_native_func_t * const func = rows[i].native->funcs + j;
-          if (!strncmp(name, func->name, name_len)) {
-            return func->func(env, env->stack);
-          }
-        }
-
-        // return failure
-        return false;
-      }
-
-      break;
-    default:
-      break;
+    if (
+      (rows[i].type == PWASM_INTERP_ROW_TYPE_MOD || rows[i].type == PWASM_INTERP_ROW_TYPE_NATIVE) &&
+      (rows[i].name.len == name_len) &&
+      !memcmp(name, rows[i].name.ptr, name_len)
+    ) {
+      // return offset + 1 (prevent zero IDs)
+      return i + 1;
     }
   }
 
   // return failure
-  return false;
+  return 0;
+}
+
+static uint32_t
+pwasm_interp_on_find_func(
+  pwasm_env_t * const env,
+  const uint32_t mod_id,
+  const char * const name
+) {
+  pwasm_interp_t * const data = env->env_data;
+  const pwasm_interp_row_t *rows = pwasm_vec_get_data(&(data->rows));
+  const size_t num_rows = pwasm_vec_get_size(&(data->rows));
+  const size_t name_len = strlen(name);
+  (void) mod_id;
+
+  for (size_t i = 0; i < num_rows; i++) {
+    if (
+      (rows[i].type == PWASM_INTERP_ROW_TYPE_FUNC) &&
+      (rows[i].name.len == name_len) &&
+      !memcmp(name, rows[i].name.ptr, name_len)
+    ) {
+      // return offset + 1 (prevent zero IDs)
+      return i + 1;
+    }
+  }
+
+  // return failure
+  return 0;
+}
+
+static bool
+pwasm_interp_on_call(
+  pwasm_env_t * const env,
+  const uint32_t func_id
+) {
+  pwasm_interp_t * const data = env->env_data;
+  const pwasm_interp_row_t *rows = pwasm_vec_get_data(&(data->rows));
+  const size_t num_rows = pwasm_vec_get_size(&(data->rows));
+
+  // check that func_id is in bounds
+  if (!func_id || func_id > num_rows) {
+    D("bad func_id: %u", func_id);
+    return false;
+  }
+
+  // get function row, check function type
+  const pwasm_interp_row_t func_row = rows[func_id - 1];
+  if (func_row.type != PWASM_INTERP_ROW_TYPE_FUNC) {
+    D("invalid func_id: %u", func_id);
+    return false;
+  }
+
+  // get mod row, check mod type
+  const pwasm_interp_row_t mod_row = rows[func_row.func.mod_id - 1];
+  switch(mod_row.type) {
+  case PWASM_INTERP_ROW_TYPE_MOD:
+    D("found func, calling it: %u", func_id);
+    return pwasm_interp_call(env, mod_row.mod, func_row.func.func_id);
+  case PWASM_INTERP_ROW_TYPE_NATIVE:
+    D("found native func, calling it: %u", func_id);
+    // FIXME: check bounds?
+    const pwasm_native_func_t * const func = mod_row.native->funcs + func_row.func.func_id;
+    return func->func(env, env->stack);
+  default:
+    D("func_id %u maps to invalid mod_id %u", func_id, func_row.func.mod_id);
+    return false;
+  }
 }
 
 static bool
@@ -5584,17 +5762,37 @@ pwasm_interp_on_mem_grow(
   return false;
 }
 
+static bool
+pwasm_interp_on_get_elem(
+  pwasm_env_t * const env,
+  const uint32_t table_id,
+  const uint32_t elem_ofs,
+  uint32_t * const ret_val
+) {
+  // TODO
+  (void) env;
+  (void) table_id;
+  (void) elem_ofs;
+  (void) ret_val;
+
+  // return failure
+  return false;
+}
+
 static const pwasm_env_cbs_t
 PWASM_INTERP_CBS = {
   .init       = pwasm_interp_on_init,
   .fini       = pwasm_interp_on_fini,
   .add_mod    = pwasm_interp_on_add_mod,
   .add_native = pwasm_interp_on_add_native,
+  .find_mod   = pwasm_interp_on_find_mod,
+  .find_func  = pwasm_interp_on_find_func,
   .call       = pwasm_interp_on_call,
   .mem_load   = pwasm_interp_on_mem_load,
   .mem_store  = pwasm_interp_on_mem_store,
   .mem_size   = pwasm_interp_on_mem_size,
   .mem_grow   = pwasm_interp_on_mem_grow,
+  .get_elem   = pwasm_interp_on_get_elem,
 };
 
 const pwasm_env_cbs_t *

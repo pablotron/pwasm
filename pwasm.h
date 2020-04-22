@@ -55,10 +55,10 @@ typedef struct {
   _Bool has_max;
 } pwasm_limits_t;
 
-typedef uint32_t pwasm_table_elem_type_t;
+typedef uint32_t pwasm_elem_type_t;
 
 typedef struct {
-  pwasm_table_elem_type_t elem_type; /* must be 0x70 */
+  pwasm_elem_type_t elem_type; /* must be 0x70 */
   pwasm_limits_t limits;
 } pwasm_table_t;
 
@@ -417,7 +417,6 @@ typedef struct {
     /* br_table */
     struct {
       union {
-        // FIXME: remove union
         pwasm_slice_t slice;
       } labels;
     } v_br_table;
@@ -813,6 +812,12 @@ typedef struct {
 } pwasm_native_func_t;
 
 typedef struct {
+  const pwasm_elem_type_t type; /* must be 0x70 */
+  const uint32_t *vals;
+  const size_t num_vals;
+} pwasm_native_table_t;
+
+typedef struct {
   const size_t num_funcs;
   const pwasm_native_func_t * const funcs;
 
@@ -822,7 +827,8 @@ typedef struct {
   size_t num_globals;
   const pwasm_val_t * const globals;
 
-  // TODO: tables
+  size_t num_tables;
+  const pwasm_native_table_t * const tables;
 } pwasm_native_t;
 
 typedef struct {
@@ -833,21 +839,43 @@ typedef struct {
   void (*fini)(pwasm_env_t *);
 
   // add native module with given name
+  // (returns zero on error)
   uint32_t (*add_native)(pwasm_env_t *, const char *, const pwasm_native_t *);
 
   // add module
+  // (returns zero on error)
   uint32_t (*add_mod)(pwasm_env_t *, const char *, const pwasm_mod_t *);
 
-  uint32_t (*find_global)(pwasm_env_t *, const char *, const char *);
+  // get module handle by name
+  // (returns zero on error)
+  uint32_t (*find_mod)(pwasm_env_t *, const char *);
+
+  // get global handle by mod_id and name
+  // (returns zero on error)
+  uint32_t (*find_global)(pwasm_env_t *, const uint32_t, const char *);
+
   pwasm_val_t (*get_global)(pwasm_env_t *, const uint32_t);
   uint32_t (*set_global)(pwasm_env_t *, const uint32_t, const pwasm_val_t);
 
-  // uint32_t (*find_table)(const char *, const char *);
-  // pwasm_val_t (*get_table)(const uint32_t);
+  // get table handle by mod_id and name
+  // (returns zero on error)
+  uint32_t (*find_table)(pwasm_env_t *, const uint32_t, const char *);
 
-  // uint32_t (*find_func)(pwasm_env_t *, const char *, const char *);
+  // get value of table element by table_id and offset
+  // (returns false on error)
+  _Bool (*get_elem)(
+    pwasm_env_t *, // env
+    const uint32_t, // table ID (must be zero)
+    const uint32_t, // element offset
+    uint32_t * // return value
+  );
+
+  // get function handle by mod_id and name
+  // (returns zero on error)
+  uint32_t (*find_func)(pwasm_env_t *, const uint32_t, const char *);
+
   // _Bool (*call_func)(pwasm_env_t *, uint32_t);
-  _Bool (*call)(pwasm_env_t *, const char *, const char *);
+  _Bool (*call)(pwasm_env_t *, const uint32_t);
 
   pwasm_buf_t (*find_mem)(pwasm_env_t *, const char *, const char *);
 
@@ -866,8 +894,6 @@ struct pwasm_env_t {
   void *user_data;
 };
 
-const pwasm_env_cbs_t *pwasm_interpreter_get_cbs(void);
-
 _Bool pwasm_env_init(
   pwasm_env_t *,
   pwasm_mem_ctx_t *,
@@ -878,22 +904,68 @@ _Bool pwasm_env_init(
 
 void pwasm_env_fini(pwasm_env_t *);
 
+/**
+ * Add a parsed WASM module to this environment and return a handle.
+ *
+ * Returns 0 on error.
+ */
 uint32_t pwasm_env_add_mod(
   pwasm_env_t *,
   const char * const,
   const pwasm_mod_t *
 );
 
+/**
+ * Add a native module to this environment and return a handle.
+ *
+ * Returns 0 on error.
+ */
 uint32_t pwasm_env_add_native(
   pwasm_env_t *,
   const char * const,
   const pwasm_native_t *
 );
 
+/**
+ * Find module in this environment and return a handle.
+ *
+ * Returns zero if an error occurred or the module could not be found.
+ */
+uint32_t pwasm_env_find_mod(
+  pwasm_env_t *,
+  const char *
+);
+
+/**
+ * Find function in given environment and module and return a handle.
+ *
+ * Returns zero if an error occurred or the function could not be found.
+ */
+uint32_t pwasm_env_find_func(
+  pwasm_env_t *,
+  const uint32_t,
+  const char *
+);
+
+/**
+ * Find table in given environment and module and return a handle.
+ *
+ * Returns zero if an error occurred or the table could not be found.
+ */
+uint32_t pwasm_env_find_table(
+  pwasm_env_t *,
+  const uint32_t,
+  const uint32_t
+);
+
+/**
+ * Call function by handle.
+ *
+ * Returns false if an error occurred.
+ */
 _Bool pwasm_env_call(
   pwasm_env_t *,
-  const char * const,
-  const char * const
+  const uint32_t
 );
 
 _Bool pwasm_env_mem_load(
@@ -920,6 +992,25 @@ _Bool pwasm_env_mem_grow(
   const uint32_t,
   uint32_t * const
 );
+
+/**
+ * Find and invoke function by module name and function name.
+ *
+ * Note: This function is a convenience wrapper around
+ * pwasm_env_find_mod(), pwasm_env_find_func(), and env_call().
+ *
+ * Returns false if an error occurred.
+ */
+_Bool pwasm_call(
+  pwasm_env_t *,
+  const char * const,
+  const char * const
+);
+
+/**
+ * Get callbacks for an interpreter environment.
+ */
+const pwasm_env_cbs_t *pwasm_interpreter_get_cbs(void);
 
 #ifdef __cplusplus
 };

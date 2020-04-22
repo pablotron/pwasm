@@ -243,8 +243,8 @@ run_env_tests(void) {
   stack.pos = 1;
 
   // call native.add_one
-  if (!pwasm_env_call(&env, "native", "add_one")) {
-    errx(EXIT_FAILURE, "pwasm_env_call() failed");
+  if (!pwasm_call(&env, "native", "add_one")) {
+    errx(EXIT_FAILURE, "pwasm_call() failed");
   }
 
   printf("native.add_one(3) = %u\n", stack.ptr[0].i32);
@@ -255,8 +255,8 @@ run_env_tests(void) {
   stack.pos = 2;
 
   // call native.add_one
-  if (!pwasm_env_call(&env, "native", "mul_two")) {
-    errx(EXIT_FAILURE, "pwasm_env_call() failed");
+  if (!pwasm_call(&env, "native", "mul_two")) {
+    errx(EXIT_FAILURE, "pwasm_call() failed");
   }
 
   printf("native.mul_two(3, 4) = %u\n", stack.ptr[0].i32);
@@ -265,8 +265,8 @@ run_env_tests(void) {
   stack.pos = 0;
 
   // call guide.life
-  if (!pwasm_env_call(&env, "guide", "life")) {
-    errx(EXIT_FAILURE, "pwasm_env_call() failed");
+  if (!pwasm_call(&env, "guide", "life")) {
+    errx(EXIT_FAILURE, "pwasm_call() failed");
   }
 
   // print result
