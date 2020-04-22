@@ -3861,6 +3861,8 @@ pwasm_interp_call(
 ) {
   const size_t num_import_funcs = mod->num_import_types[PWASM_IMPORT_TYPE_FUNC];
   pwasm_stack_t * const stack = env->stack;
+  // will be used for CALL and CALL_INDIRECT
+  // const size_t stack_pos = env->stack->pos;
 
   if (func_id < num_import_funcs) {
     // TODO
@@ -3891,9 +3893,57 @@ pwasm_interp_call(
     const pwasm_inst_t in = insts[i];
     D("in.op = %d", in.op);
     switch (in.op) {
+    case PWASM_OP_UNREACHABLE:
+      // FIXME: log error
+      return false;
+    case PWASM_OP_NOP:
+      // do nothing
+      return false;
+    case PWASM_OP_BLOCK:
+      // TODO: not implemented
+      return false;
+    case PWASM_OP_LOOP:
+      // TODO: not implemented
+      return false;
+    case PWASM_OP_IF:
+      // TODO: not implemented
+      return false;
+    case PWASM_OP_ELSE:
+      // TODO: not implemented
+      return false;
     case PWASM_OP_END:
+      // TODO: not implemented
       // FIXME: need to check results here better
       return (stack->pos == results.len);
+    case PWASM_OP_BR:
+      // TODO: not implemented
+      return false;
+    case PWASM_OP_BR_IF:
+      // TODO: not implemented
+      return false;
+    case PWASM_OP_BR_TABLE:
+      // TODO: not implemented
+      return false;
+    case PWASM_OP_RETURN:
+      // TODO: not implemented
+      return false;
+    case PWASM_OP_CALL:
+      // TODO: not implemented
+      return false;
+    case PWASM_OP_CALL_INDIRECT:
+      // TODO: not implemented
+      return false;
+    case PWASM_OP_DROP:
+      stack->pos--;
+      return false;
+    case PWASM_OP_SELECT:
+      {
+        const size_t ofs = stack->ptr[stack->pos - 1].i32 ? 3 : 2;
+        stack->ptr[stack->pos - 3] = stack->ptr[stack->pos - ofs];
+        stack->pos -= 2;
+      }
+
+      break;
     case PWASM_OP_I32_CONST:
       stack->ptr[stack->pos++].i32 = in.v_i32.val;
 
