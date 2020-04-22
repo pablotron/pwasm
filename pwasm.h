@@ -67,7 +67,7 @@ typedef struct {
   PWASM_VALUE_TYPE(0x7D, I64, "i64") \
   PWASM_VALUE_TYPE(0x7E, F32, "f32") \
   PWASM_VALUE_TYPE(0x7C, F64, "f64") \
-  PWASM_VALUE_TYPE(0x00, LAST, "unknown type")
+  PWASM_VALUE_TYPE(0x00, LAST, "unknown value type")
 
 typedef enum {
 #define PWASM_VALUE_TYPE(a, b, c) PWASM_VALUE_TYPE_ ## b = (a),
@@ -79,7 +79,19 @@ PWASM_VALUE_TYPE_DEFS
 
 const char *pwasm_value_type_get_name(const pwasm_value_type_t);
 
-typedef uint32_t pwasm_result_type_t;
+#define PWASM_RESULT_TYPE_DEFS \
+  PWASM_RESULT_TYPE(0x7F, I32, "i32") \
+  PWASM_RESULT_TYPE(0x7D, I64, "i64") \
+  PWASM_RESULT_TYPE(0x7E, F32, "f32") \
+  PWASM_RESULT_TYPE(0x7C, F64, "f64") \
+  PWASM_RESULT_TYPE(0x40, VOID, "void") \
+  PWASM_RESULT_TYPE(0x00, LAST, "unknown result type")
+
+typedef enum {
+#define PWASM_RESULT_TYPE(a, b, c) PWASM_RESULT_TYPE_ ## b = (a),
+PWASM_RESULT_TYPE_DEFS
+#undef PWASM_RESULT_TYPE
+} pwasm_result_type_t;
 
 const char *pwasm_result_type_get_name(const pwasm_result_type_t);
 
@@ -380,19 +392,32 @@ typedef struct {
   pwasm_buf_t buf;
 } pwasm_expr_t;
 
+
+typedef struct {
+  uint32_t align;
+  uint32_t offset;
+} pwasm_mem_imm_t;
+
 typedef struct {
   pwasm_op_t op;
 
   union {
-    /* block, loop */
+    /* block, loop, if */
     struct {
+      // block result type
       pwasm_result_type_t type;
+
+      // offset to else inst (if only)
+      size_t else_ofs;
+
+      // offset to end inst
+      size_t end_ofs;
     } v_block;
 
     /* br_table */
     struct {
       union {
-        pwasm_buf_t buf;
+        // FIXME: remove union
         pwasm_slice_t slice;
       } labels;
     } v_br_table;
@@ -403,10 +428,7 @@ typedef struct {
     } v_index;
 
     /* {i32,i64,f32,f64}.{load,store}* */
-    struct {
-      uint32_t align;
-      uint32_t offset;
-    } v_mem;
+    pwasm_mem_imm_t v_mem;
 
     /* const.i32 */
     struct {
@@ -609,6 +631,11 @@ typedef struct {
 
   void (*on_codes)(const pwasm_func_t *, const size_t, void *);
   void (*on_segments)(const pwasm_segment_t *, const size_t, void *);
+
+  // TODO (https://webassembly.github.io/spec/core/appendix/custom.html)
+  // void (*on_module_name)(const pwasm_buf_t, void *);
+  // void (*on_func_names)(const pwasm_func_name_t *, const size_t, void *);
+  // void (*on_local_names)(const pwasm_local_name_t *, const size_t, void *);
 
   void (*on_error)(const char *, void *);
 } pwasm_mod_parse_cbs_t;
@@ -823,6 +850,12 @@ typedef struct {
   _Bool (*call)(pwasm_env_t *, const char *, const char *);
 
   pwasm_buf_t (*find_mem)(pwasm_env_t *, const char *, const char *);
+
+  _Bool (*mem_load)(pwasm_env_t *, const pwasm_inst_t, const uint32_t, pwasm_val_t *);
+  _Bool (*mem_store)(pwasm_env_t *, const pwasm_inst_t, const uint32_t, const pwasm_val_t);
+
+  _Bool (*mem_size)(pwasm_env_t *, uint32_t *);
+  _Bool (*mem_grow)(pwasm_env_t *, const uint32_t, uint32_t *);
 } pwasm_env_cbs_t;
 
 struct pwasm_env_t {
@@ -861,6 +894,31 @@ _Bool pwasm_env_call(
   pwasm_env_t *,
   const char * const,
   const char * const
+);
+
+_Bool pwasm_env_mem_load(
+  pwasm_env_t *,
+  const pwasm_inst_t,
+  const uint32_t,
+  pwasm_val_t *
+);
+
+_Bool pwasm_env_mem_store(
+  pwasm_env_t *,
+  const pwasm_inst_t,
+  const uint32_t,
+  const pwasm_val_t
+);
+
+_Bool pwasm_env_mem_size(
+  pwasm_env_t *,
+  uint32_t * const
+);
+
+_Bool pwasm_env_mem_grow(
+  pwasm_env_t *,
+  const uint32_t,
+  uint32_t * const
 );
 
 #ifdef __cplusplus

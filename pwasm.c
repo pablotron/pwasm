@@ -2,6 +2,7 @@
 #include <string.h> // memcmp()
 #include <stdlib.h> // realloc()
 #include <unistd.h> // sysconf()
+#include <math.h> // fabs(), fabsf()
 #include "pwasm.h"
 
 /**
@@ -450,7 +451,13 @@ const char *
 pwasm_result_type_get_name(
   const pwasm_result_type_t v
 ) {
-  return (v == 0x40) ? "void" : pwasm_value_type_get_name(v);
+  switch (v) {
+#define PWASM_RESULT_TYPE(a, b, c) case a : return c;
+PWASM_RESULT_TYPE_DEFS
+#undef PWASM_RESULT_TYPE
+  default:
+    return "unknown result type";
+  }
 }
 
 /**
@@ -584,8 +591,8 @@ PWASM_OP_NUM_BITS[] = {
   // loads
   32, // i32.load
   64, // i64.load
-  32, // F32.LOAD
-  64, // F64.LOAD
+  32, // f32.load
+  64, // f64.load
    8, // i32.load8_s
    8, // i32.load8_u
   16, // i32.load16_s
@@ -3717,6 +3724,51 @@ pwasm_env_call(
   return (cbs && cbs->call) ? cbs->call(env, mod, name) : false;
 }
 
+bool
+pwasm_env_mem_load(
+  pwasm_env_t * const env,
+  const pwasm_inst_t in,
+  const uint32_t ofs,
+  pwasm_val_t * const ret_val
+) {
+  const pwasm_env_cbs_t * const cbs = env->cbs;
+  const bool have_cb = (cbs && cbs->mem_load);
+  return have_cb ? cbs->mem_load(env, in, ofs, ret_val) : false;
+}
+
+bool
+pwasm_env_mem_store(
+  pwasm_env_t * const env,
+  const pwasm_inst_t in,
+  const uint32_t ofs,
+  const pwasm_val_t val
+) {
+  const pwasm_env_cbs_t * const cbs = env->cbs;
+  const bool have_cb = (cbs && cbs->mem_store);
+  return have_cb ? cbs->mem_store(env, in, ofs, val) : false;
+}
+
+bool
+pwasm_env_mem_size(
+  pwasm_env_t * const env,
+  uint32_t * const ret_val
+) {
+  const pwasm_env_cbs_t * const cbs = env->cbs;
+  const bool have_cb = (cbs && cbs->mem_size);
+  return have_cb ? cbs->mem_size(env, ret_val) : false;
+}
+
+bool
+pwasm_env_mem_grow(
+  pwasm_env_t * const env,
+  const uint32_t grow,
+  uint32_t * const ret_val
+) {
+  const pwasm_env_cbs_t * const cbs = env->cbs;
+  const bool have_cb = (cbs && cbs->mem_grow);
+  return have_cb ? cbs->mem_grow(env, grow, ret_val) : false;
+}
+
 typedef enum {
   PWASM_INTERP_ROW_TYPE_MOD,
   PWASM_INTERP_ROW_TYPE_NATIVE,
@@ -3870,6 +3922,19 @@ typedef struct {
   pwasm_slice_t locals;
 } pwasm_interp_frame_t;
 
+typedef enum {
+  CTL_BLOCK,
+  CTL_LOOP,
+  CTL_IF,
+  CTL_LAST,
+} pwasm_ctl_type_t;
+
+typedef struct {
+  pwasm_ctl_type_t type; // return value type
+  size_t depth; // value stack depth
+  size_t ofs; // inst ofs
+} pwasm_ctl_stack_entry_t;
+
 static bool
 pwasm_interp_eval_expr(
   const pwasm_interp_frame_t frame,
@@ -3877,6 +3942,14 @@ pwasm_interp_eval_expr(
 ) {
   pwasm_stack_t * const stack = frame.env->stack;
   const pwasm_inst_t * const insts = frame.mod->insts + expr.ofs;
+
+  // get total number of globals
+  // FIXME: calculate this on mod load
+  const size_t num_globals = frame.mod->num_globals + frame.mod->num_import_types[PWASM_IMPORT_TYPE_GLOBAL];
+
+  // FIXME: move to frame, fix depth
+  pwasm_ctl_stack_entry_t ctl_stack[PWASM_STACK_CHECK_MAX_DEPTH];
+  size_t depth = 0;
 
   D("expr = { .ofs = %zu, .len = %zu }, num_insts = %zu", expr.ofs, expr.len, frame.mod->num_insts);
 
@@ -3892,31 +3965,161 @@ pwasm_interp_eval_expr(
       // do nothing
       return false;
     case PWASM_OP_BLOCK:
-      // TODO: not implemented
-      return false;
+      ctl_stack[depth++] = (pwasm_ctl_stack_entry_t) {
+        .type   = CTL_BLOCK,
+        .depth  = stack->pos,
+        .ofs    = i,
+      };
+
+      break;
     case PWASM_OP_LOOP:
-      // TODO: not implemented
-      return false;
+      ctl_stack[depth++] = (pwasm_ctl_stack_entry_t) {
+        .type   = CTL_LOOP,
+        .depth  = stack->pos,
+        .ofs    = i,
+      };
+
+      break;
     case PWASM_OP_IF:
-      // TODO: not implemented
-      return false;
+      {
+        // pop last value from value stack
+        const uint32_t tail = stack->ptr[--stack->pos].i32;
+
+        // get false expr offset
+        const size_t else_ofs = in.v_block.else_ofs ? in.v_block.else_ofs : in.v_block.end_ofs;
+
+        // push to control stack
+        ctl_stack[depth++] = (pwasm_ctl_stack_entry_t) {
+          .type   = CTL_IF,
+          .depth  = stack->pos,
+          .ofs    = i,
+        };
+
+        // increment instruction pointer
+        i += tail ? 0 : else_ofs;
+      }
+
+      break;
     case PWASM_OP_ELSE:
-      // TODO: not implemented
-      return false;
+      // skip to end inst
+      i = ctl_stack[depth - 1].ofs + insts[i].v_block.end_ofs - 1;
+
+      break;
     case PWASM_OP_END:
-      // TODO: not implemented
-      // FIXME: need to check results here better
-      // return (stack->pos == results.len);
-      return true;
+      if (depth) {
+        const pwasm_ctl_stack_entry_t ctl_tail = ctl_stack[depth - 1];
+
+        if (insts[ctl_tail.ofs].v_block.type == PWASM_RESULT_TYPE_VOID) {
+          // reset value stack, pop control stack
+          stack->pos = ctl_tail.depth;
+          depth--;
+        } else {
+          // pop result, reset value stack, pop control stack
+          stack->ptr[ctl_tail.depth] = stack->ptr[stack->pos - 1];
+          stack->pos = ctl_tail.depth + 1;
+          depth--;
+        }
+      } else {
+        // return success
+        // FIXME: is this correct?
+        return true;
+      }
+
+      break;
     case PWASM_OP_BR:
-      // TODO: not implemented
-      return false;
+      {
+        // check branch index
+        // FIXME: check in check for overflow here
+        if (in.v_index.id >= depth - 1) {
+          return false;
+        }
+
+        // decriment control stack
+        depth -= in.v_index.id;
+
+        const pwasm_ctl_stack_entry_t ctl_tail = ctl_stack[depth - 1];
+
+        if (ctl_tail.type == CTL_LOOP) {
+          // reset control stack
+          i = ctl_tail.ofs;
+          stack->pos = ctl_tail.depth;
+        } else if (insts[ctl_tail.ofs].v_block.type == PWASM_RESULT_TYPE_VOID) {
+          // reset value stack, pop control stack
+          stack->pos = ctl_tail.depth;
+          depth--;
+        } else {
+          // pop result, reset value stack, pop control stack
+          stack->ptr[ctl_tail.depth] = stack->ptr[stack->pos - 1];
+          stack->pos = ctl_tail.depth + 1;
+          depth--;
+        }
+      }
+
+      break;
     case PWASM_OP_BR_IF:
-      // TODO: not implemented
-      return false;
+      if (stack->ptr[--stack->pos].i32) {
+        // check branch index
+        // FIXME: need to check in "check" for overflow here
+        if (in.v_index.id >= depth - 1) {
+          return false;
+        }
+
+        // decriment control stack
+        depth -= in.v_index.id;
+
+        const pwasm_ctl_stack_entry_t ctl_tail = ctl_stack[depth - 1];
+
+        if (ctl_tail.type == CTL_LOOP) {
+          i = ctl_tail.ofs;
+          stack->pos = ctl_tail.depth;
+        } else if (insts[ctl_tail.ofs].v_block.type == PWASM_RESULT_TYPE_VOID) {
+          // reset value stack, pop control stack
+          stack->pos = ctl_tail.depth;
+          depth--;
+        } else {
+          // pop result, reset value stack, pop control stack
+          stack->ptr[ctl_tail.depth] = stack->ptr[stack->pos - 1];
+          stack->pos = ctl_tail.depth + 1;
+          depth--;
+        }
+      }
+
+      break;
     case PWASM_OP_BR_TABLE:
-      // TODO: not implemented
-      return false;
+      {
+        // get value from stack, branch labels, label offset, and then index
+        const uint32_t val = stack->ptr[--stack->pos].i32;
+        const pwasm_slice_t labels = in.v_br_table.labels.slice;
+        const size_t labels_ofs = labels.ofs + MIN(val, labels.len - 1);
+        const uint32_t id = frame.mod->u32s[labels_ofs];
+
+        // check for branch index overflow
+        // FIXME: move to check()
+        if (id >= depth - 1) {
+          return false;
+        }
+
+        // decriment control stack
+        depth -= id;
+
+        const pwasm_ctl_stack_entry_t ctl_tail = ctl_stack[depth - 1];
+
+        if (ctl_tail.type == CTL_LOOP) {
+          i = ctl_tail.ofs;
+          stack->pos = ctl_tail.depth;
+        } else if (insts[ctl_tail.ofs].v_block.type == PWASM_RESULT_TYPE_VOID) {
+          // reset value stack, pop control stack
+          stack->pos = ctl_tail.depth;
+          depth--;
+        } else {
+          // pop result, reset value stack, pop control stack
+          stack->ptr[ctl_tail.depth] = stack->ptr[stack->pos - 1];
+          stack->pos = ctl_tail.depth + 1;
+          depth--;
+        }
+      }
+
+      break;
     case PWASM_OP_RETURN:
       // TODO: not implemented
       return false;
@@ -3928,7 +4131,8 @@ pwasm_interp_eval_expr(
       return false;
     case PWASM_OP_DROP:
       stack->pos--;
-      return false;
+
+      break;
     case PWASM_OP_SELECT:
       {
         const size_t ofs = stack->ptr[stack->pos - 1].i32 ? 3 : 2;
@@ -3937,8 +4141,495 @@ pwasm_interp_eval_expr(
       }
 
       break;
+    case PWASM_OP_LOCAL_GET:
+      {
+        // get local index
+        const uint32_t id = in.v_index.id;
+
+        // check local index
+        if (id >= frame.locals.len) {
+          // TODO: log error
+          return false;
+        }
+
+        // push local value
+        stack->ptr[stack->pos++] = stack->ptr[frame.locals.ofs + id];
+      }
+
+      break;
+    case PWASM_OP_LOCAL_SET:
+      {
+        // get local index
+        const uint32_t id = in.v_index.id;
+
+        // check local index
+        if (id >= frame.locals.len) {
+          // TODO: log error
+          return false;
+        }
+
+        // set local value, pop stack
+        stack->ptr[frame.locals.ofs + id] = stack->ptr[stack->pos - 1];
+        stack->pos--;
+      }
+
+      break;
+    case PWASM_OP_LOCAL_TEE:
+      {
+        // get local index
+        const uint32_t id = in.v_index.id;
+
+        // check local index
+        if (id >= frame.locals.len) {
+          // TODO: log error
+          return false;
+        }
+
+        // set local value, keep stack (tee)
+        stack->ptr[frame.locals.ofs + id] = stack->ptr[stack->pos - 1];
+      }
+
+      break;
+    case PWASM_OP_GLOBAL_GET:
+      {
+        // get global index
+        const uint32_t id = in.v_index.id;
+
+        // check local index
+        if (id >= num_globals) {
+          // TODO: log error
+          return false;
+        }
+
+        // push global value
+        stack->ptr[stack->pos++] = frame.env->cbs->get_global(frame.env, id);
+      }
+
+      break;
+    case PWASM_OP_GLOBAL_SET:
+      {
+        // get global index
+        const uint32_t id = in.v_index.id;
+
+        // check global index
+        if (id >= num_globals) {
+          // TODO: log error
+          return false;
+        }
+
+        // set global value, pop stack
+        frame.env->cbs->set_global(frame.env, id, stack->ptr[stack->pos - 1]);
+        stack->pos--;
+      }
+
+      break;
+    case PWASM_OP_I32_LOAD:
+    case PWASM_OP_I64_LOAD:
+    case PWASM_OP_F32_LOAD:
+    case PWASM_OP_F64_LOAD:
+    case PWASM_OP_I32_LOAD8_S:
+    case PWASM_OP_I32_LOAD8_U:
+    case PWASM_OP_I32_LOAD16_S:
+    case PWASM_OP_I32_LOAD16_U:
+    case PWASM_OP_I64_LOAD8_S:
+    case PWASM_OP_I64_LOAD8_U:
+    case PWASM_OP_I64_LOAD16_S:
+    case PWASM_OP_I64_LOAD16_U:
+    case PWASM_OP_I64_LOAD32_S:
+    case PWASM_OP_I64_LOAD32_U:
+      {
+        // get offset operand
+        const uint32_t ofs = stack->ptr[stack->pos - 1].i32;
+
+        // load value, check for error
+        pwasm_val_t val;
+        if (!pwasm_env_mem_load(frame.env, in, ofs, &val)) {
+          return false;
+        }
+
+        // pop ofs operand, push val
+        stack->ptr[stack->pos - 1] = val;
+      }
+
+      break;
+    case PWASM_OP_I32_STORE:
+    case PWASM_OP_I64_STORE:
+    case PWASM_OP_F32_STORE:
+    case PWASM_OP_F64_STORE:
+    case PWASM_OP_I32_STORE8:
+    case PWASM_OP_I32_STORE16:
+    case PWASM_OP_I64_STORE8:
+    case PWASM_OP_I64_STORE16:
+    case PWASM_OP_I64_STORE32:
+      {
+        // get offset operand and value
+        const uint32_t ofs = stack->ptr[stack->pos - 1].i32;
+        const pwasm_val_t val = stack->ptr[stack->pos - 2];
+        stack->pos -= 2;
+
+        // store value, check for error
+        if (!pwasm_env_mem_store(frame.env, in, ofs, val)) {
+          return false;
+        }
+      }
+
+      break;
+    case PWASM_OP_MEMORY_SIZE:
+      {
+        // get memory size, check for error
+        uint32_t size;
+        if (!pwasm_env_mem_size(frame.env, &size)) {
+          return false;
+        }
+
+        // push size to stack
+        stack->ptr[stack->pos++].i32 = size;
+      }
+
+      break;
+    case PWASM_OP_MEMORY_GROW:
+      {
+        // get grow operand
+        const uint32_t grow = stack->ptr[stack->pos - 1].i32;
+
+        // grow memory, check for error
+        uint32_t size;
+        if (!pwasm_env_mem_grow(frame.env, grow, &size)) {
+          return false;
+        }
+
+        // pop operand, push result
+        stack->ptr[stack->pos - 1].i32 = size;
+      }
+
+      break;
     case PWASM_OP_I32_CONST:
       stack->ptr[stack->pos++].i32 = in.v_i32.val;
+
+      break;
+    case PWASM_OP_I64_CONST:
+      stack->ptr[stack->pos++].i64 = in.v_i64.val;
+
+      break;
+    case PWASM_OP_F32_CONST:
+      stack->ptr[stack->pos++].f32 = in.v_f32.val;
+
+      break;
+    case PWASM_OP_F64_CONST:
+      stack->ptr[stack->pos++].f64 = in.v_f64.val;
+
+      break;
+    case PWASM_OP_I32_EQZ:
+      stack->ptr[stack->pos - 1].i32 = (stack->ptr[stack->pos - 1].i32 == 0);
+
+      break;
+    case PWASM_OP_I32_EQ:
+      {
+        const uint32_t a = stack->ptr[stack->pos - 2].i32;
+        const uint32_t b = stack->ptr[stack->pos - 1].i32;
+        stack->ptr[stack->pos - 2].i32 = (a == b);
+        stack->pos--;
+      }
+
+      break;
+    case PWASM_OP_I32_NE:
+      {
+        const uint32_t a = stack->ptr[stack->pos - 2].i32;
+        const uint32_t b = stack->ptr[stack->pos - 1].i32;
+        stack->ptr[stack->pos - 2].i32 = (a != b);
+        stack->pos--;
+      }
+
+      break;
+    case PWASM_OP_I32_LT_S:
+      {
+        const int32_t a = (int32_t) stack->ptr[stack->pos - 2].i32;
+        const int32_t b = (int32_t) stack->ptr[stack->pos - 1].i32;
+        stack->ptr[stack->pos - 2].i32 = (a < b);
+        stack->pos--;
+      }
+
+      break;
+    case PWASM_OP_I32_LT_U:
+      {
+        const uint32_t a = stack->ptr[stack->pos - 2].i32;
+        const uint32_t b = stack->ptr[stack->pos - 1].i32;
+        stack->ptr[stack->pos - 2].i32 = (a < b);
+        stack->pos--;
+      }
+
+      break;
+    case PWASM_OP_I32_GT_S:
+      {
+        const int32_t a = (int32_t) stack->ptr[stack->pos - 2].i32;
+        const int32_t b = (int32_t) stack->ptr[stack->pos - 1].i32;
+        stack->ptr[stack->pos - 2].i32 = (a > b);
+        stack->pos--;
+      }
+
+      break;
+    case PWASM_OP_I32_GT_U:
+      {
+        const uint32_t a = stack->ptr[stack->pos - 2].i32;
+        const uint32_t b = stack->ptr[stack->pos - 1].i32;
+        stack->ptr[stack->pos - 2].i32 = (a > b);
+        stack->pos--;
+      }
+
+      break;
+    case PWASM_OP_I32_LE_S:
+      {
+        const int32_t a = (int32_t) stack->ptr[stack->pos - 2].i32;
+        const int32_t b = (int32_t) stack->ptr[stack->pos - 1].i32;
+        stack->ptr[stack->pos - 2].i32 = (a <= b);
+        stack->pos--;
+      }
+
+      break;
+    case PWASM_OP_I32_LE_U:
+      {
+        const uint32_t a = stack->ptr[stack->pos - 2].i32;
+        const uint32_t b = stack->ptr[stack->pos - 1].i32;
+        stack->ptr[stack->pos - 2].i32 = (a <= b);
+        stack->pos--;
+      }
+
+      break;
+    case PWASM_OP_I32_GE_S:
+      {
+        const int32_t a = (int32_t) stack->ptr[stack->pos - 2].i32;
+        const int32_t b = (int32_t) stack->ptr[stack->pos - 1].i32;
+        stack->ptr[stack->pos - 2].i32 = (a <= b);
+        stack->pos--;
+      }
+
+      break;
+    case PWASM_OP_I32_GE_U:
+      {
+        const uint32_t a = stack->ptr[stack->pos - 2].i32;
+        const uint32_t b = stack->ptr[stack->pos - 1].i32;
+        stack->ptr[stack->pos - 2].i32 = (a <= b);
+        stack->pos--;
+      }
+
+      break;
+    case PWASM_OP_I64_EQ:
+      {
+        const uint64_t a = stack->ptr[stack->pos - 2].i64;
+        const uint64_t b = stack->ptr[stack->pos - 1].i64;
+        stack->ptr[stack->pos - 2].i32 = (a == b);
+        stack->pos--;
+      }
+
+      break;
+    case PWASM_OP_I64_NE:
+      {
+        const uint64_t a = stack->ptr[stack->pos - 2].i64;
+        const uint64_t b = stack->ptr[stack->pos - 1].i64;
+        stack->ptr[stack->pos - 2].i32 = (a != b);
+        stack->pos--;
+      }
+
+      break;
+    case PWASM_OP_I64_LT_S:
+      {
+        const int64_t a = (int64_t) stack->ptr[stack->pos - 2].i64;
+        const int64_t b = (int64_t) stack->ptr[stack->pos - 1].i64;
+        stack->ptr[stack->pos - 2].i32 = (a < b);
+        stack->pos--;
+      }
+
+      break;
+    case PWASM_OP_I64_LT_U:
+      {
+        const uint64_t a = stack->ptr[stack->pos - 2].i64;
+        const uint64_t b = stack->ptr[stack->pos - 1].i64;
+        stack->ptr[stack->pos - 2].i32 = (a < b);
+        stack->pos--;
+      }
+
+      break;
+    case PWASM_OP_I64_GT_S:
+      {
+        const int64_t a = (int64_t) stack->ptr[stack->pos - 2].i64;
+        const int64_t b = (int64_t) stack->ptr[stack->pos - 1].i64;
+        stack->ptr[stack->pos - 2].i32 = (a > b);
+        stack->pos--;
+      }
+
+      break;
+    case PWASM_OP_I64_GT_U:
+      {
+        const uint64_t a = stack->ptr[stack->pos - 2].i64;
+        const uint64_t b = stack->ptr[stack->pos - 1].i64;
+        stack->ptr[stack->pos - 2].i32 = (a > b);
+        stack->pos--;
+      }
+
+      break;
+    case PWASM_OP_I64_LE_S:
+      {
+        const int64_t a = (int64_t) stack->ptr[stack->pos - 2].i64;
+        const int64_t b = (int64_t) stack->ptr[stack->pos - 1].i64;
+        stack->ptr[stack->pos - 2].i32 = (a <= b);
+        stack->pos--;
+      }
+
+      break;
+    case PWASM_OP_I64_LE_U:
+      {
+        const uint64_t a = stack->ptr[stack->pos - 2].i64;
+        const uint64_t b = stack->ptr[stack->pos - 1].i64;
+        stack->ptr[stack->pos - 2].i32 = (a <= b);
+        stack->pos--;
+      }
+
+      break;
+    case PWASM_OP_I64_GE_S:
+      {
+        const int64_t a = (int64_t) stack->ptr[stack->pos - 2].i64;
+        const int64_t b = (int64_t) stack->ptr[stack->pos - 1].i64;
+        stack->ptr[stack->pos - 2].i32 = (a <= b);
+        stack->pos--;
+      }
+
+      break;
+    case PWASM_OP_I64_GE_U:
+      {
+        const uint64_t a = stack->ptr[stack->pos - 2].i64;
+        const uint64_t b = stack->ptr[stack->pos - 1].i64;
+        stack->ptr[stack->pos - 2].i32 = (a <= b);
+        stack->pos--;
+      }
+
+      break;
+    case PWASM_OP_F32_EQ:
+      {
+        const float a = stack->ptr[stack->pos - 2].f32;
+        const float b = stack->ptr[stack->pos - 1].f32;
+        stack->ptr[stack->pos - 2].i32 = (a == b);
+        stack->pos--;
+      }
+
+      break;
+    case PWASM_OP_F32_NE:
+      {
+        const float a = stack->ptr[stack->pos - 2].f32;
+        const float b = stack->ptr[stack->pos - 1].f32;
+        stack->ptr[stack->pos - 2].i32 = (a != b);
+        stack->pos--;
+      }
+
+      break;
+    case PWASM_OP_F32_LT:
+      {
+        const float a = stack->ptr[stack->pos - 2].f32;
+        const float b = stack->ptr[stack->pos - 1].f32;
+        stack->ptr[stack->pos - 2].i32 = (a < b);
+        stack->pos--;
+      }
+
+      break;
+    case PWASM_OP_F32_GT:
+      {
+        const float a = stack->ptr[stack->pos - 2].f32;
+        const float b = stack->ptr[stack->pos - 1].f32;
+        stack->ptr[stack->pos - 2].i32 = (a > b);
+        stack->pos--;
+      }
+
+      break;
+    case PWASM_OP_F32_LE:
+      {
+        const float a = stack->ptr[stack->pos - 2].f32;
+        const float b = stack->ptr[stack->pos - 1].f32;
+        stack->ptr[stack->pos - 2].i32 = (a <= b);
+        stack->pos--;
+      }
+
+      break;
+    case PWASM_OP_F32_GE:
+      {
+        const float a = stack->ptr[stack->pos - 2].f32;
+        const float b = stack->ptr[stack->pos - 1].f32;
+        stack->ptr[stack->pos - 2].i32 = (a >= b);
+        stack->pos--;
+      }
+
+      break;
+    case PWASM_OP_F64_EQ:
+      {
+        const double a = stack->ptr[stack->pos - 2].f64;
+        const double b = stack->ptr[stack->pos - 1].f64;
+        stack->ptr[stack->pos - 2].i32 = (a == b);
+        stack->pos--;
+      }
+
+      break;
+    case PWASM_OP_F64_NE:
+      {
+        const double a = stack->ptr[stack->pos - 2].f64;
+        const double b = stack->ptr[stack->pos - 1].f64;
+        stack->ptr[stack->pos - 2].i32 = (a != b);
+        stack->pos--;
+      }
+
+      break;
+    case PWASM_OP_F64_LT:
+      {
+        const double a = stack->ptr[stack->pos - 2].f64;
+        const double b = stack->ptr[stack->pos - 1].f64;
+        stack->ptr[stack->pos - 2].i32 = (a < b);
+        stack->pos--;
+      }
+
+      break;
+    case PWASM_OP_F64_GT:
+      {
+        const double a = stack->ptr[stack->pos - 2].f64;
+        const double b = stack->ptr[stack->pos - 1].f64;
+        stack->ptr[stack->pos - 2].i32 = (a > b);
+        stack->pos--;
+      }
+
+      break;
+    case PWASM_OP_F64_LE:
+      {
+        const double a = stack->ptr[stack->pos - 2].f64;
+        const double b = stack->ptr[stack->pos - 1].f64;
+        stack->ptr[stack->pos - 2].i32 = (a <= b);
+        stack->pos--;
+      }
+
+      break;
+    case PWASM_OP_F64_GE:
+      {
+        const double a = stack->ptr[stack->pos - 2].f64;
+        const double b = stack->ptr[stack->pos - 1].f64;
+        stack->ptr[stack->pos - 2].i32 = (a >= b);
+        stack->pos--;
+      }
+
+      break;
+    case PWASM_OP_I32_CLZ:
+      {
+        const int val = __builtin_clz(stack->ptr[stack->pos - 1].i32);
+        stack->ptr[stack->pos - 1].i32 = val;
+      }
+
+      break;
+    case PWASM_OP_I32_CTZ:
+      {
+        const int val = __builtin_ctz(stack->ptr[stack->pos - 1].i32);
+        stack->ptr[stack->pos - 1].i32 = val;
+      }
+
+      break;
+    case PWASM_OP_I32_POPCNT:
+      {
+        const int val = __builtin_popcount(stack->ptr[stack->pos - 1].i32);
+        stack->ptr[stack->pos - 1].i32 = val;
+      }
 
       break;
     case PWASM_OP_I32_ADD:
@@ -3968,6 +4659,708 @@ pwasm_interp_eval_expr(
 
         stack->ptr[stack->pos - 2].i32 = a * b;
         stack->pos--;
+      }
+
+      break;
+    case PWASM_OP_I32_DIV_S:
+      {
+        const int32_t a = (int32_t) stack->ptr[stack->pos - 2].i32;
+        const int32_t b = (int32_t) stack->ptr[stack->pos - 1].i32;
+
+        stack->ptr[stack->pos - 2].i32 = a / b;
+        stack->pos--;
+      }
+
+      break;
+    case PWASM_OP_I32_DIV_U:
+      {
+        const uint32_t a = stack->ptr[stack->pos - 2].i32;
+        const uint32_t b = stack->ptr[stack->pos - 1].i32;
+
+        stack->ptr[stack->pos - 2].i32 = a / b;
+        stack->pos--;
+      }
+
+      break;
+    case PWASM_OP_I32_REM_S:
+      {
+        const int32_t a = (int32_t) stack->ptr[stack->pos - 2].i32;
+        const int32_t b = (int32_t) stack->ptr[stack->pos - 1].i32;
+
+        stack->ptr[stack->pos - 2].i32 = a % b;
+        stack->pos--;
+      }
+
+      break;
+    case PWASM_OP_I32_REM_U:
+      {
+        const uint32_t a = stack->ptr[stack->pos - 2].i32;
+        const uint32_t b = stack->ptr[stack->pos - 1].i32;
+
+        stack->ptr[stack->pos - 2].i32 = a % b;
+        stack->pos--;
+      }
+
+      break;
+    case PWASM_OP_I32_AND:
+      {
+        const uint32_t a = stack->ptr[stack->pos - 2].i32;
+        const uint32_t b = stack->ptr[stack->pos - 1].i32;
+
+        stack->ptr[stack->pos - 2].i32 = a & b;
+        stack->pos--;
+      }
+
+      break;
+    case PWASM_OP_I32_OR:
+      {
+        const uint32_t a = stack->ptr[stack->pos - 2].i32;
+        const uint32_t b = stack->ptr[stack->pos - 1].i32;
+
+        stack->ptr[stack->pos - 2].i32 = a | b;
+        stack->pos--;
+      }
+
+      break;
+    case PWASM_OP_I32_XOR:
+      {
+        const uint32_t a = stack->ptr[stack->pos - 2].i32;
+        const uint32_t b = stack->ptr[stack->pos - 1].i32;
+
+        stack->ptr[stack->pos - 2].i32 = a ^ b;
+        stack->pos--;
+      }
+
+      break;
+    case PWASM_OP_I32_SHL:
+      {
+        const uint32_t a = stack->ptr[stack->pos - 2].i32;
+        const uint32_t b = stack->ptr[stack->pos - 1].i32;
+
+        stack->ptr[stack->pos - 2].i32 = a << b;
+        stack->pos--;
+      }
+
+      break;
+    case PWASM_OP_I32_SHR_S:
+      {
+        const int32_t a = (int32_t) stack->ptr[stack->pos - 2].i32;
+        const uint32_t b = stack->ptr[stack->pos - 1].i32;
+
+        stack->ptr[stack->pos - 2].i32 = a >> b;
+        stack->pos--;
+      }
+
+      break;
+    case PWASM_OP_I32_SHR_U:
+      {
+        const uint32_t a = stack->ptr[stack->pos - 2].i32;
+        const uint32_t b = stack->ptr[stack->pos - 1].i32;
+
+        stack->ptr[stack->pos - 2].i32 = a >> b;
+        stack->pos--;
+      }
+
+      break;
+    case PWASM_OP_I32_ROTL:
+      {
+        const uint32_t a = stack->ptr[stack->pos - 2].i32;
+        const uint32_t b = stack->ptr[stack->pos - 1].i32 & 0x3F;
+
+        stack->ptr[stack->pos - 2].i32 = (a << b) | (a >> (32 - b));
+        stack->pos--;
+      }
+
+      break;
+    case PWASM_OP_I32_ROTR:
+      {
+        const uint32_t a = stack->ptr[stack->pos - 2].i32;
+        const uint32_t b = stack->ptr[stack->pos - 1].i32 & 0x3F;
+
+        stack->ptr[stack->pos - 2].i32 = (a << (32 - b)) | (a >> b);
+        stack->pos--;
+      }
+
+      break;
+    case PWASM_OP_I64_CLZ:
+      {
+        const int val = __builtin_clzl(stack->ptr[stack->pos - 1].i64);
+        stack->ptr[stack->pos - 1].i64 = val;
+      }
+
+      break;
+    case PWASM_OP_I64_CTZ:
+      {
+        const int val = __builtin_ctzl(stack->ptr[stack->pos - 1].i64);
+        stack->ptr[stack->pos - 1].i64 = val;
+      }
+
+      break;
+    case PWASM_OP_I64_POPCNT:
+      {
+        const int val = __builtin_popcountl(stack->ptr[stack->pos - 1].i64);
+        stack->ptr[stack->pos - 1].i64 = val;
+      }
+
+      break;
+    case PWASM_OP_I64_ADD:
+      {
+        const uint64_t a = stack->ptr[stack->pos - 2].i64;
+        const uint64_t b = stack->ptr[stack->pos - 1].i64;
+
+        stack->ptr[stack->pos - 2].i64 = a + b;
+        stack->pos--;
+      }
+
+      break;
+    case PWASM_OP_I64_SUB:
+      {
+        const uint64_t a = stack->ptr[stack->pos - 2].i64;
+        const uint64_t b = stack->ptr[stack->pos - 1].i64;
+
+        stack->ptr[stack->pos - 2].i64 = a - b;
+        stack->pos--;
+      }
+
+      break;
+    case PWASM_OP_I64_MUL:
+      {
+        const uint64_t a = stack->ptr[stack->pos - 2].i64;
+        const uint64_t b = stack->ptr[stack->pos - 1].i64;
+
+        stack->ptr[stack->pos - 2].i64 = a * b;
+        stack->pos--;
+      }
+
+      break;
+    case PWASM_OP_I64_DIV_S:
+      {
+        const int64_t a = (int64_t) stack->ptr[stack->pos - 2].i64;
+        const int64_t b = (int64_t) stack->ptr[stack->pos - 1].i64;
+
+        stack->ptr[stack->pos - 2].i64 = a / b;
+        stack->pos--;
+      }
+
+      break;
+    case PWASM_OP_I64_DIV_U:
+      {
+        const uint64_t a = stack->ptr[stack->pos - 2].i64;
+        const uint64_t b = stack->ptr[stack->pos - 1].i64;
+
+        stack->ptr[stack->pos - 2].i64 = a / b;
+        stack->pos--;
+      }
+
+      break;
+    case PWASM_OP_I64_REM_S:
+      {
+        const int64_t a = (int64_t) stack->ptr[stack->pos - 2].i64;
+        const int64_t b = (int64_t) stack->ptr[stack->pos - 1].i64;
+
+        stack->ptr[stack->pos - 2].i64 = a % b;
+        stack->pos--;
+      }
+
+      break;
+    case PWASM_OP_I64_REM_U:
+      {
+        const uint64_t a = stack->ptr[stack->pos - 2].i64;
+        const uint64_t b = stack->ptr[stack->pos - 1].i64;
+
+        stack->ptr[stack->pos - 2].i64 = a % b;
+        stack->pos--;
+      }
+
+      break;
+    case PWASM_OP_I64_AND:
+      {
+        const uint64_t a = stack->ptr[stack->pos - 2].i64;
+        const uint64_t b = stack->ptr[stack->pos - 1].i64;
+
+        stack->ptr[stack->pos - 2].i64 = a & b;
+        stack->pos--;
+      }
+
+      break;
+    case PWASM_OP_I64_OR:
+      {
+        const uint64_t a = stack->ptr[stack->pos - 2].i64;
+        const uint64_t b = stack->ptr[stack->pos - 1].i64;
+
+        stack->ptr[stack->pos - 2].i64 = a | b;
+        stack->pos--;
+      }
+
+      break;
+    case PWASM_OP_I64_XOR:
+      {
+        const uint64_t a = stack->ptr[stack->pos - 2].i64;
+        const uint64_t b = stack->ptr[stack->pos - 1].i64;
+
+        stack->ptr[stack->pos - 2].i64 = a ^ b;
+        stack->pos--;
+      }
+
+      break;
+    case PWASM_OP_I64_SHL:
+      {
+        const uint64_t a = stack->ptr[stack->pos - 2].i64;
+        const uint64_t b = stack->ptr[stack->pos - 1].i64;
+
+        stack->ptr[stack->pos - 2].i64 = a << b;
+        stack->pos--;
+      }
+
+      break;
+    case PWASM_OP_I64_SHR_S:
+      {
+        const int64_t a = (int64_t) stack->ptr[stack->pos - 2].i64;
+        const uint64_t b = stack->ptr[stack->pos - 1].i64;
+
+        stack->ptr[stack->pos - 2].i64 = a >> b;
+        stack->pos--;
+      }
+
+      break;
+    case PWASM_OP_I64_SHR_U:
+      {
+        const uint64_t a = stack->ptr[stack->pos - 2].i64;
+        const uint64_t b = stack->ptr[stack->pos - 1].i64;
+
+        stack->ptr[stack->pos - 2].i64 = a >> b;
+        stack->pos--;
+      }
+
+      break;
+    case PWASM_OP_I64_ROTL:
+      {
+        const uint64_t a = stack->ptr[stack->pos - 2].i64;
+        const uint64_t b = stack->ptr[stack->pos - 1].i64 & 0x7F;
+
+        stack->ptr[stack->pos - 2].i64 = (a << b) | (a >> (64 - b));
+        stack->pos--;
+      }
+
+      break;
+    case PWASM_OP_I64_ROTR:
+      {
+        const uint64_t a = stack->ptr[stack->pos - 2].i64;
+        const uint64_t b = stack->ptr[stack->pos - 1].i64 & 0x7F;
+
+        stack->ptr[stack->pos - 2].i64 = (a << (64 - b)) | (a >> b);
+        stack->pos--;
+      }
+
+      break;
+    case PWASM_OP_F32_ABS:
+      {
+        const float a = stack->ptr[stack->pos - 1].f32;
+        stack->ptr[stack->pos - 1].f32 = fabsf(a);
+      }
+
+      break;
+    case PWASM_OP_F32_NEG:
+      {
+        const float a = stack->ptr[stack->pos - 1].f32;
+        stack->ptr[stack->pos - 1].f32 = -a;
+      }
+
+      break;
+    case PWASM_OP_F32_CEIL:
+      {
+        const float a = stack->ptr[stack->pos - 1].f32;
+        stack->ptr[stack->pos - 1].f32 = ceilf(a);
+      }
+
+      break;
+    case PWASM_OP_F32_FLOOR:
+      {
+        const float a = stack->ptr[stack->pos - 1].f32;
+        stack->ptr[stack->pos - 1].f32 = floorf(a);
+      }
+
+      break;
+    case PWASM_OP_F32_TRUNC:
+      {
+        const float a = stack->ptr[stack->pos - 1].f32;
+        stack->ptr[stack->pos - 1].f32 = truncf(a);
+      }
+
+      break;
+    case PWASM_OP_F32_NEAREST:
+      {
+        const float a = stack->ptr[stack->pos - 1].f32;
+        stack->ptr[stack->pos - 1].f32 = roundf(a);
+      }
+
+      break;
+    case PWASM_OP_F32_SQRT:
+      {
+        const float a = stack->ptr[stack->pos - 1].f32;
+        stack->ptr[stack->pos - 1].f32 = sqrtf(a);
+      }
+
+      break;
+    case PWASM_OP_F32_ADD:
+      {
+        const float a = stack->ptr[stack->pos - 2].f32;
+        const float b = stack->ptr[stack->pos - 1].f32;
+        stack->ptr[stack->pos - 2].f32 = a + b;
+        stack->pos--;
+      }
+
+      break;
+    case PWASM_OP_F32_SUB:
+      {
+        const float a = stack->ptr[stack->pos - 2].f32;
+        const float b = stack->ptr[stack->pos - 1].f32;
+        stack->ptr[stack->pos - 2].f32 = a - b;
+        stack->pos--;
+      }
+
+      break;
+    case PWASM_OP_F32_MUL:
+      {
+        const float a = stack->ptr[stack->pos - 2].f32;
+        const float b = stack->ptr[stack->pos - 1].f32;
+        stack->ptr[stack->pos - 2].f32 = a * b;
+        stack->pos--;
+      }
+
+      break;
+    case PWASM_OP_F32_DIV:
+      {
+        const float a = stack->ptr[stack->pos - 2].f32;
+        const float b = stack->ptr[stack->pos - 1].f32;
+        stack->ptr[stack->pos - 2].f32 = a / b;
+        stack->pos--;
+      }
+
+      break;
+    case PWASM_OP_F32_MIN:
+      {
+        const float a = stack->ptr[stack->pos - 2].f32;
+        const float b = stack->ptr[stack->pos - 1].f32;
+        stack->ptr[stack->pos - 2].f32 = fminf(a, b);
+        stack->pos--;
+      }
+
+      break;
+    case PWASM_OP_F32_MAX:
+      {
+        const float a = stack->ptr[stack->pos - 2].f32;
+        const float b = stack->ptr[stack->pos - 1].f32;
+        stack->ptr[stack->pos - 2].f32 = fmaxf(a, b);
+        stack->pos--;
+      }
+
+      break;
+    case PWASM_OP_F32_COPYSIGN:
+      {
+        const float a = stack->ptr[stack->pos - 2].f32;
+        const float b = stack->ptr[stack->pos - 1].f32;
+        stack->ptr[stack->pos - 2].f32 = copysignf(a, b);
+        stack->pos--;
+      }
+
+      break;
+    case PWASM_OP_F64_ABS:
+      {
+        const double a = stack->ptr[stack->pos - 1].f64;
+        stack->ptr[stack->pos - 1].f64 = fabs(a);
+      }
+
+      break;
+    case PWASM_OP_F64_NEG:
+      {
+        const double a = stack->ptr[stack->pos - 1].f64;
+        stack->ptr[stack->pos - 1].f64 = -a;
+      }
+
+      break;
+    case PWASM_OP_F64_CEIL:
+      {
+        const double a = stack->ptr[stack->pos - 1].f64;
+        stack->ptr[stack->pos - 1].f64 = ceil(a);
+      }
+
+      break;
+    case PWASM_OP_F64_FLOOR:
+      {
+        const double a = stack->ptr[stack->pos - 1].f64;
+        stack->ptr[stack->pos - 1].f64 = floor(a);
+      }
+
+      break;
+    case PWASM_OP_F64_TRUNC:
+      {
+        const double a = stack->ptr[stack->pos - 1].f64;
+        stack->ptr[stack->pos - 1].f64 = trunc(a);
+      }
+
+      break;
+    case PWASM_OP_F64_NEAREST:
+      {
+        const double a = stack->ptr[stack->pos - 1].f64;
+        stack->ptr[stack->pos - 1].f64 = round(a);
+      }
+
+      break;
+    case PWASM_OP_F64_SQRT:
+      {
+        const double a = stack->ptr[stack->pos - 1].f64;
+        stack->ptr[stack->pos - 1].f64 = sqrt(a);
+      }
+
+      break;
+    case PWASM_OP_F64_ADD:
+      {
+        const double a = stack->ptr[stack->pos - 2].f64;
+        const double b = stack->ptr[stack->pos - 1].f64;
+        stack->ptr[stack->pos - 2].f64 = a + b;
+        stack->pos--;
+      }
+
+      break;
+    case PWASM_OP_F64_SUB:
+      {
+        const double a = stack->ptr[stack->pos - 2].f64;
+        const double b = stack->ptr[stack->pos - 1].f64;
+        stack->ptr[stack->pos - 2].f64 = a - b;
+        stack->pos--;
+      }
+
+      break;
+    case PWASM_OP_F64_MUL:
+      {
+        const double a = stack->ptr[stack->pos - 2].f64;
+        const double b = stack->ptr[stack->pos - 1].f64;
+        stack->ptr[stack->pos - 2].f64 = a * b;
+        stack->pos--;
+      }
+
+      break;
+    case PWASM_OP_F64_DIV:
+      {
+        const double a = stack->ptr[stack->pos - 2].f64;
+        const double b = stack->ptr[stack->pos - 1].f64;
+        stack->ptr[stack->pos - 2].f64 = a / b;
+        stack->pos--;
+      }
+
+      break;
+    case PWASM_OP_F64_MIN:
+      {
+        const double a = stack->ptr[stack->pos - 2].f64;
+        const double b = stack->ptr[stack->pos - 1].f64;
+        stack->ptr[stack->pos - 2].f64 = fmin(a, b);
+        stack->pos--;
+      }
+
+      break;
+    case PWASM_OP_F64_MAX:
+      {
+        const double a = stack->ptr[stack->pos - 2].f64;
+        const double b = stack->ptr[stack->pos - 1].f64;
+        stack->ptr[stack->pos - 2].f64 = fmax(a, b);
+        stack->pos--;
+      }
+
+      break;
+    case PWASM_OP_F64_COPYSIGN:
+      {
+        const double a = stack->ptr[stack->pos - 2].f64;
+        const double b = stack->ptr[stack->pos - 1].f64;
+        stack->ptr[stack->pos - 2].f64 = copysign(a, b);
+        stack->pos--;
+      }
+
+      break;
+    case PWASM_OP_I32_WRAP_I64:
+      {
+        const uint64_t a = stack->ptr[stack->pos - 1].i64;
+        stack->ptr[stack->pos - 1].i32 = (uint32_t) a;
+      }
+
+      break;
+    case PWASM_OP_I32_TRUNC_F32_S:
+      {
+        const float a = stack->ptr[stack->pos - 1].f32;
+        stack->ptr[stack->pos - 1].i32 = (int32_t) a;
+      }
+
+      break;
+    case PWASM_OP_I32_TRUNC_F32_U:
+      {
+        const float a = stack->ptr[stack->pos - 1].f32;
+        stack->ptr[stack->pos - 1].i32 = (uint32_t) a;
+      }
+
+      break;
+    case PWASM_OP_I32_TRUNC_F64_S:
+      {
+        const double a = stack->ptr[stack->pos - 1].f64;
+        stack->ptr[stack->pos - 1].i32 = (int32_t) a;
+      }
+
+      break;
+    case PWASM_OP_I32_TRUNC_F64_U:
+      {
+        const double a = stack->ptr[stack->pos - 1].f64;
+        stack->ptr[stack->pos - 1].i32 = (uint32_t) a;
+      }
+
+      break;
+    case PWASM_OP_I64_EXTEND_I32_S:
+      {
+        const int32_t a = (int32_t) stack->ptr[stack->pos - 1].i32;
+        stack->ptr[stack->pos - 1].i64 = (int64_t) a;
+      }
+
+      break;
+    case PWASM_OP_I64_EXTEND_I32_U:
+      {
+        const uint32_t a = stack->ptr[stack->pos - 1].i32;
+        stack->ptr[stack->pos - 1].i64 = (uint64_t) a;
+      }
+
+      break;
+    case PWASM_OP_I64_TRUNC_F32_S:
+      {
+        const float a = stack->ptr[stack->pos - 1].f32;
+        stack->ptr[stack->pos - 1].i64 = (int64_t) a;
+      }
+
+      break;
+    case PWASM_OP_I64_TRUNC_F32_U:
+      {
+        const float a = stack->ptr[stack->pos - 1].f32;
+        stack->ptr[stack->pos - 1].i64 = (uint64_t) a;
+      }
+
+      break;
+    case PWASM_OP_I64_TRUNC_F64_S:
+      {
+        const double a = stack->ptr[stack->pos - 1].f64;
+        stack->ptr[stack->pos - 1].i64 = (int64_t) a;
+      }
+
+      break;
+    case PWASM_OP_I64_TRUNC_F64_U:
+      {
+        const double a = stack->ptr[stack->pos - 1].f64;
+        stack->ptr[stack->pos - 1].i64 = (uint64_t) a;
+      }
+
+      break;
+    case PWASM_OP_F32_CONVERT_I32_S:
+      {
+        const int32_t a = (int32_t) stack->ptr[stack->pos - 1].i32;
+        stack->ptr[stack->pos - 1].f32 = (float) a;
+      }
+
+      break;
+    case PWASM_OP_F32_CONVERT_I32_U:
+      {
+        const uint32_t a = (uint32_t) stack->ptr[stack->pos - 1].i32;
+        stack->ptr[stack->pos - 1].f32 = (float) a;
+      }
+
+      break;
+    case PWASM_OP_F32_CONVERT_I64_S:
+      {
+        const int64_t a = (int64_t) stack->ptr[stack->pos - 1].i64;
+        stack->ptr[stack->pos - 1].f32 = (float) a;
+      }
+
+      break;
+    case PWASM_OP_F32_CONVERT_I64_U:
+      {
+        const uint64_t a = (uint64_t) stack->ptr[stack->pos - 1].i64;
+        stack->ptr[stack->pos - 1].f32 = (float) a;
+      }
+
+      break;
+    case PWASM_OP_F32_DEMOTE_F64:
+      {
+        const double a = stack->ptr[stack->pos - 1].f64;
+        stack->ptr[stack->pos - 1].f32 = (float) a;
+      }
+
+      break;
+    case PWASM_OP_F64_CONVERT_I32_S:
+      {
+        const int32_t a = (int32_t) stack->ptr[stack->pos - 1].i32;
+        stack->ptr[stack->pos - 1].f64 = (double) a;
+      }
+
+      break;
+    case PWASM_OP_F64_CONVERT_I32_U:
+      {
+        const uint32_t a = (uint32_t) stack->ptr[stack->pos - 1].i32;
+        stack->ptr[stack->pos - 1].f64 = (double) a;
+      }
+
+      break;
+    case PWASM_OP_F64_CONVERT_I64_S:
+      {
+        const int64_t a = (int64_t) stack->ptr[stack->pos - 1].i64;
+        stack->ptr[stack->pos - 1].f64 = (double) a;
+      }
+
+      break;
+    case PWASM_OP_F64_CONVERT_I64_U:
+      {
+        const uint64_t a = (uint64_t) stack->ptr[stack->pos - 1].i64;
+        stack->ptr[stack->pos - 1].f64 = (double) a;
+      }
+
+      break;
+    case PWASM_OP_F64_PROMOTE_F32:
+      {
+        const float a = stack->ptr[stack->pos - 1].f32;
+        stack->ptr[stack->pos - 1].f64 = a;
+      }
+
+      break;
+    case PWASM_OP_I32_REINTERPRET_F32:
+      {
+        const union {
+          uint32_t i32;
+          float f32;
+        } v = { .f32 = stack->ptr[stack->pos - 1].f32 };
+        stack->ptr[stack->pos - 1].i32 = v.i32;
+      }
+
+      break;
+    case PWASM_OP_I64_REINTERPRET_F64:
+      {
+        const union {
+          uint64_t i64;
+          double f64;
+        } v = { .f64 = stack->ptr[stack->pos - 1].f64 };
+        stack->ptr[stack->pos - 1].i64 = v.i64;
+      }
+
+      break;
+    case PWASM_OP_F32_REINTERPRET_I32:
+      {
+        const union {
+          uint32_t i32;
+          float f32;
+        } v = { .i32 = stack->ptr[stack->pos - 1].i32 };
+        stack->ptr[stack->pos - 1].f32 = v.f32;
+      }
+
+      break;
+    case PWASM_OP_F64_REINTERPRET_I64:
+      {
+        const union {
+          uint32_t i64;
+          float f64;
+        } v = { .i64 = stack->ptr[stack->pos - 1].i64 };
+        stack->ptr[stack->pos - 1].f64 = v.f64;
       }
 
       break;
@@ -4129,6 +5522,68 @@ pwasm_interp_on_call(
   return false;
 }
 
+static bool
+pwasm_interp_on_mem_load(
+  pwasm_env_t * const env,
+  const pwasm_inst_t in,
+  const uint32_t ofs,
+  pwasm_val_t * const ret_val
+) {
+  // TODO
+  (void) env;
+  (void) in;
+  (void) ofs;
+  (void) ret_val;
+
+  // return failure
+  return false;
+}
+
+static bool
+pwasm_interp_on_mem_store(
+  pwasm_env_t * const env,
+  const pwasm_inst_t in,
+  const uint32_t ofs,
+  const pwasm_val_t val
+) {
+  // TODO
+  (void) env;
+  (void) in;
+  (void) ofs;
+  (void) val;
+
+  // return failure
+  return false;
+}
+
+static bool
+pwasm_interp_on_mem_size(
+  pwasm_env_t * const env,
+  uint32_t * const ret_val
+) {
+  // TODO
+  (void) env;
+  (void) ret_val;
+
+  // return failure
+  return false;
+}
+
+static bool
+pwasm_interp_on_mem_grow(
+  pwasm_env_t * const env,
+  const uint32_t grow,
+  uint32_t * const ret_val
+) {
+  // TODO
+  (void) env;
+  (void) grow;
+  (void) ret_val;
+
+  // return failure
+  return false;
+}
+
 static const pwasm_env_cbs_t
 PWASM_INTERP_CBS = {
   .init       = pwasm_interp_on_init,
@@ -4136,6 +5591,10 @@ PWASM_INTERP_CBS = {
   .add_mod    = pwasm_interp_on_add_mod,
   .add_native = pwasm_interp_on_add_native,
   .call       = pwasm_interp_on_call,
+  .mem_load   = pwasm_interp_on_mem_load,
+  .mem_store  = pwasm_interp_on_mem_store,
+  .mem_size   = pwasm_interp_on_mem_size,
+  .mem_grow   = pwasm_interp_on_mem_grow,
 };
 
 const pwasm_env_cbs_t *
