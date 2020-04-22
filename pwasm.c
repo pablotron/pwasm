@@ -1559,9 +1559,11 @@ pwasm_parse_expr(
   pwasm_inst_t insts[PWASM_BATCH_SIZE];
   pwasm_slice_t in_slice = { 0, 0 };
 
-  size_t depth = 1;
+  // TODO: track value stack depth too
+  pwasm_depth_t val_depth = { 0, 0 };
+  pwasm_depth_t ctl_depth = { 1, 1 };
   size_t ofs = 0;
-  while (depth && curr.len) {
+  while ((ctl_depth.val > 0) && curr.len) {
     // parse instruction, check for error
     pwasm_inst_t in;
     const size_t len = pwasm_parse_inst(&in, curr, &in_cbs, cb_data);
@@ -1569,7 +1571,7 @@ pwasm_parse_expr(
       return 0;
     }
 
-/* 
+/*
  *     // check op
  *     if (!pwasm_op_is_const(in.op)) {
  *       D("in.op = %u", in.op);
@@ -1577,9 +1579,14 @@ pwasm_parse_expr(
  *     }
  */ 
 
-    // update depth (FIXME: check for underflow?)
-    depth += pwasm_op_is_control(in.op) ? 1 : 0;
-    depth -= (in.op == PWASM_OP_END) ? 1 : 0;
+    // update control stack depth
+    if (pwasm_op_is_enter(in.op) && !pwasm_depth_add(&ctl_depth, 1)) {
+      cbs->on_error("control stack depth overflow", cb_data);
+      return 0;
+    } else if ((in.op == PWASM_OP_END) && !pwasm_depth_sub(&ctl_depth, 1)) {
+      cbs->on_error("control stack depth underflow", cb_data);
+      return 0;
+    }
 
     // advance
     curr = pwasm_buf_step(curr, len);
@@ -1622,10 +1629,24 @@ pwasm_parse_expr(
     }
   }
 
-  // check for error
-  if (depth > 0) {
-    cbs->on_error("unterminated const expression", cb_data);
+  // check for control stack depth mismatch
+  if (ctl_depth.val) {
+    cbs->on_error("unbalanced expression", cb_data);
     return 0;
+  }
+
+  // TODO: check curr.len for functions
+  // if (curr.len > 0) {
+  //   cbs->on_error("unbalanced expression", cb_data);
+  //   return 0;
+  // }
+
+  if (cbs->on_stats) {
+    // emit expr stats
+    cbs->on_stats((pwasm_expr_stats_t) {
+      .max_ctl_depth = ctl_depth.max,
+      .max_val_depth = val_depth.max,
+    }, cb_data);
   }
 
   // save result to destination
