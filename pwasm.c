@@ -545,6 +545,13 @@ pwasm_op_is_control(
 }
 
 static inline bool
+pwasm_op_is_enter(
+  const pwasm_op_t op
+) {
+  return (op == PWASM_OP_BLOCK) || (op == PWASM_OP_LOOP) || (op == PWASM_OP_IF);
+}
+
+static inline bool
 pwasm_op_is_local(
   const uint8_t byte
 ) {
