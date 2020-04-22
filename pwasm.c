@@ -2791,7 +2791,7 @@ pwasm_builder_build_mod(
 ) {
   const size_t total_num_bytes = pwasm_builder_get_size(builder);
   uint8_t * const ptr = pwasm_realloc(builder->mem_ctx, NULL, total_num_bytes);
-  if (!ptr) {
+  if (!ptr && (total_num_bytes > 0)) {
     // return failure
     return false;
   }
@@ -3594,6 +3594,11 @@ pwasm_mod_init_unsafe(
   pwasm_mod_t * const mod,
   pwasm_buf_t src
 ) {
+  // unconditionally zero out backing memory to prevent a segfault if
+  // someone tries to pwasm_mod_fini() on a mod that isn't initialized
+  // because pwasm_mod_init() fails (e.g., me)
+  memset(&(mod->mem), 0, sizeof(pwasm_buf_t));
+
   // init builder, check for error
   pwasm_builder_t builder;
   if (!pwasm_builder_init(mem_ctx, &builder)) {
@@ -3638,8 +3643,7 @@ void
 pwasm_mod_fini(
   pwasm_mod_t * const mod
 ) {
-  if (mod->mem.ptr) {
-    return; // FIXME: we're crashing here
+  if (mod->mem.ptr && (mod->mem.len > 0)) {
     pwasm_realloc(mod->mem_ctx, (void*) mod->mem.ptr, 0);
     mod->mem.ptr = 0;
     mod->mem.len = 0;
