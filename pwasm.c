@@ -67,6 +67,16 @@ pwasm_buf_step(
 }
 
 /**
+ * Convert null-terminated string to buffer.
+ */
+static inline pwasm_buf_t
+pwasm_buf_str(
+  const char * const s
+) {
+  return (pwasm_buf_t) { (uint8_t*) s, strlen(s) };
+}
+
+/**
  * Get the size (in bytes) of the UTF-8 codepoint beginning with the
  * given byte.
  */
@@ -3713,6 +3723,26 @@ pwasm_env_add_native(
   return (cbs && cbs->add_native) ? cbs->add_native(env, name, mod) : 0;
 }
 
+bool
+pwasm_env_get_global(
+  pwasm_env_t * const env,
+  const uint32_t id,
+  pwasm_val_t * const ret_val
+) {
+  const pwasm_env_cbs_t * const cbs = env->cbs;
+  return (cbs && cbs->get_global) ? cbs->get_global(env, id, ret_val) : false;
+}
+
+bool
+pwasm_env_set_global(
+  pwasm_env_t * const env,
+  const uint32_t id,
+  const pwasm_val_t val
+) {
+  const pwasm_env_cbs_t * const cbs = env->cbs;
+  return (cbs && cbs->set_global) ? cbs->set_global(env, id, val) : false;
+}
+
 uint32_t
 pwasm_env_find_mod(
   pwasm_env_t * const env,
@@ -3721,17 +3751,6 @@ pwasm_env_find_mod(
   const pwasm_env_cbs_t * const cbs = env->cbs;
   // D("env = %p, name = \"%s\"", env, name);
   return (cbs && cbs->find_mod) ? cbs->find_mod(env, name) : 0;
-}
-
-uint32_t
-pwasm_env_find_mod_by_name(
-  pwasm_env_t * const env,
-  const char * const name
-) {
-  return pwasm_env_find_mod(env, (pwasm_buf_t) {
-    .ptr = (uint8_t*) name,
-    .len = strlen(name),
-  });
 }
 
 uint32_t
@@ -3745,18 +3764,6 @@ pwasm_env_find_func(
   return (cbs && cbs->find_func) ? cbs->find_func(env, mod_id, name) : 0;
 }
 
-uint32_t
-pwasm_env_find_func_by_name(
-  pwasm_env_t * const env,
-  const uint32_t mod_id,
-  const char * const name
-) {
-  return pwasm_env_find_func(env, mod_id, (pwasm_buf_t) {
-    .ptr = (uint8_t*) name,
-    .len = strlen(name),
-  });
-}
-
 bool
 pwasm_env_call(
   pwasm_env_t * const env,
@@ -3767,6 +3774,24 @@ pwasm_env_call(
   return (cbs && cbs->call) ? cbs->call(env, func_id) : false;
 }
 
+uint32_t
+pwasm_find_mod(
+  pwasm_env_t * const env,
+  const char * const mod_name
+) {
+  return pwasm_env_find_mod(env, pwasm_buf_str(mod_name));
+}
+
+uint32_t
+pwasm_find_func(
+  pwasm_env_t * const env,
+  const char * const mod,
+  const char * const name
+) {
+  const uint32_t mod_id = pwasm_find_mod(env, mod);
+  return pwasm_env_find_func(env, mod_id, pwasm_buf_str(name));
+}
+
 bool
 pwasm_call(
   pwasm_env_t * const env,
@@ -3775,19 +3800,7 @@ pwasm_call(
 ) {
   D("env = %p, mod = \"%s\", func = \"%s\"", env, mod_name, func_name);
 
-  // find mod, check for error
-  const uint32_t mod_id = pwasm_env_find_mod_by_name(env, mod_name);
-  if (!mod_id) {
-    return false;
-  }
-
-  // find func, check for error
-  const uint32_t func_id = pwasm_env_find_func_by_name(env, mod_id, func_name);
-  if (!func_id) {
-    return false;
-  }
-
-  return pwasm_env_call(env, func_id);
+  return pwasm_env_call(env, pwasm_find_func(env, mod_name, func_name));
 }
 
 
@@ -3895,8 +3908,12 @@ typedef struct {
       const uint32_t func_id;
     } func;
 
+    struct {
+      pwasm_val_t val;
+      bool mut;
+    } global;
+
     pwasm_buf_t mem;
-    pwasm_val_t global;
     pwasm_buf_t table; // TODO: table
   };
 } pwasm_interp_row_t;
@@ -4539,8 +4556,15 @@ pwasm_interp_eval_expr(
           return false;
         }
 
+        // get global value, check for error
+        pwasm_val_t val;
+        if (!pwasm_env_get_global(frame.env, id, &val)) {
+          // TODO: log error
+          return false;
+        }
+
         // push global value
-        stack->ptr[stack->pos++] = frame.env->cbs->get_global(frame.env, id);
+        stack->ptr[stack->pos++] = val;
       }
 
       break;
@@ -4555,8 +4579,13 @@ pwasm_interp_eval_expr(
           return false;
         }
 
-        // set global value, pop stack
-        frame.env->cbs->set_global(frame.env, id, stack->ptr[stack->pos - 1]);
+        // set global value, check for error
+        if (!pwasm_env_set_global(frame.env, id, PWASM_PEEK(stack, 0))) {
+          // return failure
+          return false;
+        }
+
+        // pop stack
         stack->pos--;
       }
 
@@ -5964,6 +5993,76 @@ pwasm_interp_on_find_import(
   }
 }
 
+static inline bool
+pwasm_interp_check_global(
+  pwasm_env_t * const env,
+  const uint32_t id
+) {
+  pwasm_interp_t * const data = env->env_data;
+  const pwasm_interp_row_t *rows = pwasm_vec_get_data(&(data->rows));
+  const size_t num_rows = pwasm_vec_get_size(&(data->rows));
+
+  if (!id || id > num_rows) {
+    // TODO: log error
+    return false;
+  }
+
+  if (rows[id - 1].type != PWASM_INTERP_ROW_TYPE_GLOBAL) {
+    // TODO: log error
+    return false;
+  }
+
+  // return success
+  return true;
+}
+
+static bool
+pwasm_interp_on_get_global(
+  pwasm_env_t * const env,
+  const uint32_t id,
+  pwasm_val_t * const ret_val
+) {
+  pwasm_interp_t * const data = env->env_data;
+  const pwasm_interp_row_t *rows = pwasm_vec_get_data(&(data->rows));
+
+  if (!pwasm_interp_check_global(env, id)) {
+    return false;
+  }
+
+  if (ret_val) {
+    // copy value to destination
+    *ret_val = rows[id - 1].global.val;
+  }
+
+  // return success
+  return true;
+}
+
+static bool
+pwasm_interp_on_set_global(
+  pwasm_env_t * const env,
+  const uint32_t id,
+  const pwasm_val_t val
+) {
+  pwasm_interp_t * const data = env->env_data;
+  pwasm_interp_row_t *rows = (pwasm_interp_row_t*) pwasm_vec_get_data(&(data->rows));
+
+  if (!pwasm_interp_check_global(env, id)) {
+    return false;
+  }
+
+  if (!rows[id - 1].global.mut) {
+    // TODO: log error
+    return false;
+  }
+
+  // copy value to destination
+  rows[id - 1].global.val = val;
+
+  // return success
+  return true;
+}
+
 static const pwasm_env_cbs_t
 PWASM_INTERP_CBS = {
   .init         = pwasm_interp_on_init,
@@ -5979,6 +6078,8 @@ PWASM_INTERP_CBS = {
   .mem_grow     = pwasm_interp_on_mem_grow,
   .get_elem     = pwasm_interp_on_get_elem,
   .find_import  = pwasm_interp_on_find_import,
+  .get_global   = pwasm_interp_on_get_global,
+  .set_global   = pwasm_interp_on_set_global,
 };
 
 const pwasm_env_cbs_t *

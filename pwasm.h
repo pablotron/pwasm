@@ -857,26 +857,58 @@ typedef struct {
 
   // add native module with given name
   // (returns zero on error)
-  uint32_t (*add_native)(pwasm_env_t *, const char *, const pwasm_native_t *);
+  uint32_t (*add_native)(
+    pwasm_env_t *, // env
+    const char *, // instance name
+    const pwasm_native_t * // native module
+  );
 
   // add module
   // (returns zero on error)
-  uint32_t (*add_mod)(pwasm_env_t *, const char *, const pwasm_mod_t *);
+  uint32_t (*add_mod)(
+    pwasm_env_t *, // env
+    const char *, // instance name
+    const pwasm_mod_t * // parsed module
+  );
 
   // get module handle by name
   // (returns zero on error)
-  uint32_t (*find_mod)(pwasm_env_t *, const pwasm_buf_t);
+  uint32_t (*find_mod)(
+    pwasm_env_t *, // env
+    const pwasm_buf_t // name
+  );
 
   // get global handle by mod_id and name
   // (returns zero on error)
-  uint32_t (*find_global)(pwasm_env_t *, const uint32_t, pwasm_buf_t);
+  uint32_t (*find_global)(
+    pwasm_env_t *, // env
+    const uint32_t, // module ID
+    pwasm_buf_t // global name
+  );
 
-  pwasm_val_t (*get_global)(pwasm_env_t *, const uint32_t);
-  uint32_t (*set_global)(pwasm_env_t *, const uint32_t, const pwasm_val_t);
+  // get global value
+  // (returns false on error)
+  _Bool (*get_global)(
+    pwasm_env_t *, // env
+    const uint32_t, // global ID
+    pwasm_val_t * // return value
+  );
+
+  // set global value
+  // (returns false on error)
+  _Bool (*set_global)(
+    pwasm_env_t *, // env
+    const uint32_t, // global ID
+    const pwasm_val_t // value
+  );
 
   // get table handle by mod_id and name
   // (returns zero on error)
-  uint32_t (*find_table)(pwasm_env_t *, const uint32_t, pwasm_buf_t);
+  uint32_t (*find_table)(
+    pwasm_env_t *, // env
+    const uint32_t, // module ID
+    pwasm_buf_t // table name
+  );
 
   // get value of table element by table_id and offset
   // (returns false on error)
@@ -889,22 +921,71 @@ typedef struct {
 
   // find import handle by mod_id, import type, and import name
   // (returns zero on error)
-  uint32_t (*find_import)(pwasm_env_t *, const uint32_t, pwasm_import_type_t, const pwasm_buf_t);
+  uint32_t (*find_import)(
+    pwasm_env_t *, // env
+    const uint32_t, // module handle,
+    pwasm_import_type_t, // import type
+    const pwasm_buf_t // import name
+  );
 
   // get function handle by mod_id and name
   // (returns zero on error)
-  uint32_t (*find_func)(pwasm_env_t *, const uint32_t, pwasm_buf_t);
+  uint32_t (*find_func)(
+    pwasm_env_t *, // env
+    const uint32_t, // module handle
+    pwasm_buf_t // function name
+  );
 
   // _Bool (*call_func)(pwasm_env_t *, uint32_t);
-  _Bool (*call)(pwasm_env_t *, const uint32_t);
 
-  pwasm_buf_t (*find_mem)(pwasm_env_t *, const uint32_t, pwasm_buf_t);
+  // invoke function
+  // parameters are taken from stack
+  // (returns false on error)
+  _Bool (*call)(
+    pwasm_env_t *, // env
+    const uint32_t // function ID
+  );
 
-  _Bool (*mem_load)(pwasm_env_t *, const pwasm_inst_t, const uint32_t, pwasm_val_t *);
-  _Bool (*mem_store)(pwasm_env_t *, const pwasm_inst_t, const uint32_t, const pwasm_val_t);
+  // find memory instance
+  // (returns buffer of zero length pointing to NULL on error)
+  pwasm_buf_t (*find_mem)(
+    pwasm_env_t *, // env
+    const uint32_t, // module handle
+    pwasm_buf_t // memory name
+  );
 
-  _Bool (*mem_size)(pwasm_env_t *, uint32_t *);
-  _Bool (*mem_grow)(pwasm_env_t *, const uint32_t, uint32_t *);
+  // load value from memory
+  // (returns false on error)
+  _Bool (*mem_load)(
+    pwasm_env_t *, // env
+    const pwasm_inst_t, // instruction (memory immediate and value mask)
+    const uint32_t, // offset operand
+    pwasm_val_t * // return value
+  );
+
+  // store value to memory
+  // (returns false on error)
+  _Bool (*mem_store)(
+    pwasm_env_t *, // env
+    const pwasm_inst_t, // instruction (memory immediate and value mask)
+    const uint32_t, // offset operand
+    const pwasm_val_t // value
+  );
+
+  // get memory size
+  // (returns false on error)
+  _Bool (*mem_size)(
+    pwasm_env_t *, // env
+    uint32_t * // return value
+  );
+
+  // grow memory
+  // (returns false on error)
+  _Bool (*mem_grow)(
+    pwasm_env_t *, // env
+    const uint32_t, // amount to grow
+    uint32_t * // return value
+  );
 } pwasm_env_cbs_t;
 
 struct pwasm_env_t {
@@ -1026,13 +1107,35 @@ _Bool pwasm_env_mem_store(
 
 _Bool pwasm_env_mem_size(
   pwasm_env_t *,
-  uint32_t * const
+  uint32_t *
 );
 
 _Bool pwasm_env_mem_grow(
   pwasm_env_t *,
   const uint32_t,
-  uint32_t * const
+  uint32_t *
+);
+
+/**
+ * Get global value.
+ *
+ * Returns true on success or false on error.
+ */
+_Bool pwasm_env_get_global(
+  pwasm_env_t *,
+  const uint32_t,
+  pwasm_val_t *
+);
+
+/**
+ * Set global value.
+ *
+ * Returns true on success or false on error.
+ */
+_Bool pwasm_env_set_global(
+  pwasm_env_t *,
+  const uint32_t,
+  const pwasm_val_t
 );
 
 /**
@@ -1043,17 +1146,43 @@ _Bool pwasm_env_mem_grow(
  * FIXME: rename to pwasm_env_link()?
  */
 uint32_t pwasm_env_find_import(
-  pwasm_env_t * const,
+  pwasm_env_t *,
   const uint32_t,
   const pwasm_import_type_t,
   const pwasm_buf_t
 );
 
 /**
+ * Find module in environment by name and return the ID.
+ *
+ * Note: This is a convenience wrapper around pwasm_env_find_mod().
+ *
+ * Returns 0 if an error occurred.
+ */
+uint32_t pwasm_find_mod(
+  pwasm_env_t *,
+  const char *
+);
+
+/**
+ * Find function in environment by module name and function and return
+ * a handle to the function instance.
+ *
+ * Note: This is a convenience wrapper around pwasm_env_find_func().
+ *
+ * Returns 0 if an error occurred.
+ */
+uint32_t pwasm_find_func(
+  pwasm_env_t *,
+  const char *,
+  const char *
+);
+
+/**
  * Find and invoke function by module name and function name.
  *
  * Note: This function is a convenience wrapper around
- * pwasm_env_find_mod(), pwasm_env_find_func(), and env_call().
+ * pwasm_env_call().
  *
  * Returns false if an error occurred.
  */
