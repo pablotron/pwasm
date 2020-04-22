@@ -547,8 +547,14 @@ typedef struct {
   // offset of function prototype in function_types
   size_t type_id;
 
-  // local variable types (only used for module functions)
+  // local variable slots (only used for module functions)
+  //
+  // NOTE: each local has a num parameter so you cannot use .len to
+  // calculate the total number of locals; use num_locals instead.
   pwasm_slice_t locals;
+
+  // total number of local slots
+  size_t num_locals;
 
   // instructions
   pwasm_slice_t expr;

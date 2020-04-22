@@ -2232,12 +2232,14 @@ pwasm_parse_code_locals_local(
 static size_t
 pwasm_parse_code_locals(
   pwasm_slice_t * const dst,
+  size_t * const dst_num_locals,
   const pwasm_buf_t src,
   const pwasm_parse_code_cbs_t * const cbs,
   void * const cb_data
 ) {
   pwasm_buf_t curr = src;
   size_t num_bytes = 0;
+  size_t num_locals = 0;
   pwasm_slice_t local = { 0, 0 };
 
   uint32_t count = 0;
@@ -2265,6 +2267,9 @@ pwasm_parse_code_locals(
     if (!len) {
       return 0;
     }
+
+    // add to total number of locals for this function
+    num_locals += locals[ofs].num;
 
     // advance
     curr = pwasm_buf_step(curr, len);
@@ -2301,8 +2306,9 @@ pwasm_parse_code_locals(
     }
   }
 
-  // copy result to destination
+  // copy results to destination
   *dst = local;
+  *dst_num_locals = num_locals;
 
   // return number of bytes read
   return num_bytes;
@@ -2370,9 +2376,10 @@ pwasm_parse_code(
   // FIXME: need to adjust curr here based on code_len
 
   pwasm_slice_t locals;
+  size_t num_locals = 0;
   {
     // parse locals, check for error
-    const size_t len = pwasm_parse_code_locals(&locals, curr, cbs, cb_data);
+    const size_t len = pwasm_parse_code_locals(&locals, &num_locals, curr, cbs, cb_data);
     if (!len) {
       return 0;
     }
@@ -2397,6 +2404,7 @@ pwasm_parse_code(
 
   *dst = (pwasm_func_t) {
     .locals = locals,
+    .num_locals = num_locals,
     .expr = expr,
   };
 
@@ -3850,48 +3858,32 @@ pwasm_interp_on_add_native(
   return pwasm_interp_add_row(env, &row);
 }
 
-/**
- * world's shittiest initial interpreter
- */
+typedef struct {
+  pwasm_env_t * const env;
+  const pwasm_mod_t * const mod;
+
+  // function parameters
+  const pwasm_slice_t params;
+
+  // offset and length of locals on the stack
+  // NOTE: the offset and length include function parameters
+  pwasm_slice_t locals;
+} pwasm_interp_frame_t;
+
 static bool
-pwasm_interp_call(
-  pwasm_env_t * const env,
-  const pwasm_mod_t * const mod,
-  uint32_t func_id
+pwasm_interp_eval_expr(
+  const pwasm_interp_frame_t frame,
+  const pwasm_slice_t expr
 ) {
-  const size_t num_import_funcs = mod->num_import_types[PWASM_IMPORT_TYPE_FUNC];
-  pwasm_stack_t * const stack = env->stack;
-  // will be used for CALL and CALL_INDIRECT
-  // const size_t stack_pos = env->stack->pos;
+  pwasm_stack_t * const stack = frame.env->stack;
+  const pwasm_inst_t * const insts = frame.mod->insts + expr.ofs;
 
-  if (func_id < num_import_funcs) {
-    // TODO
-    D("imported function not supported yet: %u", func_id);
-    return false;
-  }
+  D("expr = { .ofs = %zu, .len = %zu }, num_insts = %zu", expr.ofs, expr.len, frame.mod->num_insts);
 
-  // map to internal function ID
-  func_id -= num_import_funcs;
-  if (func_id >= mod->num_funcs) {
-    // TODO: invalid function ID, log error
-    D("invalid function ID: %u", func_id);
-    return false;
-  }
-
-  const pwasm_slice_t params = mod->types[mod->funcs[func_id]].params;
-  const pwasm_slice_t results = mod->types[mod->funcs[func_id]].results;
-  if (stack->pos < params.len) {
-    // TODO: missing parameters
-    D("missing parameters: stack->pos = %zu, params.len = %zu", stack->pos, params.len);
-    return false;
-  }
-
-  const pwasm_slice_t expr = mod->codes[func_id].expr;
-  const pwasm_inst_t * const insts = mod->insts + expr.ofs;
-  D("expr = { .ofs = %zu, .len = %zu }, num_insts = %zu", expr.ofs, expr.len, mod->num_insts);
   for (size_t i = 0; i < expr.len; i++) {
     const pwasm_inst_t in = insts[i];
     D("in.op = %d", in.op);
+
     switch (in.op) {
     case PWASM_OP_UNREACHABLE:
       // FIXME: log error
@@ -3914,7 +3906,8 @@ pwasm_interp_call(
     case PWASM_OP_END:
       // TODO: not implemented
       // FIXME: need to check results here better
-      return (stack->pos == results.len);
+      // return (stack->pos == results.len);
+      return true;
     case PWASM_OP_BR:
       // TODO: not implemented
       return false;
@@ -3984,8 +3977,93 @@ pwasm_interp_call(
     }
   }
 
-  // return failure
-  return false;
+  // return success (i think?)
+  return true;
+}
+
+/**
+ * world's shittiest initial interpreter
+ */
+static bool
+pwasm_interp_call(
+  pwasm_env_t * const env,
+  const pwasm_mod_t * const mod,
+  uint32_t func_id
+) {
+  const size_t num_import_funcs = mod->num_import_types[PWASM_IMPORT_TYPE_FUNC];
+  pwasm_stack_t * const stack = env->stack;
+  // will be used for CALL and CALL_INDIRECT
+  // const size_t stack_pos = env->stack->pos;
+
+  if (func_id < num_import_funcs) {
+    // TODO
+    D("imported function not supported yet: %u", func_id);
+    return false;
+  }
+
+  // map to internal function ID
+  func_id -= num_import_funcs;
+  if (func_id >= mod->num_funcs) {
+    // TODO: invalid function ID, log error
+    D("invalid function ID: %u", func_id);
+    return false;
+  }
+
+  // get func parameters and results
+  const pwasm_slice_t params = mod->types[mod->funcs[func_id]].params;
+  const pwasm_slice_t results = mod->types[mod->funcs[func_id]].results;
+
+  // check stack position
+  // (FIXME: do we need this, should it be handled in check?)
+  if (stack->pos < params.len) {
+    // TODO: missing parameters
+    D("missing parameters: stack->pos = %zu, params.len = %zu", stack->pos, params.len);
+    return false;
+  }
+
+  // get total number of local slots
+  const size_t num_locals = mod->codes[func_id].num_locals;
+  if (num_locals > 0) {
+    // clear local slots
+    memset(stack->ptr + stack->pos, 0, sizeof(pwasm_val_t) * num_locals);
+  }
+
+  // skip past locals
+  stack->pos += num_locals;
+
+  // build interpreter frame
+  pwasm_interp_frame_t frame = {
+    .env = env,
+    .mod = mod,
+    .params = params,
+    .locals = {
+      .ofs = stack->pos - num_locals - params.len,
+      .len = num_locals + params.len,
+    },
+  };
+
+  // get expr instructions slice
+  const pwasm_slice_t expr = mod->codes[func_id].expr;
+
+  const bool ok = pwasm_interp_eval_expr(frame, expr);
+  if (!ok) {
+    // return failure
+    return false;
+  }
+
+  // get func results
+  if ((num_locals + params.len) > 0) {
+    // calc dst and src stack positions
+    const size_t dst_pos = stack->pos - results.len - num_locals - params.len;
+    const size_t src_pos = stack->pos - results.len;
+
+    // copy results, update stack position
+    memmove(stack->ptr + dst_pos, stack->ptr + src_pos, results.len);
+    stack->pos = dst_pos + results.len;
+  }
+
+  // return success
+  return true;
 }
 
 static bool
