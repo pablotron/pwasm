@@ -458,7 +458,7 @@ static inline bool
 pwasm_is_valid_result_type(
   const uint8_t v
 ) {
-  return ((v == 0x40) || pwasm_is_valid_value_type(v));
+  return ((v == 0x40) || (v == 0x7F) || (v == 0x7E) || (v == 0x7D) || (v == 0x7C));
 }
 
 static const char *PWASM_IMM_NAMES[] = {
@@ -487,13 +487,6 @@ pwasm_imm_get_name(
   .imm = PWASM_IMM_##c, \
 },
 
-#define PWASM_OP_CONTROL(a, b, c) { \
-  .name = (b), \
-  .is_valid = true, \
-  .is_control = true, \
-  .imm = PWASM_IMM_##c, \
-},
-
 #define PWASM_OP_RESERVED(a, b) { \
   .name = ("reserved." b), \
   .imm = PWASM_IMM_LAST, \
@@ -501,7 +494,6 @@ pwasm_imm_get_name(
 
 static const struct {
   const char * name;
-  bool is_control;
   bool is_valid;
   bool is_const;
   pwasm_imm_t imm;
@@ -509,7 +501,7 @@ static const struct {
 PWASM_OP_DEFS
 };
 #undef PWASM_OP
-#undef PWASM_OP_CONTROL
+#undef PWASM_OP_CONST
 #undef PWASM_OP_RESERVED
 
 const char *
@@ -531,13 +523,6 @@ pwasm_op_get_imm(
   const pwasm_op_t op
 ) {
   return PWASM_OPS[op].imm;
-}
-
-static inline bool
-pwasm_op_is_control(
-  const pwasm_op_t op
-) {
-  return PWASM_OPS[op].is_control;
 }
 
 static inline bool

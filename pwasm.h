@@ -119,9 +119,9 @@ const char *pwasm_imm_get_name(const pwasm_imm_t);
 #define PWASM_OP_DEFS \
   /* 0x00 */ PWASM_OP(UNREACHABLE, "unreachable", NONE) \
   /* 0x01 */ PWASM_OP(NOP, "nop", NONE) \
-  /* 0x02 */ PWASM_OP_CONTROL(BLOCK, "block", BLOCK) \
-  /* 0x03 */ PWASM_OP_CONTROL(LOOP, "loop", BLOCK) \
-  /* 0x04 */ PWASM_OP_CONTROL(IF, "if", BLOCK) \
+  /* 0x02 */ PWASM_OP(BLOCK, "block", BLOCK) \
+  /* 0x03 */ PWASM_OP(LOOP, "loop", BLOCK) \
+  /* 0x04 */ PWASM_OP(IF, "if", BLOCK) \
   /* 0x05 */ PWASM_OP(ELSE, "else", NONE) \
   /* 0x06 */ PWASM_OP_RESERVED(_06, "06") \
   /* 0x07 */ PWASM_OP_RESERVED(_07, "07") \
@@ -376,14 +376,12 @@ const char *pwasm_imm_get_name(const pwasm_imm_t);
 
 #define PWASM_OP(a, b, c) PWASM_OP_ ## a,
 #define PWASM_OP_CONST(a, b, c) PWASM_OP_ ## a,
-#define PWASM_OP_CONTROL(a, b, c) PWASM_OP_ ## a,
 #define PWASM_OP_RESERVED(a, b) PWASM_OP_RESERVED ## a,
 typedef enum {
 PWASM_OP_DEFS
 } pwasm_op_t;
 #undef PWASM_OP
 #undef PWASM_OP_CONST
-#undef PWASM_OP_CONTROL
 #undef PWASM_OP_RESERVED
 
 const char *pwasm_op_get_name(const pwasm_op_t);
