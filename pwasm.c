@@ -23,25 +23,6 @@
 #define MIN(a, b) (((a) < (b)) ? (a) : (b))
 #define LEN(ary) (sizeof(ary) / sizeof((ary)[0]))
 
-/**
- * Call error callback (if defined), and then return 0.
- *
- * Note: used for functions that return both bool and size_t.
- */
-#define FAIL(msg) do { \
-  if (cbs && cbs->on_error) { \
-    cbs->on_error(msg, cb_data); \
-  } \
-  return 0; \
-} while (0)
-
-#define INST_FAIL(msg) do { \
-  if (ctx.on_error) { \
-    ctx.on_error(msg, ctx.cb_data); \
-  } \
-  return 0; \
-} while (0)
-
 #ifdef PWASM_DEBUG
 // FIXME: limit to DEBUG
 #include <stdio.h>
@@ -430,12 +411,6 @@ pwasm_is_valid_export_type(
   return v < PWASM_EXPORT_TYPE_LAST;
 }
 
-static const char *PWASM_VALUE_TYPE_NAMES[] = {
-#define PWASM_VALUE_TYPE(a, b, c) c,
-PWASM_VALUE_TYPE_DEFS
-#undef PWASM_VALUE_TYPE
-};
-
 /**
  * Is this value a valid value type?
  *
@@ -452,9 +427,13 @@ const char *
 pwasm_value_type_get_name(
   const pwasm_value_type_t v
 ) {
-  const size_t last_ofs = LEN(PWASM_VALUE_TYPE_NAMES) - 1;
-  const size_t ofs = ((v >= 0x7C) && (v <= 0x7F)) ? (0x7F - v) : last_ofs;
-  return PWASM_VALUE_TYPE_NAMES[ofs];
+  switch (v) {
+#define PWASM_VALUE_TYPE(a, b, c) case a: return c;
+PWASM_VALUE_TYPE_DEFS
+#undef PWASM_VALUE_TYPE
+  default:
+    return pwasm_value_type_get_name(PWASM_VALUE_TYPE_LAST);
+  }
 }
 
 const char *
@@ -466,7 +445,7 @@ pwasm_result_type_get_name(
 PWASM_RESULT_TYPE_DEFS
 #undef PWASM_RESULT_TYPE
   default:
-    return "unknown result type";
+    return pwasm_result_type_get_name(PWASM_RESULT_TYPE_LAST);
   }
 }
 
@@ -4010,10 +3989,7 @@ pwasm_interp_add_native_imports(
   for (size_t i = 0; i < mod->num_imports; i++) {
     // build module name buffer
     // FIXME: should these be in the external api?
-    const pwasm_buf_t mod_buf = {
-      .ptr = (uint8_t*) mod->imports[i].mod,
-      .len = strlen(mod->imports[i].mod),
-    };
+    const pwasm_buf_t mod_buf = pwasm_buf_str(mod->imports[i].mod);
 
     // find mod, check for error
     const uint32_t mod_id = pwasm_env_find_mod(env, mod_buf);
@@ -4024,10 +4000,7 @@ pwasm_interp_add_native_imports(
 
     // build import name buffer
     // FIXME: should these be in the external api?
-    const pwasm_buf_t name_buf = {
-      .ptr = (uint8_t*) mod->imports[i].name,
-      .len = strlen(mod->imports[i].name),
-    };
+    const pwasm_buf_t name_buf = pwasm_buf_str(mod->imports[i].name);
 
     // find import, check for error
     const uint32_t id = pwasm_env_find_import(env, mod_id, mod->imports[i].type, name_buf);
@@ -4101,12 +4074,7 @@ pwasm_interp_on_add_mod(
   // build row
   const pwasm_interp_row_t mod_row = {
     .type = PWASM_INTERP_ROW_TYPE_MOD,
-
-    .name = {
-      .ptr = (uint8_t*) name,
-      .len = strlen(name),
-    },
-
+    .name = pwasm_buf_str(name),
     .mod = {
       .imports = imports,
       .mod = mod,
@@ -4180,12 +4148,7 @@ pwasm_interp_on_add_native(
   // build row
   const pwasm_interp_row_t mod_row = {
     .type     = PWASM_INTERP_ROW_TYPE_NATIVE,
-
-    .name = {
-      .ptr = (uint8_t*) name,
-      .len = strlen(name),
-    },
-
+    .name = pwasm_buf_str(name),
     .native = {
       .imports = imports,
       .native = mod,
@@ -4206,11 +4169,7 @@ pwasm_interp_on_add_native(
     // build export function row
     const pwasm_interp_row_t row = {
       .type = PWASM_INTERP_ROW_TYPE_FUNC,
-
-      .name = {
-        .ptr = (uint8_t*) mod->funcs[i].name,
-        .len = strlen(mod->funcs[i].name),
-      },
+      .name = pwasm_buf_str(mod->funcs[i].name),
 
       .func = {
         .mod_id = mod_id,
