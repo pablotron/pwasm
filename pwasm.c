@@ -1515,8 +1515,17 @@ pwasm_parse_inst(
 }
 
 typedef struct {
+  // maximum depth of control stack
+  size_t max_ctl_depth;
+
+  // maximum depth of value stack
+  size_t max_val_depth;
+} pwasm_expr_stats_t;
+
+typedef struct {
   pwasm_slice_t (*on_labels)(const uint32_t *, const size_t, void *);
   pwasm_slice_t (*on_insts)(const pwasm_inst_t *, const size_t, void *);
+  pwasm_slice_t (*on_stats)(const pwasm_expr_stats_t, void *);
   void (*on_error)(const char *, void *);
 } pwasm_parse_expr_cbs_t;
 
