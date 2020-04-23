@@ -3116,67 +3116,6 @@ pwasm_mod_parse_section(
   }
 }
 
-#if 0
-static pwasm_slice_t
-pwasm_mod_parse_null_on_u32s(
-  const uint32_t * const ptr,
-  const size_t len,
-  void *cb_data
-) {
-  (void) ptr;
-  (void) len;
-  (void) cb_data;
-  return (pwasm_slice_t) { 0, len };
-}
-
-static pwasm_slice_t
-pwasm_mod_parse_null_on_bytes(
-  const uint8_t * const ptr,
-  const size_t len,
-  void *cb_data
-) {
-  (void) ptr;
-  (void) len;
-  (void) cb_data;
-  return (pwasm_slice_t) { 0, len };
-}
-
-static void
-pwasm_mod_parse_null_on_section(
-  const pwasm_header_t * const header,
-  void *cb_data
-) {
-  (void) header;
-  (void) cb_data;
-}
-
-static void
-pwasm_mod_parse_null_on_custom_section(
-  const pwasm_custom_section_t * const section,
-  void *cb_data
-) {
-  (void) section;
-  (void) cb_data;
-}
-
-static inline pwasm_mod_parse_cbs_t
-pwasm_mod_parse_get_cbs(
-  const pwasm_mod_parse_cbs_t * const cbs
-) {
-  // FIXME: not working right
-  // return callbacks
-  return (pwasm_mod_parse_cbs_t) {
-    .on_error = (cbs && cbs->on_error) ? cbs->on_error : pwasm_null_on_error,
-    .on_bytes = (cbs && cbs->on_bytes) ? cbs->on_bytes : pwasm_mod_parse_null_on_bytes,
-    .on_u32s = (cbs && cbs->on_u32s) ? cbs->on_u32s : pwasm_mod_parse_null_on_u32s,
-    // .on_insts = (cbs && cbs->on_insts) ? cbs->on_insts : pwasm_mod_parse_null_on_insts,
-    // .on_labels = (cbs && cbs->on_labels) ? cbs->on_labels : pwasm_mod_parse_null_on_labels,
-    .on_section = (cbs && cbs->on_section) ? cbs->on_section : pwasm_mod_parse_null_on_section,
-    .on_custom_section = (cbs && cbs->on_custom_section) ? cbs->on_custom_section : pwasm_mod_parse_null_on_custom_section,
-  };
-}
-#endif /* 0 */
-
 size_t
 pwasm_mod_parse(
   const pwasm_buf_t src,
