@@ -560,9 +560,21 @@ pwasm_op_is_global(
 
 static inline bool
 pwasm_op_is_const(
-  const pwasm_op_t op
+  const uint8_t byte
 ) {
-  return PWASM_OPS[op].is_const;
+  return (
+    (byte == PWASM_IMM_I32_CONST) ||
+    (byte == PWASM_IMM_I64_CONST) ||
+    (byte == PWASM_IMM_F32_CONST) ||
+    (byte == PWASM_IMM_F32_CONST)
+  );
+}
+
+static inline bool
+pwasm_op_is_mem(
+  const uint8_t byte
+) {
+  return pwasm_op_get_imm(byte) == PWASM_IMM_MEM;
 }
 
 static const size_t
@@ -1272,7 +1284,7 @@ pwasm_parse_inst(
   pwasm_buf_t curr = src;
   size_t num_bytes = 0;
 
-  D("src.ptr = %p, src.len = %zu", src.ptr, src.len);
+  D("src.ptr = %p, src.len = %zu", (void*) src.ptr, src.len);
 
   // check source length
   if (src.len < 1) {
@@ -1766,7 +1778,7 @@ pwasm_parse_global(
   pwasm_buf_t curr = src;
   size_t num_bytes = 0;
 
-  D("parsing global, src.ptr = %p, src.len = %zu", src.ptr, src.len);
+  D("parsing global, src.ptr = %p, src.len = %zu", (void*) src.ptr, src.len);
 
   // check source length
   if (src.len < 3) {
@@ -1887,7 +1899,7 @@ pwasm_parse_import_data(
   const pwasm_parse_import_cbs_t * const cbs,
   void *cb_data
 ) {
-  D("type = %u:%s, src.ptr = %p, src.len = %zu", type, pwasm_import_type_get_name(type), src.ptr, src.len);
+  D("type = %u:%s, src.ptr = %p, src.len = %zu", type, pwasm_import_type_get_name(type), (void*) src.ptr, src.len);
   switch (type) {
 #define PWASM_IMPORT_TYPE(ID, TEXT, NAME) \
   case PWASM_IMPORT_TYPE_ ## ID: \
@@ -1935,7 +1947,7 @@ pwasm_parse_import(
     curr = pwasm_buf_step(curr, len);
     num_bytes += len;
 
-    D("curr.ptr = %p, curr.len = %zu", curr.ptr, curr.len);
+    D("curr.ptr = %p, curr.len = %zu", (void*) curr.ptr, curr.len);
   }
 
   if (curr.len < 2) {
@@ -2244,14 +2256,14 @@ pwasm_parse_code_locals_local(
 static size_t
 pwasm_parse_code_locals(
   pwasm_slice_t * const dst,
-  size_t * const dst_num_locals,
+  size_t * const dst_max_locals,
   const pwasm_buf_t src,
   const pwasm_parse_code_cbs_t * const cbs,
   void * const cb_data
 ) {
   pwasm_buf_t curr = src;
   size_t num_bytes = 0;
-  size_t num_locals = 0;
+  size_t max_locals = 0;
   pwasm_slice_t local = { 0, 0 };
 
   uint32_t count = 0;
@@ -2281,7 +2293,7 @@ pwasm_parse_code_locals(
     }
 
     // add to total number of locals for this function
-    num_locals += locals[ofs].num;
+    max_locals += locals[ofs].num;
 
     // advance
     curr = pwasm_buf_step(curr, len);
@@ -2320,7 +2332,7 @@ pwasm_parse_code_locals(
 
   // copy results to destination
   *dst = local;
-  *dst_num_locals = num_locals;
+  *dst_max_locals = max_locals;
 
   // return number of bytes read
   return num_bytes;
@@ -2388,10 +2400,10 @@ pwasm_parse_code(
   // FIXME: need to adjust curr here based on code_len
 
   pwasm_slice_t locals;
-  size_t num_locals = 0;
+  size_t max_locals = 0;
   {
     // parse locals, check for error
-    const size_t len = pwasm_parse_code_locals(&locals, &num_locals, curr, cbs, cb_data);
+    const size_t len = pwasm_parse_code_locals(&locals, &max_locals, curr, cbs, cb_data);
     if (!len) {
       return 0;
     }
@@ -2416,7 +2428,7 @@ pwasm_parse_code(
 
   *dst = (pwasm_func_t) {
     .locals = locals,
-    .num_locals = num_locals,
+    .max_locals = max_locals,
     .expr = expr,
   };
 
@@ -3104,7 +3116,7 @@ pwasm_mod_parse_section(
   const pwasm_mod_parse_cbs_t * const cbs,
   void *cb_data
 ) {
-  D("type = src.ptr = %p, type = %u:%s", src.ptr, type, pwasm_section_type_get_name(type));
+  D("type = src.ptr = %p, type = %u:%s", (void*) src.ptr, type, pwasm_section_type_get_name(type));
   switch (type) {
   #define PWASM_SECTION_TYPE(a, b) \
     case PWASM_SECTION_TYPE_ ## a: \
@@ -3202,6 +3214,279 @@ pwasm_mod_parse(
 }
 
 typedef struct {
+  void (*on_warning)(const char *, void *);
+  void (*on_error)(const char *, void *);
+} pwasm_mod_check_cbs_t;
+
+typedef struct {
+  const pwasm_mod_check_cbs_t cbs;
+  void *cb_data;
+} pwasm_mod_check_t;
+
+static pwasm_buf_t
+pwasm_mod_check_custom_section_get_name(
+  const pwasm_mod_t * const mod,
+  const size_t id
+) {
+  const pwasm_slice_t name = mod->custom_sections[id].name;
+  return (pwasm_buf_t) { mod->bytes + name.ofs, name.len };
+}
+
+static bool
+pwasm_mod_check_custom_sections(
+  const pwasm_mod_t * const mod,
+  const pwasm_mod_check_t * const check
+) {
+  for (size_t i = 0; i < mod->num_custom_sections; i++) {
+    // get custom section name as a buffer
+    const pwasm_buf_t buf = pwasm_mod_check_custom_section_get_name(mod, i);
+
+    // is the custom section name valid utf8?
+    if (!pwasm_utf8_is_valid(buf)) {
+      // Note: this is a warning rather than an error because the wasm
+      // spec says that errors in custom sections should be non-fatal.
+      //
+      // TODO: verify that this is correct
+      check->cbs.on_warning("custom section name is not UTF-8", check->cb_data);
+    }
+  }
+
+  // return success
+  return true;
+}
+
+/**
+ * Check instruction in a constant expression to verify that all
+ * of the following are true:
+ *
+ * * It is either either a global.get or a *.const instruction.
+ * * If it is a global.get instruction, then it refers to an imported
+ *   global.
+ *
+ * Reference:
+ * https://webassembly.github.io/spec/core/valid/instructions.html#constant-expressions
+ *
+ */
+static bool
+pwasm_mod_check_const_expr_inst(
+  const pwasm_mod_t * const mod,
+  const pwasm_mod_check_t * const check,
+  const pwasm_inst_t in
+) {
+  // number of imported globals in this module
+  const size_t num_global_imports = mod->num_import_types[PWASM_IMPORT_TYPE_GLOBAL];
+
+  // instruction index immediate
+  const uint32_t id = in.v_index.id;
+
+  // is this a valid instruction for a constant expr?
+  if (
+    !pwasm_op_is_const(in.op) ||
+    (in.op == PWASM_OP_GLOBAL_GET) ||
+    (in.op != PWASM_OP_END)
+  ) {
+    check->cbs.on_error("non-constant instruction found in constant expression", check->cb_data);
+    return false;
+  }
+
+  // is this a global.get inst that references a non-imported global?
+  if ((in.op == PWASM_OP_GLOBAL_GET) && id >= num_global_imports) {
+    check->cbs.on_error("constant expressions cannot reference non-imported globals", check->cb_data);
+    return false;
+  }
+
+  // return success
+  return true;
+}
+
+/**
+ * Check constant expression validity.
+ *
+ * Reference:
+ * https://webassembly.github.io/spec/core/valid/instructions.html#constant-expressions
+ *
+ */
+static bool
+pwasm_mod_check_const_expr(
+  const pwasm_mod_t * const mod,
+  const pwasm_mod_check_t * const check,
+  const pwasm_slice_t expr
+) {
+  const pwasm_inst_t * const insts = mod->insts + expr.ofs;
+
+  // check instructions
+  for (size_t i = 0; i < expr.len; i++) {
+    if (!pwasm_mod_check_const_expr_inst(mod, check, insts[i])) {
+      return false;
+    }
+  }
+
+  // return success
+  return true;
+}
+
+static bool
+pwasm_mod_check_globals(
+  const pwasm_mod_t * const mod,
+  const pwasm_mod_check_t * const check
+) {
+  for (size_t i = 0; i < mod->num_globals; i++) {
+    if (!pwasm_mod_check_const_expr(mod, check, mod->globals[i].expr)) {
+      return false;
+    }
+  }
+
+  // return success
+  return true;
+}
+
+static bool
+pwasm_mod_check_elems(
+  const pwasm_mod_t * const mod,
+  const pwasm_mod_check_t * const check
+) {
+  for (size_t i = 0; i < mod->num_elems; i++) {
+    if (!pwasm_mod_check_const_expr(mod, check, mod->elems[i].expr)) {
+      return false;
+    }
+  }
+
+  // return success
+  return true;
+}
+
+static bool
+pwasm_mod_check_segments(
+  const pwasm_mod_t * const mod,
+  const pwasm_mod_check_t * const check
+) {
+  for (size_t i = 0; i < mod->num_segments; i++) {
+    if (!pwasm_mod_check_const_expr(mod, check, mod->segments[i].expr)) {
+      return false;
+    }
+  }
+
+  // return success
+  return true;
+}
+
+static bool
+pwasm_mod_check_func(
+  const pwasm_mod_t * const mod,
+  const pwasm_mod_check_t * const check,
+  const pwasm_func_t func
+) {
+  // get function instructions
+  const pwasm_inst_t * const insts = mod->insts + func.expr.ofs;
+
+  // get the maximum global and local indices
+  const size_t max_globals = mod->num_globals + mod->num_import_types[PWASM_IMPORT_TYPE_GLOBAL];
+  const size_t max_locals = func.max_locals + mod->types[func.type_id].params.len;
+
+  // temporarily disabled until i can fix tests
+  return true;
+
+  for (size_t i = 0; i < func.expr.len; i++) {
+    // get instruction and index immediate
+    const pwasm_inst_t in = insts[i];
+    const uint32_t id = in.v_index.id;
+
+
+    // is this a local instruction with an invalid index?
+    if (pwasm_op_is_local(in.op) && (id >= max_locals)) {
+      check->cbs.on_error("invalid index in local instruction", check->cb_data);
+      return false;
+    }
+
+    // is this a global instruction with an invalid index?
+    if (pwasm_op_is_global(in.op) && (id >= max_globals)) {
+      check->cbs.on_error("invalid index in global instruction", check->cb_data);
+      return false;
+    }
+
+    if (pwasm_op_is_mem(in.op)) {
+      const uint32_t num_bits = pwasm_op_get_num_bits(in.op);
+      (void) num_bits;
+      // TODO: check alignment
+    }
+  }
+
+  // return success
+  return true;
+}
+
+static bool
+pwasm_mod_check_funcs(
+  const pwasm_mod_t * const mod,
+  const pwasm_mod_check_t * const check
+) {
+  for (size_t i = 0; i < mod->num_codes; i++) {
+    if (!pwasm_mod_check_func(mod, check, mod->codes[i])) {
+      return false;
+    }
+  }
+
+  // return success
+  return true;
+}
+
+/**
+ * Verify that a parsed module is valid.
+ *
+ * Note: this is called automatically by pwasm_mod_init(), so you only
+ * need to call it if you use pwasm_mod_init_unsafe().
+ *
+ * Returns true if the parsed module validates successfully and false
+ * otherwise.
+ */
+static bool
+pwasm_mod_check(
+  const pwasm_mod_t * const mod,
+  const pwasm_mod_check_cbs_t * const cbs,
+  void *cb_data
+) {
+  const pwasm_mod_check_t check = {
+    .cbs = cbs ? *cbs : (pwasm_mod_check_cbs_t) {
+      .on_warning = pwasm_null_on_error,
+      .on_error   = pwasm_null_on_error,
+    },
+    .cb_data = cb_data,
+  };
+
+  // check custom sections
+  if (!pwasm_mod_check_custom_sections(mod, &check)) {
+    return false;
+  }
+
+  // FIXME: disabled (until i fix tests)
+  return true;
+
+  // check globals
+  if (!pwasm_mod_check_globals(mod, &check)) {
+    return false;
+  }
+
+  // check elems
+  if (!pwasm_mod_check_elems(mod, &check)) {
+    return false;
+  }
+
+  // check segments
+  if (!pwasm_mod_check_segments(mod, &check)) {
+    return false;
+  }
+
+  // check function code
+  // TODO: should be run in parallel
+  if (!pwasm_mod_check_funcs(mod, &check)) {
+    return false;
+  }
+
+  // return success
+  return true;
+}
+
+typedef struct {
   pwasm_builder_t * const builder;
   bool success;
 } pwasm_mod_init_unsafe_t;
@@ -3243,7 +3528,7 @@ pwasm_mod_init_unsafe_on_bytes(
 ) {
   pwasm_mod_init_unsafe_t * const data = cb_data;
 
-  D("bytes = %p, num = %zu", bytes, num);
+  D("bytes = %p, num = %zu", (void*) bytes, num);
 
   const pwasm_slice_t ret = pwasm_builder_push_bytes(data->builder, bytes, num);
   if (ret.len != num) {
@@ -3593,8 +3878,26 @@ pwasm_mod_init(
   pwasm_mod_t * const mod,
   pwasm_buf_t src
 ) {
-  // TODO add checks
-  return pwasm_mod_init_unsafe(mem_ctx, mod, src);
+  // init mod
+  const size_t len = pwasm_mod_init_unsafe(mem_ctx, mod, src);
+  if (!len) {
+    // return failure
+    return 0;
+  }
+
+  const pwasm_mod_check_cbs_t cbs = {
+    // TODO: .on_warning = mem_ctx->cbs->on_error,
+    .on_error = mem_ctx->cbs->on_error,
+  };
+
+  // check mod (FIXME: this should be done inline in the future)
+  if (!pwasm_mod_check(mod, &cbs, mem_ctx->cb_data)) {
+    // return failure
+    return 0;
+  }
+
+  // return success
+  return len;
 }
 
 void
@@ -5665,14 +5968,14 @@ pwasm_interp_call(
   }
 
   // get total number of local slots
-  const size_t num_locals = mod->codes[func_id].num_locals;
-  if (num_locals > 0) {
+  const size_t max_locals = mod->codes[func_id].max_locals;
+  if (max_locals > 0) {
     // clear local slots
-    memset(stack->ptr + stack->pos, 0, sizeof(pwasm_val_t) * num_locals);
+    memset(stack->ptr + stack->pos, 0, sizeof(pwasm_val_t) * max_locals);
   }
 
   // skip past locals
-  stack->pos += num_locals;
+  stack->pos += max_locals;
 
   // build interpreter frame
   pwasm_interp_frame_t frame = {
@@ -5680,8 +5983,8 @@ pwasm_interp_call(
     .mod = mod,
     .params = params,
     .locals = {
-      .ofs = stack->pos - num_locals - params.len,
-      .len = num_locals + params.len,
+      .ofs = stack->pos - max_locals - params.len,
+      .len = max_locals + params.len,
     },
   };
 
@@ -5695,7 +5998,7 @@ pwasm_interp_call(
   }
 
   // get func results
-  if ((num_locals + params.len) > 0) {
+  if ((max_locals + params.len) > 0) {
     // calc dst and src stack positions
     const size_t dst_pos = frame.locals.ofs;
     const size_t src_pos = stack->pos - results.len;

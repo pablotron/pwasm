@@ -569,11 +569,11 @@ typedef struct {
   // local variable slots (only used for module functions)
   //
   // NOTE: each local has a num parameter so you cannot use .len to
-  // calculate the total number of locals; use num_locals instead.
+  // calculate the total number of locals; use max_locals instead.
   pwasm_slice_t locals;
 
-  // total number of local slots
-  size_t num_locals;
+  // total number of local slots (params.len + locals)
+  size_t max_locals;
 
   // instructions
   pwasm_slice_t expr;
