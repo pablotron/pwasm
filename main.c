@@ -219,6 +219,99 @@ static const uint8_t PYTHAG_WASM[] = {
   0x9F, 0x0B,
 };
 
+static const struct {
+  const char * const name;
+  const pwasm_buf_t data;
+} WASM_TEST_BLOBS[] = {{
+  .name = "guide",
+  .data = { GUIDE_WASM, sizeof(GUIDE_WASM) },
+}, {
+  .name = "pythag",
+  .data = { PYTHAG_WASM, sizeof(PYTHAG_WASM) },
+}};
+
+static const pwasm_val_t
+WASM_TEST_VALS[] = {
+  // native.add_one params (1)
+  { .i32 = 3 },
+
+  // native.add_one result (1)
+  { .i32 = 4 },
+
+  // native.add_two params (2)
+  { .i32 = 3 },
+  { .i32 = 4 },
+
+  // native.add_two result (1)
+  { .i32 = 12 },
+
+  // guide.life params (0)
+
+  // guide.life result (1)
+  { .i32 = 42 },
+
+  // pythag.f32.pythag params (2)
+  { .f32 = 3.0f },
+  { .f32 = 4.0f },
+
+  // pythag.f32.pythag result (1)
+  { .f32 = 5.0f },
+
+  // pythag.f64.pythag params (2)
+  { .f64 = 5.0f },
+  { .f64 = 6.0f },
+
+  // pythag.f64.pythag result (1)
+  { .f64 = 7.810250f },
+};
+
+typedef struct {
+  const char * const text;
+  const char * const mod;
+  const char * const func;
+  const pwasm_slice_t params;
+  const pwasm_slice_t result;
+  const pwasm_result_type_t type;
+} wasm_test_call_t;
+
+static const wasm_test_call_t
+WASM_TEST_CALLS[] = {{
+  .text   = "native.add_one(3)",
+  .mod    = "native",
+  .func   = "add_one",
+  .params = { 0, 1 },
+  .result = { 1, 1 },
+  .type   = PWASM_RESULT_TYPE_I32,
+}, {
+  .text   = "native.mul_two(3, 4)",
+  .mod    = "native",
+  .func   = "mul_two",
+  .params = { 2, 2 },
+  .result = { 4, 1 },
+  .type   = PWASM_RESULT_TYPE_I32,
+}, {
+  .text   = "guide.life()",
+  .mod    = "guide",
+  .func   = "life",
+  .params = { 0, 0 },
+  .result = { 5, 1 },
+  .type   = PWASM_RESULT_TYPE_I32,
+}, {
+  .text   = "pythag.f32.pythag(3, 4)",
+  .mod    = "pythag",
+  .func   = "f32.pythag",
+  .params = { 6, 2 },
+  .result = { 8, 1 },
+  .type   = PWASM_RESULT_TYPE_F32,
+}, {
+  .text   = "pythag.f32.pythag(5, 6)",
+  .mod    = "pythag",
+  .func   = "f64.pythag",
+  .params = { 9, 2 },
+  .result = { 11, 1 },
+  .type   = PWASM_RESULT_TYPE_F64,
+}};
+
 static result_t
 run_env_tests(void) {
   const size_t num_fails = 0,
@@ -226,24 +319,6 @@ run_env_tests(void) {
 
   // create a memory context
   pwasm_mem_ctx_t mem_ctx = pwasm_mem_ctx_init_defaults(NULL);
-
-  pwasm_mod_t guide_mod;
-  {
-    // parse guide.wasm into guide_mod, check for error
-    pwasm_buf_t buf = { GUIDE_WASM, sizeof(GUIDE_WASM) };
-    if (!pwasm_mod_init(&mem_ctx, &guide_mod, buf)) {
-      errx(EXIT_FAILURE, "guide.wasm: pwasm_mod_init() failed");
-    }
-  }
-
-  pwasm_mod_t pythag_mod;
-  {
-    // parse pythag.wasm into pythag_mod, check for error
-    pwasm_buf_t buf = { PYTHAG_WASM, sizeof(PYTHAG_WASM) };
-    if (!pwasm_mod_init(&mem_ctx, &pythag_mod, buf)) {
-      errx(EXIT_FAILURE, "pythag.wasm: pwasm_mod_init() failed");
-    }
-  }
 
   // set up stack
   pwasm_val_t stack_vals[10];
@@ -267,73 +342,63 @@ run_env_tests(void) {
     errx(EXIT_FAILURE, "pwasm_env_add_native() failed");
   }
 
-  // add guide_mod
-  if (!pwasm_env_add_mod(&env, "guide", &guide_mod)) {
-    errx(EXIT_FAILURE, "pwasm_env_add_mod() failed");
+  // parse and add wasms
+  pwasm_mod_t mods[LEN(WASM_TEST_BLOBS)];
+  for (size_t i = 0; i < LEN(WASM_TEST_BLOBS); i++) {
+    // get name and data
+    const char * const name = WASM_TEST_BLOBS[i].name;
+    pwasm_buf_t buf = WASM_TEST_BLOBS[i].data;
+
+    // parse blob into mod, check for error
+    if (!pwasm_mod_init(&mem_ctx, &(mods[i]), buf)) {
+      errx(EXIT_FAILURE, "%s.wasm: pwasm_mod_init() failed", name);
+    }
+
+    // add mod to env, check for error
+    if (!pwasm_env_add_mod(&env, name, &(mods[i]))) {
+      errx(EXIT_FAILURE, "%s: pwasm_env_add_mod() failed", name);
+    }
   }
 
-  // add pythag_mod
-  if (!pwasm_env_add_mod(&env, "pythag", &pythag_mod)) {
-    errx(EXIT_FAILURE, "pwasm_env_add_mod() failed");
+  for (size_t i = 0; i < LEN(WASM_TEST_CALLS); i++) {
+    // get test
+    const wasm_test_call_t test = WASM_TEST_CALLS[i];
+
+    // populate stack
+    stack.pos = test.params.len;
+    if (test.params.len > 0) {
+      const size_t num_bytes = sizeof(pwasm_val_t) * test.params.len;
+      memcpy(stack.ptr, WASM_TEST_VALS + test.params.ofs, num_bytes);
+    }
+
+    // invoke function, check for error
+    if (!pwasm_call(&env, test.mod, test.func)) {
+      errx(EXIT_FAILURE, "%s.%s: pwasm_call() failed", test.mod, test.func);
+    }
+
+    if (test.result.len > 0) {
+      // print test result
+      switch (test.type) {
+      case PWASM_RESULT_TYPE_I32:
+        printf("%s = %u\n", test.text, stack.ptr[0].i32);
+        break;
+      case PWASM_RESULT_TYPE_I64:
+        printf("%s = %lu\n", test.text, stack.ptr[0].i64);
+        break;
+      case PWASM_RESULT_TYPE_F32:
+        printf("%s = %f\n", test.text, stack.ptr[0].f32);
+        break;
+      case PWASM_RESULT_TYPE_F64:
+        printf("%s = %f\n", test.text, stack.ptr[0].f64);
+        break;
+      case PWASM_RESULT_TYPE_VOID:
+        printf("%s: passed\n", test.text);
+        break;
+      default:
+        errx(EXIT_FAILURE, "unknown test result type: %u", test.type);
+      }
+    }
   }
-
-  // init params
-  stack.ptr[0].i32 = 3;
-  stack.pos = 1;
-
-  // call native.add_one
-  if (!pwasm_call(&env, "native", "add_one")) {
-    errx(EXIT_FAILURE, "pwasm_call() failed");
-  }
-
-  printf("native.add_one(3) = %u\n", stack.ptr[0].i32);
-
-  // init params
-  stack.ptr[0].i32 = 3;
-  stack.ptr[1].i32 = 4;
-  stack.pos = 2;
-
-  // call native.add_one
-  if (!pwasm_call(&env, "native", "mul_two")) {
-    errx(EXIT_FAILURE, "pwasm_call() failed");
-  }
-
-  printf("native.mul_two(3, 4) = %u\n", stack.ptr[0].i32);
-
-  // init params
-  stack.pos = 0;
-
-  // call guide.life
-  if (!pwasm_call(&env, "guide", "life")) {
-    errx(EXIT_FAILURE, "pwasm_call() failed");
-  }
-
-  // print result
-  printf("guide.life() = %u\n", stack.ptr[0].i32);
-
-  // init params
-  stack.ptr[0].f32 = 3.0f;
-  stack.ptr[1].f32 = 4.0f;
-  stack.pos = 2;
-
-  // call pythag.f32.pythag
-  if (!pwasm_call(&env, "pythag", "f32.pythag")) {
-    errx(EXIT_FAILURE, "pwasm_call() failed");
-  }
-
-  printf("pythag.f32.pythag(3.0f, 4.0f) = %f\n", stack.ptr[0].f32);
-
-  // init params
-  stack.ptr[0].f64 = 5.0;
-  stack.ptr[1].f64 = 6.0;
-  stack.pos = 2;
-
-  // call pythag.f64.pythag
-  if (!pwasm_call(&env, "pythag", "f64.pythag")) {
-    errx(EXIT_FAILURE, "pwasm_call() failed");
-  }
-
-  printf("pythag.f64.pythag(5.0, 6.0) = %f\n", stack.ptr[0].f64);
 
   // finalize environment
   pwasm_env_fini(&env);
