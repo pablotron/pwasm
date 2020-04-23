@@ -379,19 +379,21 @@ pwasm_u64_decode(
     return num_bytes; \
   }
 
+#define DEF_GET_NAMES(NAME_LC, NAME_UC) \
+  const char * pwasm_ ## NAME_LC ## _get_name ( \
+    const pwasm_ ## NAME_LC ## _t val \
+  ) { \
+    const size_t ofs = MIN(PWASM_ ## NAME_UC ## _LAST, val); \
+    return PWASM_## NAME_UC ## _NAMES[ofs]; \
+  }
+
 #define PWASM_SECTION_TYPE(a, b) #b,
 static const char *PWASM_SECTION_TYPE_NAMES[] = {
 PWASM_SECTION_TYPES
 };
 #undef PWASM_SECTION_TYPE
 
-const char *
-pwasm_section_type_get_name(
-  const pwasm_section_type_t type
-) {
-  const size_t ofs = MIN(PWASM_SECTION_TYPE_LAST, type);
-  return PWASM_SECTION_TYPE_NAMES[ofs];
-}
+DEF_GET_NAMES(section_type, SECTION_TYPE)
 
 #define PWASM_IMPORT_TYPE(a, b, c) b,
 static const char *PWASM_IMPORT_TYPE_NAMES[] = {
@@ -399,13 +401,7 @@ PWASM_IMPORT_TYPES
 };
 #undef PWASM_IMPORT_TYPE
 
-const char *
-pwasm_import_type_get_name(
-  const pwasm_import_type_t v
-) {
-  const size_t ofs = MIN(PWASM_IMPORT_TYPE_LAST, v);
-  return PWASM_IMPORT_TYPE_NAMES[ofs];
-}
+DEF_GET_NAMES(import_type, IMPORT_TYPE)
 
 #define PWASM_EXPORT_TYPE(a, b) b,
 static const char *PWASM_EXPORT_TYPE_NAMES[] = {
@@ -413,13 +409,7 @@ PWASM_EXPORT_TYPES
 };
 #undef PWASM_EXPORT_TYPE
 
-const char *
-pwasm_export_type_get_name(
-  const pwasm_export_type_t v
-) {
-  const size_t ofs = MIN(PWASM_EXPORT_TYPE_LAST, v);
-  return PWASM_EXPORT_TYPE_NAMES[ofs];
-}
+DEF_GET_NAMES(export_type, EXPORT_TYPE)
 
 static inline bool
 pwasm_is_valid_export_type(
@@ -484,12 +474,7 @@ PWASM_IMM_DEFS
 #undef PWASM_IMM
 };
 
-const char *
-pwasm_imm_get_name(
-  const pwasm_imm_t v
-) {
-  return PWASM_IMM_NAMES[MIN(v, PWASM_IMM_LAST)];
-}
+DEF_GET_NAMES(imm, IMM)
 
 #define PWASM_OP(a, b, c) { \
   .name = (b), \
