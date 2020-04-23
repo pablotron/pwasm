@@ -1,18 +1,3 @@
-# pwasm
-
-PWASM (pronounced "possum") is an standalone, embeddable [WebAssembly][]
-parser and interpreter written in [C11][].
-
-## Example
-
-Below is a self-contained example which does the following:
-
-1. Parses a module containing two functions (`f32.pythag()` and
-   `f64.pythag()`)
-2. Executes each function with test parameters
-3. Prints the result of the function.
-
-```c
 /**
  * example.c: minimal standalone pwasm example.
  *
@@ -137,7 +122,3 @@ int main(void) {
   pwasm_env_fini(&env);
   return EXIT_SUCCESS;
 }
-```
-
-[webassembly]: https://en.wikipedia.org/wiki/WebAssembly
-[c11]: https://en.wikipedia.org/wiki/C11_(C_standard_revision)
