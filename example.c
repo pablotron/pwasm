@@ -3,9 +3,9 @@
  *
  * Usage:
  *   # compile {example,pwasm}.c
- *   > cc -W -Wall -Wextra -Werror -pedantic -std=c11 -O3 example.c
- *   > cc -W -Wall -Wextra -Werror -pedantic -std=c11 -O3 pwasm.c
- *   > cc -o ./pwasm-example {example,pwasm}.c -lm
+ *   cc -W -Wall -Wextra -Werror -pedantic -std=c11 -O3 example.c
+ *   cc -W -Wall -Wextra -Werror -pedantic -std=c11 -O3 pwasm.c
+ *   cc -o ./pwasm-example {example,pwasm}.c -lm
  *
  * Output:
  *   > ./pwasm-example
