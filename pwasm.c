@@ -411,6 +411,14 @@ PWASM_EXPORT_TYPES
 
 DEF_GET_NAMES(export_type, EXPORT_TYPE)
 
+static const char *PWASM_IMM_NAMES[] = {
+#define PWASM_IMM(a, b) b,
+PWASM_IMM_DEFS
+#undef PWASM_IMM
+};
+
+DEF_GET_NAMES(imm, IMM)
+
 static inline bool
 pwasm_is_valid_export_type(
   const uint8_t v
@@ -467,14 +475,6 @@ pwasm_is_valid_result_type(
 ) {
   return ((v == 0x40) || (v == 0x7F) || (v == 0x7E) || (v == 0x7D) || (v == 0x7C));
 }
-
-static const char *PWASM_IMM_NAMES[] = {
-#define PWASM_IMM(a, b) b,
-PWASM_IMM_DEFS
-#undef PWASM_IMM
-};
-
-DEF_GET_NAMES(imm, IMM)
 
 #define PWASM_OP(a, b, c) { \
   .name = (b), \
