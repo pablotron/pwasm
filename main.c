@@ -8,6 +8,8 @@
 #include "mod-tests.h"
 #include "func-tests.h"
 
+#define LEN(a) (sizeof(a) / sizeof((a)[0]))
+
 typedef struct {
   size_t num_fails;
   size_t num_tests;
@@ -190,13 +192,31 @@ NATIVE = {
   .funcs = NATIVE_FUNCS,
 };
 
-// test module with one method "life" (void -> i32)
+// test module with one func "life" (void -> i32)
 static const uint8_t GUIDE_WASM[] = {
   0x00, 0x61, 0x73, 0x6d, 0x01, 0x00, 0x00, 0x00,
   0x01, 0x05, 0x01, 0x60, 0x00, 0x01, 0x7F, 0x03,
   0x02, 0x01, 0x00, 0x07, 0x08, 0x01, 0x04, 'l',
   'i',  'f',  'e',  0x00, 0x00, 0x0A, 0x06, 0x01,
   0x04, 0x00, 0x41, 0x2A, 0x0B,
+};
+
+// test module with two funcs:
+// * "f32.pythag" (f32, f32 -> f32)
+// * "f64.pythag" (f64, f64 -> f64)
+static const uint8_t PYTHAG_WASM[] = {
+  0x00, 0x61, 0x73, 0x6d, 0x01, 0x00, 0x00, 0x00,
+  0x01, 0x0D, 0x02, 0x60, 0x02, 0x7E, 0x7E, 0x01,
+  0x7E, 0x60, 0x02, 0x7C, 0x7C, 0x01, 0x7C, 0x03,
+  0x03, 0x02, 0x00, 0x01, 0x07, 0x1B, 0x02, 0x0A,
+  'f',  '3',  '2',  '.',  'p',  'y',  't',  'h',
+  'a',  'g',  0x00, 0x00, 0x0A, 'f',  '6',  '4',
+  '.',  'p',  'y',  't',  'h',  'a',  'g',  0x00,
+  0x01, 0x0A, 0x1F, 0x02, 0x0E, 0x00, 0x20, 0x00,
+  0x20, 0x00, 0x94, 0x20, 0x01, 0x20, 0x01, 0x94,
+  0x92, 0x91, 0x0B, 0x0E, 0x00, 0x20, 0x00, 0x20,
+  0x00, 0xA2, 0x20, 0x01, 0x20, 0x01, 0xA2, 0xA0,
+  0x9F, 0x0B,
 };
 
 static result_t
@@ -207,11 +227,22 @@ run_env_tests(void) {
   // create a memory context
   pwasm_mem_ctx_t mem_ctx = pwasm_mem_ctx_init_defaults(NULL);
 
-  // parse guide.wasm into mod
-  pwasm_mod_t mod;
-  pwasm_buf_t buf = { GUIDE_WASM, sizeof(GUIDE_WASM) };
-  if (!pwasm_mod_init(&mem_ctx, &mod, buf)) {
-    errx(EXIT_FAILURE, "pwasm_env_init() failed");
+  pwasm_mod_t guide_mod;
+  {
+    // parse guide.wasm into guide_mod, check for error
+    pwasm_buf_t buf = { GUIDE_WASM, sizeof(GUIDE_WASM) };
+    if (!pwasm_mod_init(&mem_ctx, &guide_mod, buf)) {
+      errx(EXIT_FAILURE, "guide.wasm: pwasm_mod_init() failed");
+    }
+  }
+
+  pwasm_mod_t pythag_mod;
+  {
+    // parse pythag.wasm into pythag_mod, check for error
+    pwasm_buf_t buf = { PYTHAG_WASM, sizeof(PYTHAG_WASM) };
+    if (!pwasm_mod_init(&mem_ctx, &pythag_mod, buf)) {
+      errx(EXIT_FAILURE, "pythag.wasm: pwasm_mod_init() failed");
+    }
   }
 
   // set up stack
@@ -236,8 +267,13 @@ run_env_tests(void) {
     errx(EXIT_FAILURE, "pwasm_env_add_native() failed");
   }
 
-  // add mod
-  if (!pwasm_env_add_mod(&env, "guide", &mod)) {
+  // add guide_mod
+  if (!pwasm_env_add_mod(&env, "guide", &guide_mod)) {
+    errx(EXIT_FAILURE, "pwasm_env_add_mod() failed");
+  }
+
+  // add pythag_mod
+  if (!pwasm_env_add_mod(&env, "pythag", &pythag_mod)) {
     errx(EXIT_FAILURE, "pwasm_env_add_mod() failed");
   }
 
@@ -274,6 +310,30 @@ run_env_tests(void) {
 
   // print result
   printf("guide.life() = %u\n", stack.ptr[0].i32);
+
+  // init params
+  stack.ptr[0].f32 = 3.0f;
+  stack.ptr[1].f32 = 4.0f;
+  stack.pos = 2;
+
+  // call pythag.f32.pythag
+  if (!pwasm_call(&env, "pythag", "f32.pythag")) {
+    errx(EXIT_FAILURE, "pwasm_call() failed");
+  }
+
+  printf("pythag.f32.pythag(3.0f, 4.0f) = %f\n", stack.ptr[0].f32);
+
+  // init params
+  stack.ptr[0].f64 = 5.0;
+  stack.ptr[1].f64 = 6.0;
+  stack.pos = 2;
+
+  // call pythag.f64.pythag
+  if (!pwasm_call(&env, "pythag", "f64.pythag")) {
+    errx(EXIT_FAILURE, "pwasm_call() failed");
+  }
+
+  printf("pythag.f64.pythag(5.0, 6.0) = %f\n", stack.ptr[0].f64);
 
   // finalize environment
   pwasm_env_fini(&env);
