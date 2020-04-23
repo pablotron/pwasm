@@ -1037,16 +1037,6 @@ uint32_t pwasm_env_find_mod(
 );
 
 /**
- * Find module by name in this environment and return a handle.
- *
- * Returns zero if an error occurred or the module could not be found.
- */
-uint32_t pwasm_env_find_mod_by_name(
-  pwasm_env_t *,
-  const char *
-);
-
-/**
  * Find function in given environment and module and return a handle.
  *
  * Returns zero if an error occurred or the function could not be found.
@@ -1055,17 +1045,6 @@ uint32_t pwasm_env_find_func(
   pwasm_env_t *,
   const uint32_t,
   const pwasm_buf_t
-);
-
-/**
- * Find function by name in given environment and module and return a handle.
- *
- * Returns zero if an error occurred or the function could not be found.
- */
-uint32_t pwasm_env_find_func_by_name(
-  pwasm_env_t *,
-  const uint32_t,
-  const char *
 );
 
 /**
