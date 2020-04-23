@@ -2,7 +2,7 @@
 #include <string.h> // memcmp()
 #include <stdlib.h> // realloc()
 #include <unistd.h> // sysconf()
-#include <math.h> // fabs(), fabsf()
+#include <math.h> // fabs(), fabsf(), etc
 #include "pwasm.h"
 
 /**
@@ -17,10 +17,16 @@
 
 /**
  * Maximum depth of checking stack.
+ *
+ * Note: currently incorrectly used for control frame stack in
+ * pwasm_interp_eval_expr(), which needs to be fixed.
  */
 #define PWASM_STACK_CHECK_MAX_DEPTH 512
 
+// return minimum of two values
 #define MIN(a, b) (((a) < (b)) ? (a) : (b))
+
+// get the number of elements in a static array
 #define LEN(ary) (sizeof(ary) / sizeof((ary)[0]))
 
 #ifdef PWASM_DEBUG
@@ -252,6 +258,18 @@ pwasm_u64_decode(
   return 0;
 }
 
+/**
+ * Define a vector parser for the given name and type.
+ *
+ * This macro also defines a function named pwasm_mod_parse_{NAME}s,
+ * which parses a vector of TYPE elements and passes batches of them to
+ * the on_{NAME}s callback of the given callback structure.
+ *
+ * On error, returns 0 and calls the +on_error+ callback of the given
+ * callback structure (if provided).
+ *
+ * On success, returns the number of bytes consumed.
+ */
 #define DEF_VEC_PARSER(NAME, TYPE) \
   /* forward declaration */ \
   static size_t \
