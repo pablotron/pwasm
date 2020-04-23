@@ -84,8 +84,8 @@ int main(void) {
   printf("f32.pythag(3.0, 4.0) = %f\n", stack.ptr[0].f32);
 
   // set parameters
-  stack.ptr[0].f32 = 5;
-  stack.ptr[1].f32 = 6;
+  stack.ptr[0].f64 = 5;
+  stack.ptr[1].f64 = 6;
   stack.pos = 2;
 
   // call function, check for error
