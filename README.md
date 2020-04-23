@@ -5,40 +5,56 @@ interpreter written in [C11][].
 
 Features:
 * Written in modern [C11][].
-* Easy to embed in an existing application.
+* Easy to embed.
 * MIT-licensed.
-* Interpreter, runs on any platform with C support.
+* Built-in [interpreter][], runs on any platform that supports [C11][]
+  and a minimal subset of the [C standard library][stdlib].
+* Modular architecture.  Use the parser and ignore the interpreter,
+  write your own [JIT][] environment, etc.
+* Amortized O(1) memory allocation.
+* "Native" module support.  Call native functions from a [WebAssembly][]
+  module.
+* Custom memory allocator support.
 
 Coming soon:
-* JIT and AOT compiler.
+* [JIT][] and [AOT][] compiler.
 * Command-line utility (e.g. `objdump`, `disasm`, etc)
+* Threaded parser.
+* Vector instruction extension.
 * Documentation.
 
 ## Usage
 
-PWASM is meant to be embedded in an existing application.  Here's how:
+PWASM is meant to be embedded in an existing application.
+
+Here's how:
 
 1. Copy `pwasm.[hc]` the source directory of an existing application.
-2. Include `pwasm.c` in the source files.
-3. Include `pwasm.h`.
-4. Link against `-lm`.
+2. Add `pwasm.c` to your build.
+3. Link against `-lm`.
 
 To execute functions from a [WebAssembly][] module, do the following:
 
-1. Initialize a pwasm memory context (`pwasm_mem_ctx_init_defaults()`).
-2. Parse one or more modules (using `pwasm_mod_init()`).
+1. Initialize a PWASM memory context (`pwasm_mem_ctx_init_defaults()`).
+2. Parse one or more modules (`pwasm_mod_init()`).
 3. Initialize an interpreter environment (`pwasm_env_init()`).
-4. Load the parsed modules into the environment (`pwasm_env_add_mod()`).
-5. When you are finished, finalize the environment (`pwasam_env_fini()`).
+4. Add the parsed modules into the environment (`pwasm_env_add_mod()`).
+5. Call [WebAssembly][] functions.
+6. Finalize the environment (`pwasam_env_fini()`).
+7. Finalize the parsed modules (`pwasm_mod_fini()`).
 
 ## Example
 
 Below is a self-contained example which does the following:
 
-1. Parses a module containing two functions (`f32.pythag()` and
-   `f64.pythag()`)
-2. Executes each function with test parameters
-3. Prints the result of the function.
+1. Parses a [WebAssembly][] module containing two functions.
+2. Initializes an interpreter environment.
+3. Adds the parsed module to the interpreter.
+4. Executes the `f32.pythag()` function from the parsed module.
+5. Prints the result to standard output.
+6. Executes `f64.pythag()` function from the parsed module.
+7. Prints the result to standard output.
+8. Finalizes the interpreter and the parsed module.
 
 ```c
 /**
@@ -46,8 +62,8 @@ Below is a self-contained example which does the following:
  *
  * Usage:
  *   # compile {example,pwasm}.c
- *   cc -W -Wall -Wextra -Werror -pedantic -std=c11 -O3 example.c
- *   cc -W -Wall -Wextra -Werror -pedantic -std=c11 -O3 pwasm.c
+ *   cc -c -W -Wall -Wextra -Werror -pedantic -std=c11 -O3 example.c
+ *   cc -c -W -Wall -Wextra -Werror -pedantic -std=c11 -O3 pwasm.c
  *   cc -o ./pwasm-example {example,pwasm}.c -lm
  *
  * Output:
@@ -63,9 +79,19 @@ Below is a self-contained example which does the following:
 #include <err.h> // errx()
 #include "pwasm.h"
 
-// test module with two functions
-// * "f32.pythag" (f32, f32 -> f32)
-// * "f64.pythag" (f64, f64 -> f64)
+/**
+ * Blob containing a small WebAssembly (WASM) module.
+ *
+ * This WASM module exports two functions:
+ *
+ * * f32.pythag (f32, f32 -> f32): Calculate the length of the
+ *   hypotenuse of a right triangle from the lengths of the other
+ *   two sides of the triangle.
+ *
+ * * f64.pythag (f64, f64 -> f64): Calculate the length of the
+ *   hypotenuse of a right triangle from the lengths of the other
+ *   two sides of the triangle.
+ */
 static const uint8_t PYTHAG_WASM[] = {
   0x00, 0x61, 0x73, 0x6d, 0x01, 0x00, 0x00, 0x00,
   0x01, 0x0D, 0x02, 0x60, 0x02, 0x7E, 0x7E, 0x01,
@@ -161,11 +187,18 @@ int main(void) {
   // call "f64.pythag" function
   test_f64_pythag(&env, &stack);
 
-  // finalize environment, return success
+  // finalize interpreter environment and parsed module
   pwasm_env_fini(&env);
+  pwasm_mod_fini(&mod);
+
+  // return success
   return EXIT_SUCCESS;
 }
 ```
 
 [webassembly]: https://en.wikipedia.org/wiki/WebAssembly
 [c11]: https://en.wikipedia.org/wiki/C11_(C_standard_revision)
+[jit]: https://en.wikipedia.org/wiki/Just-in-time_compilation
+[aot]: https://en.wikipedia.org/wiki/Ahead-of-time_compilation
+[interpreter]: https://en.wikipedia.org/wiki/Interpreter_(computing)
+[stdlib]: https://en.wikipedia.org/wiki/C_standard_library

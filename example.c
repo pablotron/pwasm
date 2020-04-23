@@ -3,8 +3,8 @@
  *
  * Usage:
  *   # compile {example,pwasm}.c
- *   cc -W -Wall -Wextra -Werror -pedantic -std=c11 -O3 example.c
- *   cc -W -Wall -Wextra -Werror -pedantic -std=c11 -O3 pwasm.c
+ *   cc -c -W -Wall -Wextra -Werror -pedantic -std=c11 -O3 example.c
+ *   cc -c -W -Wall -Wextra -Werror -pedantic -std=c11 -O3 pwasm.c
  *   cc -o ./pwasm-example {example,pwasm}.c -lm
  *
  * Output:
@@ -20,9 +20,19 @@
 #include <err.h> // errx()
 #include "pwasm.h"
 
-// test module with two functions
-// * "f32.pythag" (f32, f32 -> f32)
-// * "f64.pythag" (f64, f64 -> f64)
+/**
+ * Blob containing a small WebAssembly (WASM) module.
+ *
+ * This WASM module exports two functions:
+ *
+ * * f32.pythag (f32, f32 -> f32): Calculate the length of the
+ *   hypotenuse of a right triangle from the lengths of the other
+ *   two sides of the triangle.
+ *
+ * * f64.pythag (f64, f64 -> f64): Calculate the length of the
+ *   hypotenuse of a right triangle from the lengths of the other
+ *   two sides of the triangle.
+ */
 static const uint8_t PYTHAG_WASM[] = {
   0x00, 0x61, 0x73, 0x6d, 0x01, 0x00, 0x00, 0x00,
   0x01, 0x0D, 0x02, 0x60, 0x02, 0x7E, 0x7E, 0x01,
@@ -118,7 +128,10 @@ int main(void) {
   // call "f64.pythag" function
   test_f64_pythag(&env, &stack);
 
-  // finalize environment, return success
+  // finalize interpreter environment and parsed module
   pwasm_env_fini(&env);
+  pwasm_mod_fini(&mod);
+
+  // return success
   return EXIT_SUCCESS;
 }
