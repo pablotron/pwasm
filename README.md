@@ -12,7 +12,7 @@ Below is a self-contained example which does the following:
 2. Executes each function with test parameters
 3. Prints the result of the function.
 
-```c11
+```c
 #include <stdint.h> // uint8_t, etc
 #include <err.h> // errx()
 #include "pwasm.h"
