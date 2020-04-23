@@ -995,7 +995,7 @@ pwasm_parse_type(
   const pwasm_parse_type_cbs_t * const cbs,
   void *cb_data
 ) {
-  pwasm_slice_t slices[2] = {};
+  pwasm_slice_t slices[2] = { 0 };
   pwasm_buf_t curr = src;
   size_t num_bytes = 0;
 
@@ -1470,7 +1470,7 @@ pwasm_parse_inst(
       }
 
       union {
-        uint8_t u8[len];
+        uint8_t u8[sizeof(float)];
         float f32;
       } u;
       memcpy(u.u8, curr.ptr, len);
@@ -1496,7 +1496,7 @@ pwasm_parse_inst(
       }
 
       union {
-        uint8_t u8[len];
+        uint8_t u8[sizeof(double)];
         double f64;
       } u;
       memcpy(u.u8, curr.ptr, len);
@@ -1771,7 +1771,7 @@ pwasm_parse_global(
     return 0;
   }
 
-  D("parsing global type dst = %p", dst);
+  D("parsing global type dst = %p", (void*) dst);
   pwasm_global_type_t type;
   {
     // parse type, check for error
@@ -1787,13 +1787,13 @@ pwasm_parse_global(
 
   pwasm_slice_t expr;
   {
-    D("parsing expr (before), dst = %p", dst);
+    D("parsing expr (before), dst = %p", (void*) dst);
     // parse expr, check for error
     const size_t len = pwasm_parse_const_expr(&expr, curr, cbs, cb_data);
     if (!len) {
       return 0;
     }
-    D("parsing expr (after), dst = %p", dst);
+    D("parsing expr (after), dst = %p", (void*) dst);
 
     // advance
     curr = pwasm_buf_step(curr, len);
@@ -1912,7 +1912,7 @@ pwasm_parse_import(
 
   // parse module name, check for error
   // FIXME: handle on_error here
-  pwasm_slice_t names[2] = {};
+  pwasm_slice_t names[2] = { 0 };
   for (size_t i = 0; i < 2; i++) {
     pwasm_buf_t buf;
     const size_t len = pwasm_parse_buf(&buf, curr, &buf_cbs, cb_data);
@@ -1964,12 +1964,12 @@ pwasm_parse_import(
   curr = pwasm_buf_step(curr, len);
   num_bytes += len;
 
-  D("dst = %p, num_bytes = %zu", dst, num_bytes);
+  D("dst = %p, num_bytes = %zu", (void*) dst, num_bytes);
 
   // save result to destination
   *dst = tmp;
 
-  D("dst = %p, num_bytes = %zu (tmp written)", dst, num_bytes);
+  D("dst = %p, num_bytes = %zu (tmp written)", (void*) dst, num_bytes);
 
   // return number of bytes consumed
   return num_bytes;
@@ -2867,16 +2867,16 @@ pwasm_builder_build_mod(
   return true;
 }
 
-DEF_VEC_PARSER(type, pwasm_type_t);
-DEF_VEC_PARSER(import, pwasm_import_t);
-DEF_VEC_PARSER(func, uint32_t);
-DEF_VEC_PARSER(table, pwasm_table_t);
-DEF_VEC_PARSER(mem, pwasm_limits_t);
-DEF_VEC_PARSER(global, pwasm_global_t);
-DEF_VEC_PARSER(export, pwasm_export_t);
-DEF_VEC_PARSER(elem, pwasm_elem_t);
-DEF_VEC_PARSER(code, pwasm_func_t);
-DEF_VEC_PARSER(segment, pwasm_segment_t);
+DEF_VEC_PARSER(type, pwasm_type_t)
+DEF_VEC_PARSER(import, pwasm_import_t)
+DEF_VEC_PARSER(func, uint32_t)
+DEF_VEC_PARSER(table, pwasm_table_t)
+DEF_VEC_PARSER(mem, pwasm_limits_t)
+DEF_VEC_PARSER(global, pwasm_global_t)
+DEF_VEC_PARSER(export, pwasm_export_t)
+DEF_VEC_PARSER(elem, pwasm_elem_t)
+DEF_VEC_PARSER(code, pwasm_func_t)
+DEF_VEC_PARSER(segment, pwasm_segment_t)
 
 static size_t
 pwasm_mod_parse_custom_section(
@@ -2973,14 +2973,13 @@ pwasm_mod_parse_global(
   const pwasm_mod_parse_cbs_t * const src_cbs,
   void * const cb_data
 ) {
-  D("src_cbs = %p", src_cbs);
+  D("src_cbs = %p", (void*) src_cbs);
 
   const pwasm_parse_expr_cbs_t cbs = {
     .on_labels  = src_cbs->on_labels,
     .on_insts   = src_cbs->on_insts,
     .on_error   = src_cbs->on_error,
   };
-  D("(after cbs) src_cbs->on_insts = %p, cbs.on_insts = %p", src_cbs->on_insts, cbs.on_insts);
 
   return pwasm_parse_global(dst, src, &cbs, cb_data);
 }
@@ -3181,7 +3180,7 @@ pwasm_mod_parse(
   const pwasm_mod_parse_cbs_t * const src_cbs,
   void *cb_data
 ) {
-  D("src_cbs = %p", src_cbs);
+  D("src_cbs = %p", (void*) src_cbs);
 
   // cache callbacks locally
   const pwasm_mod_parse_cbs_t cbs = *src_cbs;
@@ -3762,7 +3761,7 @@ pwasm_env_call(
   const uint32_t func_id
 ) {
   const pwasm_env_cbs_t * const cbs = env->cbs;
-  D("env = %p, func_id = %u", env, func_id);
+  D("env = %p, func_id = %u", (void*) env, func_id);
   return (cbs && cbs->call) ? cbs->call(env, func_id) : false;
 }
 
@@ -3790,7 +3789,7 @@ pwasm_call(
   const char * const mod_name,
   const char * const func_name
 ) {
-  D("env = %p, mod = \"%s\", func = \"%s\"", env, mod_name, func_name);
+  D("env = %p, mod = \"%s\", func = \"%s\"", (void*) env, mod_name, func_name);
 
   return pwasm_env_call(env, pwasm_find_func(env, mod_name, func_name));
 }

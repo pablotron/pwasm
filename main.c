@@ -335,7 +335,7 @@ run_env_tests(void) {
   if (!pwasm_env_init(&env, &mem_ctx, cbs, &stack, NULL)) {
     errx(EXIT_FAILURE, "pwasm_env_init() failed");
   }
-  warnx("env.cbs = %p", env.cbs);
+  warnx("env.cbs = %p", (void*) env.cbs);
 
   // add native mod
   if (!pwasm_env_add_native(&env, "native", &NATIVE)) {
