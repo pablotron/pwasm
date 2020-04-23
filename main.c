@@ -304,7 +304,7 @@ WASM_TEST_CALLS[] = {{
   .result = { 8, 1 },
   .type   = PWASM_RESULT_TYPE_F32,
 }, {
-  .text   = "pythag.f32.pythag(5, 6)",
+  .text   = "pythag.f64.pythag(5, 6)",
   .mod    = "pythag",
   .func   = "f64.pythag",
   .params = { 9, 2 },
