@@ -1,7 +1,35 @@
 # pwasm
 
-PWASM (pronounced "possum") is an standalone, embeddable [WebAssembly][]
-parser and interpreter written in [C11][].
+PWASM (pronounced "possum") is an embeddable [WebAssembly][] parser and
+interpreter written in [C11][].
+
+Features:
+* Written in modern [C11][].
+* Easy to embed in an existing application.
+* MIT-licensed.
+* Interpreter, runs on any platform with C support.
+
+Coming soon:
+* JIT and AOT compiler.
+* Command-line utility (e.g. `objdump`, `disasm`, etc)
+* Documentation.
+
+## Usage
+
+PWASM is meant to be embedded in an existing application.  Here's how:
+
+1. Copy `pwasm.[hc]` the source directory of an existing application.
+2. Include `pwasm.c` in the source files.
+3. Include `pwasm.h`.
+4. Link against `-lm`.
+
+To execute functions from a [WebAssembly][] module, do the following:
+
+1. Initialize a pwasm memory context (`pwasm_mem_ctx_init_defaults()`).
+2. Parse one or more modules (using `pwasm_mod_init()`).
+3. Initialize an interpreter environment (`pwasm_env_init()`).
+4. Load the parsed modules into the environment (`pwasm_env_add_mod()`).
+5. When you are finished, finalize the environment (`pwasam_env_fini()`).
 
 ## Example
 
