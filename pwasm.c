@@ -48,13 +48,19 @@ pwasm_buf_step(
 }
 
 /**
- * Convert null-terminated string to buffer.
+ * Convert null-terminated string to pwasm_buf_t.
+ *
+ * Note: Returns a buffer that points to NULL and has a length of zero
+ * if passed a NULL pointer.
  */
 static inline pwasm_buf_t
 pwasm_buf_str(
   const char * const s
 ) {
-  return (pwasm_buf_t) { (uint8_t*) s, strlen(s) };
+  return (pwasm_buf_t) {
+    .ptr = (uint8_t*) (s ? s : NULL),
+    .len = s ? strlen(s) : 0,
+  };
 }
 
 /**
@@ -199,13 +205,6 @@ pwasm_u32_decode(
 
   // return zero (failure)
   return 0;
-}
-
-static inline size_t
-pwasm_u32_scan(
-  const pwasm_buf_t src
-) {
-  return pwasm_u32_decode(NULL, src);
 }
 
 /**
@@ -450,7 +449,7 @@ PWASM_RESULT_TYPE_DEFS
 }
 
 /**
- * Is this value a valid result type?
+ * Is this value a valid block result type?
  *
  * From section 5.3.2 of the WebAssembly documentation.
  */
@@ -504,11 +503,14 @@ PWASM_OP_DEFS
 #undef PWASM_OP_CONST
 #undef PWASM_OP_RESERVED
 
+/**
+ * Get opcode name as a string.
+ */
 const char *
 pwasm_op_get_name(
   const pwasm_op_t op
 ) {
-  return PWASM_OPS[op].name;
+  return (op < 0x100) ? PWASM_OPS[op].name : "invalid opcode";
 }
 
 static inline bool
@@ -605,10 +607,13 @@ pwasm_op_get_num_bits(
 }
 
 typedef struct {
-  size_t val;
-  size_t max;
+  size_t val; // current value
+  size_t max; // maximum value (high water mark)
 } pwasm_depth_t;
 
+/**
+ * add num to depth stack, check for overflow.
+ */
 static inline bool
 pwasm_depth_add(
   pwasm_depth_t * const depth,
@@ -621,6 +626,9 @@ pwasm_depth_add(
   return ok;
 }
 
+/**
+ * subtract num from depth stack, check for underflow.
+ */
 static inline bool
 pwasm_depth_sub(
   pwasm_depth_t * const depth,
@@ -649,6 +657,16 @@ typedef struct {
   void (*on_error)(const char *, void *);
 } pwasm_parse_buf_cbs_t;
 
+/**
+ * Parse +src+ into +dst+ and return number of bytes consumed.
+ *
+ * Returns 0 on error.
+ *
+ * If +src_cbs+ callback structure pointer is non-NULL and the
+ * +on_error+ member of src_cbs is non-NULL, then the on_error callback
+ * is called with an error message and the provided callback data
+ * +cb_data+.
+ */
 static size_t
 pwasm_parse_buf(
   pwasm_buf_t * const dst,
@@ -700,6 +718,11 @@ pwasm_parse_buf(
   return num_bytes + count;
 }
 
+/**
+ * no-op on_count callback for pwasm_parse_u32s.
+ *
+ * (used as a fallback to elide null ptr checks).
+ */
 static void
 pwasm_parse_u32s_null_on_count(
   const uint32_t count,
@@ -709,6 +732,11 @@ pwasm_parse_u32s_null_on_count(
   (void) cb_data;
 }
 
+/**
+ * no-op on_items callback for pwasm_parse_u32s.
+ *
+ * (used as a fallback to elide null ptr checks).
+ */
 static void
 pwasm_parse_u32s_null_on_items(
   const uint32_t * const items,
@@ -727,7 +755,7 @@ typedef struct {
 } pwasm_parse_u32s_cbs_t;
 
 /**
- * Parse a vector of u32s.
+ * Parse a vector of u32s in +src+.
  *
  * Returns number of bytes consumed, or 0 on error.
  */
@@ -1574,7 +1602,7 @@ pwasm_parse_expr(
     num_bytes += len;
 
     insts[ofs++] = in;
-    if (ofs == PWASM_BATCH_SIZE) {
+    if (ofs == LEN(insts)) {
       // clear offset
       ofs = 0;
 
@@ -2258,7 +2286,7 @@ pwasm_parse_code_locals(
 
     // increment offset
     ofs++;
-    if (ofs == PWASM_BATCH_SIZE) {
+    if (ofs == LEN(locals)) {
       ofs = 0;
 
       // flush queue
@@ -3998,15 +4026,15 @@ pwasm_interp_add_native_imports(
     ids[num_ids] = id;
     num_ids++;
 
-    if (num_ids == PWASM_BATCH_SIZE) {
+    if (num_ids == LEN(ids)) {
+      // clear count
+      num_ids = 0;
+
       // flush results, check for error
-      if (!pwasm_vec_push(&(data->imports), PWASM_BATCH_SIZE, ids, NULL)) {
+      if (!pwasm_vec_push(&(data->imports), LEN(ids), ids, NULL)) {
         // TODO: log error
         return NULL;
       }
-
-      // clear count
-      num_ids = 0;
     }
   }
 
@@ -4244,7 +4272,7 @@ pwasm_interp_eval_expr(
 
   for (size_t i = 0; i < expr.len; i++) {
     const pwasm_inst_t in = insts[i];
-    D("in.op = %d", in.op);
+    D("in.op = 0x%02X", in.op);
 
     switch (in.op) {
     case PWASM_OP_UNREACHABLE:
@@ -5728,11 +5756,13 @@ pwasm_interp_call(
   // get func results
   if ((num_locals + params.len) > 0) {
     // calc dst and src stack positions
-    const size_t dst_pos = stack->pos - results.len - num_locals - params.len;
+    const size_t dst_pos = frame.locals.ofs;
     const size_t src_pos = stack->pos - results.len;
+    const size_t num_bytes = sizeof(pwasm_val_t) * results.len;
 
     // copy results, update stack position
-    memmove(stack->ptr + dst_pos, stack->ptr + src_pos, results.len);
+    memmove(stack->ptr + dst_pos, stack->ptr + src_pos, num_bytes);
+    D("stack->pos: old = %zu, new = %zu", stack->pos, dst_pos + results.len);
     stack->pos = dst_pos + results.len;
   }
 
@@ -6000,7 +6030,7 @@ pwasm_interp_on_set_global(
     return false;
   }
 
-  // copy value to destination
+  // set global value
   rows[id - 1].global.val = val;
 
   // return success
