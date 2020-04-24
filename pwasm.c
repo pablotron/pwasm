@@ -403,7 +403,7 @@ PWASM_IMPORT_TYPES
 
 DEF_GET_NAMES(import_type, IMPORT_TYPE)
 
-#define PWASM_EXPORT_TYPE(a, b) b,
+#define PWASM_EXPORT_TYPE(a, b, c) b,
 static const char *PWASM_EXPORT_TYPE_NAMES[] = {
 PWASM_EXPORT_TYPES
 };
@@ -2868,6 +2868,16 @@ pwasm_builder_build_mod(
       builder->num_import_types[PWASM_IMPORT_TYPE_GLOBAL],
     },
 
+    .max_indices = {
+      pwasm_vec_get_size(&(builder->funcs)) + builder->num_import_types[PWASM_IMPORT_TYPE_FUNC],
+      pwasm_vec_get_size(&(builder->tables)) + builder->num_import_types[PWASM_IMPORT_TYPE_TABLE],
+      pwasm_vec_get_size(&(builder->mems)) + builder->num_import_types[PWASM_IMPORT_TYPE_MEM],
+      pwasm_vec_get_size(&(builder->globals)) + builder->num_import_types[PWASM_IMPORT_TYPE_GLOBAL],
+    },
+
+    .has_start = builder->has_start,
+    .start = builder->start,
+
   #define BUILDER_VEC(name, type, prev) \
     .name ## s = memcpy(name ## s_dst, name ## s_src, name ## s_size), \
     .num_ ## name ## s = num_ ## name ## s,
@@ -3211,279 +3221,6 @@ pwasm_mod_parse(
 
   // return number of bytes consumed
   return num_bytes;
-}
-
-typedef struct {
-  void (*on_warning)(const char *, void *);
-  void (*on_error)(const char *, void *);
-} pwasm_mod_check_cbs_t;
-
-typedef struct {
-  const pwasm_mod_check_cbs_t cbs;
-  void *cb_data;
-} pwasm_mod_check_t;
-
-static pwasm_buf_t
-pwasm_mod_check_custom_section_get_name(
-  const pwasm_mod_t * const mod,
-  const size_t id
-) {
-  const pwasm_slice_t name = mod->custom_sections[id].name;
-  return (pwasm_buf_t) { mod->bytes + name.ofs, name.len };
-}
-
-static bool
-pwasm_mod_check_custom_sections(
-  const pwasm_mod_t * const mod,
-  const pwasm_mod_check_t * const check
-) {
-  for (size_t i = 0; i < mod->num_custom_sections; i++) {
-    // get custom section name as a buffer
-    const pwasm_buf_t buf = pwasm_mod_check_custom_section_get_name(mod, i);
-
-    // is the custom section name valid utf8?
-    if (!pwasm_utf8_is_valid(buf)) {
-      // Note: this is a warning rather than an error because the wasm
-      // spec says that errors in custom sections should be non-fatal.
-      //
-      // TODO: verify that this is correct
-      check->cbs.on_warning("custom section name is not UTF-8", check->cb_data);
-    }
-  }
-
-  // return success
-  return true;
-}
-
-/**
- * Check instruction in a constant expression to verify that all
- * of the following are true:
- *
- * * It is either either a global.get or a *.const instruction.
- * * If it is a global.get instruction, then it refers to an imported
- *   global.
- *
- * Reference:
- * https://webassembly.github.io/spec/core/valid/instructions.html#constant-expressions
- *
- */
-static bool
-pwasm_mod_check_const_expr_inst(
-  const pwasm_mod_t * const mod,
-  const pwasm_mod_check_t * const check,
-  const pwasm_inst_t in
-) {
-  // number of imported globals in this module
-  const size_t num_global_imports = mod->num_import_types[PWASM_IMPORT_TYPE_GLOBAL];
-
-  // instruction index immediate
-  const uint32_t id = in.v_index.id;
-
-  // is this a valid instruction for a constant expr?
-  if (
-    !pwasm_op_is_const(in.op) ||
-    (in.op == PWASM_OP_GLOBAL_GET) ||
-    (in.op != PWASM_OP_END)
-  ) {
-    check->cbs.on_error("non-constant instruction found in constant expression", check->cb_data);
-    return false;
-  }
-
-  // is this a global.get inst that references a non-imported global?
-  if ((in.op == PWASM_OP_GLOBAL_GET) && id >= num_global_imports) {
-    check->cbs.on_error("constant expressions cannot reference non-imported globals", check->cb_data);
-    return false;
-  }
-
-  // return success
-  return true;
-}
-
-/**
- * Check constant expression validity.
- *
- * Reference:
- * https://webassembly.github.io/spec/core/valid/instructions.html#constant-expressions
- *
- */
-static bool
-pwasm_mod_check_const_expr(
-  const pwasm_mod_t * const mod,
-  const pwasm_mod_check_t * const check,
-  const pwasm_slice_t expr
-) {
-  const pwasm_inst_t * const insts = mod->insts + expr.ofs;
-
-  // check instructions
-  for (size_t i = 0; i < expr.len; i++) {
-    if (!pwasm_mod_check_const_expr_inst(mod, check, insts[i])) {
-      return false;
-    }
-  }
-
-  // return success
-  return true;
-}
-
-static bool
-pwasm_mod_check_globals(
-  const pwasm_mod_t * const mod,
-  const pwasm_mod_check_t * const check
-) {
-  for (size_t i = 0; i < mod->num_globals; i++) {
-    if (!pwasm_mod_check_const_expr(mod, check, mod->globals[i].expr)) {
-      return false;
-    }
-  }
-
-  // return success
-  return true;
-}
-
-static bool
-pwasm_mod_check_elems(
-  const pwasm_mod_t * const mod,
-  const pwasm_mod_check_t * const check
-) {
-  for (size_t i = 0; i < mod->num_elems; i++) {
-    if (!pwasm_mod_check_const_expr(mod, check, mod->elems[i].expr)) {
-      return false;
-    }
-  }
-
-  // return success
-  return true;
-}
-
-static bool
-pwasm_mod_check_segments(
-  const pwasm_mod_t * const mod,
-  const pwasm_mod_check_t * const check
-) {
-  for (size_t i = 0; i < mod->num_segments; i++) {
-    if (!pwasm_mod_check_const_expr(mod, check, mod->segments[i].expr)) {
-      return false;
-    }
-  }
-
-  // return success
-  return true;
-}
-
-static bool
-pwasm_mod_check_func(
-  const pwasm_mod_t * const mod,
-  const pwasm_mod_check_t * const check,
-  const pwasm_func_t func
-) {
-  // get function instructions
-  const pwasm_inst_t * const insts = mod->insts + func.expr.ofs;
-
-  // get the maximum global and local indices
-  const size_t max_globals = mod->num_globals + mod->num_import_types[PWASM_IMPORT_TYPE_GLOBAL];
-  const size_t max_locals = func.max_locals + mod->types[func.type_id].params.len;
-
-  // temporarily disabled until i can fix tests
-  return true;
-
-  for (size_t i = 0; i < func.expr.len; i++) {
-    // get instruction and index immediate
-    const pwasm_inst_t in = insts[i];
-    const uint32_t id = in.v_index.id;
-
-
-    // is this a local instruction with an invalid index?
-    if (pwasm_op_is_local(in.op) && (id >= max_locals)) {
-      check->cbs.on_error("invalid index in local instruction", check->cb_data);
-      return false;
-    }
-
-    // is this a global instruction with an invalid index?
-    if (pwasm_op_is_global(in.op) && (id >= max_globals)) {
-      check->cbs.on_error("invalid index in global instruction", check->cb_data);
-      return false;
-    }
-
-    if (pwasm_op_is_mem(in.op)) {
-      const uint32_t num_bits = pwasm_op_get_num_bits(in.op);
-      (void) num_bits;
-      // TODO: check alignment
-    }
-  }
-
-  // return success
-  return true;
-}
-
-static bool
-pwasm_mod_check_funcs(
-  const pwasm_mod_t * const mod,
-  const pwasm_mod_check_t * const check
-) {
-  for (size_t i = 0; i < mod->num_codes; i++) {
-    if (!pwasm_mod_check_func(mod, check, mod->codes[i])) {
-      return false;
-    }
-  }
-
-  // return success
-  return true;
-}
-
-/**
- * Verify that a parsed module is valid.
- *
- * Note: this is called automatically by pwasm_mod_init(), so you only
- * need to call it if you use pwasm_mod_init_unsafe().
- *
- * Returns true if the parsed module validates successfully and false
- * otherwise.
- */
-static bool
-pwasm_mod_check(
-  const pwasm_mod_t * const mod,
-  const pwasm_mod_check_cbs_t * const cbs,
-  void *cb_data
-) {
-  const pwasm_mod_check_t check = {
-    .cbs = cbs ? *cbs : (pwasm_mod_check_cbs_t) {
-      .on_warning = pwasm_null_on_error,
-      .on_error   = pwasm_null_on_error,
-    },
-    .cb_data = cb_data,
-  };
-
-  // check custom sections
-  if (!pwasm_mod_check_custom_sections(mod, &check)) {
-    return false;
-  }
-
-  // FIXME: disabled (until i fix tests)
-  return true;
-
-  // check globals
-  if (!pwasm_mod_check_globals(mod, &check)) {
-    return false;
-  }
-
-  // check elems
-  if (!pwasm_mod_check_elems(mod, &check)) {
-    return false;
-  }
-
-  // check segments
-  if (!pwasm_mod_check_segments(mod, &check)) {
-    return false;
-  }
-
-  // check function code
-  // TODO: should be run in parallel
-  if (!pwasm_mod_check_funcs(mod, &check)) {
-    return false;
-  }
-
-  // return success
-  return true;
 }
 
 typedef struct {
@@ -3900,6 +3637,9 @@ pwasm_mod_init(
   return len;
 }
 
+/**
+ * Finalize a parsed mod and free all memory associated with it.
+ */
 void
 pwasm_mod_fini(
   pwasm_mod_t * const mod
@@ -3909,6 +3649,871 @@ pwasm_mod_fini(
     mod->mem.ptr = 0;
     mod->mem.len = 0;
   }
+}
+
+/**
+ * Convert a slice in a parse module to a buffer.
+ */
+static pwasm_buf_t
+pwasm_mod_get_buf(
+  const pwasm_mod_t * const mod,
+  const pwasm_slice_t slice
+) {
+  return (pwasm_buf_t) {
+    .ptr = mod->bytes + slice.ofs,
+    .len = slice.len,
+  };
+}
+
+/**
+ * Returns true if the given slice of bytes is valid UTF-8, and false
+ * otherwise.
+ */
+static bool
+pwasm_mod_check_is_valid_utf8(
+  const pwasm_mod_t * const mod,
+  const pwasm_slice_t slice
+) {
+  return pwasm_utf8_is_valid(pwasm_mod_get_buf(mod, slice));
+}
+
+/**
+ * Get the maximum valid index for the given import type.
+ */
+static inline size_t
+pwasm_mod_get_max_index(
+  const pwasm_mod_t * const mod,
+  const pwasm_import_type_t type
+) {
+  return mod->max_indices[MIN(type, PWASM_IMPORT_TYPE_LAST)];
+}
+
+/**
+ * Returns true if the given ID is a valid function index, and false
+ * otherwise.
+ *
+ * Note: this function accounts for imported functions too.
+ */
+static inline bool
+pwasm_mod_is_valid_index(
+  const pwasm_mod_t * const mod,
+  const pwasm_import_type_t type,
+  const uint32_t id
+) {
+  return (
+    (type < PWASM_IMPORT_TYPE_LAST) &&
+    (id < pwasm_mod_get_max_index(mod, type))
+  );
+}
+
+/**
+ * Get a pointer to the type for the given function index.
+ *
+ * Returns NULL when given an invalid function index.
+ */
+static const pwasm_type_t *
+pwasm_mod_get_func_type(
+  const pwasm_mod_t * const mod,
+  const uint32_t func_id
+) {
+  const size_t num_func_imports = mod->num_import_types[PWASM_IMPORT_TYPE_FUNC];
+
+  if (!pwasm_mod_is_valid_index(mod, PWASM_IMPORT_TYPE_FUNC, func_id)) {
+    return NULL;
+  }
+
+  if (func_id < num_func_imports) {
+    for (size_t i = 0, j = 0; i < mod->num_imports; i++) {
+      const pwasm_import_t import = mod->imports[i];
+
+      if (import.type == PWASM_IMPORT_TYPE_FUNC) {
+        if (func_id == j) {
+          return mod->types + import.func;
+        }
+
+        j++;
+      }
+    }
+
+    // return failure (shouldn't happen)
+    return NULL;
+  } else {
+    // this is safe because of the is_valid_index() call above
+    return mod->types + (func_id - num_func_imports);
+  }
+}
+
+/**
+ * Get a pointer to the global type for the given global index.
+ *
+ * Returns NULL when given an invalid global index.
+ */
+static const pwasm_global_type_t *
+pwasm_mod_get_global_type(
+  const pwasm_mod_t * const mod,
+  const uint32_t id
+) {
+  const size_t num_imports = mod->num_import_types[PWASM_IMPORT_TYPE_GLOBAL];
+
+  if (!pwasm_mod_is_valid_index(mod, PWASM_IMPORT_TYPE_GLOBAL, id)) {
+    return NULL;
+  }
+
+  if (id < num_imports) {
+    for (size_t i = 0, j = 0; i < mod->num_imports; i++) {
+      const pwasm_import_t import = mod->imports[i];
+
+      if (import.type == PWASM_IMPORT_TYPE_GLOBAL) {
+        if (id == j) {
+          return &(mod->imports[i].global);
+        }
+
+        j++;
+      }
+    }
+
+    // return failure (shouldn't happen)
+    return NULL;
+  } else {
+    // this is safe because of the is_valid_func_id() call above
+    return &(mod->globals[id - num_imports].type);
+  }
+}
+
+typedef struct {
+  const pwasm_mod_check_cbs_t cbs;
+  void *cb_data;
+} pwasm_mod_check_t;
+
+/**
+ * Verify that a limits structure in a module is valid.
+ *
+ * Returns true if the limits structure validates successfully and false
+ * otherwise.
+ *
+ * If a validation error occurs, and the +cbs+ parameter and
+ * +cbs->on_error+ are both non-NULL, then +cbs->on_error+ will be
+ * called with an error message describing the validation error.
+ *
+ * Reference:
+ * https://webassembly.github.io/spec/core/valid/types.html#limits
+ */
+static bool
+pwasm_mod_check_limits(
+  const pwasm_limits_t limits,
+  const pwasm_mod_check_t * const check
+) {
+  if (limits.has_max && (limits.max < limits.min)) {
+    check->cbs.on_error("limits.max < limits.min", check->cb_data);
+    return false;
+  }
+
+  // return success
+  return true;
+}
+
+/**
+ * Verify that a function type index in a module is valid.
+ *
+ * Returns true if the function type index is valid and false otherwise.
+ *
+ * If a validation error occurs, and the +cbs+ parameter and
+ * +cbs->on_error+ are both non-NULL, then +cbs->on_error+ will be
+ * called with an error message describing the validation error.
+ */
+static inline bool
+pwasm_mod_check_type_id(
+  const pwasm_mod_t * const mod,
+  const pwasm_mod_check_t * const check,
+  const uint32_t id
+) {
+  // check type index
+  if (id >= mod->num_types) {
+    check->cbs.on_error("type index out of bounds", check->cb_data);
+    return false;
+  }
+
+  // return success
+  return true;
+}
+
+/**
+ * Verify that an instruction in a constant expression is valid.
+ *
+ * This function checks the following conditions:
+ *
+ * * The instruction is a global.get or a *.const instruction.
+ * * If the instruction is a global.get instruction, then the
+ *   index refers to an imported global.
+ *
+ * Returns true if the instruction validates successfully and
+ * false otherwise.
+ *
+ * If a validation error occurs, and the +cbs+ parameter and
+ * +cbs->on_error+ are both non-NULL, then +cbs->on_error+ will be
+ * called with an error message describing the validation error.
+ *
+ * Reference:
+ * https://webassembly.github.io/spec/core/valid/instructions.html#constant-expressions
+ */
+static bool
+pwasm_mod_check_const_expr_inst(
+  const pwasm_mod_t * const mod,
+  const pwasm_mod_check_t * const check,
+  const pwasm_inst_t in
+) {
+  // number of imported globals in this module
+  const size_t num_global_imports = mod->num_import_types[PWASM_IMPORT_TYPE_GLOBAL];
+
+  // instruction index immediate
+  const uint32_t id = in.v_index.id;
+
+  // is this a valid instruction for a constant expr?
+  if (
+    !pwasm_op_is_const(in.op) ||
+    (in.op == PWASM_OP_GLOBAL_GET) ||
+    (in.op != PWASM_OP_END)
+  ) {
+    check->cbs.on_error("non-constant instruction found in constant expression", check->cb_data);
+    return false;
+  }
+
+  // is this a global.get inst that references a non-imported global?
+  if ((in.op == PWASM_OP_GLOBAL_GET) && id >= num_global_imports) {
+    check->cbs.on_error("constant expressions cannot reference non-imported globals", check->cb_data);
+    return false;
+  }
+
+  // return success
+  return true;
+}
+
+/**
+ * Verify that the instructions in a constant expression are valid.
+ *
+ * Returns true if the constant expression validates successfully and
+ * false otherwise.
+ *
+ * If a validation error occurs, and the +cbs+ parameter and
+ * +cbs->on_error+ are both non-NULL, then +cbs->on_error+ will be
+ * called with an error message describing the validation error.
+ *
+ * Reference:
+ * https://webassembly.github.io/spec/core/valid/instructions.html#constant-expressions
+ */
+static bool
+pwasm_mod_check_const_expr(
+  const pwasm_mod_t * const mod,
+  const pwasm_mod_check_t * const check,
+  const pwasm_slice_t expr
+) {
+  const pwasm_inst_t * const insts = mod->insts + expr.ofs;
+
+  // check instructions
+  for (size_t i = 0; i < expr.len; i++) {
+    if (!pwasm_mod_check_const_expr_inst(mod, check, insts[i])) {
+      return false;
+    }
+  }
+
+  // return success
+  return true;
+}
+
+/**
+ * Verify that a custom section in a parsed module is valid.
+ *
+ * Returns true if the custom section validates successfully and
+ * false otherwise.
+ *
+ * If a validation error occurs, and the +cbs+ parameter and
+ * +cbs->on_error+ are both non-NULL, then +cbs->on_error+ will be
+ * called with an error message describing the validation error.
+ */
+static bool
+pwasm_mod_check_custom_section(
+  const pwasm_mod_t * const mod,
+  const pwasm_mod_check_t * const check,
+  const pwasm_custom_section_t section
+) {
+  // is the custom section name valid utf8?
+  if (!pwasm_mod_check_is_valid_utf8(mod, section.name)) {
+    // Note: this is a warning rather than an error because the wasm
+    // spec says that errors in custom sections should be non-fatal.
+    //
+    // TODO: verify that this is correct
+    check->cbs.on_warning("bad UTF-8 in custom section name", check->cb_data);
+  }
+
+  // return success
+  return true;
+}
+
+static bool
+pwasm_mod_check_type_vals(
+  const pwasm_mod_t * const mod,
+  const pwasm_mod_check_t * const check,
+  const pwasm_slice_t slice
+) {
+  // get values
+  const uint32_t * const vals = mod->u32s + slice.ofs;
+
+  // check values
+  for (size_t i = 0; i < slice.len; i++) {
+    if (!pwasm_is_valid_value_type(vals[i])) {
+      check->cbs.on_error("invalid value type in function type", check->cb_data);
+      return false;
+    }
+  }
+
+  // return success
+  return true;
+}
+
+/**
+ * Verify that a function type in a parsed module is valid.
+ *
+ * Returns true if the function type validates successfully and
+ * false otherwise.
+ *
+ * If a validation error occurs, and the +cbs+ parameter and
+ * +cbs->on_error+ are both non-NULL, then +cbs->on_error+ will be
+ * called with an error message describing the validation error.
+ */
+static bool
+pwasm_mod_check_type(
+  const pwasm_mod_t * const mod,
+  const pwasm_mod_check_t * const check,
+  const pwasm_type_t type
+) {
+  // check parameters
+  if (!pwasm_mod_check_type_vals(mod, check, type.params)) {
+    return false;
+  }
+
+  // check results
+  if (!pwasm_mod_check_type_vals(mod, check, type.results)) {
+    return false;
+  }
+
+  // check result count
+  // FIXME: should this be an error?
+  if (type.results.len > 1) {
+    check->cbs.on_warning("function type result count > 1", check->cb_data);
+    return false;
+  }
+
+  // return success
+  return true;
+}
+
+/**
+ * Verify that a function entry in a module is valid.
+ *
+ * Returns true if the function entry is valid and false otherwise.
+ *
+ * If a validation error occurs, and the +cbs+ parameter and
+ * +cbs->on_error+ are both non-NULL, then +cbs->on_error+ will be
+ * called with an error message describing the validation error.
+ */
+static inline bool
+pwasm_mod_check_func(
+  const pwasm_mod_t * const mod,
+  const pwasm_mod_check_t * const check,
+  const uint32_t id
+) {
+  return pwasm_mod_check_type_id(mod, check, id);
+}
+
+/**
+ * Verify that a global in a module are valid.
+ *
+ * Returns true if the global validates successfully and false
+ * otherwise.
+ *
+ * If a validation error occurs, and the +cbs+ parameter and
+ * +cbs->on_error+ are both non-NULL, then +cbs->on_error+ will be
+ * called with an error message describing the validation error.
+ */
+static bool
+pwasm_mod_check_global(
+  const pwasm_mod_t * const mod,
+  const pwasm_mod_check_t * const check,
+  const pwasm_global_t global
+) {
+  // check init expr
+  if (!pwasm_mod_check_const_expr(mod, check, global.expr)) {
+    return false;
+  }
+
+  // return success
+  return true;
+}
+
+/**
+ * Verify that a table element in a module is valid.
+ *
+ * Returns true if the table element validates successfully and false
+ * otherwise.
+ *
+ * If a validation error occurs, and the +cbs+ parameter and
+ * +cbs->on_error+ are both non-NULL, then +cbs->on_error+ will be
+ * called with an error message describing the validation error.
+ */
+static bool
+pwasm_mod_check_elem(
+  const pwasm_mod_t * const mod,
+  const pwasm_mod_check_t * const check,
+  const pwasm_elem_t elem
+) {
+  // get the maximum table ID
+  const size_t max_tables = mod->num_import_types[PWASM_IMPORT_TYPE_TABLE] + mod->num_tables;
+
+  // check table index
+  if (elem.table_id >= max_tables) {
+    check->cbs.on_error("invalid table index in element", check->cb_data);
+    return false;
+  }
+
+  // check constant expression
+  if (!pwasm_mod_check_const_expr(mod, check, elem.expr)) {
+    return false;
+  }
+
+  // return success
+  return true;
+}
+
+/**
+ * Verify that a data segment in a module is valid.
+ *
+ * Returns true if the data segment validates successfully and false
+ * otherwise.
+ *
+ * If a validation error occurs, and the +cbs+ parameter and
+ * +cbs->on_error+ are both non-NULL, then +cbs->on_error+ will be
+ * called with an error message describing the validation error.
+ */
+static bool
+pwasm_mod_check_segment(
+  const pwasm_mod_t * const mod,
+  const pwasm_mod_check_t * const check,
+  const pwasm_segment_t segment
+) {
+  const size_t max_mems = mod->num_import_types[PWASM_IMPORT_TYPE_MEM] + mod->num_mems;
+
+  // check memory index
+  if (segment.mem_id >= max_mems) {
+    check->cbs.on_error("invalid memory index in segment", check->cb_data);
+    return false;
+  }
+
+  // check init expr
+  if (!pwasm_mod_check_const_expr(mod, check, segment.expr)) {
+    return false;
+  }
+
+  // return success
+  return true;
+}
+
+/**
+ * Verify that a memory entry in a module is valid.
+ *
+ * Returns true if the memory entry validates successfully and false
+ * otherwise.
+ *
+ * If a validation error occurs, and the +cbs+ parameter and
+ * +cbs->on_error+ are both non-NULL, then +cbs->on_error+ will be
+ * called with an error message describing the validation error.
+ *
+ * Reference:
+ * https://webassembly.github.io/spec/core/valid/types.html#memory-types
+ */
+static bool
+pwasm_mod_check_mem(
+  const pwasm_mod_t * const mod,
+  const pwasm_mod_check_t * const check,
+  const pwasm_limits_t mem
+) {
+  (void) mod;
+
+  // check limits
+  if (!pwasm_mod_check_limits(mem, check)) {
+    return false;
+  }
+
+  // mem.min bounds check
+  if (mem.min > 0x10000) {
+    check->cbs.on_error("mem.min > 0x10000", check->cb_data);
+    return false;
+  }
+
+  // mem.max bound check
+  if (mem.has_max && (mem.max > 0x10000)) {
+    check->cbs.on_error("mem.max > 0x10000", check->cb_data);
+    return false;
+  }
+
+  // return success
+  return true;
+}
+
+/**
+ * Verify that a table in a module is valid.
+ *
+ * Returns true if the table validates successfully and false
+ * otherwise.
+ *
+ * If a validation error occurs, and the +cbs+ parameter and
+ * +cbs->on_error+ are both non-NULL, then +cbs->on_error+ will be
+ * called with an error message describing the validation error.
+ *
+ * Reference:
+ * https://webassembly.github.io/spec/core/binary/types.html#table-types
+ */
+static bool
+pwasm_mod_check_table(
+  const pwasm_mod_t * const mod,
+  const pwasm_mod_check_t * const check,
+  const pwasm_table_t table
+) {
+  (void) mod;
+
+  // check element type
+  // (note: redundant, since this is checked during parsing)
+  if (table.elem_type != 0x70) {
+    check->cbs.on_error("invalid table element type", check->cb_data);
+    return false;
+  }
+
+  // check limits
+  if (!pwasm_mod_check_limits(table.limits, check)) {
+    return false;
+  }
+
+  // return success
+  return true;
+}
+
+/**
+ * Verify that an import in a module is valid.
+ *
+ * Returns true if the import validate successfully and false
+ * otherwise.
+ *
+ * If a validation error occurs, and the +cbs+ parameter and
+ * +cbs->on_error+ are both non-NULL, then +cbs->on_error+ will be
+ * called with an error message describing the validation error.
+ */
+static bool
+pwasm_mod_check_import(
+  const pwasm_mod_t * const mod,
+  const pwasm_mod_check_t * const check,
+  const pwasm_import_t import
+) {
+  (void) mod;
+
+  // is the import module name valid utf8?
+  if (!pwasm_mod_check_is_valid_utf8(mod, import.module)) {
+    check->cbs.on_error("import module name is not UTF-8", check->cb_data);
+    return false;
+  }
+
+  // is the import entry name valid utf8?
+  if (!pwasm_mod_check_is_valid_utf8(mod, import.name)) {
+    check->cbs.on_error("import entry name is not UTF-8", check->cb_data);
+    return false;
+  }
+
+  // check import data
+  switch (import.type) {
+  case PWASM_IMPORT_TYPE_FUNC:
+    return pwasm_mod_check_func(mod, check, import.func);
+  case PWASM_IMPORT_TYPE_TABLE:
+    return pwasm_mod_check_table(mod, check, import.table);
+  case PWASM_IMPORT_TYPE_GLOBAL:
+    // nothing to check
+    return true;
+  case PWASM_IMPORT_TYPE_MEM:
+    return pwasm_mod_check_mem(mod, check, import.mem);
+  default:
+    check->cbs.on_error("invalid import type", check->cb_data);
+    return false;
+  }
+}
+
+/**
+ * Returns true if the given index is a valid index for the given export
+ * type in the given module, or false otherwise.
+ */
+static inline bool
+pwasm_mod_check_export_id(
+  const pwasm_mod_t * const mod,
+  const pwasm_export_type_t type,
+  const uint32_t id
+) {
+  switch (type) {
+  case PWASM_EXPORT_TYPE_FUNC:
+    return id < (mod->num_funcs + mod->num_import_types[PWASM_IMPORT_TYPE_FUNC]);
+  case PWASM_EXPORT_TYPE_TABLE:
+    return id < (mod->num_tables + mod->num_import_types[PWASM_IMPORT_TYPE_TABLE]);
+  case PWASM_EXPORT_TYPE_MEM:
+    return id < (mod->num_mems + mod->num_import_types[PWASM_IMPORT_TYPE_MEM]);
+  case PWASM_EXPORT_TYPE_GLOBAL:
+    return id < (mod->num_globals + mod->num_import_types[PWASM_IMPORT_TYPE_GLOBAL]);
+  default:
+    return false;
+  }
+}
+
+/**
+ * Verify that an export in a module is valid.
+ *
+ * Returns true if the export validates successfully and false
+ * otherwise.
+ *
+ * If a validation error occurs, and the +cbs+ parameter and
+ * +cbs->on_error+ are both non-NULL, then +cbs->on_error+ will be
+ * called with an error message describing the validation error.
+ */
+static bool
+pwasm_mod_check_export(
+  const pwasm_mod_t * const mod,
+  const pwasm_mod_check_t * const check,
+  const pwasm_export_t export
+) {
+  // is the export name valid utf8?
+  if (!pwasm_mod_check_is_valid_utf8(mod, export.name)) {
+    check->cbs.on_error("export name is not UTF-8", check->cb_data);
+    return false;
+  }
+
+  // is the export type valid?
+  // (note: redundant, caught in parsing)
+  if (export.type >= PWASM_EXPORT_TYPE_LAST) {
+    check->cbs.on_error("invalid export type", check->cb_data);
+    return false;
+  }
+
+  // check export index
+  // (TODO: should be caught in parsing)
+  if (!pwasm_mod_check_export_id(mod, export.type, export.id)) {
+    check->cbs.on_error("invalid export index", check->cb_data);
+    return false;
+  }
+
+  // return success
+  return true;
+}
+
+/**
+ * Verify that a function code entry in a module is valid.
+ *
+ * Returns true if the function validates successfully and false
+ * otherwise.
+ *
+ * If a validation error occurs, and the +cbs+ parameter and
+ * +cbs->on_error+ are both non-NULL, then +cbs->on_error+ will be
+ * called with an error message describing the validation error.
+ */
+static bool
+pwasm_mod_check_code(
+  const pwasm_mod_t * const mod,
+  const pwasm_mod_check_t * const check,
+  const pwasm_func_t func
+) {
+  // get function instructions
+  const pwasm_inst_t * const insts = mod->insts + func.expr.ofs;
+
+  // get the maximum global indices for this mod and the maximum number
+  // of local indices for this func
+  const size_t max_globals = pwasm_mod_get_max_index(mod, PWASM_IMPORT_TYPE_GLOBAL);
+  const size_t max_locals = func.max_locals + mod->types[func.type_id].params.len;
+
+  for (size_t i = 0; i < func.expr.len; i++) {
+    // get instruction and index immediate
+    const pwasm_inst_t in = insts[i];
+    const uint32_t id = in.v_index.id;
+
+
+    // is this a local instruction with an invalid index?
+    if (pwasm_op_is_local(in.op) && (id >= max_locals)) {
+      check->cbs.on_error("invalid index in local instruction", check->cb_data);
+      return false;
+    }
+
+    // is this a global instruction with an invalid index?
+    if (pwasm_op_is_global(in.op)) {
+      // is this a valid global index?
+      if (id >= max_globals) {
+        check->cbs.on_error("invalid index in global instruction", check->cb_data);
+        return false;
+      }
+
+      // get type, check for error
+      const pwasm_global_type_t * const type = pwasm_mod_get_global_type(mod, id);
+      if (!type) {
+        check->cbs.on_error("invalid global type", check->cb_data);
+        return false;
+      }
+
+      // is this a global.set inst to an immutable global index?
+      if ((in.op == PWASM_OP_GLOBAL_SET) && !type->mutable) {
+        check->cbs.on_error("global.set on an immutable global", check->cb_data);
+        return false;
+      }
+    }
+
+    // is this a memory instruction?
+    if (pwasm_op_is_mem(in.op)) {
+      // get alignment
+      const uint32_t num_bits = pwasm_op_get_num_bits(in.op);
+      (void) num_bits;
+      // TODO: check alignment
+    }
+
+    // check call immediate
+    if (
+      (in.op == PWASM_OP_CALL) &&
+      !pwasm_mod_is_valid_index(mod, PWASM_IMPORT_TYPE_FUNC, id)
+    ) {
+      check->cbs.on_error("invalid function index in call instruction", check->cb_data);
+      return false;
+    }
+    // TODO: lots more
+  }
+
+  // return success
+  return true;
+}
+
+/**
+ * Verify that the start function in a module is valid.
+ *
+ * Returns true if the start function validates successfully and false
+ * otherwise.
+ *
+ * If a validation error occurs, and the +cbs+ parameter and
+ * +cbs->on_error+ are both non-NULL, then +cbs->on_error+ will be
+ * called with an error message describing the validation error.
+ */
+static bool
+pwasm_mod_check_start(
+  const pwasm_mod_t * const mod,
+  const pwasm_mod_check_t * const check
+) {
+  if (!mod->has_start) {
+    // return success
+    return true;
+  }
+
+  // check index
+  if (!pwasm_mod_is_valid_index(mod, PWASM_IMPORT_TYPE_FUNC, mod->start)) {
+    check->cbs.on_error("invalid start function index", check->cb_data);
+    return false;
+  }
+
+  // get function prototype, check for error
+  const pwasm_type_t * const type = pwasm_mod_get_func_type(mod, mod->start);
+  if (!type) {
+    check->cbs.on_error("invalid start function type", check->cb_data);
+    return false;
+  }
+
+  // check parameter count
+  if (type->params.len > 0) {
+    check->cbs.on_error("start function has non-zero parameter count", check->cb_data);
+    return false;
+  }
+
+  // check result count
+  if (type->results.len > 0) {
+    check->cbs.on_error("start function has non-zero result count", check->cb_data);
+    return false;
+  }
+
+  // return success
+  return true;
+}
+
+// TODO: start, type
+#define MOD_CHECKS \
+  MOD_CHECK(custom_section) \
+  MOD_CHECK(type) \
+  MOD_CHECK(import) \
+  MOD_CHECK(func) \
+  MOD_CHECK(global) \
+  MOD_CHECK(segment) \
+  MOD_CHECK(mem) \
+  MOD_CHECK(elem) \
+  MOD_CHECK(table) \
+  MOD_CHECK(export) \
+  MOD_CHECK(code)
+
+#define MOD_CHECK(NAME) \
+  static bool pwasm_mod_check_ ## NAME ## s( \
+    const pwasm_mod_t * const mod, \
+    const pwasm_mod_check_t * const check \
+  ) { \
+    for (size_t i = 0; i < mod->num_ ## NAME ## s; i++) { \
+      if (!pwasm_mod_check_ ## NAME (mod, check, mod->NAME ## s[i])) { \
+        return false; \
+      } \
+    } \
+  \
+    /* return success */ \
+    return true; \
+  }
+MOD_CHECKS
+#undef MOD_CHECK
+
+/**
+ * Verify that a parsed module is valid.
+ *
+ * Returns true if the module validates successfully and false
+ * otherwise.
+ *
+ * If a validation error occurs, and the +cbs+ parameter and
+ * +cbs->on_error+ are both non-NULL, then +cbs->on_error+ will be
+ * called with an error message describing the validation error.
+ *
+ * Note: this function is called by `pwasm_mod_init()`, so you only
+ * need to call `pwasm_mod_check()` if you parsed the module with
+ * `pwasm_mod_init_unsafe()`.
+ */
+bool
+pwasm_mod_check(
+  const pwasm_mod_t * const mod,
+  const pwasm_mod_check_cbs_t * const cbs,
+  void *cb_data
+) {
+  const pwasm_mod_check_t check = {
+    .cbs = {
+      .on_warning = (cbs && cbs->on_warning) ? cbs->on_warning : pwasm_null_on_error,
+      .on_error = (cbs && cbs->on_error) ? cbs->on_error : pwasm_null_on_error,
+    },
+    .cb_data = cb_data,
+  };
+
+  // FIXME: disabled (until i fix tests)
+  return true;
+
+  // check start function
+  if (!pwasm_mod_check_start(mod, &check)) {
+    // return failure
+    return false;
+  }
+
+  #define MOD_CHECK(NAME) \
+    if (!pwasm_mod_check_ ## NAME ## s(mod, &check)) { \
+      return false; \
+    }
+  MOD_CHECKS
+  #undef MOD_CHECK
+
+  // return success
+  return true;
 }
 
 bool

@@ -471,13 +471,13 @@ PWASM_IMPORT_TYPES
 const char *pwasm_import_type_get_name(const pwasm_import_type_t);
 
 #define PWASM_EXPORT_TYPES \
-  PWASM_EXPORT_TYPE(FUNC, "function") \
-  PWASM_EXPORT_TYPE(TABLE, "table") \
-  PWASM_EXPORT_TYPE(MEM, "memory") \
-  PWASM_EXPORT_TYPE(GLOBAL, "global") \
-  PWASM_EXPORT_TYPE(LAST, "unknown export type")
+  PWASM_EXPORT_TYPE(FUNC, "function", func) \
+  PWASM_EXPORT_TYPE(TABLE, "table", table) \
+  PWASM_EXPORT_TYPE(MEM, "memory", mem) \
+  PWASM_EXPORT_TYPE(GLOBAL, "global", global) \
+  PWASM_EXPORT_TYPE(LAST, "unknown export type", invalid)
 
-#define PWASM_EXPORT_TYPE(a, b) PWASM_EXPORT_TYPE_##a,
+#define PWASM_EXPORT_TYPE(a, b, c) PWASM_EXPORT_TYPE_##a,
 typedef enum {
 PWASM_EXPORT_TYPES
 } pwasm_export_type_t;
@@ -669,6 +669,8 @@ typedef struct {
 
   size_t num_import_types[PWASM_IMPORT_TYPE_LAST];
 
+  size_t max_indices[PWASM_IMPORT_TYPE_LAST];
+
   const pwasm_inst_t * const insts;
   const size_t num_insts;
 
@@ -701,6 +703,9 @@ typedef struct {
 
   const uint8_t * const bytes;
   const size_t num_bytes;
+
+  const bool has_start;
+  const uint32_t start;
 } pwasm_mod_t;
 
 /**
@@ -715,7 +720,7 @@ size_t pwasm_mod_init(
 );
 
 /**
- * Free memory associated with module.
+ * Finalize a module and free any memory associated with it.
  */
 void pwasm_mod_fini(pwasm_mod_t *);
 
@@ -769,6 +774,31 @@ void pwasm_builder_fini(pwasm_builder_t *);
 _Bool pwasm_build(
   const pwasm_builder_t *,
   pwasm_mod_t *
+);
+
+typedef struct {
+  void (*on_warning)(const char *, void *);
+  void (*on_error)(const char *, void *);
+} pwasm_mod_check_cbs_t;
+
+/**
+ * Verify that a parsed module is valid.
+ *
+ * Returns true if the module validates successfully and false
+ * otherwise.
+ *
+ * If a validation error occurs, and the +cbs+ parameter and
+ * +cbs->on_error+ are both non-NULL, then +cbs->on_error+ will be
+ * called with an error message describing the validation error.
+ *
+ * Note: this function is called by `pwasm_mod_init()`, so you only
+ * need to call `pwasm_mod_check()` if you parsed the module with
+ * `pwasm_mod_init_unsafe()`.
+ */
+_Bool pwasm_mod_check(
+  const pwasm_mod_t * const mod,
+  const pwasm_mod_check_cbs_t * const cbs,
+  void *cb_data
 );
 
 typedef union {
