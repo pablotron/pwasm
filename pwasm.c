@@ -577,7 +577,13 @@ pwasm_op_is_mem(
   return pwasm_op_get_imm(byte) == PWASM_IMM_MEM;
 }
 
-static const size_t
+/**
+ * Size (in bits) of memory instruction target.
+ *
+ * Used for memory instruction alignment checking specified here:
+ * https://webassembly.github.io/spec/core/valid/instructions.html#memory-instructions
+ */
+static const uint8_t
 PWASM_OP_NUM_BITS[] = {
   // loads
   32, // i32.load
@@ -610,14 +616,19 @@ PWASM_OP_NUM_BITS[] = {
 };
 
 /**
- * Get the number of bits of the target for the given instruction.
+ * Get the number of bits of the target for the given memory
+ * instruction.
+ *
+ * Used for memory alignment checking specified here:
+ * https://webassembly.github.io/spec/core/valid/instructions.html#memory-instructions
  */
-static inline uint32_t
+static inline uint8_t
 pwasm_op_get_num_bits(
   const pwasm_op_t op
 ) {
   const size_t max_ofs = LEN(PWASM_OP_NUM_BITS) - 1;
-  const size_t ofs = MIN(op - PWASM_OP_I32_LOAD, max_ofs);
+  const bool ok = (op >= PWASM_OP_I32_LOAD && op <= PWASM_OP_I64_STORE32);
+  const size_t ofs = MIN(ok ? (op - PWASM_OP_I32_LOAD) : max_ofs, max_ofs);
   return PWASM_OP_NUM_BITS[ofs];
 }
 
@@ -4326,9 +4337,10 @@ pwasm_mod_check_code(
   // get function instructions
   const pwasm_inst_t * const insts = mod->insts + func.expr.ofs;
 
-  // get the maximum global indices for this mod and the maximum number
-  // of local indices for this func
+  // get the maximum global index and maximum memory index for this mod
+  // and the maximum number of local indices for this func
   const size_t max_globals = pwasm_mod_get_max_index(mod, PWASM_IMPORT_TYPE_GLOBAL);
+  const size_t max_mems = pwasm_mod_get_max_index(mod, PWASM_IMPORT_TYPE_MEM);
   const size_t max_locals = func.max_locals + mod->types[func.type_id].params.len;
 
   for (size_t i = 0; i < func.expr.len; i++) {
@@ -4336,6 +4348,8 @@ pwasm_mod_check_code(
     const pwasm_inst_t in = insts[i];
     const uint32_t id = in.v_index.id;
 
+    // FIXME: we should probably switch on opcode here or immediate
+    // rather than a series of ad-hoc conditionals
 
     // is this a local instruction with an invalid index?
     if (pwasm_op_is_local(in.op) && (id >= max_locals)) {
@@ -4367,10 +4381,28 @@ pwasm_mod_check_code(
 
     // is this a memory instruction?
     if (pwasm_op_is_mem(in.op)) {
-      // get alignment
+      // check to make sure we have memory defined
+      if (!max_mems) {
+        check->cbs.on_error("memory operation with no memory defined", check->cb_data);
+        return false;
+      }
+
+      // check alignment immediate
+      if (in.v_mem.align > 31) {
+        check->cbs.on_error("memory alignment too large", check->cb_data);
+        return false;
+      }
+
+      // get number of bits for instruction
       const uint32_t num_bits = pwasm_op_get_num_bits(in.op);
-      (void) num_bits;
-      // TODO: check alignment
+
+      // check alignment
+      // reference:
+      // https://webassembly.github.io/spec/core/valid/instructions.html#memory-instructions
+      if ((1 << in.v_mem.align) > (num_bits >> 3)) {
+        check->cbs.on_error("invalid memory alignment", check->cb_data);
+        return false;
+      }
     }
 
     // check call immediate
@@ -4381,6 +4413,7 @@ pwasm_mod_check_code(
       check->cbs.on_error("invalid function index in call instruction", check->cb_data);
       return false;
     }
+
     // TODO: lots more
   }
 
