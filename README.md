@@ -1,7 +1,7 @@
 # pwasm
 
 PWASM (pronounced "possum") is an embeddable [WebAssembly][] parser and
-interpreter written in [C11][].
+interpreter, written in [C11][].
 
 Features:
 * Written in modern [C11][].
@@ -58,16 +58,19 @@ Below is a self-contained example which does the following:
 
 ```c
 /**
- * example.c: minimal standalone pwasm example.
+ * example-00-pythag.c: minimal standalone pwasm example.
  *
  * Usage:
- *   # compile {example,pwasm}.c
- *   cc -c -W -Wall -Wextra -Werror -pedantic -std=c11 -O3 example.c
- *   cc -c -W -Wall -Wextra -Werror -pedantic -std=c11 -O3 pwasm.c
- *   cc -o ./pwasm-example {example,pwasm}.c -lm
+ *   # compile examples/00-pythag.c and pwasm.c
+ *   cc -c -W -Wall -Wextra -Werror -pedantic -std=c11 -I. -O3 examples/example-00-pythag.c
+ *   cc -c -W -Wall -Wextra -Werror -pedantic -std=c11 -I. -O3 pwasm.c
+ *
+ *   # link and build as ./example-00-pythag
+ *   cc -o ./example-00-pythag {00-pythag,pwasm}.o -lm
  *
  * Output:
- *   > ./pwasm-example
+ *   # run example-00-pythag
+ *   > ./example-00-pythag
  *   f32.pythag(3.0, 4.0) = 5.000000
  *   f64.pythag(5.0, 6.0) = 7.810250
  *
@@ -77,7 +80,7 @@ Below is a self-contained example which does the following:
 #include <stdio.h> // printf()
 #include <stdint.h> // uint8_t, etc
 #include <err.h> // errx()
-#include "pwasm.h"
+#include <pwasm.h>
 
 /**
  * Blob containing a small WebAssembly (WASM) module.

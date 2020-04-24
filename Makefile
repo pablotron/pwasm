@@ -4,7 +4,7 @@
 CFLAGS=-W -Wall -Wextra -Werror -std=c11 -pedantic -g -pg -DPWASM_DEBUG # -I$(LUAJIT_DIR)
 LIBS=-lm
 APP=pwasm
-OBJS=pwasm.o main.o mod-tests.o func-tests.o
+OBJS=pwasm.o tests/main.o tests/mod-tests.o tests/func-tests.o
 
 .PHONY=all clean
 
@@ -14,7 +14,7 @@ $(APP): $(OBJS)
 	$(CC) -o $(APP) $(OBJS) $(LIBS)
 
 %.o: %.c pwasm.h
-	$(CC) -c $(CFLAGS) $<
+	$(CC) -c -o $@ $(CFLAGS) $<
 
 # bf.c: bf.c.dasm
 # 	$(LUA) $(LUAJIT_DIR)/dynasm/dynasm.lua -D X64 -o bf.c bf.c.dasm

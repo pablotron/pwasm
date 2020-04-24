@@ -708,7 +708,7 @@ typedef struct {
   const uint8_t * const bytes;
   const size_t num_bytes;
 
-  const bool has_start;
+  const _Bool has_start;
   const uint32_t start;
 } pwasm_mod_t;
 

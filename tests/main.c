@@ -4,7 +4,7 @@
 #include <string.h> // strlen()
 #include <stdio.h> // fopen()
 #include <err.h> // err()
-#include "pwasm.h"
+#include "../pwasm.h"
 #include "mod-tests.h"
 #include "func-tests.h"
 
