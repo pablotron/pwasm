@@ -2440,6 +2440,7 @@ pwasm_parse_code(
   *dst = (pwasm_func_t) {
     .locals = locals,
     .max_locals = max_locals,
+    .frame_size = 0, // populated elsewhere
     .expr = expr,
   };
 
@@ -3525,8 +3526,62 @@ pwasm_mod_init_unsafe_on_codes(
   void *cb_data
 ) {
   pwasm_mod_init_unsafe_t * const data = cb_data;
-  if (!pwasm_builder_push_codes(data->builder, rows, num).len) {
-    pwasm_mod_init_unsafe_on_error("push codes failed", data);
+  const size_t codes_ofs = pwasm_vec_get_size(&(data->builder->codes));
+
+  // get types and types length
+  const pwasm_type_t * const types = pwasm_vec_get_data(&(data->builder->types));
+  const size_t num_types = pwasm_vec_get_size(&(data->builder->types));
+
+  // get funcs and funcs length
+  const uint32_t * const funcs = pwasm_vec_get_data(&(data->builder->funcs));
+  const size_t num_funcs = pwasm_vec_get_size(&(data->builder->funcs));
+
+  // batch of funcs, used to calculate frame_size before pushing rows
+  // (see longer description below)
+  pwasm_func_t tmp[PWASM_BATCH_SIZE];
+
+  //
+  // this is kind of a screwy looking loop.  here's what we're doing for
+  // each code entry:
+  //
+  // * look up the function type from builder->funcs (checking for overlow)
+  // * get parameter count from builder->types (checking for overlow)
+  // * code.frame_size = type.params.len + code.max_locals
+  // * build batch of funcs, then emit them in batches
+  //
+  // we are doing this here for the following reasons:
+  // * so we have access to the frame_size in the mod_check_code()
+  //   functions to check local.{get,set,tee} index immediates
+  // * to slightly speed up function invocation in the interpreter by
+  //   skipping the frame size calculation
+  //
+  for (size_t i = 0; i < num; i += LEN(tmp)) {
+    const size_t num_rows = MIN(num - i, LEN(tmp));
+    const size_t num_bytes = sizeof(pwasm_func_t) * num_rows;
+    const size_t funcs_ofs = codes_ofs + i;
+    memcpy(tmp, rows + i, num_bytes);
+
+    // check maximum offset for this batch, check for error
+    if (funcs_ofs + num_rows >= num_funcs) {
+      pwasm_mod_init_unsafe_on_error("push codes failed: funcs overflow", data);
+    }
+
+    // calculate frame sizes
+    for (size_t j = 0; j < num_rows; j++) {
+      // get type index, check for error
+      const uint32_t type_id = funcs[funcs_ofs + j];
+      if (type_id >= num_types) {
+        pwasm_mod_init_unsafe_on_error("push codes failed: types overflow", data);
+      }
+
+      // calculate frame size (num params + num locals)
+      tmp[j].frame_size = types[type_id].params.len + tmp[j].max_locals;
+    }
+
+    // flush rows, check for error
+    if (!pwasm_builder_push_codes(data->builder, tmp, num_rows).len) {
+      pwasm_mod_init_unsafe_on_error("push codes failed", data);
+    }
   }
 }
 
@@ -4078,7 +4133,7 @@ pwasm_mod_check_elem(
   const pwasm_elem_t elem
 ) {
   // get the maximum table ID
-  const size_t max_tables = mod->num_import_types[PWASM_IMPORT_TYPE_TABLE] + mod->num_tables;
+  const size_t max_tables = mod->max_indices[PWASM_IMPORT_TYPE_TABLE];
 
   // check table index
   if (elem.table_id >= max_tables) {
@@ -4111,7 +4166,7 @@ pwasm_mod_check_segment(
   const pwasm_mod_check_t * const check,
   const pwasm_segment_t segment
 ) {
-  const size_t max_mems = mod->num_import_types[PWASM_IMPORT_TYPE_MEM] + mod->num_mems;
+  const size_t max_mems = mod->max_indices[PWASM_IMPORT_TYPE_MEM];
 
   // check memory index
   if (segment.mem_id >= max_mems) {
@@ -4337,11 +4392,9 @@ pwasm_mod_check_code(
   // get function instructions
   const pwasm_inst_t * const insts = mod->insts + func.expr.ofs;
 
-  // get the maximum global index and maximum memory index for this mod
-  // and the maximum number of local indices for this func
-  const size_t max_globals = pwasm_mod_get_max_index(mod, PWASM_IMPORT_TYPE_GLOBAL);
-  const size_t max_mems = pwasm_mod_get_max_index(mod, PWASM_IMPORT_TYPE_MEM);
-  const size_t max_locals = func.max_locals + mod->types[func.type_id].params.len;
+  // cache module maximum indices
+  size_t max_indices[PWASM_IMPORT_TYPE_LAST];
+  memcpy(max_indices, mod->max_indices, sizeof(max_indices));
 
   for (size_t i = 0; i < func.expr.len; i++) {
     // get instruction and index immediate
@@ -4350,22 +4403,33 @@ pwasm_mod_check_code(
 
     // FIXME: we should probably switch on opcode here or immediate
     // rather than a series of ad-hoc conditionals
+    switch (in.op) {
+    case PWASM_OP_LOCAL_GET:
+    case PWASM_OP_LOCAL_SET:
+    case PWASM_OP_LOCAL_TEE:
+      // is this a local instruction with an invalid index?
+      if (id >= func.frame_size) {
+        check->cbs.on_error("invalid index in local instruction", check->cb_data);
+        return false;
+      }
 
-    // is this a local instruction with an invalid index?
-    if (pwasm_op_is_local(in.op) && (id >= max_locals)) {
-      check->cbs.on_error("invalid index in local instruction", check->cb_data);
-      return false;
-    }
-
-    // is this a global instruction with an invalid index?
-    if (pwasm_op_is_global(in.op)) {
+      break;
+    case PWASM_OP_GLOBAL_GET:
       // is this a valid global index?
-      if (id >= max_globals) {
+      if (id >= max_indices[PWASM_IMPORT_TYPE_GLOBAL]) {
         check->cbs.on_error("invalid index in global instruction", check->cb_data);
         return false;
       }
 
-      // get type, check for error
+      break;
+    case PWASM_OP_GLOBAL_SET:
+      // is this a valid global index?
+      if (id >= max_indices[PWASM_IMPORT_TYPE_GLOBAL]) {
+        check->cbs.on_error("invalid index in global instruction", check->cb_data);
+        return false;
+      }
+
+      // get global type, check for error
       const pwasm_global_type_t * const type = pwasm_mod_get_global_type(mod, id);
       if (!type) {
         check->cbs.on_error("invalid global type", check->cb_data);
@@ -4373,17 +4437,37 @@ pwasm_mod_check_code(
       }
 
       // is this a global.set inst to an immutable global index?
-      if ((in.op == PWASM_OP_GLOBAL_SET) && !type->mutable) {
+      if (!type->mutable) {
         check->cbs.on_error("global.set on an immutable global", check->cb_data);
         return false;
       }
-    }
-
-    // is this a memory instruction?
-    if (pwasm_op_is_mem(in.op)) {
+      break;
+    case PWASM_OP_I32_LOAD:
+    case PWASM_OP_I64_LOAD:
+    case PWASM_OP_F32_LOAD:
+    case PWASM_OP_F64_LOAD:
+    case PWASM_OP_I32_LOAD8_S:
+    case PWASM_OP_I32_LOAD8_U:
+    case PWASM_OP_I32_LOAD16_S:
+    case PWASM_OP_I32_LOAD16_U:
+    case PWASM_OP_I64_LOAD8_S:
+    case PWASM_OP_I64_LOAD8_U:
+    case PWASM_OP_I64_LOAD16_S:
+    case PWASM_OP_I64_LOAD16_U:
+    case PWASM_OP_I64_LOAD32_S:
+    case PWASM_OP_I64_LOAD32_U:
+    case PWASM_OP_I32_STORE:
+    case PWASM_OP_I64_STORE:
+    case PWASM_OP_F32_STORE:
+    case PWASM_OP_F64_STORE:
+    case PWASM_OP_I32_STORE8:
+    case PWASM_OP_I32_STORE16:
+    case PWASM_OP_I64_STORE8:
+    case PWASM_OP_I64_STORE16:
+    case PWASM_OP_I64_STORE32:
       // check to make sure we have memory defined
-      if (!max_mems) {
-        check->cbs.on_error("memory operation with no memory defined", check->cb_data);
+      if (!max_indices[PWASM_IMPORT_TYPE_MEM]) {
+        check->cbs.on_error("memory instruction with no memory defined", check->cb_data);
         return false;
       }
 
@@ -4399,22 +4483,41 @@ pwasm_mod_check_code(
       // check alignment
       // reference:
       // https://webassembly.github.io/spec/core/valid/instructions.html#memory-instructions
-      if ((1 << in.v_mem.align) > (num_bits >> 3)) {
+      if ((1U << in.v_mem.align) > (num_bits >> 3)) {
         check->cbs.on_error("invalid memory alignment", check->cb_data);
         return false;
       }
-    }
 
-    // check call immediate
-    if (
-      (in.op == PWASM_OP_CALL) &&
-      !pwasm_mod_is_valid_index(mod, PWASM_IMPORT_TYPE_FUNC, id)
-    ) {
-      check->cbs.on_error("invalid function index in call instruction", check->cb_data);
-      return false;
-    }
+      break;
+    case PWASM_OP_MEMORY_SIZE:
+    case PWASM_OP_MEMORY_GROW:
+      // check to make sure we have memory defined
+      if (!max_indices[PWASM_IMPORT_TYPE_MEM]) {
+        check->cbs.on_error("memory instruction with no memory defined", check->cb_data);
+        return false;
+      }
 
-    // TODO: lots more
+      break;
+    case PWASM_OP_CALL:
+      // is this a valid function index?
+      if (id >= max_indices[PWASM_IMPORT_TYPE_FUNC]) {
+        check->cbs.on_error("invalid function index in call instruction", check->cb_data);
+        return false;
+      }
+
+      break;
+    case PWASM_OP_CALL_INDIRECT:
+      // is a table defined?
+      if (!max_indices[PWASM_IMPORT_TYPE_TABLE]) {
+        check->cbs.on_error("call_indirect instruction with no table", check->cb_data);
+        return false;
+      }
+
+      break;
+    default:
+      // TODO: lots more
+      break;
+    }
   }
 
   // return success
@@ -5143,8 +5246,7 @@ pwasm_interp_eval_expr(
   const pwasm_inst_t * const insts = frame.mod->insts + expr.ofs;
 
   // get total number of globals
-  // FIXME: calculate this on mod load
-  const size_t max_globals = frame.mod->num_globals + frame.mod->num_import_types[PWASM_IMPORT_TYPE_GLOBAL];
+  const size_t max_globals = frame.mod->max_indices[PWASM_IMPORT_TYPE_GLOBAL];
 
   // FIXME: move to frame, fix depth
   pwasm_ctl_stack_entry_t ctl_stack[PWASM_STACK_CHECK_MAX_DEPTH];
@@ -6605,8 +6707,9 @@ pwasm_interp_call(
     return false;
   }
 
-  // get total number of local slots
+  // get number of local slots and total frame size
   const size_t max_locals = mod->codes[func_id].max_locals;
+  const size_t frame_size = mod->codes[func_id].frame_size;
   if (max_locals > 0) {
     // clear local slots
     memset(stack->ptr + stack->pos, 0, sizeof(pwasm_val_t) * max_locals);
@@ -6621,8 +6724,8 @@ pwasm_interp_call(
     .mod = mod,
     .params = params,
     .locals = {
-      .ofs = stack->pos - max_locals - params.len,
-      .len = max_locals + params.len,
+      .ofs = stack->pos - frame_size,
+      .len = frame_size,
     },
   };
 
@@ -6636,7 +6739,7 @@ pwasm_interp_call(
   }
 
   // get func results
-  if ((max_locals + params.len) > 0) {
+  if (frame_size > 0) {
     // calc dst and src stack positions
     const size_t dst_pos = frame.locals.ofs;
     const size_t src_pos = stack->pos - results.len;
