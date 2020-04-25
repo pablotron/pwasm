@@ -6,8 +6,8 @@
     (i32.lt_u (local.get $num) (i32.const 2))
     (if (result i32)
       (then
-        ;; n < 2, return 1
-        i32.const 1
+        ;; n < 2, return n
+        local.get $num
       )
 
       (else
@@ -38,8 +38,8 @@
     (i32.lt_u (local.get $num) (i32.const 2))
     (if (result i32)
       (then
-        ;; n < 2, return 1
-        i32.const 1
+        ;; n < 2, return n
+        local.get $num
       )
 
       (else
@@ -49,8 +49,8 @@
         (local.set $num (i32.sub (local.get $num) (i32.const 1)))
 
         ;; init sum and tmp
+        (local.set $tmp (i32.const 0))
         (local.set $sum (i32.const 1))
-        (local.set $tmp (i32.const 1))
 
         (loop (result i32)
           ;; cache last sum
