@@ -223,7 +223,7 @@ static const uint8_t PYTHAG_WASM[] = {
 // - fib_recurse(i32) -> i32
 // - fib_iterate(i32) -> i32
 //
-// (source: tests/wat/01-fib.wasm)
+// (source: tests/wat/01-fib.wat)
 uint8_t FIB_WASM[] = {
   0x00, 0x61, 0x73, 0x6d, 0x01, 0x00, 0x00, 0x00,
   0x01, 0x06, 0x01, 0x60, 0x01, 0x7f, 0x01, 0x7f,
