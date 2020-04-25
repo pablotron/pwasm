@@ -661,7 +661,7 @@ pwasm_depth_sub(
   const size_t num
 ) {
   const size_t new_val = depth->val - num;
-  const bool ok = (num >= depth->val);
+  const bool ok = (depth->val >= num);
   depth->val = ok ? new_val : depth->val;
   return ok;
 }
@@ -677,6 +677,7 @@ pwasm_null_on_error(
 ) {
   (void) text;
   (void) cb_data;
+  D("null error: %s", text);
 }
 
 typedef struct {
@@ -1295,7 +1296,7 @@ pwasm_parse_inst(
   pwasm_buf_t curr = src;
   size_t num_bytes = 0;
 
-  D("src.ptr = %p, src.len = %zu", (void*) src.ptr, src.len);
+  // D("src.ptr = %p, src.len = %zu", (void*) src.ptr, src.len);
 
   // check source length
   if (src.len < 1) {
@@ -1306,9 +1307,12 @@ pwasm_parse_inst(
   // get op, check for error
   const pwasm_op_t op = curr.ptr[0];
   if (!pwasm_op_is_valid(op)) {
+    D("invalid op = 0x%02X", op);
     cbs->on_error("invalid op", cb_data);
     return 0;
   }
+
+  D("0x%02X %s", curr.ptr[0], pwasm_op_get_name(op));
 
   // advance
   curr = pwasm_buf_step(curr, 1);
@@ -1595,8 +1599,9 @@ pwasm_parse_expr(
   pwasm_slice_t in_slice = { 0, 0 };
 
   // TODO: track value stack depth too
-  pwasm_depth_t val_depth = { 0, 0 };
   pwasm_depth_t ctl_depth = { 1, 1 };
+  pwasm_depth_t val_depth = { 0, 0 };
+
   size_t ofs = 0;
   while ((ctl_depth.val > 0) && curr.len) {
     // parse instruction, check for error
@@ -1614,13 +1619,17 @@ pwasm_parse_expr(
  *     }
  */
 
-    // update control stack depth
-    if (pwasm_op_is_enter(in.op) && !pwasm_depth_add(&ctl_depth, 1)) {
-      cbs->on_error("control stack depth overflow", cb_data);
-      return 0;
-    } else if ((in.op == PWASM_OP_END) && !pwasm_depth_sub(&ctl_depth, 1)) {
-      cbs->on_error("control stack depth underflow", cb_data);
-      return 0;
+    if (pwasm_op_is_enter(in.op) || (in.op == PWASM_OP_END)) {
+      D("ctl_depth = { val: %zu, max: %zu }", ctl_depth.val, ctl_depth.max);
+
+      // update control stack depth
+      if (pwasm_op_is_enter(in.op) && !pwasm_depth_add(&ctl_depth, 1)) {
+        cbs->on_error("control stack depth overflow", cb_data);
+        return 0;
+      } else if ((in.op == PWASM_OP_END) && !pwasm_depth_sub(&ctl_depth, 1)) {
+        cbs->on_error("control stack depth underflow", cb_data);
+        return 0;
+      }
     }
 
     // advance
@@ -5256,7 +5265,7 @@ pwasm_interp_eval_expr(
 
   for (size_t i = 0; i < expr.len; i++) {
     const pwasm_inst_t in = insts[i];
-    D("in.op = 0x%02X", in.op);
+    D("0x%02X %s", in.op, pwasm_op_get_name(in.op));
 
     switch (in.op) {
     case PWASM_OP_UNREACHABLE:
