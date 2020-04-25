@@ -201,9 +201,9 @@ static const uint8_t GUIDE_WASM[] = {
   0x04, 0x00, 0x41, 0x2A, 0x0B,
 };
 
-// test module with two funcs:
-// * "f32.pythag" (f32, f32 -> f32)
-// * "f64.pythag" (f64, f64 -> f64)
+// pythag.wasm: test module with two functions:
+// * f32.pythag(f32, f32) -> f32
+// * f64.pythag(f64, f64) -> f64
 static const uint8_t PYTHAG_WASM[] = {
   0x00, 0x61, 0x73, 0x6d, 0x01, 0x00, 0x00, 0x00,
   0x01, 0x0D, 0x02, 0x60, 0x02, 0x7E, 0x7E, 0x01,
@@ -219,6 +219,32 @@ static const uint8_t PYTHAG_WASM[] = {
   0x9F, 0x0B,
 };
 
+// fib.wasm: test module with two functions:
+// - fib_recurse(i32) -> i32
+// - fib_iterate(i32) -> i32
+//
+// (source: tests/wat/01-fib.wasm)
+uint8_t FIB_WASM[] = {
+  0x00, 0x61, 0x73, 0x6d, 0x01, 0x00, 0x00, 0x00,
+  0x01, 0x06, 0x01, 0x60, 0x01, 0x7f, 0x01, 0x7f,
+  0x03, 0x03, 0x02, 0x00, 0x00, 0x07, 0x1d, 0x02,
+  0x0b, 0x66, 0x69, 0x62, 0x5f, 0x72, 0x65, 0x63,
+  0x75, 0x72, 0x73, 0x65, 0x00, 0x00, 0x0b, 0x66,
+  0x69, 0x62, 0x5f, 0x69, 0x74, 0x65, 0x72, 0x61,
+  0x74, 0x65, 0x00, 0x01, 0x0a, 0x56, 0x02, 0x1c,
+  0x00, 0x20, 0x00, 0x41, 0x02, 0x49, 0x04, 0x7f,
+  0x41, 0x01, 0x05, 0x20, 0x00, 0x41, 0x02, 0x6b,
+  0x10, 0x00, 0x20, 0x00, 0x41, 0x01, 0x6b, 0x10,
+  0x00, 0x6a, 0x0b, 0x0b, 0x37, 0x01, 0x02, 0x7f,
+  0x20, 0x00, 0x41, 0x02, 0x49, 0x04, 0x7f, 0x41,
+  0x01, 0x05, 0x20, 0x00, 0x41, 0x01, 0x6b, 0x21,
+  0x00, 0x41, 0x01, 0x21, 0x01, 0x41, 0x01, 0x21,
+  0x02, 0x03, 0x7f, 0x20, 0x01, 0x20, 0x01, 0x20,
+  0x02, 0x6a, 0x21, 0x01, 0x21, 0x02, 0x20, 0x00,
+  0x41, 0x01, 0x6b, 0x22, 0x00, 0x0d, 0x00, 0x20,
+  0x01, 0x0b, 0x0b, 0x0b
+};
+
 static const struct {
   const char * const name;
   const pwasm_buf_t data;
@@ -228,41 +254,68 @@ static const struct {
 }, {
   .name = "pythag",
   .data = { PYTHAG_WASM, sizeof(PYTHAG_WASM) },
+}, {
+  .name = "fib",
+  .data = { FIB_WASM, sizeof(FIB_WASM) },
 }};
 
 static const pwasm_val_t
 WASM_TEST_VALS[] = {
-  // native.add_one params (1)
+  // mod: "native", func: "add_one", test: 1, type: "params", num: 1
   { .i32 = 3 },
 
-  // native.add_one result (1)
+  // mod: "native", func: "add_one", test: 1, type: "result", num: 1
   { .i32 = 4 },
 
-  // native.add_two params (2)
+  // mod: "native", func: "add_two", test: 1, type: "params", num: 2
   { .i32 = 3 },
   { .i32 = 4 },
 
-  // native.add_two result (1)
+  // mod: "native", func: "add_two", test: 1, type: "result", num: 1
   { .i32 = 12 },
 
-  // guide.life params (0)
+  // mod: "guide", func: "life", test: 1, type: "params", num: 0
 
-  // guide.life result (1)
+  // mod: "guide", func: "life", test: 1, type: "result", num: 1
   { .i32 = 42 },
 
-  // pythag.f32.pythag params (2)
+  // mod: "pythag", func: "f32.pythag", test: 1, type: "params", num: 2
   { .f32 = 3.0f },
   { .f32 = 4.0f },
 
-  // pythag.f32.pythag result (1)
+  // mod: "pythag", func: "f32.pythag", test: 1, type: "result", num: 1
   { .f32 = 5.0f },
 
-  // pythag.f64.pythag params (2)
+  // mod: "pythag", func: "f64.pythag", test: 1, type: "params", num: 2
   { .f64 = 5.0f },
   { .f64 = 6.0f },
 
-  // pythag.f64.pythag result (1)
+  // mod: "pythag", func: "f64.pythag", test: 1, type: "result", num: 1
   { .f64 = 7.810250f },
+
+  // mod: "fib", func: "fib_recurse", test: 1, type: "params", num: 1
+  { .i32 = 3 },
+
+  // mod: "fib", func: "fib_recurse", test: 1, type: "result", num: 1
+  { .i32 = 3 },
+
+  // mod: "fib", func: "fib_recurse", test: 2, type: "params", num: 1
+  { .i32 = 4 },
+
+  // mod: "fib", func: "fib_recurse", test: 2, type: "result", num: 1
+  { .i32 = 5 },
+
+  // mod: "fib", func: "fib_iterate", test: 1, type: "params", num: 1
+  { .i32 = 3 },
+
+  // mod: "fib", func: "fib_iterate", test: 1, type: "result", num: 1
+  { .i32 = 3 },
+
+  // mod: "fib", func: "fib_iterate", test: 2, type: "params", num: 1
+  { .i32 = 4 },
+
+  // mod: "fib", func: "fib_iterate", test: 2, type: "result", num: 1
+  { .i32 = 5 },
 };
 
 typedef struct {
@@ -310,6 +363,34 @@ WASM_TEST_CALLS[] = {{
   .params = { 9, 2 },
   .result = { 11, 1 },
   .type   = PWASM_RESULT_TYPE_F64,
+}, {
+  .text   = "fib.fib_recurse(3) (test 1)",
+  .mod    = "fib",
+  .func   = "fib_recurse",
+  .params = { 12, 1 },
+  .result = { 13, 1 },
+  .type   = PWASM_RESULT_TYPE_I32,
+}, {
+  .text   = "fib.fib_recurse(4) (test 2)",
+  .mod    = "fib",
+  .func   = "fib_recurse",
+  .params = { 14, 1 },
+  .result = { 15, 1 },
+  .type   = PWASM_RESULT_TYPE_I32,
+}, {
+  .text   = "fib.fib_iterate(3) (test 1)",
+  .mod    = "fib",
+  .func   = "fib_recurse",
+  .params = { 16, 1 },
+  .result = { 17, 1 },
+  .type   = PWASM_RESULT_TYPE_I32,
+}, {
+  .text   = "fib.fib_iterate(4) (test 2)",
+  .mod    = "fib",
+  .func   = "fib_iterate",
+  .params = { 18, 1 },
+  .result = { 19, 1 },
+  .type   = PWASM_RESULT_TYPE_I32,
 }};
 
 static result_t
