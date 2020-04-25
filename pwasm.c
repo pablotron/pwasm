@@ -666,6 +666,40 @@ pwasm_depth_sub(
   return ok;
 }
 
+#define CTL_TYPES \
+  CTL_TYPE(BLOCK) \
+  CTL_TYPE(LOOP) \
+  CTL_TYPE(IF) \
+  CTL_TYPE(ELSE)
+
+typedef enum {
+#define CTL_TYPE(a) CTL_ ## a,
+CTL_TYPES
+#undef CTL_TYPE
+  CTL_LAST,
+} pwasm_ctl_type_t;
+
+/* 
+ * static pwasm_ctl_type_t
+ * pwasm_op_get_ctl_type(
+ *   const pwasm_op_t op
+ * ) {
+ *   switch (op) {
+ *   #define CTL_TYPE(a) case PWASM_OP_ ## a: return CTL_ ## a;
+ *   CTL_TYPES
+ *   #undef CTL_TYPE
+ *   default:
+ *     return CTL_LAST;
+ *   }
+ * }
+ */ 
+
+typedef struct {
+  pwasm_ctl_type_t type; // return value type
+  size_t depth; // value stack depth
+  size_t ofs; // inst ofs
+} pwasm_ctl_stack_entry_t;
+
 /**
  * no-op on_error callback (used as a fallback to avoid having to do
  * null ptr checks on error).
@@ -1602,7 +1636,7 @@ pwasm_parse_expr(
   pwasm_depth_t ctl_depth = { 1, 1 };
   pwasm_depth_t val_depth = { 0, 0 };
 
-  size_t ofs = 0;
+  size_t ofs = 0, expr_ofs = 0;
   while ((ctl_depth.val > 0) && curr.len) {
     // parse instruction, check for error
     pwasm_inst_t in;
@@ -1611,18 +1645,9 @@ pwasm_parse_expr(
       return 0;
     }
 
-/*
- *     // check op
- *     if (!pwasm_op_is_const(in.op)) {
- *       D("in.op = %u", in.op);
- *       FAIL("non-constant instruction in expr");
- *     }
- */
-
     if (pwasm_op_is_enter(in.op) || (in.op == PWASM_OP_END)) {
       D("ctl_depth = { val: %zu, max: %zu }", ctl_depth.val, ctl_depth.max);
 
-      // update control stack depth
       if (pwasm_op_is_enter(in.op) && !pwasm_depth_add(&ctl_depth, 1)) {
         cbs->on_error("control stack depth overflow", cb_data);
         return 0;
@@ -1637,6 +1662,8 @@ pwasm_parse_expr(
     num_bytes += len;
 
     insts[ofs++] = in;
+    expr_ofs++;
+
     if (ofs == LEN(insts)) {
       // clear offset
       ofs = 0;
@@ -5208,19 +5235,6 @@ typedef struct {
   pwasm_slice_t locals;
 } pwasm_interp_frame_t;
 
-typedef enum {
-  CTL_BLOCK,
-  CTL_LOOP,
-  CTL_IF,
-  CTL_LAST,
-} pwasm_ctl_type_t;
-
-typedef struct {
-  pwasm_ctl_type_t type; // return value type
-  size_t depth; // value stack depth
-  size_t ofs; // inst ofs
-} pwasm_ctl_stack_entry_t;
-
 // forward reference
 static bool pwasm_interp_call(pwasm_env_t *, const pwasm_mod_t *, uint32_t);
 
@@ -5244,6 +5258,67 @@ pwasm_interp_call_indirect(
 
   // return failure
   return false;
+}
+
+// FIXME: complete hack, need to handle this during parsing
+static size_t
+pwasm_interp_get_else_ofs(
+  const pwasm_interp_frame_t frame,
+  const pwasm_slice_t expr,
+  const size_t inst_ofs
+) {
+  const pwasm_inst_t * const insts = frame.mod->insts + expr.ofs;
+
+  size_t depth = 1;
+  for (size_t i = inst_ofs + 1; i < expr.len; i++) {
+    const pwasm_inst_t in = insts[i];
+    if (pwasm_op_is_enter(in.op)) {
+      depth++;
+    } else if (in.op == PWASM_OP_END) {
+      depth--;
+
+      if (!depth) {
+        // return failure (no else inst)
+        return 0;
+      }
+    } else if (in.op == PWASM_OP_ELSE) {
+      if (depth == 1) {
+        // return offset to else inst
+        return i - inst_ofs;
+      }
+    }
+  }
+
+  // return failure (no else inst)
+  return 0;
+}
+
+// FIXME: complete hack, need to handle this during parsing
+static size_t
+pwasm_interp_get_end_ofs(
+  const pwasm_interp_frame_t frame,
+  const pwasm_slice_t expr,
+  const size_t inst_ofs
+) {
+  const pwasm_inst_t * const insts = frame.mod->insts + expr.ofs;
+
+  size_t depth = 1;
+  for (size_t i = inst_ofs + 1; i < expr.len; i++) {
+    const pwasm_inst_t in = insts[i];
+    if (pwasm_op_is_enter(in.op)) {
+      depth++;
+    } else if (in.op == PWASM_OP_END) {
+      depth--;
+
+      if (!depth) {
+        // return offset to else inst
+        return i - inst_ofs;
+      }
+    }
+  }
+
+  // return failure
+  return 0;
 }
 
 static bool
@@ -5295,8 +5370,18 @@ pwasm_interp_eval_expr(
         // pop last value from value stack
         const uint32_t tail = stack->ptr[--stack->pos].i32;
 
-        // get false expr offset
-        const size_t else_ofs = in.v_block.else_ofs ? in.v_block.else_ofs : in.v_block.end_ofs;
+        // get else expr offset
+        // TODO
+        // const size_t else_ofs = in.v_block.else_ofs ? in.v_block.else_ofs : in.v_block.end_ofs;
+        size_t else_ofs;
+        {
+          // FIXME: this is a colossal hack (and slow), and should be
+          // handled in parsing
+          const size_t tmp_else_ofs = pwasm_interp_get_else_ofs(frame, expr, i);
+          const size_t tmp_end_ofs = pwasm_interp_get_end_ofs(frame, expr, i);
+          else_ofs = tmp_else_ofs ? tmp_else_ofs : tmp_end_ofs;
+        }
+        D("else_ofs = %zu", else_ofs);
 
         // push to control stack
         ctl_stack[depth++] = (pwasm_ctl_stack_entry_t) {
@@ -5312,7 +5397,9 @@ pwasm_interp_eval_expr(
       break;
     case PWASM_OP_ELSE:
       // skip to end inst
-      i = ctl_stack[depth - 1].ofs + insts[i].v_block.end_ofs - 1;
+      // TODO
+      // i = ctl_stack[depth - 1].ofs + insts[i].v_block.end_ofs - 1;
+      i += pwasm_interp_get_end_ofs(frame, expr, i);
 
       break;
     case PWASM_OP_END:
