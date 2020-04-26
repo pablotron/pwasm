@@ -1,7 +1,17 @@
+;;
+;; 01-fib.wat: Module containing two functions which calculate the Nth
+;; value of the Fibonacci sequence:
+;;
+;; * fib_recurse(i32) -> i32: Calculate the Nth value of the Fibonacci
+;;   sequence, recursively.
+;;
+;; * fib_iterate(i32) -> i32: Calculate the Nth value of the Fibonacci
+;;   sequence, iteratively.
+;;
 (module
   ;; fib_recurse: get Nth value of fibonacci sequence, recursively.
   (func $fib_recurse (param $num i32) (result i32)
-    
+
     ;; n < 2
     (i32.lt_u (local.get $num) (i32.const 2))
     (if (result i32)
@@ -33,7 +43,7 @@
   (func $fib_iterate (param $num i32) (result i32)
     (local $sum i32)  ;; cumulative sum
     (local $tmp i32)  ;; temp value
-    
+
     ;; n < 2
     (i32.lt_u (local.get $num) (i32.const 2))
     (if (result i32)
@@ -64,7 +74,7 @@
 
           ;; decriment num
           (local.tee $num (i32.sub (local.get $num) (i32.const 1)))
-          
+
           ;; loop if num > 0
           (br_if 0)
 
