@@ -4833,14 +4833,7 @@ pwasm_get_mem(
   const char * const name
 ) {
   const uint32_t mod_id = pwasm_find_mod(env, mod);
-
-  // get memory handle, check for error
   const uint32_t mem_id = pwasm_env_find_mem(env, mod_id, pwasm_buf_str(name));
-  if (!mem_id) {
-    return NULL;
-  }
-
-  // return memory instance
   return pwasm_env_get_mem(env, mem_id);
 }
 
@@ -4924,6 +4917,17 @@ pwasm_env_find_import(
   return have_cb ? cbs->find_import(env, mod_id, type, name) : 0;
 }
 
+/**
+ * interpeter memory data
+ *
+ * FIXME: everything about this is crappy and slow
+ */
+typedef struct {
+  pwasm_env_mem_t * const env_mem; // memory pointer
+  const size_t ofs; // absolute offset, in bytes
+  const size_t size; // size, in bytes
+} pwasm_interp_mem_t;
+
 typedef enum {
   PWASM_INTERP_ROW_TYPE_MOD,
   PWASM_INTERP_ROW_TYPE_NATIVE,
@@ -4984,6 +4988,10 @@ typedef struct {
   // and tables.  externally visible IDs (handles) are an offset into
   // this vector, incremented by one.
   pwasm_vec_t rows;
+
+  // memory handle
+  // (FIXME: we only allow one memory, and this is probably not correct)
+  uint32_t mem_id;
 } pwasm_interp_t;
 
 static bool
@@ -5011,6 +5019,9 @@ pwasm_interp_on_init(
     D("pwasm_vec_init() failed (stride = %zu)", sizeof(pwasm_interp_row_t));
     return false;
   }
+
+  // clear mem_id
+  data->mem_id = 0;
 
   // save data, return success
   env->env_data = data;
@@ -5143,7 +5154,6 @@ pwasm_interp_on_add_mod(
   // TODO: need to resolve imports
   const uint32_t * const imports = NULL;
 
-
   // build row
   const pwasm_interp_row_t mod_row = {
     .type = PWASM_INTERP_ROW_TYPE_MOD,
@@ -5196,6 +5206,9 @@ pwasm_interp_on_add_mod(
       break;
     case PWASM_EXPORT_TYPE_MEM:
       {
+        // get interpreter
+        pwasm_interp_t * const data = env->env_data;
+
         D("adding mem %zu", i);
         const pwasm_limits_t limits = mod->mems[export.id];
 
@@ -5236,6 +5249,10 @@ pwasm_interp_on_add_mod(
           // return failure
           return 0;
         }
+
+        // cache mem_id
+        // FIXME: hack
+        data->mem_id = mem_id;
       }
 
       break;
@@ -6935,6 +6952,28 @@ pwasm_interp_call(
   return true;
 }
 
+/**
+ * Get the absolute memory offset from the immediate offset and the
+ * offset operand.
+ */
+static inline pwasm_interp_mem_t
+pwasm_interp_get_mem(
+  pwasm_env_t * const env,
+  const pwasm_inst_t in,
+  const uint32_t arg_ofs
+) {
+  pwasm_interp_t * const data = env->env_data;
+  pwasm_env_mem_t * const env_mem = pwasm_env_get_mem(env, data->mem_id);
+  size_t ofs = in.v_mem.offset + arg_ofs;
+  size_t size = pwasm_op_get_num_bits(in.op) / 8;
+  const bool ok = env_mem && ofs && size && (ofs + size < env_mem->size);
+  return (pwasm_interp_mem_t) {
+    .env_mem  = ok ? env_mem : NULL,
+    .ofs      = ok ? ofs : 0,
+    .size     = ok ? size : 0,
+  };
+}
+
 static uint32_t
 pwasm_interp_on_find_mod(
   pwasm_env_t * const env,
@@ -7079,34 +7118,40 @@ static bool
 pwasm_interp_on_mem_load(
   pwasm_env_t * const env,
   const pwasm_inst_t in,
-  const uint32_t ofs,
+  const uint32_t arg_ofs,
   pwasm_val_t * const ret_val
 ) {
-  // TODO
-  (void) env;
-  (void) in;
-  (void) ofs;
-  (void) ret_val;
+  // get offset, size, and memory
+  const pwasm_interp_mem_t mem = pwasm_interp_get_mem(env, in, arg_ofs);
+  if (!mem.size) {
+    return false;
+  }
 
-  // return failure
-  return false;
+  // copy to result
+  memcpy(ret_val, mem.env_mem->buf.ptr + mem.ofs, mem.size);
+
+  // return success
+  return true;
 }
 
 static bool
 pwasm_interp_on_mem_store(
   pwasm_env_t * const env,
   const pwasm_inst_t in,
-  const uint32_t ofs,
+  const uint32_t arg_ofs,
   const pwasm_val_t val
 ) {
-  // TODO
-  (void) env;
-  (void) in;
-  (void) ofs;
-  (void) val;
+  // get offset, size, and memory
+  pwasm_interp_mem_t mem = pwasm_interp_get_mem(env, in, arg_ofs);
+  if (!mem.size) {
+    return false;
+  }
 
-  // return failure
-  return false;
+  // copy to result
+  memcpy((uint8_t*) mem.env_mem->buf.ptr + mem.ofs, &val, mem.size);
+
+  // return success
+  return true;
 }
 
 static bool
