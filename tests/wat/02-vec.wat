@@ -1,30 +1,73 @@
 ;;
-;; 02-vec.wat: Vector functions.
+;; 02-vec.wat: 2D and 3D floating point vector functions.
 ;;
 ;; 2D Vector Functions:
-;; * v2.mag: Calculate the magnitude of a 2D vector.
-;; * v2.mul: Multiply a 2D vector by a scalar.
-;; * v2.norm: Normalize a 2D vector.
-;; * v2.dot: Calculate the dot product of two 2D vectors.
-;; * v2.proj: Project a 2D vector onto another 2D vector.
+;; * v2.copy: Copy several vectors from one address to another.
+;; * v2.store: Store a vector in memory.
+;; * v2.mag: Calculate vector magnitude.
+;; * v2.mul: Multiply a vector by a scalar.
+;; * v2.norm: Normalize a vector.
+;; * v2.dot: Calculate dot product of two vectors.
+;; * v2.proj: Project a vector onto another vector.
 ;;
 ;; 3D Vector Functions:
-;; * v3.mag: Calculate the magnitude of a 3D vector.
-;; * v3.mul: Multiply a 3D vector by a scalar.
-;; * v3.norm: Normalize a 3D vector.
-;; * v3.dot: Calculate the dot product of two 3D vectors.
-;; * v3.proj: Project a 3D vector onto another 2D vector.
-;; * v3.cross: Calculate the cross product of two 3D vectors.
+;; * v3.copy: Copy a vector at one memory address to another.
+;; * v3.store: Store a vector in memory.
+;; * v3.mag: Calculate vector magnitude.
+;; * v3.mul: Multiply a vector by a scalar.
+;; * v3.norm: Normalize a vector.
+;; * v3.dot: Calculate dot product of two vectors.
+;; * v3.proj: Project one vector onto another.
+;; * v3.cross: Calculate the cross product of two vectors.
 ;;
 ;; Utility Functions:
 ;; * m2.det: Calculate the determinant of a 2x2 matrix.
 ;;
 (module
   ;;
-  ;; export 1 page of memory, which is used to write the results of
-  ;; operations that return vectors.
+  ;; Export 1 WebAssembly page (65k) of memory, which is used to read
+  ;; and write vectors.
   ;;
-  (memory $mem (export "mem") 1 1)
+  (memory $mem (export "mem") 1)
+
+  ;;
+  ;; v2.copy: Copy several vectors at from on memory address to another,
+  ;; and then return the starting destination address.
+  ;;
+  (func $v2_copy (param $dst i32) ;; destination address
+                 (param $src i32) ;; source address
+                 (param $num i32) ;; number of vectors to copy
+                 (result i32)
+    (local $ofs i32) ;; current offset
+    (local $max i32) ;; maximum offset
+
+    ;; calculate maximum offset
+    (local.set $max (i32.mul (local.get $num) (i32.const 8)))
+
+    ;; set final address
+    (block
+      (loop
+        ;; loop exit condition
+        (br_if 1 (i32.eq (local.get $ofs) (local.get $max)))
+
+        (i64.store
+          (i32.add (local.get $dst) (local.get $ofs))
+          (i64.load (i32.add (local.get $src) (local.get $ofs)))
+        )
+
+        ;; increment offset
+        (local.set $ofs (i32.add (local.get $ofs) (i32.const 8)))
+
+        ;; loop
+        (br 0)
+      )
+    )
+
+    ;; return result
+    (local.get $dst)
+  )
+
+  (export "v2.copy" (func $v2_copy))
 
   ;;
   ;; v2.store: Store a 2D vector at a memory address and return the
@@ -33,8 +76,8 @@
   (func $v2_store (param $dst i32) ;; destination address
                   (param $x f32) (param $y f32) ;; 2D vector
                   (result i32)
-    (f32.store (local.get $dst) (local.get $x))
-    (f32.store (i32.add (local.get $dst) (i32.const 4)) (local.get $y))
+    (f32.store offset=0 (local.get $dst) (local.get $x))
+    (f32.store offset=4 (local.get $dst) (local.get $y))
     (local.get $dst)
   )
 
@@ -48,8 +91,8 @@
     (local $x f32)
     (local $y f32)
 
-    (local.set $x (f32.load (local.get $src)))
-    (local.set $y (f32.load (i32.add (local.get $src) (i32.const 4))))
+    (local.set $x (f32.load offset=0 (local.get $src)))
+    (local.set $y (f32.load offset=4 (local.get $src)))
 
     (f32.sqrt
       (f32.add
@@ -72,8 +115,8 @@
     (local $y f32)
 
     ;; build result
-    (local.set $x (f32.mul (local.get $s) (f32.load (local.get $dst))))
-    (local.set $y (f32.mul (local.get $s) (f32.load (i32.add (local.get $dst) (i32.const 4)))))
+    (local.set $x (f32.mul (local.get $s) (f32.load offset=0 (local.get $dst))))
+    (local.set $y (f32.mul (local.get $s) (f32.load offset=4 (local.get $dst))))
 
     ;; write result to memory
     (call $v2_store (local.get $dst) (local.get $x) (local.get $y))
@@ -91,8 +134,8 @@
     (local $x f32)
     (local $y f32)
 
-    (local.set $x (f32.load (local.get $dst)))
-    (local.set $y (f32.load (i32.add (local.get $dst) (i32.const 4))))
+    (local.set $x (f32.load offset=0 (local.get $dst)))
+    (local.set $y (f32.load offset=4 (local.get $dst)))
 
     ;; get the magnitude of the vector
     (local.set $mag (call $v2_mag (local.get $dst)))
@@ -116,12 +159,15 @@
                 (result f32)
     (f32.add
       ;; a.x * b.x
-      (f32.mul (f32.load (local.get $a)) (f32.load (local.get $b)))
+      (f32.mul
+        (f32.load (local.get $a))
+        (f32.load (local.get $b))
+      )
 
       ;; a.y * b.y
       (f32.mul
-        (f32.load (i32.add (local.get $a) (i32.const 4)))
-        (f32.load (i32.add (local.get $b) (i32.const 4)))
+        (f32.load offset=4 (local.get $a))
+        (f32.load offset=4 (local.get $b))
       )
     )
   )
@@ -152,11 +198,8 @@
     ))
 
     ;; build result
-    (local.set $x (f32.mul (local.get $s) (f32.load (local.get $b))))
-    (local.set $y (f32.mul (local.get $s) (f32.load (i32.add
-      (local.get $b)
-      (i32.const 4)
-    ))))
+    (local.set $x (f32.mul (local.get $s) (f32.load offset=0 (local.get $b))))
+    (local.set $y (f32.mul (local.get $s) (f32.load offset=4 (local.get $b))))
 
     ;; write result to destination, then return destination
     (call $v2_store (local.get $dst) (local.get $x) (local.get $y))
@@ -165,15 +208,62 @@
   (export "v2.proj" (func $v2_proj))
 
   ;;
+  ;; v3.copy: Copy a 3D vector at one memory address to another, and
+  ;; return the destination address.
+  ;;
+  (func $v3_copy (param $dst i32) ;; destination address
+                 (param $src i32) ;; source address
+                 (param $num i32) ;; number of vectors
+                 (result i32)
+    (local $i i32)
+    (local $x f32)
+    (local $y f32)
+    (local $z f32)
+    (local $orig_dst i32)
+
+    ;; cache original destination
+    (local.set $orig_dst (local.get $dst))
+
+    (block
+      (loop
+        ;; loop exit
+        (br_if 1 (i32.eq (local.get $i) (local.get $num)))
+
+        (local.set $x (f32.load offset=0 (local.get $src)))
+        (local.set $y (f32.load offset=4 (local.get $src)))
+        (local.set $y (f32.load offset=8 (local.get $src)))
+
+        (f32.store offset=0 (local.get $dst) (local.get $x))
+        (f32.store offset=4 (local.get $dst) (local.get $y))
+        (f32.store offset=8 (local.get $dst) (local.get $z))
+
+        ;; advance counter, dst, and src
+        (local.set $i (i32.add (local.get $i) (i32.const 1)))
+        (local.set $dst (i32.add (local.get $dst) (i32.const 12)))
+        (local.set $src (i32.add (local.get $dst) (i32.const 12)))
+
+        ;; loop
+        (br 0)
+      )
+    )
+
+    ;; return destination address
+    (local.get $dst)
+  )
+
+  (export "v3.copy" (func $v3_copy))
+
+  ;;
   ;; v3.store: Store a 3D vector at the given memory address and
   ;; then return the memory address.
   ;;
   (func $v3_store (param $dst i32) ;; destination address
                   (param $x f32) (param $y f32) (param $z f32) ;; vector
                   (result i32)
-    (f32.store (local.get $dst) (local.get $x))
-    (f32.store (i32.add (local.get $dst) (i32.const 4)) (local.get $y))
-    (f32.store (i32.add (local.get $dst) (i32.const 8)) (local.get $z))
+    (f32.store offset=0 (local.get $dst) (local.get $x))
+    (f32.store offset=4 (local.get $dst) (local.get $y))
+    (f32.store offset=8 (local.get $dst) (local.get $z))
+
     (local.get $dst)
   )
 
@@ -188,9 +278,9 @@
     (local $y f32)
     (local $z f32)
 
-    (local.set $x (f32.load (local.get $src)))
-    (local.set $y (f32.load (i32.add (local.get $src) (i32.const 4))))
-    (local.set $z (f32.load (i32.add (local.get $src) (i32.const 8))))
+    (local.set $x (f32.load offset=0 (local.get $src)))
+    (local.set $y (f32.load offset=4 (local.get $src)))
+    (local.set $z (f32.load offset=8 (local.get $src)))
 
     (f32.sqrt
       (f32.add
@@ -214,9 +304,9 @@
                 (result i32)
     (call $v3_store
       (local.get $dst)
-      (f32.mul (local.get $s) (f32.load (local.get $dst)))
-      (f32.mul (local.get $s) (f32.load (i32.add (local.get $dst) (i32.const 4))))
-      (f32.mul (local.get $s) (f32.load (i32.add (local.get $dst) (i32.const 8))))
+      (f32.mul (local.get $s) (f32.load offset=0 (local.get $dst)))
+      (f32.mul (local.get $s) (f32.load offset=4 (local.get $dst)))
+      (f32.mul (local.get $s) (f32.load offset=8 (local.get $dst)))
     )
   )
 
@@ -249,21 +339,21 @@
       (f32.add
         ;; a.x * b.x
         (f32.mul
-          (f32.load (local.get $a))
-          (f32.load (local.get $b))
+          (f32.load offset=0 (local.get $a))
+          (f32.load offset=0 (local.get $b))
         )
 
         ;; a.y * b.y
         (f32.mul
-          (f32.load (i32.add (local.get $a) (i32.const 4)))
-          (f32.load (i32.add (local.get $b) (i32.const 4)))
+          (f32.load offset=4 (local.get $a))
+          (f32.load offset=4 (local.get $b))
         )
       )
 
       ;; a.z * b.z
       (f32.mul
-        (f32.load (i32.add (local.get $a) (i32.const 8)))
-        (f32.load (i32.add (local.get $b) (i32.const 8)))
+        (f32.load offset=8 (local.get $a))
+        (f32.load offset=8 (local.get $b))
       )
     )
   )
@@ -294,9 +384,9 @@
     ;; store result, return address
     (call $v3_store
       (local.get $dst)
-      (f32.mul (local.get $s) (f32.load (local.get $b)))
-      (f32.mul (local.get $s) (f32.load (i32.add (local.get $b) (i32.const 4))))
-      (f32.mul (local.get $s) (f32.load (i32.add (local.get $b) (i32.const 8))))
+      (f32.mul (local.get $s) (f32.load offset=0 (local.get $b)))
+      (f32.mul (local.get $s) (f32.load offset=4 (local.get $b)))
+      (f32.mul (local.get $s) (f32.load offset=8 (local.get $b)))
     )
   )
 
@@ -318,12 +408,12 @@
     (local $by f32)
     (local $bz f32)
 
-    (local.set $ax (f32.load (local.get $a)))
-    (local.set $ay (f32.load (i32.add (local.get $a) (i32.const 4))))
-    (local.set $az (f32.load (i32.add (local.get $a) (i32.const 8))))
-    (local.set $bx (f32.load (local.get $b)))
-    (local.set $by (f32.load (i32.add (local.get $b) (i32.const 4))))
-    (local.set $bz (f32.load (i32.add (local.get $b) (i32.const 8))))
+    (local.set $ax (f32.load offset=0 (local.get $a)))
+    (local.set $ay (f32.load offset=4 (local.get $a)))
+    (local.set $az (f32.load offset=8 (local.get $a)))
+    (local.set $bx (f32.load offset=0 (local.get $b)))
+    (local.set $by (f32.load offset=4 (local.get $b)))
+    (local.set $bz (f32.load offset=8 (local.get $b)))
 
     ;; write result to destination, then return destination
     (call $v3_store
