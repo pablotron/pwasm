@@ -4777,6 +4777,27 @@ pwasm_env_find_func(
   return (cbs && cbs->find_func) ? cbs->find_func(env, mod_id, name) : 0;
 }
 
+uint32_t
+pwasm_env_find_mem(
+  pwasm_env_t * const env,
+  const uint32_t mod_id,
+  const pwasm_buf_t name
+) {
+  const pwasm_env_cbs_t * const cbs = env->cbs;
+  // D("env = %p, mod_id = %u, name = \"%s\"", env, mod_id, name);
+  return (cbs && cbs->find_mem) ? cbs->find_mem(env, mod_id, name) : 0;
+}
+
+pwasm_env_mem_t *
+pwasm_env_get_mem(
+  pwasm_env_t * const env,
+  const uint32_t mem_id
+) {
+  const pwasm_env_cbs_t * const cbs = env->cbs;
+  // D("env = %p, mod_id = %u, name = \"%s\"", env, mod_id, name);
+  return (cbs && cbs->get_mem) ? cbs->get_mem(env, mem_id) : 0;
+}
+
 bool
 pwasm_env_call(
   pwasm_env_t * const env,
@@ -4805,6 +4826,24 @@ pwasm_find_func(
   return pwasm_env_find_func(env, mod_id, pwasm_buf_str(name));
 }
 
+pwasm_env_mem_t *
+pwasm_get_mem(
+  pwasm_env_t * const env,
+  const char * const mod,
+  const char * const name
+) {
+  const uint32_t mod_id = pwasm_find_mod(env, mod);
+
+  // get memory handle, check for error
+  const uint32_t mem_id = pwasm_env_find_mem(env, mod_id, pwasm_buf_str(name));
+  if (!mem_id) {
+    return NULL;
+  }
+
+  // return memory instance
+  return pwasm_env_get_mem(env, mem_id);
+}
+
 bool
 pwasm_call(
   pwasm_env_t * const env,
@@ -4815,7 +4854,6 @@ pwasm_call(
 
   return pwasm_env_call(env, pwasm_find_func(env, mod_name, func_name));
 }
-
 
 bool
 pwasm_env_mem_load(
@@ -4926,7 +4964,8 @@ typedef struct {
       bool mut;
     } global;
 
-    pwasm_buf_t mem;
+    pwasm_env_mem_t mem;
+
     pwasm_buf_t table; // TODO: table
   };
 } pwasm_interp_row_t;
@@ -5149,6 +5188,51 @@ pwasm_interp_on_add_mod(
         // add function, check for error
         const uint32_t func_id = pwasm_interp_add_row(env, &row);
         if (!func_id) {
+          // return failure
+          return 0;
+        }
+      }
+
+      break;
+    case PWASM_EXPORT_TYPE_MEM:
+      {
+        D("adding mem %zu", i);
+        const pwasm_limits_t limits = mod->mems[export.id];
+
+        pwasm_buf_t buf;
+        {
+          // calculate number of bytes needed
+          const size_t num_bytes = (limits.min * (1UL << 16));
+
+          // set buffer buffer size, allocate memory
+          buf.len = limits.min;
+
+          // allocate memory, check for error
+          buf.ptr = pwasm_realloc(env->mem_ctx, NULL, num_bytes);
+          if (!buf.ptr && num_bytes) {
+            // TODO: log error
+            return 0;
+          }
+        }
+
+        // build export function row
+        const pwasm_interp_row_t row = {
+          .type = PWASM_INTERP_ROW_TYPE_MEM,
+
+          .name = {
+            .ptr = mod->bytes + export.name.ofs,
+            .len = export.name.len,
+          },
+
+          .mem = {
+            .buf = buf,
+            .limits = limits,
+          },
+        };
+
+        // add memory, check for error
+        const uint32_t mem_id = pwasm_interp_add_row(env, &row);
+        if (!mem_id) {
           // return failure
           return 0;
         }
@@ -6901,6 +6985,57 @@ pwasm_interp_on_find_func(
   return 0;
 }
 
+static uint32_t
+pwasm_interp_on_find_mem(
+  pwasm_env_t * const env,
+  const uint32_t mod_id,
+  const pwasm_buf_t name
+) {
+  pwasm_interp_t * const data = env->env_data;
+  const pwasm_interp_row_t *rows = pwasm_vec_get_data(&(data->rows));
+  const size_t num_rows = pwasm_vec_get_size(&(data->rows));
+  (void) mod_id;
+
+  for (size_t i = 0; i < num_rows; i++) {
+    if (
+      (rows[i].type == PWASM_INTERP_ROW_TYPE_MEM) &&
+      (rows[i].name.len == name.len) &&
+      !memcmp(name.ptr, rows[i].name.ptr, name.len)
+    ) {
+      // return offset + 1 (prevent zero IDs)
+      return i + 1;
+    }
+  }
+
+  // return failure
+  return 0;
+}
+
+static pwasm_env_mem_t *
+pwasm_interp_on_get_mem(
+  pwasm_env_t * const env,
+  const uint32_t mem_id
+) {
+  pwasm_interp_t * const data = env->env_data;
+  const pwasm_interp_row_t *rows = pwasm_vec_get_data(&(data->rows));
+  const size_t num_rows = pwasm_vec_get_size(&(data->rows));
+
+  // check that mem_id is in bounds
+  if (!mem_id || mem_id > num_rows) {
+    D("bad mem_id: %u", mem_id);
+    return NULL;
+  }
+
+  // check row type
+  if (rows[mem_id - 1].type != PWASM_INTERP_ROW_TYPE_MEM) {
+    D("invalid mem_id: %u", mem_id);
+    return NULL;
+  }
+
+  // return memory
+  return (pwasm_env_mem_t*) &(rows[mem_id - 1].mem);
+}
+
 static bool
 pwasm_interp_on_call(
   pwasm_env_t * const env,
@@ -7126,6 +7261,8 @@ PWASM_INTERP_CBS = {
   .add_native   = pwasm_interp_on_add_native,
   .find_mod     = pwasm_interp_on_find_mod,
   .find_func    = pwasm_interp_on_find_func,
+  .find_mem     = pwasm_interp_on_find_mem,
+  .get_mem      = pwasm_interp_on_get_mem,
   .call         = pwasm_interp_on_call,
   .mem_load     = pwasm_interp_on_mem_load,
   .mem_store    = pwasm_interp_on_mem_store,

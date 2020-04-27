@@ -880,6 +880,15 @@ struct pwasm_native_t {
   const pwasm_native_table_t * const tables;
 };
 
+/**
+ * Memory instance.
+ */
+typedef struct {
+  pwasm_buf_t buf;
+  size_t size;
+  const pwasm_limits_t limits;
+} pwasm_env_mem_t;
+
 typedef struct {
   // init env (alloc memory)
   _Bool (*init)(pwasm_env_t *);
@@ -968,6 +977,21 @@ typedef struct {
     pwasm_buf_t // function name
   );
 
+  // find memory handle by mod_id and name
+  // (returns zero on error)
+  uint32_t (*find_mem)(
+    pwasm_env_t *, // env
+    const uint32_t, // module handle
+    pwasm_buf_t // memory name
+  );
+
+  // get environment memory data by memory handle
+  // (returns NULL on error)
+  pwasm_env_mem_t *(*get_mem)(
+    pwasm_env_t *, // env
+    const uint32_t // memory handle
+  );
+
   // _Bool (*call_func)(pwasm_env_t *, uint32_t);
 
   // invoke function
@@ -976,14 +1000,6 @@ typedef struct {
   _Bool (*call)(
     pwasm_env_t *, // env
     const uint32_t // function ID
-  );
-
-  // find memory instance
-  // (returns buffer of zero length pointing to NULL on error)
-  pwasm_buf_t (*find_mem)(
-    pwasm_env_t *, // env
-    const uint32_t, // module handle
-    pwasm_buf_t // memory name
   );
 
   // load value from memory
@@ -1076,6 +1092,17 @@ uint32_t pwasm_env_find_mod(
  * Returns zero if an error occurred or the function could not be found.
  */
 uint32_t pwasm_env_find_func(
+  pwasm_env_t *,
+  const uint32_t,
+  const pwasm_buf_t
+);
+
+/**
+ * Find memory in given environment and module and return a handle.
+ *
+ * Returns zero if an error occurred or the memory could not be found.
+ */
+uint32_t pwasm_env_find_mem(
   pwasm_env_t *,
   const uint32_t,
   const pwasm_buf_t
@@ -1184,6 +1211,20 @@ uint32_t pwasm_find_mod(
  * Returns 0 if an error occurred.
  */
 uint32_t pwasm_find_func(
+  pwasm_env_t *,
+  const char *,
+  const char *
+);
+
+/**
+ * Get memory in environment by module name and memory name and return
+ * a handle to the memory instance.
+ *
+ * Note: This is a convenience wrapper around pwasm_env_find_mem().
+ *
+ * Returns 0 if an error occurred.
+ */
+pwasm_env_mem_t *pwasm_get_mem(
   pwasm_env_t *,
   const char *,
   const char *
