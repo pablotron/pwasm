@@ -4428,7 +4428,8 @@ pwasm_mod_check_code(
   // get function instructions
   const pwasm_inst_t * const insts = mod->insts + func.expr.ofs;
 
-  // cache module maximum indices
+  // get maximum type indices (e.g. the number of imports of a given
+  // type plus the number of internal items of a given type)
   size_t max_indices[PWASM_IMPORT_TYPE_LAST];
   memcpy(max_indices, mod->max_indices, sizeof(max_indices));
 
@@ -4995,7 +4996,7 @@ typedef struct {
 } pwasm_interp_t;
 
 static bool
-pwasm_interp_on_init(
+pwasm_interp_init(
   pwasm_env_t * const env
 ) {
   const size_t data_size = sizeof(pwasm_interp_t);
@@ -5029,7 +5030,7 @@ pwasm_interp_on_init(
 }
 
 static void
-pwasm_interp_on_fini(
+pwasm_interp_fini(
   pwasm_env_t * const env
 ) {
   pwasm_mem_ctx_t * const mem_ctx = env->mem_ctx;
@@ -5146,7 +5147,7 @@ pwasm_interp_add_row(
 }
 
 static uint32_t
-pwasm_interp_on_add_mod(
+pwasm_interp_add_mod(
   pwasm_env_t * const env,
   const char * const name,
   const pwasm_mod_t * const mod
@@ -5268,7 +5269,7 @@ pwasm_interp_on_add_mod(
 }
 
 static uint32_t
-pwasm_interp_on_add_native(
+pwasm_interp_add_native(
   pwasm_env_t * const env,
   const char * const name,
   const pwasm_native_t * const mod
@@ -5337,7 +5338,7 @@ typedef struct {
 } pwasm_interp_frame_t;
 
 // forward reference
-static bool pwasm_interp_call(pwasm_env_t *, const pwasm_mod_t *, uint32_t);
+static bool pwasm_interp_call_func(pwasm_env_t *, const pwasm_mod_t *, uint32_t);
 
 static inline bool
 pwasm_interp_call_indirect(
@@ -5623,7 +5624,7 @@ pwasm_interp_eval_expr(
       return true;
     case PWASM_OP_CALL:
       // call function, check for error
-      if (!pwasm_interp_call(frame.env, frame.mod, in.v_index.id)) {
+      if (!pwasm_interp_call_func(frame.env, frame.mod, in.v_index.id)) {
         // return failure
         return false;
       }
@@ -6868,7 +6869,7 @@ pwasm_interp_eval_expr(
  * world's shittiest initial interpreter
  */
 static bool
-pwasm_interp_call(
+pwasm_interp_call_func(
   pwasm_env_t * const env,
   const pwasm_mod_t * const mod,
   uint32_t func_id
@@ -6957,7 +6958,7 @@ pwasm_interp_call(
  * offset operand.
  */
 static inline pwasm_interp_mem_t
-pwasm_interp_get_mem(
+pwasm_interp_get_interp_mem(
   pwasm_env_t * const env,
   const pwasm_inst_t in,
   const uint32_t arg_ofs
@@ -6975,7 +6976,7 @@ pwasm_interp_get_mem(
 }
 
 static uint32_t
-pwasm_interp_on_find_mod(
+pwasm_interp_find_mod(
   pwasm_env_t * const env,
   const pwasm_buf_t name
 ) {
@@ -6999,7 +7000,7 @@ pwasm_interp_on_find_mod(
 }
 
 static uint32_t
-pwasm_interp_on_find_func(
+pwasm_interp_find_func(
   pwasm_env_t * const env,
   const uint32_t mod_id,
   const pwasm_buf_t name
@@ -7025,7 +7026,7 @@ pwasm_interp_on_find_func(
 }
 
 static uint32_t
-pwasm_interp_on_find_mem(
+pwasm_interp_find_mem(
   pwasm_env_t * const env,
   const uint32_t mod_id,
   const pwasm_buf_t name
@@ -7051,7 +7052,7 @@ pwasm_interp_on_find_mem(
 }
 
 static pwasm_env_mem_t *
-pwasm_interp_on_get_mem(
+pwasm_interp_get_mem(
   pwasm_env_t * const env,
   const uint32_t mem_id
 ) {
@@ -7076,7 +7077,7 @@ pwasm_interp_on_get_mem(
 }
 
 static bool
-pwasm_interp_on_call(
+pwasm_interp_call(
   pwasm_env_t * const env,
   const uint32_t func_id
 ) {
@@ -7102,7 +7103,7 @@ pwasm_interp_on_call(
   switch(mod_row.type) {
   case PWASM_INTERP_ROW_TYPE_MOD:
     D("found func, calling it: %u", func_id);
-    return pwasm_interp_call(env, mod_row.mod.mod, func_row.func.func_id);
+    return pwasm_interp_call_func(env, mod_row.mod.mod, func_row.func.func_id);
   case PWASM_INTERP_ROW_TYPE_NATIVE:
     D("found native func, calling it: %u", func_id);
     // FIXME: check bounds?
@@ -7115,14 +7116,14 @@ pwasm_interp_on_call(
 }
 
 static bool
-pwasm_interp_on_mem_load(
+pwasm_interp_mem_load(
   pwasm_env_t * const env,
   const pwasm_inst_t in,
   const uint32_t arg_ofs,
   pwasm_val_t * const ret_val
 ) {
   // get offset, size, and memory
-  const pwasm_interp_mem_t mem = pwasm_interp_get_mem(env, in, arg_ofs);
+  const pwasm_interp_mem_t mem = pwasm_interp_get_interp_mem(env, in, arg_ofs);
   if (!mem.size) {
     return false;
   }
@@ -7135,14 +7136,14 @@ pwasm_interp_on_mem_load(
 }
 
 static bool
-pwasm_interp_on_mem_store(
+pwasm_interp_mem_store(
   pwasm_env_t * const env,
   const pwasm_inst_t in,
   const uint32_t arg_ofs,
   const pwasm_val_t val
 ) {
   // get offset, size, and memory
-  pwasm_interp_mem_t mem = pwasm_interp_get_mem(env, in, arg_ofs);
+  pwasm_interp_mem_t mem = pwasm_interp_get_interp_mem(env, in, arg_ofs);
   if (!mem.size) {
     return false;
   }
@@ -7155,7 +7156,7 @@ pwasm_interp_on_mem_store(
 }
 
 static bool
-pwasm_interp_on_mem_size(
+pwasm_interp_mem_size(
   pwasm_env_t * const env,
   uint32_t * const ret_val
 ) {
@@ -7168,7 +7169,7 @@ pwasm_interp_on_mem_size(
 }
 
 static bool
-pwasm_interp_on_mem_grow(
+pwasm_interp_mem_grow(
   pwasm_env_t * const env,
   const uint32_t grow,
   uint32_t * const ret_val
@@ -7183,7 +7184,7 @@ pwasm_interp_on_mem_grow(
 }
 
 static bool
-pwasm_interp_on_get_elem(
+pwasm_interp_get_elem(
   pwasm_env_t * const env,
   const uint32_t table_id,
   const uint32_t elem_ofs,
@@ -7200,7 +7201,7 @@ pwasm_interp_on_get_elem(
 }
 
 static uint32_t
-pwasm_interp_on_find_import(
+pwasm_interp_find_import(
   pwasm_env_t * const env,
   const uint32_t mod_id,
   const pwasm_import_type_t type,
@@ -7252,7 +7253,7 @@ pwasm_interp_check_global(
 }
 
 static bool
-pwasm_interp_on_get_global(
+pwasm_interp_get_global(
   pwasm_env_t * const env,
   const uint32_t id,
   pwasm_val_t * const ret_val
@@ -7274,7 +7275,7 @@ pwasm_interp_on_get_global(
 }
 
 static bool
-pwasm_interp_on_set_global(
+pwasm_interp_set_global(
   pwasm_env_t * const env,
   const uint32_t id,
   const pwasm_val_t val
@@ -7298,6 +7299,158 @@ pwasm_interp_on_set_global(
   return true;
 }
 
+static bool
+pwasm_interp_on_init(
+  pwasm_env_t * const env
+) {
+  return pwasm_interp_init(env);
+}
+
+static void
+pwasm_interp_on_fini(
+  pwasm_env_t * const env
+) {
+  pwasm_interp_fini(env);
+}
+
+static uint32_t
+pwasm_interp_on_add_mod(
+  pwasm_env_t * const env,
+  const char * const name,
+  const pwasm_mod_t * const mod
+) {
+  return pwasm_interp_add_mod(env, name, mod);
+}
+
+static uint32_t
+pwasm_interp_on_add_native(
+  pwasm_env_t * const env,
+  const char * const name,
+  const pwasm_native_t * const mod
+) {
+  return pwasm_interp_add_native(env, name, mod);
+}
+
+static uint32_t
+pwasm_interp_on_find_mod(
+  pwasm_env_t * const env,
+  const pwasm_buf_t name
+) {
+  return pwasm_interp_find_mod(env, name);
+}
+
+static uint32_t
+pwasm_interp_on_find_func(
+  pwasm_env_t * const env,
+  const uint32_t mod_id,
+  const pwasm_buf_t name
+) {
+  return pwasm_interp_find_func(env, mod_id, name);
+}
+
+static uint32_t
+pwasm_interp_on_find_mem(
+  pwasm_env_t * const env,
+  const uint32_t mod_id,
+  const pwasm_buf_t name
+) {
+  return pwasm_interp_find_mem(env, mod_id, name);
+}
+
+static pwasm_env_mem_t *
+pwasm_interp_on_get_mem(
+  pwasm_env_t * const env,
+  const uint32_t mem_id
+) {
+  return pwasm_interp_get_mem(env, mem_id);
+}
+
+static bool
+pwasm_interp_on_call(
+  pwasm_env_t * const env,
+  const uint32_t func_id
+) {
+  return pwasm_interp_call(env, func_id);
+}
+
+static bool
+pwasm_interp_on_mem_load(
+  pwasm_env_t * const env,
+  const pwasm_inst_t in,
+  const uint32_t arg_ofs,
+  pwasm_val_t * const ret_val
+) {
+  return pwasm_interp_mem_load(env, in, arg_ofs, ret_val);
+}
+
+static bool
+pwasm_interp_on_mem_store(
+  pwasm_env_t * const env,
+  const pwasm_inst_t in,
+  const uint32_t arg_ofs,
+  const pwasm_val_t val
+) {
+  return pwasm_interp_mem_store(env, in, arg_ofs, val);
+}
+
+static bool
+pwasm_interp_on_mem_size(
+  pwasm_env_t * const env,
+  uint32_t * const ret_val
+) {
+  return pwasm_interp_mem_size(env, ret_val);
+}
+
+static bool
+pwasm_interp_on_mem_grow(
+  pwasm_env_t * const env,
+  const uint32_t grow,
+  uint32_t * const ret_val
+) {
+  return pwasm_interp_mem_grow(env, grow, ret_val);
+}
+
+static bool
+pwasm_interp_on_get_elem(
+  pwasm_env_t * const env,
+  const uint32_t table_id,
+  const uint32_t elem_ofs,
+  uint32_t * const ret_val
+) {
+  return pwasm_interp_get_elem(env, table_id, elem_ofs, ret_val);
+}
+
+static uint32_t
+pwasm_interp_on_find_import(
+  pwasm_env_t * const env,
+  const uint32_t mod_id,
+  const pwasm_import_type_t type,
+  const pwasm_buf_t name
+) {
+  return pwasm_interp_find_import(env, mod_id, type, name);
+}
+
+static bool
+pwasm_interp_on_get_global(
+  pwasm_env_t * const env,
+  const uint32_t id,
+  pwasm_val_t * const ret_val
+) {
+  return pwasm_interp_get_global(env, id, ret_val);
+}
+
+static bool
+pwasm_interp_on_set_global(
+  pwasm_env_t * const env,
+  const uint32_t id,
+  const pwasm_val_t val
+) {
+  return pwasm_interp_set_global(env, id, val);
+}
+
+/**
+ * Interpreter environment callbacks.
+ */
 static const pwasm_env_cbs_t
 PWASM_INTERP_CBS = {
   .init         = pwasm_interp_on_init,
@@ -7319,6 +7472,9 @@ PWASM_INTERP_CBS = {
   .set_global   = pwasm_interp_on_set_global,
 };
 
+/**
+ * Return interpreter environment callbacks.
+ */
 const pwasm_env_cbs_t *
 pwasm_interpreter_get_cbs(void) {
   return &PWASM_INTERP_CBS;
