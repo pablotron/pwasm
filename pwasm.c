@@ -5086,29 +5086,24 @@ pwasm_interp_add_native_imports(
 
   // loop over imports and resolve each one
   for (size_t i = 0; i < mod->num_imports; i++) {
-    // build module name buffer
-    // FIXME: should these be in the external api?
-    const pwasm_buf_t mod_buf = pwasm_buf_str(mod->imports[i].mod);
+    const pwasm_native_import_t import = mod->imports[i];
 
     // find mod, check for error
-    const uint32_t mod_id = pwasm_env_find_mod(env, mod_buf);
+    const uint32_t mod_id = pwasm_find_mod(env, import.mod);
     if (!mod_id) {
       // return failure
       return NULL;
     }
 
-    // build import name buffer
-    // FIXME: should these be in the external api?
-    const pwasm_buf_t name_buf = pwasm_buf_str(mod->imports[i].name);
-
-    // find import, check for error
-    const uint32_t id = pwasm_env_find_import(env, mod_id, mod->imports[i].type, name_buf);
+    // find import ID, check for error
+    const pwasm_buf_t name = pwasm_buf_str(import.name);
+    const uint32_t id = pwasm_env_find_import(env, mod_id, import.type, name);
     if (!id) {
       // return failure
       return NULL;
     }
 
-    // add to results, increment count
+    // add item to results, increment count
     ids[num_ids] = id;
     num_ids++;
 
@@ -5242,7 +5237,8 @@ pwasm_interp_add_mod(
           // allocate memory, check for error
           buf.ptr = pwasm_realloc(env->mem_ctx, NULL, num_bytes);
           if (!buf.ptr && num_bytes) {
-            // TODO: log error
+            // log error, return failure
+            pwasm_env_fail(env, "export memory buffer allocation failed");
             return 0;
           }
         }
