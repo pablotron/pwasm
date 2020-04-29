@@ -4918,6 +4918,14 @@ pwasm_env_find_import(
   return have_cb ? cbs->find_import(env, mod_id, type, name) : 0;
 }
 
+static void
+pwasm_env_fail(
+  pwasm_env_t * const env,
+  const char * const text
+) {
+  env->mem_ctx->cbs->on_error(text, env->mem_ctx->cb_data);
+}
+
 /**
  * interpeter memory data
  *
@@ -5005,19 +5013,25 @@ pwasm_interp_init(
   // allocate interpreter data store
   pwasm_interp_t *data = pwasm_realloc(mem_ctx, NULL, data_size);
   if (!data) {
+    // log error, return failure
     D("pwasm_realloc() failed (size = %zu)", data_size);
+    pwasm_env_fail(env, "interpreter memory allocation failed");
     return false;
   }
 
   // allocate imports
   if (!pwasm_vec_init(mem_ctx, &(data->imports), sizeof(uint32_t))) {
+    // log error, return failure
     D("pwasm_vec_init() failed (stride = %zu)", sizeof(uint32_t));
+    pwasm_env_fail(env, "interpreter import vector init failed");
     return false;
   }
 
   // allocate rows
   if (!pwasm_vec_init(mem_ctx, &(data->rows), sizeof(pwasm_interp_row_t))) {
+    // log error, return failure
     D("pwasm_vec_init() failed (stride = %zu)", sizeof(pwasm_interp_row_t));
+    pwasm_env_fail(env, "interpreter data vector init failed");
     return false;
   }
 
@@ -5102,18 +5116,20 @@ pwasm_interp_add_native_imports(
       // clear count
       num_ids = 0;
 
-      // flush results, check for error
+      // append results, check for error
       if (!pwasm_vec_push(&(data->imports), LEN(ids), ids, NULL)) {
-        // TODO: log error
+        // log error, return failure
+        pwasm_env_fail(env, "append native imports failed");
         return NULL;
       }
     }
   }
 
   if (num_ids > 0) {
-    // flush results
+    // append remaining results
     if (!pwasm_vec_push(&(data->imports), num_ids, ids, NULL)) {
-      // TODO: log error
+      // log error, return failure
+      pwasm_env_fail(env, "append remaining native imports failed");
       return NULL;
     }
   }
@@ -5132,6 +5148,7 @@ pwasm_interp_add_row(
   pwasm_interp_t * const data = env->env_data;
   if (!data) {
     D("pwasm_vec_init() failed (stride = %zu)", sizeof(pwasm_interp_row_t));
+    pwasm_env_fail(env, "NULL interpreter context (bug?)");
     return 0;
   }
 
@@ -5139,6 +5156,7 @@ pwasm_interp_add_row(
   size_t ofs = 0;
   if (!pwasm_vec_push(&(data->rows), 1, row, &ofs)) {
     D("pwasm_vec_init() failed %s", "");
+    pwasm_env_fail(env, "pwasm_interp_add_row(): pwasm_vec_push() failed");
     return 0;
   }
 
@@ -5258,8 +5276,8 @@ pwasm_interp_add_mod(
 
       break;
     default:
-      // TODO: add remaining export types
-      // return failure
+      // log error, return failure
+      pwasm_env_fail(env, "invalid export type");
       return false;
     }
   }
@@ -5391,7 +5409,8 @@ pwasm_interp_get_else_ofs(
     }
   }
 
-  // return failure (no else inst)
+  // log error, return failure
+  pwasm_env_fail(frame.env, "missing else or end instruction");
   return 0;
 }
 
@@ -5419,7 +5438,8 @@ pwasm_interp_get_end_ofs(
     }
   }
 
-  // return failure
+  // log error, return failure
+  pwasm_env_fail(frame.env, "missing end instruction");
   return 0;
 }
 
@@ -5430,9 +5450,6 @@ pwasm_interp_eval_expr(
 ) {
   pwasm_stack_t * const stack = frame.env->stack;
   const pwasm_inst_t * const insts = frame.mod->insts + expr.ofs;
-
-  // get total number of globals
-  const size_t max_globals = frame.mod->max_indices[PWASM_IMPORT_TYPE_GLOBAL];
 
   // FIXME: move to frame, fix depth
   pwasm_ctl_stack_entry_t ctl_stack[PWASM_STACK_CHECK_MAX_DEPTH];
@@ -5446,11 +5463,12 @@ pwasm_interp_eval_expr(
 
     switch (in.op) {
     case PWASM_OP_UNREACHABLE:
-      // FIXME: log error
+      // FIXME: raise trap?
+      pwasm_env_fail(frame.env, "unreachable instruction reached");
       return false;
     case PWASM_OP_NOP:
       // do nothing
-      return false;
+      break;
     case PWASM_OP_BLOCK:
       ctl_stack[depth++] = (pwasm_ctl_stack_entry_t) {
         .type   = CTL_BLOCK,
@@ -5657,7 +5675,8 @@ pwasm_interp_eval_expr(
 
         // check local index
         if (id >= frame.locals.len) {
-          // TODO: log error
+          // log error, return failure
+          pwasm_env_fail(frame.env, "local index out of bounds");
           return false;
         }
 
@@ -5673,7 +5692,8 @@ pwasm_interp_eval_expr(
 
         // check local index
         if (id >= frame.locals.len) {
-          // TODO: log error
+          // log error, return failure
+          pwasm_env_fail(frame.env, "local index out of bounds");
           return false;
         }
 
@@ -5690,7 +5710,8 @@ pwasm_interp_eval_expr(
 
         // check local index
         if (id >= frame.locals.len) {
-          // TODO: log error
+          // log error, return failure
+          pwasm_env_fail(frame.env, "local index out of bounds");
           return false;
         }
 
@@ -5704,16 +5725,10 @@ pwasm_interp_eval_expr(
         // get global index
         const uint32_t id = in.v_index.id;
 
-        // check local index
-        if (id >= max_globals) {
-          // TODO: log error
-          return false;
-        }
-
         // get global value, check for error
         pwasm_val_t val;
         if (!pwasm_env_get_global(frame.env, id, &val)) {
-          // TODO: log error
+          // return failure
           return false;
         }
 
@@ -5726,12 +5741,6 @@ pwasm_interp_eval_expr(
       {
         // get global index
         const uint32_t id = in.v_index.id;
-
-        // check global index
-        if (id >= max_globals) {
-          // TODO: log error
-          return false;
-        }
 
         // set global value, check for error
         if (!pwasm_env_set_global(frame.env, id, PWASM_PEEK(stack, 0))) {
@@ -6856,7 +6865,8 @@ pwasm_interp_eval_expr(
 
       break;
     default:
-      // TODO: unsupported inst
+      // log error, return failure
+      pwasm_env_fail(frame.env, "unknown instruction");
       return false;
     }
   }
@@ -6882,6 +6892,9 @@ pwasm_interp_call_func(
   if (func_id < num_import_funcs) {
     // TODO
     D("imported function not supported yet: %u", func_id);
+
+    // log error, return failure
+    pwasm_env_fail(env, "imported function not supported");
     return false;
   }
 
@@ -6890,6 +6903,9 @@ pwasm_interp_call_func(
   if (func_id >= mod->num_funcs) {
     // TODO: invalid function ID, log error
     D("invalid function ID: %u", func_id);
+
+    // log error, return failure
+    pwasm_env_fail(env, "function index out of bounds");
     return false;
   }
 
@@ -6897,11 +6913,12 @@ pwasm_interp_call_func(
   const pwasm_slice_t params = mod->types[mod->funcs[func_id]].params;
   const pwasm_slice_t results = mod->types[mod->funcs[func_id]].results;
 
-  // check stack position
+  // check stack position (e.g. missing parameters)
   // (FIXME: do we need this, should it be handled in check?)
   if (stack->pos < params.len) {
-    // TODO: missing parameters
+    // log error, return failure
     D("missing parameters: stack->pos = %zu, params.len = %zu", stack->pos, params.len);
+    pwasm_env_fail(env, "missing function parameters");
     return false;
   }
 
@@ -6995,7 +7012,8 @@ pwasm_interp_find_mod(
     }
   }
 
-  // return failure
+  // log error, return failure
+  pwasm_env_fail(env, "module not found");
   return 0;
 }
 
@@ -7021,7 +7039,8 @@ pwasm_interp_find_func(
     }
   }
 
-  // return failure
+  // log error, return failure
+  pwasm_env_fail(env, "function not found");
   return 0;
 }
 
@@ -7047,7 +7066,8 @@ pwasm_interp_find_mem(
     }
   }
 
-  // return failure
+  // log error, return failure
+  pwasm_env_fail(env, "memory not found");
   return 0;
 }
 
@@ -7062,13 +7082,17 @@ pwasm_interp_get_mem(
 
   // check that mem_id is in bounds
   if (!mem_id || mem_id > num_rows) {
+    // log error, return failure
     D("bad mem_id: %u", mem_id);
+    pwasm_env_fail(env, "memory index out of bounds");
     return NULL;
   }
 
   // check row type
   if (rows[mem_id - 1].type != PWASM_INTERP_ROW_TYPE_MEM) {
+    // log error, return failure
     D("invalid mem_id: %u", mem_id);
+    pwasm_env_fail(env, "invalid memory index");
     return NULL;
   }
 
@@ -7088,6 +7112,7 @@ pwasm_interp_call(
   // check that func_id is in bounds
   if (!func_id || func_id > num_rows) {
     D("bad func_id: %u", func_id);
+    pwasm_env_fail(env, "function index out of bounds");
     return false;
   }
 
@@ -7095,6 +7120,13 @@ pwasm_interp_call(
   const pwasm_interp_row_t func_row = rows[func_id - 1];
   if (func_row.type != PWASM_INTERP_ROW_TYPE_FUNC) {
     D("invalid func_id: %u", func_id);
+    pwasm_env_fail(env, "invalid function index");
+    return false;
+  }
+
+  if (!func_row.func.mod_id || func_row.func.mod_id > num_rows) {
+    D("bad func mod_id: %u", func_row.func.mod_id);
+    pwasm_env_fail(env, "function module index out of bounds");
     return false;
   }
 
@@ -7111,6 +7143,7 @@ pwasm_interp_call(
     return func->func(env, &mod_row.native);
   default:
     D("func_id %u maps to invalid mod_id %u", func_id, func_row.func.mod_id);
+    pwasm_env_fail(env, "invalid function module index");
     return false;
   }
 }
@@ -7223,8 +7256,8 @@ pwasm_interp_find_import(
     // return pwasm_env_find_table(env, mod_id, name);
     return 0;
   default:
-    // unknown import type, return failure
-    // TODO: log error
+    // log error, return failure
+    pwasm_env_fail(env, "invalid import type");
     return 0;
   }
 }
@@ -7239,12 +7272,14 @@ pwasm_interp_check_global(
   const size_t num_rows = pwasm_vec_get_size(&(data->rows));
 
   if (!id || id > num_rows) {
-    // TODO: log error
+    // log error, return failure
+    pwasm_env_fail(env, "global index out of bounds");
     return false;
   }
 
   if (rows[id - 1].type != PWASM_INTERP_ROW_TYPE_GLOBAL) {
-    // TODO: log error
+    // log error, return failure
+    pwasm_env_fail(env, "invalid global index");
     return false;
   }
 
@@ -7288,7 +7323,7 @@ pwasm_interp_set_global(
   }
 
   if (!rows[id - 1].global.mut) {
-    // TODO: log error
+    pwasm_env_fail(env, "write to immutable global");
     return false;
   }
 
