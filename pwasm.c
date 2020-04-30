@@ -1346,7 +1346,8 @@ pwasm_parse_inst(
     return 0;
   }
 
-  D("0x%02X %s", curr.ptr[0], pwasm_op_get_name(op));
+  // dump instruction
+  // D("0x%02X %s", curr.ptr[0], pwasm_op_get_name(op));
 
   // advance
   curr = pwasm_buf_step(curr, 1);
@@ -3466,9 +3467,9 @@ pwasm_mod_init_unsafe_on_insts(
     pwasm_mod_init_unsafe_on_error("push insts failed", data);
   }
 
-  for (size_t i = 0; i < num; i++) {
-    D("inst[%zu].op = %u", i, rows[i].op);
-  }
+  // for (size_t i = 0; i < num; i++) {
+  //   D("inst[%zu].op = %u", i, rows[i].op);
+  // }
 
   return ret;
 }
@@ -4805,7 +4806,7 @@ pwasm_env_call(
   const uint32_t func_id
 ) {
   const pwasm_env_cbs_t * const cbs = env->cbs;
-  D("env = %p, func_id = %u", (void*) env, func_id);
+  // D("env = %p, func_id = %u", (void*) env, func_id);
   return (cbs && cbs->call) ? cbs->call(env, func_id) : false;
 }
 
@@ -4844,7 +4845,7 @@ pwasm_call(
   const char * const mod_name,
   const char * const func_name
 ) {
-  D("env = %p, mod = \"%s\", func = \"%s\"", (void*) env, mod_name, func_name);
+  // D("env = %p, mod = \"%s\", func = \"%s\"", (void*) env, mod_name, func_name);
 
   return pwasm_env_call(env, pwasm_find_func(env, mod_name, func_name));
 }
@@ -5451,11 +5452,11 @@ pwasm_interp_eval_expr(
   pwasm_ctl_stack_entry_t ctl_stack[PWASM_STACK_CHECK_MAX_DEPTH];
   size_t depth = 0;
 
-  D("expr = { .ofs = %zu, .len = %zu }, num_insts = %zu", expr.ofs, expr.len, frame.mod->num_insts);
+  // D("expr = { .ofs = %zu, .len = %zu }, num_insts = %zu", expr.ofs, expr.len, frame.mod->num_insts);
 
   for (size_t i = 0; i < expr.len; i++) {
     const pwasm_inst_t in = insts[i];
-    D("0x%02X %s", in.op, pwasm_op_get_name(in.op));
+    // D("0x%02X %s", in.op, pwasm_op_get_name(in.op));
 
     switch (in.op) {
     case PWASM_OP_UNREACHABLE:
@@ -5497,7 +5498,7 @@ pwasm_interp_eval_expr(
           const size_t tmp_end_ofs = pwasm_interp_get_end_ofs(frame, expr, i);
           else_ofs = tmp_else_ofs ? tmp_else_ofs : tmp_end_ofs;
         }
-        D("else_ofs = %zu", else_ofs);
+        // D("else_ofs = %zu", else_ofs);
 
         // push to control stack
         ctl_stack[depth++] = (pwasm_ctl_stack_entry_t) {
@@ -6956,9 +6957,9 @@ pwasm_interp_call_func(
     const size_t src_pos = stack->pos - results.len;
     const size_t num_bytes = sizeof(pwasm_val_t) * results.len;
 
+    // D("stack->pos: old = %zu, new = %zu", stack->pos, dst_pos + results.len);
     // copy results, update stack position
     memmove(stack->ptr + dst_pos, stack->ptr + src_pos, num_bytes);
-    D("stack->pos: old = %zu, new = %zu", stack->pos, dst_pos + results.len);
     stack->pos = dst_pos + results.len;
   }
 
