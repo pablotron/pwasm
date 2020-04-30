@@ -4955,7 +4955,12 @@ typedef struct {
 
   union {
     struct {
+      // map of import IDs to interpreter handle IDs
       const uint32_t * const imports;
+      // TODO: const uint32_t * const globals;
+      // TODO: const uint32_t * const tables;
+      // TODO: const uint32_t * const mems;
+      // TODO: const uint32_t * const exports;
       const pwasm_mod_t * const mod;
     } mod;
 
@@ -4985,12 +4990,22 @@ typedef struct {
 } pwasm_interp_row_t;
 
 typedef struct {
+  pwasm_val_t val;
+  bool mut;
+} pwasm_interp_global_t;
+
+typedef struct {
   // vector of u32s.
   //
-  // each module instance contains a pointer into vector which maps
-  // their import IDs (funcs, tables, mems, and globals) to the
-  // handles exported by the interpreter.
+  // each module instance contains a pointer into this vector which maps
+  // their import IDs (funcs, tables, mems, and globals) to the handles
+  // exported by the interpreter.
+  //
+  // FIXME: change from ptr to slice to handle reallocs
+  //
   pwasm_vec_t imports;
+
+  // pwasm_vec_t globals;
 
   // vector of pwasm_interp_row_ts.
   //
