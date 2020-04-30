@@ -4810,46 +4810,6 @@ pwasm_env_call(
   return (cbs && cbs->call) ? cbs->call(env, func_id) : false;
 }
 
-uint32_t
-pwasm_find_mod(
-  pwasm_env_t * const env,
-  const char * const mod_name
-) {
-  return pwasm_env_find_mod(env, pwasm_buf_str(mod_name));
-}
-
-uint32_t
-pwasm_find_func(
-  pwasm_env_t * const env,
-  const char * const mod,
-  const char * const name
-) {
-  const uint32_t mod_id = pwasm_find_mod(env, mod);
-  return pwasm_env_find_func(env, mod_id, pwasm_buf_str(name));
-}
-
-pwasm_env_mem_t *
-pwasm_get_mem(
-  pwasm_env_t * const env,
-  const char * const mod,
-  const char * const name
-) {
-  const uint32_t mod_id = pwasm_find_mod(env, mod);
-  const uint32_t mem_id = pwasm_env_find_mem(env, mod_id, pwasm_buf_str(name));
-  return pwasm_env_get_mem(env, mem_id);
-}
-
-bool
-pwasm_call(
-  pwasm_env_t * const env,
-  const char * const mod_name,
-  const char * const func_name
-) {
-  // D("env = %p, mod = \"%s\", func = \"%s\"", (void*) env, mod_name, func_name);
-
-  return pwasm_env_call(env, pwasm_find_func(env, mod_name, func_name));
-}
-
 bool
 pwasm_env_mem_load(
   pwasm_env_t * const env,
@@ -4925,6 +4885,62 @@ pwasm_env_fail(
   const char * const text
 ) {
   env->mem_ctx->cbs->on_error(text, env->mem_ctx->cb_data);
+}
+
+/**
+ * Friendly wrapper around pwasm_env_find_mod() which takes a string
+ * pointer instead of a buffer.
+ */
+uint32_t
+pwasm_find_mod(
+  pwasm_env_t * const env,
+  const char * const mod_name
+) {
+  return pwasm_env_find_mod(env, pwasm_buf_str(mod_name));
+}
+
+/**
+ * Friendly wrapper around pwasm_env_find_func() which takes a string
+ * pointer module and function name instead of module handle and a
+ * function name buffer.
+ */
+uint32_t
+pwasm_find_func(
+  pwasm_env_t * const env,
+  const char * const mod,
+  const char * const name
+) {
+  const uint32_t mod_id = pwasm_find_mod(env, mod);
+  return pwasm_env_find_func(env, mod_id, pwasm_buf_str(name));
+}
+
+/**
+ * Friendly wrapper around pwasm_env_get_mem() which takes a string
+ * pointer module and memory name instead of a buffer.
+ */
+pwasm_env_mem_t *
+pwasm_get_mem(
+  pwasm_env_t * const env,
+  const char * const mod,
+  const char * const name
+) {
+  const uint32_t mod_id = pwasm_find_mod(env, mod);
+  const uint32_t mem_id = pwasm_env_find_mem(env, mod_id, pwasm_buf_str(name));
+  return pwasm_env_get_mem(env, mem_id);
+}
+
+/**
+ * Friendly wrapper around pwasm_env_call() which accepts the
+ * module name and function name as a string instead of a buffer.
+ */
+bool
+pwasm_call(
+  pwasm_env_t * const env,
+  const char * const mod_name,
+  const char * const func_name
+) {
+  // D("env = %p, mod = %s, func = %s", (void*) env, mod_name, func_name);
+  return pwasm_env_call(env, pwasm_find_func(env, mod_name, func_name));
 }
 
 /**

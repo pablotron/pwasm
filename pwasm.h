@@ -1233,8 +1233,7 @@ pwasm_env_mem_t *pwasm_get_mem(
 /**
  * Find and invoke function by module name and function name.
  *
- * Note: This function is a convenience wrapper around
- * pwasm_env_call().
+ * Note: This is a convenience wrapper around pwasm_env_call().
  *
  * Returns false if an error occurred.
  */
