@@ -679,7 +679,7 @@ CTL_TYPES
   CTL_LAST,
 } pwasm_ctl_type_t;
 
-/* 
+/*
  * static pwasm_ctl_type_t
  * pwasm_op_get_ctl_type(
  *   const pwasm_op_t op
@@ -692,7 +692,7 @@ CTL_TYPES
  *     return CTL_LAST;
  *   }
  * }
- */ 
+ */
 
 typedef struct {
   pwasm_ctl_type_t type; // return value type
@@ -4942,6 +4942,48 @@ pwasm_call(
   // D("env = %p, mod = %s, func = %s", (void*) env, mod_name, func_name);
   return pwasm_env_call(env, pwasm_find_func(env, mod_name, func_name));
 }
+
+// typedef enum {
+//   PWASM_NEW_INTERP_MOD_TYPE_MOD,
+//   PWASM_NEW_INTERP_MOD_TYPE_NATIVE,
+//   PWASM_NEW_INTERP_MOD_TYPE_LAST,
+// } pwasm_new_interp_mod_type_t;
+//
+// typedef struct {
+//   // module name
+//   pwasm_buf_t name;
+//
+//   // module type (internal or native)
+//   pwasm_new_interp_mod_type_t type;
+//
+//   // references to the u32s vector in the parent interpreter
+//   pwasm_slice_t mems;
+//   pwasm_slice_t funcs;
+//   pwasm_slice_t globals;
+//   pwasm_slice_t tables;
+//   union {
+//     const pwasm_native_t * const native;
+//     const pwasm_mod_t * const mod;
+//   };
+// } pwasm_new_interp_mod_t;
+//
+// typedef struct {
+//   // mod handle (e.g. the offset in the parent instance + 1)
+//   const uint32_t mod_id;
+// } pwasm_new_interp_func_t;
+//
+// typedef struct {
+// } pwasm_new_interp_global_t;
+//
+// /**
+//  */
+// typedef struct {
+//   // offsets into modules
+//   pwasm_vec_t u32s;
+//
+//   // vector of pwasm_new_interp_mod_t
+//   pwasm_vec_t mods;
+// } pwasm_new_interp_t;
 
 /**
  * interpeter memory data

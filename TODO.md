@@ -7,6 +7,15 @@ Each entry in this list is prefixed with category tags.
 See the "Tag Definitions" section below for a brief description of each
 tag.
 
+* code, interpreter: refactor interpreter to add top-level vectors for
+  the following: `u32s`, `mods`, `funcs`, `globals`, `tables`, `mems`,
+  and then make the add comparable slices in mods (plus `exports` and
+  maybe `imports`) which index into the interpreter `u32s` vector.
+  `mods` and `funcs` should be `union`s to distinguish between native
+  and internal.
+* code, test: add rest of memory get/set test
+* code, test: add global get/set test
+* code, test: add import test
 * code, check: add control stack validation
 * code, check: check `call_immediate` at invocation
 * code, parse: cache control opcode targets at parse time
