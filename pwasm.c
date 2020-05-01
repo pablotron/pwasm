@@ -7808,13 +7808,16 @@ pwasm_new_interp_fini(
  *   return true;
  * }
  */
+
 static bool
 pwasm_new_interp_push_u32s(
   pwasm_env_t * const env,
-  const pwasm_slice_t slice
+  const size_t ofs,
+  const size_t len
 ) {
   pwasm_new_interp_t * const interp = env->env_data;
   pwasm_vec_t * const u32s = &(interp->u32s);
+  const pwasm_slice_t slice = { ofs, len };
 
   uint32_t ids[PWASM_BATCH_SIZE];
   size_t num = 0;
@@ -7894,10 +7897,7 @@ pwasm_new_interp_add_native_funcs(
   }
 
   // add IDs
-  if (!pwasm_new_interp_push_u32s(env, (pwasm_slice_t) {
-    .ofs = u32s_ofs,
-    .len = mod->num_funcs,
-  })) {
+  if (!pwasm_new_interp_push_u32s(env, u32s_ofs, mod->num_funcs)) {
     // return failure
     return false;
   }
@@ -7922,6 +7922,7 @@ pwasm_new_interp_add_native_globals(
   pwasm_new_interp_t * const interp = env->env_data;
   pwasm_vec_t * const dst = &(interp->globals);
   const size_t dst_ofs = pwasm_vec_get_size(dst);
+  const size_t u32s_ofs = pwasm_vec_get_size(&(interp->u32s));
   (void) mod_ofs;
 
   pwasm_env_global_t tmp[PWASM_BATCH_SIZE];
@@ -7953,6 +7954,12 @@ pwasm_new_interp_add_native_globals(
       pwasm_env_fail(env, "append remaining native globals failed");
       return false;
     }
+  }
+
+  // add IDs
+  if (!pwasm_new_interp_push_u32s(env, u32s_ofs, mod->num_globals)) {
+    // return failure
+    return false;
   }
 
   // populate result
@@ -8209,10 +8216,7 @@ pwasm_new_interp_add_mod_funcs(
     }
   }
 
-  if (!pwasm_new_interp_push_u32s(env, (pwasm_slice_t) {
-    .ofs = funcs_ofs,
-    .len = mod->num_funcs,
-  })) {
+  if (!pwasm_new_interp_push_u32s(env, funcs_ofs, mod->num_funcs)) {
     return false;
   }
 
@@ -8235,6 +8239,7 @@ pwasm_new_interp_add_mod_globals(
 ) {
   pwasm_new_interp_t * const interp = env->env_data;
   pwasm_vec_t * const dst = &(interp->globals);
+  const size_t globals_ofs = pwasm_vec_get_size(dst); // FIXME: move after imports?
   (void) mod_ofs;
 
   // add imported globals, check for error
@@ -8272,6 +8277,12 @@ pwasm_new_interp_add_mod_globals(
       pwasm_env_fail(env, "append remaining globals failed");
       return false;
     }
+  }
+
+  // add IDs
+  if (!pwasm_new_interp_push_u32s(env, globals_ofs, mod->num_globals)) {
+    // return failure
+    return false;
   }
 
   // populate result
@@ -8345,10 +8356,7 @@ pwasm_new_interp_add_mod_mems(
     }
   }
 
-  if (!pwasm_new_interp_push_u32s(env, (pwasm_slice_t) {
-    .ofs = mems_ofs,
-    .len = mod->num_mems,
-  })) {
+  if (!pwasm_new_interp_push_u32s(env, mems_ofs, mod->num_mems)) {
     return false;
   }
 
