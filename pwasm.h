@@ -1025,6 +1025,7 @@ typedef struct {
   // (returns false on error)
   _Bool (*mem_load)(
     pwasm_env_t *, // env
+    const uint32_t, // mem_id
     const pwasm_inst_t, // instruction (memory immediate and value mask)
     const uint32_t, // offset operand
     pwasm_val_t * // return value
@@ -1034,6 +1035,7 @@ typedef struct {
   // (returns false on error)
   _Bool (*mem_store)(
     pwasm_env_t *, // env
+    const uint32_t, // mem_id
     const pwasm_inst_t, // instruction (memory immediate and value mask)
     const uint32_t, // offset operand
     const pwasm_val_t // value
@@ -1043,6 +1045,7 @@ typedef struct {
   // (returns false on error)
   _Bool (*mem_size)(
     pwasm_env_t *, // env
+    const uint32_t, // mem_id
     uint32_t * // return value
   );
 
@@ -1050,6 +1053,7 @@ typedef struct {
   // (returns false on error)
   _Bool (*mem_grow)(
     pwasm_env_t *, // env
+    const uint32_t, // mem_id
     const uint32_t, // amount to grow
     uint32_t * // return value
   );
@@ -1161,6 +1165,7 @@ _Bool pwasm_env_call(
 
 _Bool pwasm_env_mem_load(
   pwasm_env_t *,
+  const uint32_t,
   const pwasm_inst_t,
   const uint32_t,
   pwasm_val_t *
@@ -1168,6 +1173,7 @@ _Bool pwasm_env_mem_load(
 
 _Bool pwasm_env_mem_store(
   pwasm_env_t *,
+  const uint32_t,
   const pwasm_inst_t,
   const uint32_t,
   const pwasm_val_t
@@ -1175,11 +1181,13 @@ _Bool pwasm_env_mem_store(
 
 _Bool pwasm_env_mem_size(
   pwasm_env_t *,
+  const uint32_t,
   uint32_t *
 );
 
 _Bool pwasm_env_mem_grow(
   pwasm_env_t *,
+  const uint32_t,
   const uint32_t,
   uint32_t *
 );
