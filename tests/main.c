@@ -135,9 +135,9 @@ run_mod_init_tests(void) {
 static bool
 run_env_test_on_add_one(
   pwasm_env_t * const env,
-  const pwasm_native_instance_t * const instance
+  const pwasm_native_t * const native
 ) {
-  (void) instance;
+  (void) native;
 
   PWASM_PEEK(env->stack, 0).i32 += 1;
 
@@ -147,9 +147,9 @@ run_env_test_on_add_one(
 static bool
 run_env_test_on_mul_two(
   pwasm_env_t * const env,
-  const pwasm_native_instance_t * const instance
+  const pwasm_native_t * const native
 ) {
-  (void) instance;
+  (void) native;
 
   const uint32_t a = PWASM_PEEK(env->stack, 1).i32;
   const uint32_t b = PWASM_PEEK(env->stack, 0).i32;
@@ -534,7 +534,7 @@ run_env_tests(void) {
   };
 
   // get interpreter callbacks
-  const pwasm_env_cbs_t * const cbs = pwasm_interpreter_get_cbs();
+  const pwasm_env_cbs_t * const cbs = pwasm_new_interpreter_get_cbs();
 
   // create environment, check for error
   pwasm_env_t env;

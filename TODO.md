@@ -7,12 +7,7 @@ Each entry in this list is prefixed with category tags.
 See the "Tag Definitions" section below for a brief description of each
 tag.
 
-* code, interpreter: refactor interpreter to add top-level vectors for
-  the following: `u32s`, `mods`, `funcs`, `globals`, `tables`, `mems`,
-  and then make the add comparable slices in mods (plus `exports` and
-  maybe `imports`) which index into the interpreter `u32s` vector.
-  `mods` and `funcs` should be `union`s to distinguish between native
-  and internal.
+* code, test: test new interpreter
 * code, test: add rest of memory get/set test
 * code, test: add global get/set test
 * code, test: add import test
@@ -24,6 +19,7 @@ tag.
 * code, jit: add jit (`dynasm`?)
 * code, jit: add jit modes (lazy, aot, optimize, etc)
 * code: add `uint64_t pwasm_platform_get_value()` (e.g. compile-time limits, flags, etc)
+* code, cleanup: remove old interpreter
 * cli: add command line tool
 * cli, doc: add `help` command
 * cli, test: add `test` command (e.g. `test foo-bar`, `test all`, etc)
@@ -56,6 +52,12 @@ Items in this section have been completed.
 * limit elements to const ops (and globals, in `mod_check_const_expr`)
 * add generic vector handling (adde `pwasm_vec_t` from ecs)
 * limit globals to const ops (added `parse_const_expr`)
+* code, interpreter: refactor interpreter to add top-level vectors for
+  the following: `u32s`, `mods`, `funcs`, `globals`, `tables`, `mems`,
+  and then make the add comparable slices in mods (plus `exports` and
+  maybe `imports`) which index into the interpreter `u32s` vector.
+  `mods` and `funcs` should be `union`s to distinguish between native
+  and internal.
 
 ## Tag Definitions
 

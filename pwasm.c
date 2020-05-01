@@ -4800,6 +4800,28 @@ pwasm_env_get_mem(
   return (cbs && cbs->get_mem) ? cbs->get_mem(env, mem_id) : 0;
 }
 
+uint32_t
+pwasm_env_find_global(
+  pwasm_env_t * const env,
+  const uint32_t mod_id,
+  const pwasm_buf_t name
+) {
+  const pwasm_env_cbs_t * const cbs = env->cbs;
+  // D("env = %p, mod_id = %u, name = \"%s\"", env, mod_id, name);
+  return (cbs && cbs->find_global) ? cbs->find_global(env, mod_id, name) : 0;
+}
+
+uint32_t
+pwasm_env_find_table(
+  pwasm_env_t * const env,
+  const uint32_t mod_id,
+  const pwasm_buf_t name
+) {
+  const pwasm_env_cbs_t * const cbs = env->cbs;
+  // D("env = %p, mod_id = %u, name = \"%s\"", env, mod_id, name);
+  return (cbs && cbs->find_table) ? cbs->find_table(env, mod_id, name) : 0;
+}
+
 bool
 pwasm_env_call(
   pwasm_env_t * const env,
@@ -4942,48 +4964,6 @@ pwasm_call(
   // D("env = %p, mod = %s, func = %s", (void*) env, mod_name, func_name);
   return pwasm_env_call(env, pwasm_find_func(env, mod_name, func_name));
 }
-
-// typedef enum {
-//   PWASM_NEW_INTERP_MOD_TYPE_MOD,
-//   PWASM_NEW_INTERP_MOD_TYPE_NATIVE,
-//   PWASM_NEW_INTERP_MOD_TYPE_LAST,
-// } pwasm_new_interp_mod_type_t;
-//
-// typedef struct {
-//   // module name
-//   pwasm_buf_t name;
-//
-//   // module type (internal or native)
-//   pwasm_new_interp_mod_type_t type;
-//
-//   // references to the u32s vector in the parent interpreter
-//   pwasm_slice_t mems;
-//   pwasm_slice_t funcs;
-//   pwasm_slice_t globals;
-//   pwasm_slice_t tables;
-//   union {
-//     const pwasm_native_t * const native;
-//     const pwasm_mod_t * const mod;
-//   };
-// } pwasm_new_interp_mod_t;
-//
-// typedef struct {
-//   // mod handle (e.g. the offset in the parent instance + 1)
-//   const uint32_t mod_id;
-// } pwasm_new_interp_func_t;
-//
-// typedef struct {
-// } pwasm_new_interp_global_t;
-//
-// /**
-//  */
-// typedef struct {
-//   // offsets into modules
-//   pwasm_vec_t u32s;
-//
-//   // vector of pwasm_new_interp_mod_t
-//   pwasm_vec_t mods;
-// } pwasm_new_interp_t;
 
 /**
  * interpeter memory data
@@ -7054,7 +7034,7 @@ pwasm_interp_get_interp_mem(
   pwasm_env_mem_t * const env_mem = pwasm_env_get_mem(env, data->mem_id);
   size_t ofs = in.v_mem.offset + arg_ofs;
   size_t size = pwasm_op_get_num_bits(in.op) / 8;
-  const bool ok = env_mem && ofs && size && (ofs + size < env_mem->size);
+  const bool ok = env_mem && ofs && size && (ofs + size < env_mem->buf.len);
   return (pwasm_interp_mem_t) {
     .env_mem  = ok ? env_mem : NULL,
     .ofs      = ok ? ofs : 0,
@@ -7210,7 +7190,7 @@ pwasm_interp_call(
     D("found native func, calling it: %u", func_id);
     // FIXME: check bounds?
     const pwasm_native_func_t * const func = mod_row.native.native->funcs + func_row.func.func_id;
-    return func->func(env, &mod_row.native);
+    return func->func(env, mod_row.native.native);
   default:
     D("func_id %u maps to invalid mod_id %u", func_id, func_row.func.mod_id);
     pwasm_env_fail(env, "invalid function module index");
@@ -7557,7 +7537,7 @@ pwasm_interp_on_set_global(
  * Interpreter environment callbacks.
  */
 static const pwasm_env_cbs_t
-PWASM_INTERP_CBS = {
+PWASM_OLD_INTERP_CBS = {
   .init         = pwasm_interp_on_init,
   .fini         = pwasm_interp_on_fini,
   .add_mod      = pwasm_interp_on_add_mod,
@@ -7581,6 +7561,2958 @@ PWASM_INTERP_CBS = {
  * Return interpreter environment callbacks.
  */
 const pwasm_env_cbs_t *
-pwasm_interpreter_get_cbs(void) {
-  return &PWASM_INTERP_CBS;
+pwasm_old_interpreter_get_cbs(void) {
+  return &PWASM_OLD_INTERP_CBS;
+}
+
+//
+// new interpreter
+//
+
+typedef enum {
+  PWASM_NEW_INTERP_MOD_TYPE_MOD,
+  PWASM_NEW_INTERP_MOD_TYPE_NATIVE,
+  PWASM_NEW_INTERP_MOD_TYPE_LAST,
+} pwasm_new_interp_mod_type_t;
+
+typedef struct {
+  // module name
+  pwasm_buf_t name;
+
+  // module type (internal or native)
+  pwasm_new_interp_mod_type_t type;
+
+  // references to the u32s vector in the parent interpreter
+  pwasm_slice_t funcs;
+  pwasm_slice_t globals;
+  pwasm_slice_t mems;
+  pwasm_slice_t tables;
+
+  union {
+    const pwasm_native_t * const native;
+    const pwasm_mod_t * const mod;
+  };
+} pwasm_new_interp_mod_t;
+
+typedef struct {
+  // mod offset in parent interpreter
+  uint32_t mod_ofs;
+
+  // func offset in parent mod
+  uint32_t func_ofs;
+} pwasm_new_interp_func_t;
+
+typedef struct {
+  pwasm_env_mem_t * const mem; // memory pointer
+  const size_t ofs; // absolute offset, in bytes
+  const size_t size; // size, in bytes
+} pwasm_new_interp_mem_chunk_t;
+
+typedef struct {
+  // vec of uint64_ts indicating whether elements are set
+  pwasm_vec_t mask;
+
+  // vec of values
+  pwasm_vec_t vals;
+} pwasm_new_interp_table_t;
+
+#define PWASM_NEW_INTERP_VECS \
+  PWASM_NEW_INTERP_VEC(u32s, uint32_t) \
+  PWASM_NEW_INTERP_VEC(mods, pwasm_new_interp_mod_t) \
+  PWASM_NEW_INTERP_VEC(funcs, pwasm_new_interp_func_t) \
+  PWASM_NEW_INTERP_VEC(globals, pwasm_env_global_t) \
+  PWASM_NEW_INTERP_VEC(mems, pwasm_env_mem_t) \
+  PWASM_NEW_INTERP_VEC(tables, pwasm_new_interp_table_t)
+
+typedef struct {
+  #define PWASM_NEW_INTERP_VEC(NAME, TYPE) pwasm_vec_t NAME;
+  PWASM_NEW_INTERP_VECS
+  #undef PWASM_NEW_INTERP_VEC
+} pwasm_new_interp_t;
+
+static bool
+pwasm_new_interp_init(
+  pwasm_env_t * const env
+) {
+  const size_t interp_size = sizeof(pwasm_new_interp_t);
+  pwasm_mem_ctx_t * const mem_ctx = env->mem_ctx;
+
+  // allocate interpreter data store
+  pwasm_new_interp_t *interp = pwasm_realloc(mem_ctx, NULL, interp_size);
+  if (!interp) {
+    // log error, return failure
+    D("pwasm_realloc() failed (size = %zu)", interp_size);
+    pwasm_env_fail(env, "interpreter memory allocation failed");
+    return false;
+  }
+
+  #define PWASM_NEW_INTERP_VEC(NAME, TYPE) \
+    /* allocate vector, check for error */ \
+    if (!pwasm_vec_init(mem_ctx, &(interp->NAME), sizeof(TYPE))) { \
+      /* log error, return failure */ \
+      D("pwasm_vec_init() failed (stride = %zu)", sizeof(TYPE)); \
+      pwasm_env_fail(env, "interpreter " #NAME " vector init failed"); \
+      return false; \
+    }
+  PWASM_NEW_INTERP_VECS
+  #undef PWASM_NEW_INTERP_VEC
+
+  // save interpreter, return success
+  env->env_data = interp;
+  return true;
+}
+
+static void
+pwasm_new_interp_fini(
+  pwasm_env_t * const env
+) {
+  pwasm_mem_ctx_t * const mem_ctx = env->mem_ctx;
+
+  // get interpreter data
+  pwasm_new_interp_t *data = env->env_data;
+  if (!data) {
+    return;
+  }
+
+  // free vectors
+  #define PWASM_NEW_INTERP_VEC(NAME, TYPE) pwasm_vec_fini(&(data->NAME));
+  PWASM_NEW_INTERP_VECS
+  #undef PWASM_NEW_INTERP_VEC
+
+  // free backing data
+  pwasm_realloc(mem_ctx, data, 0);
+  env->env_data = NULL;
+}
+
+/**
+ * Resolve imports of a given type.
+ *
+ * On success, a slice of import IDs is stored in +ret+, and this
+ * function returns true.
+ *
+ * Returns false on error.
+ */
+/*
+ * static bool
+ * pwasm_new_interp_add_native_imports(
+ *   pwasm_env_t * const env,
+ *   const pwasm_native_t * const mod,
+ *   const pwasm_import_type_t type,
+ *   pwasm_slice_t * const ret
+ * ) {
+ *   pwasm_new_interp_t * const interp = env->env_data;
+ *   pwasm_vec_t * const u32s = &(interp->u32s);
+ *   const size_t ret_ofs = pwasm_vec_get_size(u32s);
+ *
+ *   uint32_t ids[PWASM_BATCH_SIZE];
+ *   size_t num_ids = 0;
+ *
+ *   // loop over imports and resolve each one
+ *   for (size_t i = 0; i < mod->num_imports; i++) {
+ *     // get import, check type
+ *     const pwasm_native_import_t import = mod->imports[i];
+ *     if (import.type != type) {
+ *       continue;
+ *     }
+ *
+ *     // find mod, check for error
+ *     const uint32_t mod_id = pwasm_find_mod(env, import.mod);
+ *     if (!mod_id) {
+ *       // return failure
+ *       return false;
+ *     }
+ *
+ *     // find import ID, check for error
+ *     const pwasm_buf_t name = pwasm_buf_str(import.name);
+ *     const uint32_t id = pwasm_env_find_import(env, mod_id, import.type, name);
+ *     if (!id) {
+ *       // return failure
+ *       return false;
+ *     }
+ *
+ *     // add item to results, increment count
+ *     ids[num_ids] = id;
+ *     num_ids++;
+ *
+ *     if (num_ids == LEN(ids)) {
+ *       // clear count
+ *       num_ids = 0;
+ *
+ *       // append results, check for error
+ *       if (!pwasm_vec_push(u32s, LEN(ids), ids, NULL)) {
+ *         // log error, return failure
+ *         pwasm_env_fail(env, "append native imports failed");
+ *         return false;
+ *       }
+ *     }
+ *   }
+ *
+ *   if (num_ids > 0) {
+ *     // append remaining results
+ *     if (!pwasm_vec_push(u32s, num_ids, ids, NULL)) {
+ *       // log error, return failure
+ *       pwasm_env_fail(env, "append remaining native imports failed");
+ *       return false;
+ *     }
+ *   }
+ *
+ *   // populate result
+ *   *ret = (pwasm_slice_t) {
+ *     .ofs = ret_ofs,
+ *     .len = pwasm_vec_get_size(u32s) - ret_ofs,
+ *   };
+ *
+ *   // return success
+ *   return true;
+ * }
+ */
+
+static bool
+pwasm_new_interp_add_native_funcs(
+  pwasm_env_t * const env,
+  const uint32_t mod_ofs,
+  const pwasm_native_t * const mod,
+  pwasm_slice_t * const ret
+) {
+  pwasm_new_interp_t * const interp = env->env_data;
+  pwasm_vec_t * const dst = &(interp->funcs);
+  const size_t dst_ofs = pwasm_vec_get_size(dst);
+
+  // TODO: add native import functions (do we want this?)
+
+  pwasm_new_interp_func_t tmp[PWASM_BATCH_SIZE];
+  size_t tmp_ofs = 0;
+
+  for (size_t i = 0; i < mod->num_funcs; i++) {
+    tmp[tmp_ofs++] = (pwasm_new_interp_func_t) {
+      .mod_ofs  = mod_ofs,
+      .func_ofs = i,
+    };
+
+    if (tmp_ofs == LEN(tmp)) {
+      // clear count
+      tmp_ofs = 0;
+
+      // append results, check for error
+      if (!pwasm_vec_push(dst, LEN(tmp), tmp, NULL)) {
+        // log error, return failure
+        pwasm_env_fail(env, "append native functions failed");
+        return false;
+      }
+    }
+  }
+
+  if (tmp_ofs > 0) {
+    // append remaining results
+    if (!pwasm_vec_push(dst, tmp_ofs, tmp, NULL)) {
+      // log error, return failure
+      pwasm_env_fail(env, "append remaining native functions failed");
+      return false;
+    }
+  }
+
+  // populate result
+  *ret = (pwasm_slice_t) {
+    .ofs = dst_ofs,
+    .len = mod->num_funcs,
+  };
+
+  // return success
+  return true;
+}
+
+static bool
+pwasm_new_interp_add_native_globals(
+  pwasm_env_t * const env,
+  const uint32_t mod_ofs,
+  const pwasm_native_t * const mod,
+  pwasm_slice_t * const ret
+) {
+  pwasm_new_interp_t * const interp = env->env_data;
+  pwasm_vec_t * const dst = &(interp->globals);
+  const size_t dst_ofs = pwasm_vec_get_size(dst);
+  (void) mod_ofs;
+
+  pwasm_env_global_t tmp[PWASM_BATCH_SIZE];
+  size_t tmp_ofs = 0;
+
+  for (size_t i = 0; i < mod->num_globals; i++) {
+    tmp[tmp_ofs++] = (pwasm_env_global_t) {
+      .type = mod->globals[i].type,
+      .val  = mod->globals[i].val,
+    };
+
+    if (tmp_ofs == LEN(tmp)) {
+      // clear count
+      tmp_ofs = 0;
+
+      // append results, check for error
+      if (!pwasm_vec_push(dst, LEN(tmp), tmp, NULL)) {
+        // log error, return failure
+        pwasm_env_fail(env, "append native globals failed");
+        return false;
+      }
+    }
+  }
+
+  if (tmp_ofs > 0) {
+    // append remaining results
+    if (!pwasm_vec_push(dst, tmp_ofs, tmp, NULL)) {
+      // log error, return failure
+      pwasm_env_fail(env, "append remaining native globals failed");
+      return false;
+    }
+  }
+
+  // populate result
+  *ret = (pwasm_slice_t) {
+    .ofs = dst_ofs,
+    .len = mod->num_globals,
+  };
+
+  // return success
+  return true;
+}
+
+static bool
+pwasm_new_interp_add_native_mems(
+  pwasm_env_t * const env,
+  const uint32_t mod_ofs,
+  const pwasm_native_t * const mod,
+  pwasm_slice_t * const ret
+) {
+  pwasm_new_interp_t * const interp = env->env_data;
+  pwasm_vec_t * const dst = &(interp->mems);
+  const size_t dst_ofs = pwasm_vec_get_size(dst);
+  (void) mod_ofs;
+
+  pwasm_env_mem_t tmp[PWASM_BATCH_SIZE];
+  size_t tmp_ofs = 0;
+
+  for (size_t i = 0; i < mod->num_mems; i++) {
+    tmp[tmp_ofs++] = (pwasm_env_mem_t) {
+      .buf    = mod->mems[i].buf,
+      .limits = mod->mems[i].limits,
+    };
+
+    if (tmp_ofs == LEN(tmp)) {
+      // clear count
+      tmp_ofs = 0;
+
+      // append results, check for error
+      if (!pwasm_vec_push(dst, LEN(tmp), tmp, NULL)) {
+        // log error, return failure
+        pwasm_env_fail(env, "append native mems failed");
+        return false;
+      }
+    }
+  }
+
+  if (tmp_ofs > 0) {
+    // append remaining results
+    if (!pwasm_vec_push(dst, tmp_ofs, tmp, NULL)) {
+      // log error, return failure
+      pwasm_env_fail(env, "append remaining native mems failed");
+      return false;
+    }
+  }
+
+  // populate result
+  *ret = (pwasm_slice_t) {
+    .ofs = dst_ofs,
+    .len = mod->num_mems,
+  };
+
+  // return success
+  return true;
+}
+
+static uint32_t
+pwasm_new_interp_add_native(
+  pwasm_env_t * const env,
+  const char * const name,
+  const pwasm_native_t * const mod
+) {
+  pwasm_new_interp_t * const interp = env->env_data;
+  const size_t mod_ofs = pwasm_vec_get_size(&(interp->mods));
+
+  // add native functions, check for error
+  pwasm_slice_t funcs;
+  if (!pwasm_new_interp_add_native_funcs(env, mod_ofs, mod, &funcs)) {
+    // return failure
+    return 0;
+  }
+
+  // add native globals, check for error
+  pwasm_slice_t globals;
+  if (!pwasm_new_interp_add_native_globals(env, mod_ofs, mod, &globals)) {
+    // return failure
+    return 0;
+  }
+
+  // add native mems, check for error
+  pwasm_slice_t mems;
+  if (!pwasm_new_interp_add_native_mems(env, mod_ofs, mod, &mems)) {
+    // return failure
+    return 0;
+  }
+
+  // build row
+  const pwasm_new_interp_mod_t interp_mod = {
+    .type     = PWASM_NEW_INTERP_MOD_TYPE_NATIVE,
+    .name     = pwasm_buf_str(name),
+    .native   = mod,
+
+    .funcs    = funcs,
+    .globals  = globals,
+    .mems     = mems,
+    // FIXME: i don't think we need tables for now
+    // .tables   = tables,
+  };
+
+  // append native mod, check for error
+  if (!pwasm_vec_push(&(interp->mods), 1, &interp_mod, NULL)) {
+    // log error, return failure
+    pwasm_env_fail(env, "append native mod failed");
+    return 0;
+  }
+
+  // convert offset to ID by adding 1
+  return mod_ofs + 1;
+}
+
+/**
+ * Resolve imports of a given type.
+ *
+ * On success, a slice of import IDs is stored in +ret+, and this
+ * function returns true.
+ *
+ * Returns false on error.
+ */
+static bool
+pwasm_new_interp_add_mod_imports(
+  pwasm_env_t * const env,
+  const pwasm_mod_t * const mod,
+  const pwasm_import_type_t type,
+  pwasm_slice_t * const ret
+) {
+  pwasm_new_interp_t * const interp = env->env_data;
+  pwasm_vec_t * const u32s = &(interp->u32s);
+  const size_t ret_ofs = pwasm_vec_get_size(u32s);
+
+  uint32_t ids[PWASM_BATCH_SIZE];
+  size_t num_ids = 0;
+
+  // loop over imports and resolve each one
+  for (size_t i = 0; i < mod->num_imports; i++) {
+    // get import, check type
+    const pwasm_import_t import = mod->imports[i];
+    if (import.type != type) {
+      continue;
+    }
+
+    const pwasm_buf_t mod_buf = {
+      .ptr = mod->bytes + import.module.ofs,
+      .len = import.module.len,
+    };
+
+    // find mod, check for error
+    const uint32_t mod_id = pwasm_env_find_mod(env, mod_buf);
+    if (!mod_id) {
+      // return failure
+      return false;
+    }
+
+    const pwasm_buf_t name_buf = {
+      .ptr = mod->bytes + import.name.ofs,
+      .len = import.name.len,
+    };
+
+    // find import ID, check for error
+    const uint32_t id = pwasm_env_find_import(env, mod_id, import.type, name_buf);
+    if (!id) {
+      // return failure
+      return false;
+    }
+
+    // add item to results, increment count
+    ids[num_ids] = id;
+    num_ids++;
+
+    if (num_ids == LEN(ids)) {
+      // clear count
+      num_ids = 0;
+
+      // append results, check for error
+      if (!pwasm_vec_push(u32s, LEN(ids), ids, NULL)) {
+        // log error, return failure
+        pwasm_env_fail(env, "append import ids failed");
+        return false;
+      }
+    }
+  }
+
+  if (num_ids > 0) {
+    // append remaining results
+    if (!pwasm_vec_push(u32s, num_ids, ids, NULL)) {
+      // log error, return failure
+      pwasm_env_fail(env, "append remaining native imports failed");
+      return false;
+    }
+  }
+
+  // populate result
+  *ret = (pwasm_slice_t) {
+    .ofs = ret_ofs,
+    .len = pwasm_vec_get_size(u32s) - ret_ofs,
+  };
+
+  // return success
+  return true;
+}
+
+static bool
+pwasm_new_interp_add_mod_funcs(
+  pwasm_env_t * const env,
+  const uint32_t mod_ofs,
+  const pwasm_mod_t * const mod,
+  pwasm_slice_t * const ret
+) {
+  pwasm_new_interp_t * const interp = env->env_data;
+  pwasm_vec_t * const dst = &(interp->funcs);
+
+  // add imported functions, check for error
+  pwasm_slice_t imports;
+  if (!pwasm_new_interp_add_mod_imports(env, mod, PWASM_IMPORT_TYPE_FUNC, &imports)) {
+    return false;
+  }
+
+  pwasm_new_interp_func_t tmp[PWASM_BATCH_SIZE];
+  size_t tmp_ofs = 0;
+
+  for (size_t i = 0; i < mod->num_funcs; i++) {
+    tmp[tmp_ofs++] = (pwasm_new_interp_func_t) {
+      .mod_ofs  = mod_ofs,
+      .func_ofs = i,
+    };
+
+    if (tmp_ofs == LEN(tmp)) {
+      // clear count
+      tmp_ofs = 0;
+
+      // append results, check for error
+      if (!pwasm_vec_push(dst, LEN(tmp), tmp, NULL)) {
+        // log error, return failure
+        pwasm_env_fail(env, "append functions failed");
+        return false;
+      }
+    }
+  }
+
+  if (tmp_ofs > 0) {
+    // append remaining results
+    if (!pwasm_vec_push(dst, tmp_ofs, tmp, NULL)) {
+      // log error, return failure
+      pwasm_env_fail(env, "append remaining functions failed");
+      return false;
+    }
+  }
+
+  // populate result
+  *ret = (pwasm_slice_t) {
+    .ofs = imports.ofs,
+    .len = imports.len + mod->num_funcs,
+  };
+
+  // return success
+  return true;
+}
+
+static bool
+pwasm_new_interp_add_mod_globals(
+  pwasm_env_t * const env,
+  const uint32_t mod_ofs,
+  const pwasm_mod_t * const mod,
+  pwasm_slice_t * const ret
+) {
+  pwasm_new_interp_t * const interp = env->env_data;
+  pwasm_vec_t * const dst = &(interp->globals);
+  (void) mod_ofs;
+
+  // add imported globals, check for error
+  pwasm_slice_t imports;
+  if (!pwasm_new_interp_add_mod_imports(env, mod, PWASM_IMPORT_TYPE_GLOBAL, &imports)) {
+    return false;
+  }
+
+  pwasm_env_global_t tmp[PWASM_BATCH_SIZE];
+  size_t tmp_ofs = 0;
+
+  for (size_t i = 0; i < mod->num_globals; i++) {
+    tmp[tmp_ofs++] = (pwasm_env_global_t) {
+      .type  = mod->globals[i].type,
+      // .val = // FIXME: uninitialized
+    };
+
+    if (tmp_ofs == LEN(tmp)) {
+      // clear count
+      tmp_ofs = 0;
+
+      // append results, check for error
+      if (!pwasm_vec_push(dst, LEN(tmp), tmp, NULL)) {
+        // log error, return failure
+        pwasm_env_fail(env, "append globals failed");
+        return false;
+      }
+    }
+  }
+
+  if (tmp_ofs > 0) {
+    // append remaining results
+    if (!pwasm_vec_push(dst, tmp_ofs, tmp, NULL)) {
+      // log error, return failure
+      pwasm_env_fail(env, "append remaining globals failed");
+      return false;
+    }
+  }
+
+  // populate result
+  *ret = (pwasm_slice_t) {
+    .ofs = imports.ofs,
+    .len = imports.len + mod->num_globals,
+  };
+
+  // return success
+  return true;
+}
+
+static bool
+pwasm_new_interp_add_mod_mems(
+  pwasm_env_t * const env,
+  const uint32_t mod_ofs,
+  const pwasm_mod_t * const mod,
+  pwasm_slice_t * const ret
+) {
+  pwasm_new_interp_t * const interp = env->env_data;
+  pwasm_vec_t * const dst = &(interp->mems);
+  (void) mod_ofs;
+
+  // add imported mems, check for error
+  pwasm_slice_t imports;
+  if (!pwasm_new_interp_add_mod_imports(env, mod, PWASM_IMPORT_TYPE_MEM, &imports)) {
+    return false;
+  }
+
+  pwasm_env_mem_t tmp[PWASM_BATCH_SIZE];
+  size_t tmp_ofs = 0;
+
+  for (size_t i = 0; i < mod->num_mems; i++) {
+    // allocate buffer
+    const size_t num_bytes = mod->mems[i].min * (1 << 16);
+    uint8_t * const ptr = pwasm_realloc(env->mem_ctx, NULL, num_bytes);
+    if (!ptr && num_bytes) {
+      // log error, return failure
+      pwasm_env_fail(env, "allocate memory buffer failed");
+      return false;
+    }
+
+    tmp[tmp_ofs].limits = mod->mems[i];
+    tmp[tmp_ofs].buf = (pwasm_buf_t) {
+      .ptr = ptr,
+      .len = num_bytes,
+    };
+
+    tmp_ofs++;
+
+    if (tmp_ofs == LEN(tmp)) {
+      // clear count
+      tmp_ofs = 0;
+
+      // append results, check for error
+      if (!pwasm_vec_push(dst, LEN(tmp), tmp, NULL)) {
+        // log error, return failure
+        pwasm_env_fail(env, "append mems failed");
+        return false;
+      }
+    }
+  }
+
+  if (tmp_ofs > 0) {
+    // append remaining results
+    if (!pwasm_vec_push(dst, tmp_ofs, tmp, NULL)) {
+      // log error, return failure
+      pwasm_env_fail(env, "append remaining mems failed");
+      return false;
+    }
+  }
+
+  // populate result
+  *ret = (pwasm_slice_t) {
+    .ofs = imports.ofs,
+    .len = imports.len + mod->num_mems,
+  };
+
+  // return success
+  return true;
+}
+
+static bool
+pwasm_new_interp_add_mod_tables(
+  pwasm_env_t * const env,
+  const uint32_t mod_ofs,
+  const pwasm_mod_t * const mod,
+  pwasm_slice_t * const ret
+) {
+  pwasm_new_interp_t * const interp = env->env_data;
+  pwasm_vec_t * const dst = &(interp->tables);
+  (void) mod_ofs;
+
+  // add imported tables, check for error
+  pwasm_slice_t imports;
+  if (!pwasm_new_interp_add_mod_imports(env, mod, PWASM_IMPORT_TYPE_TABLE, &imports)) {
+    return false;
+  }
+
+  pwasm_new_interp_table_t tmp[PWASM_BATCH_SIZE];
+  size_t tmp_ofs = 0;
+
+  for (size_t i = 0; i < mod->num_tables; i++) {
+    // init mask vector, check for error
+    if (!pwasm_vec_init(env->mem_ctx, &(tmp[tmp_ofs].mask), sizeof(uint64_t))) {
+      // log error, return failure
+      pwasm_env_fail(env, "init mod table mask vector failed");
+      return false;
+    }
+
+    // init vals vector, check for error
+    if (!pwasm_vec_init(env->mem_ctx, &(tmp[tmp_ofs].vals), sizeof(uint64_t))) {
+      // log error, return failure
+      pwasm_env_fail(env, "init mod table values vector failed");
+      return false;
+    }
+
+    // increment offset
+    tmp_ofs++;
+
+    if (tmp_ofs == LEN(tmp)) {
+      // clear count
+      tmp_ofs = 0;
+
+      // append results, check for error
+      if (!pwasm_vec_push(dst, LEN(tmp), tmp, NULL)) {
+        // log error, return failure
+        pwasm_env_fail(env, "append tables failed");
+        return false;
+      }
+    }
+  }
+
+  if (tmp_ofs > 0) {
+    // append remaining results
+    if (!pwasm_vec_push(dst, tmp_ofs, tmp, NULL)) {
+      // log error, return failure
+      pwasm_env_fail(env, "append remaining tables failed");
+      return false;
+    }
+  }
+
+  // populate result
+  *ret = (pwasm_slice_t) {
+    .ofs = imports.ofs,
+    .len = imports.len + mod->num_tables,
+  };
+
+  // return success
+  return true;
+}
+
+static uint32_t
+pwasm_new_interp_add_mod(
+  pwasm_env_t * const env,
+  const char * const name,
+  const pwasm_mod_t * const mod
+) {
+  pwasm_new_interp_t * const interp = env->env_data;
+  const size_t mod_ofs = pwasm_vec_get_size(&(interp->mods));
+
+  // add mod funcs, check for error
+  pwasm_slice_t funcs;
+  if (!pwasm_new_interp_add_mod_funcs(env, mod_ofs, mod, &funcs)) {
+    // return failure
+    return 0;
+  }
+
+  // add mod globals, check for error
+  pwasm_slice_t globals;
+  if (!pwasm_new_interp_add_mod_globals(env, mod_ofs, mod, &globals)) {
+    // return failure
+    return 0;
+  }
+
+  // add mod mems, check for error
+  pwasm_slice_t mems;
+  if (!pwasm_new_interp_add_mod_mems(env, mod_ofs, mod, &mems)) {
+    // return failure
+    return 0;
+  }
+
+  // add mod tables, check for error
+  pwasm_slice_t tables;
+  if (!pwasm_new_interp_add_mod_tables(env, mod_ofs, mod, &tables)) {
+    // return failure
+    return 0;
+  }
+
+  // build row
+  const pwasm_new_interp_mod_t interp_mod = {
+    .type     = PWASM_NEW_INTERP_MOD_TYPE_MOD,
+    .name     = pwasm_buf_str(name),
+    .mod      = mod,
+
+    .funcs    = funcs,
+    .globals  = globals,
+    .mems     = mems,
+    .tables   = tables,
+  };
+
+  // append native mod, check for error
+  if (!pwasm_vec_push(&(interp->mods), 1, &interp_mod, NULL)) {
+    // log error, return failure
+    pwasm_env_fail(env, "append native mod failed");
+    return 0;
+  }
+
+  // TODO: init globals, mems, tables, and start
+
+  // convert offset to ID by adding 1
+  return mod_ofs + 1;
+}
+
+static uint32_t
+pwasm_new_interp_find_mod(
+  pwasm_env_t * const env,
+  const pwasm_buf_t name
+) {
+  pwasm_new_interp_t * const interp = env->env_data;
+  const pwasm_new_interp_mod_t *rows = pwasm_vec_get_data(&(interp->mods));
+  const size_t num_rows = pwasm_vec_get_size(&(interp->mods));
+
+  for (size_t i = 0; i < num_rows; i++) {
+    if (
+      (rows[i].name.len == name.len) &&
+      !memcmp(name.ptr, rows[i].name.ptr, name.len)
+    ) {
+      // return offset + 1 (prevent zero IDs)
+      return i + 1;
+    }
+  }
+
+  // log error, return failure
+  pwasm_env_fail(env, "module not found");
+  return 0;
+}
+
+static uint32_t
+pwasm_new_interp_find_func(
+  pwasm_env_t * const env,
+  const uint32_t mod_id,
+  const pwasm_buf_t name
+) {
+  pwasm_new_interp_t * const interp = env->env_data;
+  const pwasm_vec_t * const vec = &(interp->mods);
+  const pwasm_new_interp_mod_t * const mods = pwasm_vec_get_data(vec);
+  const uint32_t * const u32s = pwasm_vec_get_data(&(interp->u32s));
+
+  // check mod_id
+  if (mod_id > pwasm_vec_get_size(&(interp->mods))) {
+    pwasm_env_fail(env, "invalid mod ID");
+    return 0;
+  }
+
+  // get mod
+  const pwasm_new_interp_mod_t * const mod = mods + (mod_id - 1);
+
+  switch (mod->type) {
+  case PWASM_NEW_INTERP_MOD_TYPE_MOD:
+    for (size_t i = 0; i < mod->mod->num_exports; i++) {
+      const pwasm_export_t row = mod->mod->exports[i];
+
+      if (
+        (row.type == PWASM_EXPORT_TYPE_FUNC) &&
+        (row.name.len == name.len) &&
+        !memcmp(mod->mod->bytes + row.name.ofs, name.ptr, name.len)
+      ) {
+        // return offset + 1 (prevent zero IDs)
+        return mod->funcs.ofs + row.id + 1;
+      }
+    }
+
+    break;
+  case PWASM_NEW_INTERP_MOD_TYPE_NATIVE:
+    for (size_t i = 0; i < mod->native->num_funcs; i++) {
+      const pwasm_native_func_t row = mod->native->funcs[i];
+      const pwasm_buf_t row_buf = pwasm_buf_str(row.name);
+
+      if (
+        (row_buf.len == name.len) &&
+        !memcmp(row_buf.ptr, name.ptr, name.len)
+      ) {
+        D("u32s = %p, mod->funcs.ofs = %zu, i = %zu", (void*) u32s, mod->funcs.ofs, i);
+        // return offset + 1 (prevent zero IDs)
+        return mod->funcs.ofs + i + 1;
+      }
+    }
+
+    break;
+  default:
+    // log error, return failure
+    pwasm_env_fail(env, "unknown module type (bug?)");
+    return 0;
+  }
+
+  // log error, return failure
+  pwasm_env_fail(env, "function not found");
+  return 0;
+}
+
+static uint32_t
+pwasm_new_interp_find_mem(
+  pwasm_env_t * const env,
+  const uint32_t mod_id,
+  const pwasm_buf_t name
+) {
+  pwasm_new_interp_t * const interp = env->env_data;
+  const pwasm_vec_t * const vec = &(interp->mods);
+  const pwasm_new_interp_mod_t * const mods = pwasm_vec_get_data(vec);
+  const uint32_t * const u32s = pwasm_vec_get_data(&(interp->u32s));
+
+  // check mod_id
+  if (mod_id > pwasm_vec_get_size(&(interp->mods))) {
+    pwasm_env_fail(env, "invalid mod ID");
+    return 0;
+  }
+
+  // get mod
+  const pwasm_new_interp_mod_t * const mod = mods + (mod_id - 1);
+
+  switch (mod->type) {
+  case PWASM_NEW_INTERP_MOD_TYPE_MOD:
+    for (size_t i = 0; i < mod->mod->num_exports; i++) {
+      const pwasm_export_t row = mod->mod->exports[i];
+
+      if (
+        (row.type == PWASM_EXPORT_TYPE_MEM) &&
+        (row.name.len == name.len) &&
+        !memcmp(mod->mod->bytes + row.name.ofs, name.ptr, name.len)
+      ) {
+        // return offset + 1 (prevent zero IDs)
+        return u32s[mod->mems.ofs + row.id] + 1;
+      }
+    }
+
+    break;
+  case PWASM_NEW_INTERP_MOD_TYPE_NATIVE:
+    for (size_t i = 0; i < mod->native->num_funcs; i++) {
+      const pwasm_native_mem_t row = mod->native->mems[i];
+      const pwasm_buf_t row_buf = pwasm_buf_str(row.name);
+
+      if (
+        (row_buf.len == name.len) &&
+        !memcmp(row_buf.ptr, name.ptr, name.len)
+      ) {
+        // return offset + 1 (prevent zero IDs)
+        return u32s[mod->mems.ofs + i] + 1;
+      }
+    }
+
+    break;
+  default:
+    // log error, return failure
+    pwasm_env_fail(env, "unknown module type (bug?)");
+    return 0;
+  }
+
+  // log error, return failure
+  pwasm_env_fail(env, "memory not found");
+  return 0;
+}
+
+static pwasm_env_mem_t *
+pwasm_new_interp_get_mem(
+  pwasm_env_t * const env,
+  const uint32_t mem_id
+) {
+  pwasm_new_interp_t * const interp = env->env_data;
+  const pwasm_env_mem_t *rows = pwasm_vec_get_data(&(interp->mems));
+  const size_t num_rows = pwasm_vec_get_size(&(interp->mems));
+
+  // check that mem_id is in bounds
+  if (!mem_id || mem_id > num_rows) {
+    // log error, return failure
+    D("bad mem_id: %u", mem_id);
+    pwasm_env_fail(env, "memory index out of bounds");
+    return NULL;
+  }
+
+  // return pointer to memory
+  return (pwasm_env_mem_t*) rows + (mem_id - 1);
+}
+
+/**
+ * Get the absolute memory offset from the immediate offset and the
+ * offset operand.
+ */
+static inline pwasm_new_interp_mem_chunk_t
+pwasm_new_interp_get_mem_chunk(
+  pwasm_env_t * const env,
+  const pwasm_inst_t in,
+  const uint32_t arg_ofs
+) {
+  pwasm_interp_t * const data = env->env_data;
+  pwasm_env_mem_t * const mem = pwasm_new_interp_get_mem(env, data->mem_id);
+  size_t ofs = in.v_mem.offset + arg_ofs;
+  size_t size = pwasm_op_get_num_bits(in.op) / 8;
+  const bool ok = mem && ofs && size && (ofs + size < mem->buf.len);
+
+  return (pwasm_new_interp_mem_chunk_t) {
+    .mem  = ok ? mem : NULL,
+    .ofs  = ok ? ofs : 0,
+    .size = ok ? size : 0,
+  };
+}
+
+static bool
+pwasm_new_interp_mem_load(
+  pwasm_env_t * const env,
+  const pwasm_inst_t in,
+  const uint32_t arg_ofs,
+  pwasm_val_t * const ret_val
+) {
+  // get memory chunk, check for error
+  const pwasm_new_interp_mem_chunk_t chunk = pwasm_new_interp_get_mem_chunk(env, in, arg_ofs);
+  if (!chunk.size) {
+    return false;
+  }
+
+  // copy to result
+  memcpy(ret_val, chunk.mem->buf.ptr + chunk.ofs, chunk.size);
+
+  // return success
+  return true;
+}
+
+static bool
+pwasm_new_interp_mem_store(
+  pwasm_env_t * const env,
+  const pwasm_inst_t in,
+  const uint32_t arg_ofs,
+  const pwasm_val_t val
+) {
+  // get memory chunk, check for error
+  const pwasm_new_interp_mem_chunk_t chunk = pwasm_new_interp_get_mem_chunk(env, in, arg_ofs);
+  if (!chunk.size) {
+    return false;
+  }
+
+  // copy to result
+  memcpy((uint8_t*) chunk.mem->buf.ptr + chunk.ofs, &val, chunk.size);
+
+  // return success
+  return true;
+}
+
+static bool
+pwasm_new_interp_mem_size(
+  pwasm_env_t * const env,
+  uint32_t * const ret_val
+) {
+  // TODO
+  (void) env;
+  (void) ret_val;
+
+  // return failure
+  return false;
+}
+
+static bool
+pwasm_new_interp_mem_grow(
+  pwasm_env_t * const env,
+  const uint32_t grow,
+  uint32_t * const ret_val
+) {
+  // TODO
+  (void) env;
+  (void) grow;
+  (void) ret_val;
+
+  // return failure
+  return false;
+}
+
+static bool
+pwasm_new_interp_get_elem(
+  pwasm_env_t * const env,
+  const uint32_t table_id,
+  const uint32_t elem_ofs,
+  uint32_t * const ret_val
+) {
+  // TODO
+  (void) env;
+  (void) table_id;
+  (void) elem_ofs;
+  (void) ret_val;
+
+  // return failure
+  return false;
+}
+
+static uint32_t
+pwasm_new_interp_find_import(
+  pwasm_env_t * const env,
+  const uint32_t mod_id,
+  const pwasm_import_type_t type,
+  const pwasm_buf_t name
+) {
+  switch (type) {
+  case PWASM_IMPORT_TYPE_FUNC:
+    return pwasm_env_find_func(env, mod_id, name);
+  case PWASM_IMPORT_TYPE_MEM:
+    return pwasm_env_find_mem(env, mod_id, name);
+  case PWASM_IMPORT_TYPE_GLOBAL:
+    return pwasm_env_find_global(env, mod_id, name);
+  case PWASM_IMPORT_TYPE_TABLE:
+    return pwasm_env_find_table(env, mod_id, name);
+  default:
+    // log error, return failure
+    pwasm_env_fail(env, "invalid import type");
+    return 0;
+  }
+}
+
+static inline bool
+pwasm_new_interp_check_global(
+  pwasm_env_t * const env,
+  const uint32_t id
+) {
+  pwasm_new_interp_t * const interp = env->env_data;
+  const size_t num_rows = pwasm_vec_get_size(&(interp->globals));
+
+  if (!id || id > num_rows) {
+    // log error, return failure
+    pwasm_env_fail(env, "global index out of bounds");
+    return false;
+  }
+
+  // return success
+  return true;
+}
+
+static bool
+pwasm_new_interp_get_global(
+  pwasm_env_t * const env,
+  const uint32_t id,
+  pwasm_val_t * const ret_val
+) {
+  pwasm_new_interp_t * const interp = env->env_data;
+  const pwasm_env_global_t *rows = pwasm_vec_get_data(&(interp->globals));
+
+  if (!pwasm_new_interp_check_global(env, id)) {
+    return false;
+  }
+
+  if (ret_val) {
+    // copy value to destination
+    *ret_val = rows[id - 1].val;
+  }
+
+  // return success
+  return true;
+}
+
+static bool
+pwasm_new_interp_set_global(
+  pwasm_env_t * const env,
+  const uint32_t id,
+  const pwasm_val_t val
+) {
+  pwasm_new_interp_t * const interp = env->env_data;
+  pwasm_env_global_t *rows = (pwasm_env_global_t*) pwasm_vec_get_data(&(interp->globals));
+
+  if (!pwasm_new_interp_check_global(env, id)) {
+    return false;
+  }
+
+  if (!rows[id - 1].type.mutable) {
+    pwasm_env_fail(env, "write to immutable global");
+    return false;
+  }
+
+  // set global value
+  rows[id - 1].val = val;
+
+  // return success
+  return true;
+}
+
+// forward references
+static bool pwasm_new_interp_call_func(pwasm_env_t *, const pwasm_mod_t *, uint32_t);
+static bool pwasm_new_interp_call_indirect(const pwasm_interp_frame_t, uint32_t);
+
+static bool
+pwasm_new_interp_eval_expr(
+  const pwasm_interp_frame_t frame,
+  const pwasm_slice_t expr
+) {
+  pwasm_stack_t * const stack = frame.env->stack;
+  const pwasm_inst_t * const insts = frame.mod->insts + expr.ofs;
+
+  // FIXME: move to frame, fix depth
+  pwasm_ctl_stack_entry_t ctl_stack[PWASM_STACK_CHECK_MAX_DEPTH];
+  size_t depth = 0;
+
+  // D("expr = { .ofs = %zu, .len = %zu }, num_insts = %zu", expr.ofs, expr.len, frame.mod->num_insts);
+
+  for (size_t i = 0; i < expr.len; i++) {
+    const pwasm_inst_t in = insts[i];
+    // D("0x%02X %s", in.op, pwasm_op_get_name(in.op));
+
+    switch (in.op) {
+    case PWASM_OP_UNREACHABLE:
+      // FIXME: raise trap?
+      pwasm_env_fail(frame.env, "unreachable instruction reached");
+      return false;
+    case PWASM_OP_NOP:
+      // do nothing
+      break;
+    case PWASM_OP_BLOCK:
+      ctl_stack[depth++] = (pwasm_ctl_stack_entry_t) {
+        .type   = CTL_BLOCK,
+        .depth  = stack->pos,
+        .ofs    = i,
+      };
+
+      break;
+    case PWASM_OP_LOOP:
+      ctl_stack[depth++] = (pwasm_ctl_stack_entry_t) {
+        .type   = CTL_LOOP,
+        .depth  = stack->pos,
+        .ofs    = i,
+      };
+
+      break;
+    case PWASM_OP_IF:
+      {
+        // pop last value from value stack
+        const uint32_t tail = stack->ptr[--stack->pos].i32;
+
+        // get else expr offset
+        // TODO
+        // const size_t else_ofs = in.v_block.else_ofs ? in.v_block.else_ofs : in.v_block.end_ofs;
+        size_t else_ofs;
+        {
+          // FIXME: this is a colossal hack (and slow), and should be
+          // handled in parsing
+          const size_t tmp_else_ofs = pwasm_interp_get_else_ofs(frame, expr, i);
+          const size_t tmp_end_ofs = pwasm_interp_get_end_ofs(frame, expr, i);
+          else_ofs = tmp_else_ofs ? tmp_else_ofs : tmp_end_ofs;
+        }
+        // D("else_ofs = %zu", else_ofs);
+
+        // push to control stack
+        ctl_stack[depth++] = (pwasm_ctl_stack_entry_t) {
+          .type   = CTL_IF,
+          .depth  = stack->pos,
+          .ofs    = i,
+        };
+
+        // increment instruction pointer
+        i += tail ? 0 : else_ofs;
+      }
+
+      break;
+    case PWASM_OP_ELSE:
+      // skip to end inst
+      // TODO
+      // i = ctl_stack[depth - 1].ofs + insts[i].v_block.end_ofs - 1;
+      i += pwasm_interp_get_end_ofs(frame, expr, i);
+
+      break;
+    case PWASM_OP_END:
+      if (depth) {
+        const pwasm_ctl_stack_entry_t ctl_tail = ctl_stack[depth - 1];
+
+        if (insts[ctl_tail.ofs].v_block.type == PWASM_RESULT_TYPE_VOID) {
+          // reset value stack, pop control stack
+          stack->pos = ctl_tail.depth;
+          depth--;
+        } else {
+          // pop result, reset value stack, pop control stack
+          stack->ptr[ctl_tail.depth] = stack->ptr[stack->pos - 1];
+          stack->pos = ctl_tail.depth + 1;
+          depth--;
+        }
+      } else {
+        // return success
+        // FIXME: is this correct?
+        return true;
+      }
+
+      break;
+    case PWASM_OP_BR:
+      {
+        // check branch index
+        // FIXME: check in check for overflow here
+        if (in.v_index.id >= depth - 1) {
+          return false;
+        }
+
+        // decriment control stack
+        depth -= in.v_index.id;
+
+        const pwasm_ctl_stack_entry_t ctl_tail = ctl_stack[depth - 1];
+
+        if (ctl_tail.type == CTL_LOOP) {
+          // reset control stack
+          i = ctl_tail.ofs;
+          stack->pos = ctl_tail.depth;
+        } else if (insts[ctl_tail.ofs].v_block.type == PWASM_RESULT_TYPE_VOID) {
+          // reset value stack, pop control stack
+          stack->pos = ctl_tail.depth;
+          depth--;
+        } else {
+          // pop result, reset value stack, pop control stack
+          stack->ptr[ctl_tail.depth] = stack->ptr[stack->pos - 1];
+          stack->pos = ctl_tail.depth + 1;
+          depth--;
+        }
+      }
+
+      break;
+    case PWASM_OP_BR_IF:
+      if (stack->ptr[--stack->pos].i32) {
+        // check branch index
+        // FIXME: need to check in "check" for overflow here
+        if (in.v_index.id >= depth - 1) {
+          return false;
+        }
+
+        // decriment control stack
+        depth -= in.v_index.id;
+
+        const pwasm_ctl_stack_entry_t ctl_tail = ctl_stack[depth - 1];
+
+        if (ctl_tail.type == CTL_LOOP) {
+          i = ctl_tail.ofs;
+          stack->pos = ctl_tail.depth;
+        } else if (insts[ctl_tail.ofs].v_block.type == PWASM_RESULT_TYPE_VOID) {
+          // reset value stack, pop control stack
+          stack->pos = ctl_tail.depth;
+          depth--;
+        } else {
+          // pop result, reset value stack, pop control stack
+          stack->ptr[ctl_tail.depth] = stack->ptr[stack->pos - 1];
+          stack->pos = ctl_tail.depth + 1;
+          depth--;
+        }
+      }
+
+      break;
+    case PWASM_OP_BR_TABLE:
+      {
+        // get value from stack, branch labels, label offset, and then index
+        const uint32_t val = stack->ptr[--stack->pos].i32;
+        const pwasm_slice_t labels = in.v_br_table.labels.slice;
+        const size_t labels_ofs = labels.ofs + MIN(val, labels.len - 1);
+        const uint32_t id = frame.mod->u32s[labels_ofs];
+
+        // check for branch index overflow
+        // FIXME: move to check()
+        if (id >= depth - 1) {
+          return false;
+        }
+
+        // decriment control stack
+        depth -= id;
+
+        const pwasm_ctl_stack_entry_t ctl_tail = ctl_stack[depth - 1];
+
+        if (ctl_tail.type == CTL_LOOP) {
+          i = ctl_tail.ofs;
+          stack->pos = ctl_tail.depth;
+        } else if (insts[ctl_tail.ofs].v_block.type == PWASM_RESULT_TYPE_VOID) {
+          // reset value stack, pop control stack
+          stack->pos = ctl_tail.depth;
+          depth--;
+        } else {
+          // pop result, reset value stack, pop control stack
+          stack->ptr[ctl_tail.depth] = stack->ptr[stack->pos - 1];
+          stack->pos = ctl_tail.depth + 1;
+          depth--;
+        }
+      }
+
+      break;
+    case PWASM_OP_RETURN:
+      // FIXME: is this all i need?
+      return true;
+    case PWASM_OP_CALL:
+      // call function, check for error
+      if (!pwasm_new_interp_call_func(frame.env, frame.mod, in.v_index.id)) {
+        // return failure
+        return false;
+      }
+
+      break;
+    case PWASM_OP_CALL_INDIRECT:
+      // call function, check for error
+      if (!pwasm_new_interp_call_indirect(frame, in.v_index.id)) {
+        // return failure
+        return false;
+      }
+
+      break;
+    case PWASM_OP_DROP:
+      stack->pos--;
+
+      break;
+    case PWASM_OP_SELECT:
+      {
+        const size_t ofs = stack->ptr[stack->pos - 1].i32 ? 3 : 2;
+        stack->ptr[stack->pos - 3] = stack->ptr[stack->pos - ofs];
+        stack->pos -= 2;
+      }
+
+      break;
+    case PWASM_OP_LOCAL_GET:
+      {
+        // get local index
+        const uint32_t id = in.v_index.id;
+
+        // check local index
+        if (id >= frame.locals.len) {
+          // log error, return failure
+          pwasm_env_fail(frame.env, "local index out of bounds");
+          return false;
+        }
+
+        // push local value
+        stack->ptr[stack->pos++] = stack->ptr[frame.locals.ofs + id];
+      }
+
+      break;
+    case PWASM_OP_LOCAL_SET:
+      {
+        // get local index
+        const uint32_t id = in.v_index.id;
+
+        // check local index
+        if (id >= frame.locals.len) {
+          // log error, return failure
+          pwasm_env_fail(frame.env, "local index out of bounds");
+          return false;
+        }
+
+        // set local value, pop stack
+        stack->ptr[frame.locals.ofs + id] = stack->ptr[stack->pos - 1];
+        stack->pos--;
+      }
+
+      break;
+    case PWASM_OP_LOCAL_TEE:
+      {
+        // get local index
+        const uint32_t id = in.v_index.id;
+
+        // check local index
+        if (id >= frame.locals.len) {
+          // log error, return failure
+          pwasm_env_fail(frame.env, "local index out of bounds");
+          return false;
+        }
+
+        // set local value, keep stack (tee)
+        stack->ptr[frame.locals.ofs + id] = stack->ptr[stack->pos - 1];
+      }
+
+      break;
+    case PWASM_OP_GLOBAL_GET:
+      {
+        // get global index
+        const uint32_t id = in.v_index.id;
+
+        // get global value, check for error
+        pwasm_val_t val;
+        if (!pwasm_env_get_global(frame.env, id, &val)) {
+          // return failure
+          return false;
+        }
+
+        // push global value
+        stack->ptr[stack->pos++] = val;
+      }
+
+      break;
+    case PWASM_OP_GLOBAL_SET:
+      {
+        // get global index
+        const uint32_t id = in.v_index.id;
+
+        // set global value, check for error
+        if (!pwasm_env_set_global(frame.env, id, PWASM_PEEK(stack, 0))) {
+          // return failure
+          return false;
+        }
+
+        // pop stack
+        stack->pos--;
+      }
+
+      break;
+    case PWASM_OP_I32_LOAD:
+    case PWASM_OP_I64_LOAD:
+    case PWASM_OP_F32_LOAD:
+    case PWASM_OP_F64_LOAD:
+    case PWASM_OP_I32_LOAD8_S:
+    case PWASM_OP_I32_LOAD8_U:
+    case PWASM_OP_I32_LOAD16_S:
+    case PWASM_OP_I32_LOAD16_U:
+    case PWASM_OP_I64_LOAD8_S:
+    case PWASM_OP_I64_LOAD8_U:
+    case PWASM_OP_I64_LOAD16_S:
+    case PWASM_OP_I64_LOAD16_U:
+    case PWASM_OP_I64_LOAD32_S:
+    case PWASM_OP_I64_LOAD32_U:
+      {
+        // get offset operand
+        const uint32_t ofs = stack->ptr[stack->pos - 1].i32;
+
+        // load value, check for error
+        pwasm_val_t val;
+        if (!pwasm_env_mem_load(frame.env, in, ofs, &val)) {
+          return false;
+        }
+
+        // pop ofs operand, push val
+        stack->ptr[stack->pos - 1] = val;
+      }
+
+      break;
+    case PWASM_OP_I32_STORE:
+    case PWASM_OP_I64_STORE:
+    case PWASM_OP_F32_STORE:
+    case PWASM_OP_F64_STORE:
+    case PWASM_OP_I32_STORE8:
+    case PWASM_OP_I32_STORE16:
+    case PWASM_OP_I64_STORE8:
+    case PWASM_OP_I64_STORE16:
+    case PWASM_OP_I64_STORE32:
+      {
+        // get offset operand and value
+        const uint32_t ofs = stack->ptr[stack->pos - 1].i32;
+        const pwasm_val_t val = stack->ptr[stack->pos - 2];
+        stack->pos -= 2;
+
+        // store value, check for error
+        if (!pwasm_env_mem_store(frame.env, in, ofs, val)) {
+          return false;
+        }
+      }
+
+      break;
+    case PWASM_OP_MEMORY_SIZE:
+      {
+        // get memory size, check for error
+        uint32_t size;
+        if (!pwasm_env_mem_size(frame.env, &size)) {
+          return false;
+        }
+
+        // push size to stack
+        stack->ptr[stack->pos++].i32 = size;
+      }
+
+      break;
+    case PWASM_OP_MEMORY_GROW:
+      {
+        // get grow operand
+        const uint32_t grow = stack->ptr[stack->pos - 1].i32;
+
+        // grow memory, check for error
+        uint32_t size;
+        if (!pwasm_env_mem_grow(frame.env, grow, &size)) {
+          return false;
+        }
+
+        // pop operand, push result
+        stack->ptr[stack->pos - 1].i32 = size;
+      }
+
+      break;
+    case PWASM_OP_I32_CONST:
+      stack->ptr[stack->pos++].i32 = in.v_i32.val;
+
+      break;
+    case PWASM_OP_I64_CONST:
+      stack->ptr[stack->pos++].i64 = in.v_i64.val;
+
+      break;
+    case PWASM_OP_F32_CONST:
+      stack->ptr[stack->pos++].f32 = in.v_f32.val;
+
+      break;
+    case PWASM_OP_F64_CONST:
+      stack->ptr[stack->pos++].f64 = in.v_f64.val;
+
+      break;
+    case PWASM_OP_I32_EQZ:
+      stack->ptr[stack->pos - 1].i32 = (stack->ptr[stack->pos - 1].i32 == 0);
+
+      break;
+    case PWASM_OP_I32_EQ:
+      {
+        const uint32_t a = stack->ptr[stack->pos - 2].i32;
+        const uint32_t b = stack->ptr[stack->pos - 1].i32;
+        stack->ptr[stack->pos - 2].i32 = (a == b);
+        stack->pos--;
+      }
+
+      break;
+    case PWASM_OP_I32_NE:
+      {
+        const uint32_t a = stack->ptr[stack->pos - 2].i32;
+        const uint32_t b = stack->ptr[stack->pos - 1].i32;
+        stack->ptr[stack->pos - 2].i32 = (a != b);
+        stack->pos--;
+      }
+
+      break;
+    case PWASM_OP_I32_LT_S:
+      {
+        const int32_t a = (int32_t) stack->ptr[stack->pos - 2].i32;
+        const int32_t b = (int32_t) stack->ptr[stack->pos - 1].i32;
+        stack->ptr[stack->pos - 2].i32 = (a < b);
+        stack->pos--;
+      }
+
+      break;
+    case PWASM_OP_I32_LT_U:
+      {
+        const uint32_t a = stack->ptr[stack->pos - 2].i32;
+        const uint32_t b = stack->ptr[stack->pos - 1].i32;
+        stack->ptr[stack->pos - 2].i32 = (a < b);
+        stack->pos--;
+      }
+
+      break;
+    case PWASM_OP_I32_GT_S:
+      {
+        const int32_t a = (int32_t) stack->ptr[stack->pos - 2].i32;
+        const int32_t b = (int32_t) stack->ptr[stack->pos - 1].i32;
+        stack->ptr[stack->pos - 2].i32 = (a > b);
+        stack->pos--;
+      }
+
+      break;
+    case PWASM_OP_I32_GT_U:
+      {
+        const uint32_t a = stack->ptr[stack->pos - 2].i32;
+        const uint32_t b = stack->ptr[stack->pos - 1].i32;
+        stack->ptr[stack->pos - 2].i32 = (a > b);
+        stack->pos--;
+      }
+
+      break;
+    case PWASM_OP_I32_LE_S:
+      {
+        const int32_t a = (int32_t) stack->ptr[stack->pos - 2].i32;
+        const int32_t b = (int32_t) stack->ptr[stack->pos - 1].i32;
+        stack->ptr[stack->pos - 2].i32 = (a <= b);
+        stack->pos--;
+      }
+
+      break;
+    case PWASM_OP_I32_LE_U:
+      {
+        const uint32_t a = stack->ptr[stack->pos - 2].i32;
+        const uint32_t b = stack->ptr[stack->pos - 1].i32;
+        stack->ptr[stack->pos - 2].i32 = (a <= b);
+        stack->pos--;
+      }
+
+      break;
+    case PWASM_OP_I32_GE_S:
+      {
+        const int32_t a = (int32_t) stack->ptr[stack->pos - 2].i32;
+        const int32_t b = (int32_t) stack->ptr[stack->pos - 1].i32;
+        stack->ptr[stack->pos - 2].i32 = (a <= b);
+        stack->pos--;
+      }
+
+      break;
+    case PWASM_OP_I32_GE_U:
+      {
+        const uint32_t a = stack->ptr[stack->pos - 2].i32;
+        const uint32_t b = stack->ptr[stack->pos - 1].i32;
+        stack->ptr[stack->pos - 2].i32 = (a <= b);
+        stack->pos--;
+      }
+
+      break;
+    case PWASM_OP_I64_EQ:
+      {
+        const uint64_t a = stack->ptr[stack->pos - 2].i64;
+        const uint64_t b = stack->ptr[stack->pos - 1].i64;
+        stack->ptr[stack->pos - 2].i32 = (a == b);
+        stack->pos--;
+      }
+
+      break;
+    case PWASM_OP_I64_NE:
+      {
+        const uint64_t a = stack->ptr[stack->pos - 2].i64;
+        const uint64_t b = stack->ptr[stack->pos - 1].i64;
+        stack->ptr[stack->pos - 2].i32 = (a != b);
+        stack->pos--;
+      }
+
+      break;
+    case PWASM_OP_I64_LT_S:
+      {
+        const int64_t a = (int64_t) stack->ptr[stack->pos - 2].i64;
+        const int64_t b = (int64_t) stack->ptr[stack->pos - 1].i64;
+        stack->ptr[stack->pos - 2].i32 = (a < b);
+        stack->pos--;
+      }
+
+      break;
+    case PWASM_OP_I64_LT_U:
+      {
+        const uint64_t a = stack->ptr[stack->pos - 2].i64;
+        const uint64_t b = stack->ptr[stack->pos - 1].i64;
+        stack->ptr[stack->pos - 2].i32 = (a < b);
+        stack->pos--;
+      }
+
+      break;
+    case PWASM_OP_I64_GT_S:
+      {
+        const int64_t a = (int64_t) stack->ptr[stack->pos - 2].i64;
+        const int64_t b = (int64_t) stack->ptr[stack->pos - 1].i64;
+        stack->ptr[stack->pos - 2].i32 = (a > b);
+        stack->pos--;
+      }
+
+      break;
+    case PWASM_OP_I64_GT_U:
+      {
+        const uint64_t a = stack->ptr[stack->pos - 2].i64;
+        const uint64_t b = stack->ptr[stack->pos - 1].i64;
+        stack->ptr[stack->pos - 2].i32 = (a > b);
+        stack->pos--;
+      }
+
+      break;
+    case PWASM_OP_I64_LE_S:
+      {
+        const int64_t a = (int64_t) stack->ptr[stack->pos - 2].i64;
+        const int64_t b = (int64_t) stack->ptr[stack->pos - 1].i64;
+        stack->ptr[stack->pos - 2].i32 = (a <= b);
+        stack->pos--;
+      }
+
+      break;
+    case PWASM_OP_I64_LE_U:
+      {
+        const uint64_t a = stack->ptr[stack->pos - 2].i64;
+        const uint64_t b = stack->ptr[stack->pos - 1].i64;
+        stack->ptr[stack->pos - 2].i32 = (a <= b);
+        stack->pos--;
+      }
+
+      break;
+    case PWASM_OP_I64_GE_S:
+      {
+        const int64_t a = (int64_t) stack->ptr[stack->pos - 2].i64;
+        const int64_t b = (int64_t) stack->ptr[stack->pos - 1].i64;
+        stack->ptr[stack->pos - 2].i32 = (a <= b);
+        stack->pos--;
+      }
+
+      break;
+    case PWASM_OP_I64_GE_U:
+      {
+        const uint64_t a = stack->ptr[stack->pos - 2].i64;
+        const uint64_t b = stack->ptr[stack->pos - 1].i64;
+        stack->ptr[stack->pos - 2].i32 = (a <= b);
+        stack->pos--;
+      }
+
+      break;
+    case PWASM_OP_F32_EQ:
+      {
+        const float a = stack->ptr[stack->pos - 2].f32;
+        const float b = stack->ptr[stack->pos - 1].f32;
+        stack->ptr[stack->pos - 2].i32 = (a == b);
+        stack->pos--;
+      }
+
+      break;
+    case PWASM_OP_F32_NE:
+      {
+        const float a = stack->ptr[stack->pos - 2].f32;
+        const float b = stack->ptr[stack->pos - 1].f32;
+        stack->ptr[stack->pos - 2].i32 = (a != b);
+        stack->pos--;
+      }
+
+      break;
+    case PWASM_OP_F32_LT:
+      {
+        const float a = stack->ptr[stack->pos - 2].f32;
+        const float b = stack->ptr[stack->pos - 1].f32;
+        stack->ptr[stack->pos - 2].i32 = (a < b);
+        stack->pos--;
+      }
+
+      break;
+    case PWASM_OP_F32_GT:
+      {
+        const float a = stack->ptr[stack->pos - 2].f32;
+        const float b = stack->ptr[stack->pos - 1].f32;
+        stack->ptr[stack->pos - 2].i32 = (a > b);
+        stack->pos--;
+      }
+
+      break;
+    case PWASM_OP_F32_LE:
+      {
+        const float a = stack->ptr[stack->pos - 2].f32;
+        const float b = stack->ptr[stack->pos - 1].f32;
+        stack->ptr[stack->pos - 2].i32 = (a <= b);
+        stack->pos--;
+      }
+
+      break;
+    case PWASM_OP_F32_GE:
+      {
+        const float a = stack->ptr[stack->pos - 2].f32;
+        const float b = stack->ptr[stack->pos - 1].f32;
+        stack->ptr[stack->pos - 2].i32 = (a >= b);
+        stack->pos--;
+      }
+
+      break;
+    case PWASM_OP_F64_EQ:
+      {
+        const double a = stack->ptr[stack->pos - 2].f64;
+        const double b = stack->ptr[stack->pos - 1].f64;
+        stack->ptr[stack->pos - 2].i32 = (a == b);
+        stack->pos--;
+      }
+
+      break;
+    case PWASM_OP_F64_NE:
+      {
+        const double a = stack->ptr[stack->pos - 2].f64;
+        const double b = stack->ptr[stack->pos - 1].f64;
+        stack->ptr[stack->pos - 2].i32 = (a != b);
+        stack->pos--;
+      }
+
+      break;
+    case PWASM_OP_F64_LT:
+      {
+        const double a = stack->ptr[stack->pos - 2].f64;
+        const double b = stack->ptr[stack->pos - 1].f64;
+        stack->ptr[stack->pos - 2].i32 = (a < b);
+        stack->pos--;
+      }
+
+      break;
+    case PWASM_OP_F64_GT:
+      {
+        const double a = stack->ptr[stack->pos - 2].f64;
+        const double b = stack->ptr[stack->pos - 1].f64;
+        stack->ptr[stack->pos - 2].i32 = (a > b);
+        stack->pos--;
+      }
+
+      break;
+    case PWASM_OP_F64_LE:
+      {
+        const double a = stack->ptr[stack->pos - 2].f64;
+        const double b = stack->ptr[stack->pos - 1].f64;
+        stack->ptr[stack->pos - 2].i32 = (a <= b);
+        stack->pos--;
+      }
+
+      break;
+    case PWASM_OP_F64_GE:
+      {
+        const double a = stack->ptr[stack->pos - 2].f64;
+        const double b = stack->ptr[stack->pos - 1].f64;
+        stack->ptr[stack->pos - 2].i32 = (a >= b);
+        stack->pos--;
+      }
+
+      break;
+    case PWASM_OP_I32_CLZ:
+      {
+        const int val = __builtin_clz(stack->ptr[stack->pos - 1].i32);
+        stack->ptr[stack->pos - 1].i32 = val;
+      }
+
+      break;
+    case PWASM_OP_I32_CTZ:
+      {
+        const int val = __builtin_ctz(stack->ptr[stack->pos - 1].i32);
+        stack->ptr[stack->pos - 1].i32 = val;
+      }
+
+      break;
+    case PWASM_OP_I32_POPCNT:
+      {
+        const int val = __builtin_popcount(stack->ptr[stack->pos - 1].i32);
+        stack->ptr[stack->pos - 1].i32 = val;
+      }
+
+      break;
+    case PWASM_OP_I32_ADD:
+      {
+        const uint32_t a = stack->ptr[stack->pos - 2].i32;
+        const uint32_t b = stack->ptr[stack->pos - 1].i32;
+        stack->ptr[stack->pos - 2].i32 = a + b;
+        stack->pos--;
+      }
+
+      break;
+    case PWASM_OP_I32_SUB:
+      {
+        const uint32_t a = stack->ptr[stack->pos - 2].i32;
+        const uint32_t b = stack->ptr[stack->pos - 1].i32;
+        stack->ptr[stack->pos - 2].i32 = a - b;
+        stack->pos--;
+      }
+
+      break;
+    case PWASM_OP_I32_MUL:
+      {
+        const uint32_t a = stack->ptr[stack->pos - 2].i32;
+        const uint32_t b = stack->ptr[stack->pos - 1].i32;
+        stack->ptr[stack->pos - 2].i32 = a * b;
+        stack->pos--;
+      }
+
+      break;
+    case PWASM_OP_I32_DIV_S:
+      {
+        const int32_t a = (int32_t) stack->ptr[stack->pos - 2].i32;
+        const int32_t b = (int32_t) stack->ptr[stack->pos - 1].i32;
+        stack->ptr[stack->pos - 2].i32 = a / b;
+        stack->pos--;
+      }
+
+      break;
+    case PWASM_OP_I32_DIV_U:
+      {
+        const uint32_t a = stack->ptr[stack->pos - 2].i32;
+        const uint32_t b = stack->ptr[stack->pos - 1].i32;
+        stack->ptr[stack->pos - 2].i32 = a / b;
+        stack->pos--;
+      }
+
+      break;
+    case PWASM_OP_I32_REM_S:
+      {
+        const int32_t a = (int32_t) stack->ptr[stack->pos - 2].i32;
+        const int32_t b = (int32_t) stack->ptr[stack->pos - 1].i32;
+        stack->ptr[stack->pos - 2].i32 = a % b;
+        stack->pos--;
+      }
+
+      break;
+    case PWASM_OP_I32_REM_U:
+      {
+        const uint32_t a = stack->ptr[stack->pos - 2].i32;
+        const uint32_t b = stack->ptr[stack->pos - 1].i32;
+        stack->ptr[stack->pos - 2].i32 = a % b;
+        stack->pos--;
+      }
+
+      break;
+    case PWASM_OP_I32_AND:
+      {
+        const uint32_t a = stack->ptr[stack->pos - 2].i32;
+        const uint32_t b = stack->ptr[stack->pos - 1].i32;
+        stack->ptr[stack->pos - 2].i32 = a & b;
+        stack->pos--;
+      }
+
+      break;
+    case PWASM_OP_I32_OR:
+      {
+        const uint32_t a = stack->ptr[stack->pos - 2].i32;
+        const uint32_t b = stack->ptr[stack->pos - 1].i32;
+        stack->ptr[stack->pos - 2].i32 = a | b;
+        stack->pos--;
+      }
+
+      break;
+    case PWASM_OP_I32_XOR:
+      {
+        const uint32_t a = stack->ptr[stack->pos - 2].i32;
+        const uint32_t b = stack->ptr[stack->pos - 1].i32;
+        stack->ptr[stack->pos - 2].i32 = a ^ b;
+        stack->pos--;
+      }
+
+      break;
+    case PWASM_OP_I32_SHL:
+      {
+        const uint32_t a = stack->ptr[stack->pos - 2].i32;
+        const uint32_t b = stack->ptr[stack->pos - 1].i32;
+        stack->ptr[stack->pos - 2].i32 = a << b;
+        stack->pos--;
+      }
+
+      break;
+    case PWASM_OP_I32_SHR_S:
+      {
+        const int32_t a = (int32_t) stack->ptr[stack->pos - 2].i32;
+        const uint32_t b = stack->ptr[stack->pos - 1].i32;
+        stack->ptr[stack->pos - 2].i32 = a >> b;
+        stack->pos--;
+      }
+
+      break;
+    case PWASM_OP_I32_SHR_U:
+      {
+        const uint32_t a = stack->ptr[stack->pos - 2].i32;
+        const uint32_t b = stack->ptr[stack->pos - 1].i32;
+        stack->ptr[stack->pos - 2].i32 = a >> b;
+        stack->pos--;
+      }
+
+      break;
+    case PWASM_OP_I32_ROTL:
+      {
+        const uint32_t a = stack->ptr[stack->pos - 2].i32;
+        const uint32_t b = stack->ptr[stack->pos - 1].i32 & 0x3F;
+        stack->ptr[stack->pos - 2].i32 = (a << b) | (a >> (32 - b));
+        stack->pos--;
+      }
+
+      break;
+    case PWASM_OP_I32_ROTR:
+      {
+        const uint32_t a = stack->ptr[stack->pos - 2].i32;
+        const uint32_t b = stack->ptr[stack->pos - 1].i32 & 0x3F;
+        stack->ptr[stack->pos - 2].i32 = (a << (32 - b)) | (a >> b);
+        stack->pos--;
+      }
+
+      break;
+    case PWASM_OP_I64_CLZ:
+      {
+        const int val = __builtin_clzl(stack->ptr[stack->pos - 1].i64);
+        stack->ptr[stack->pos - 1].i64 = val;
+      }
+
+      break;
+    case PWASM_OP_I64_CTZ:
+      {
+        const int val = __builtin_ctzl(stack->ptr[stack->pos - 1].i64);
+        stack->ptr[stack->pos - 1].i64 = val;
+      }
+
+      break;
+    case PWASM_OP_I64_POPCNT:
+      {
+        const int val = __builtin_popcountl(stack->ptr[stack->pos - 1].i64);
+        stack->ptr[stack->pos - 1].i64 = val;
+      }
+
+      break;
+    case PWASM_OP_I64_ADD:
+      {
+        const uint64_t a = stack->ptr[stack->pos - 2].i64;
+        const uint64_t b = stack->ptr[stack->pos - 1].i64;
+        stack->ptr[stack->pos - 2].i64 = a + b;
+        stack->pos--;
+      }
+
+      break;
+    case PWASM_OP_I64_SUB:
+      {
+        const uint64_t a = stack->ptr[stack->pos - 2].i64;
+        const uint64_t b = stack->ptr[stack->pos - 1].i64;
+        stack->ptr[stack->pos - 2].i64 = a - b;
+        stack->pos--;
+      }
+
+      break;
+    case PWASM_OP_I64_MUL:
+      {
+        const uint64_t a = stack->ptr[stack->pos - 2].i64;
+        const uint64_t b = stack->ptr[stack->pos - 1].i64;
+        stack->ptr[stack->pos - 2].i64 = a * b;
+        stack->pos--;
+      }
+
+      break;
+    case PWASM_OP_I64_DIV_S:
+      {
+        const int64_t a = (int64_t) stack->ptr[stack->pos - 2].i64;
+        const int64_t b = (int64_t) stack->ptr[stack->pos - 1].i64;
+        stack->ptr[stack->pos - 2].i64 = a / b;
+        stack->pos--;
+      }
+
+      break;
+    case PWASM_OP_I64_DIV_U:
+      {
+        const uint64_t a = stack->ptr[stack->pos - 2].i64;
+        const uint64_t b = stack->ptr[stack->pos - 1].i64;
+        stack->ptr[stack->pos - 2].i64 = a / b;
+        stack->pos--;
+      }
+
+      break;
+    case PWASM_OP_I64_REM_S:
+      {
+        const int64_t a = (int64_t) stack->ptr[stack->pos - 2].i64;
+        const int64_t b = (int64_t) stack->ptr[stack->pos - 1].i64;
+        stack->ptr[stack->pos - 2].i64 = a % b;
+        stack->pos--;
+      }
+
+      break;
+    case PWASM_OP_I64_REM_U:
+      {
+        const uint64_t a = stack->ptr[stack->pos - 2].i64;
+        const uint64_t b = stack->ptr[stack->pos - 1].i64;
+        stack->ptr[stack->pos - 2].i64 = a % b;
+        stack->pos--;
+      }
+
+      break;
+    case PWASM_OP_I64_AND:
+      {
+        const uint64_t a = stack->ptr[stack->pos - 2].i64;
+        const uint64_t b = stack->ptr[stack->pos - 1].i64;
+        stack->ptr[stack->pos - 2].i64 = a & b;
+        stack->pos--;
+      }
+
+      break;
+    case PWASM_OP_I64_OR:
+      {
+        const uint64_t a = stack->ptr[stack->pos - 2].i64;
+        const uint64_t b = stack->ptr[stack->pos - 1].i64;
+        stack->ptr[stack->pos - 2].i64 = a | b;
+        stack->pos--;
+      }
+
+      break;
+    case PWASM_OP_I64_XOR:
+      {
+        const uint64_t a = stack->ptr[stack->pos - 2].i64;
+        const uint64_t b = stack->ptr[stack->pos - 1].i64;
+        stack->ptr[stack->pos - 2].i64 = a ^ b;
+        stack->pos--;
+      }
+
+      break;
+    case PWASM_OP_I64_SHL:
+      {
+        const uint64_t a = stack->ptr[stack->pos - 2].i64;
+        const uint64_t b = stack->ptr[stack->pos - 1].i64;
+        stack->ptr[stack->pos - 2].i64 = a << b;
+        stack->pos--;
+      }
+
+      break;
+    case PWASM_OP_I64_SHR_S:
+      {
+        const int64_t a = (int64_t) stack->ptr[stack->pos - 2].i64;
+        const uint64_t b = stack->ptr[stack->pos - 1].i64;
+        stack->ptr[stack->pos - 2].i64 = a >> b;
+        stack->pos--;
+      }
+
+      break;
+    case PWASM_OP_I64_SHR_U:
+      {
+        const uint64_t a = stack->ptr[stack->pos - 2].i64;
+        const uint64_t b = stack->ptr[stack->pos - 1].i64;
+        stack->ptr[stack->pos - 2].i64 = a >> b;
+        stack->pos--;
+      }
+
+      break;
+    case PWASM_OP_I64_ROTL:
+      {
+        const uint64_t a = stack->ptr[stack->pos - 2].i64;
+        const uint64_t b = stack->ptr[stack->pos - 1].i64 & 0x7F;
+        stack->ptr[stack->pos - 2].i64 = (a << b) | (a >> (64 - b));
+        stack->pos--;
+      }
+
+      break;
+    case PWASM_OP_I64_ROTR:
+      {
+        const uint64_t a = stack->ptr[stack->pos - 2].i64;
+        const uint64_t b = stack->ptr[stack->pos - 1].i64 & 0x7F;
+        stack->ptr[stack->pos - 2].i64 = (a << (64 - b)) | (a >> b);
+        stack->pos--;
+      }
+
+      break;
+    case PWASM_OP_F32_ABS:
+      {
+        const float a = stack->ptr[stack->pos - 1].f32;
+        stack->ptr[stack->pos - 1].f32 = fabsf(a);
+      }
+
+      break;
+    case PWASM_OP_F32_NEG:
+      {
+        const float a = stack->ptr[stack->pos - 1].f32;
+        stack->ptr[stack->pos - 1].f32 = -a;
+      }
+
+      break;
+    case PWASM_OP_F32_CEIL:
+      {
+        const float a = stack->ptr[stack->pos - 1].f32;
+        stack->ptr[stack->pos - 1].f32 = ceilf(a);
+      }
+
+      break;
+    case PWASM_OP_F32_FLOOR:
+      {
+        const float a = stack->ptr[stack->pos - 1].f32;
+        stack->ptr[stack->pos - 1].f32 = floorf(a);
+      }
+
+      break;
+    case PWASM_OP_F32_TRUNC:
+      {
+        const float a = stack->ptr[stack->pos - 1].f32;
+        stack->ptr[stack->pos - 1].f32 = truncf(a);
+      }
+
+      break;
+    case PWASM_OP_F32_NEAREST:
+      {
+        const float a = stack->ptr[stack->pos - 1].f32;
+        stack->ptr[stack->pos - 1].f32 = roundf(a);
+      }
+
+      break;
+    case PWASM_OP_F32_SQRT:
+      {
+        const float a = stack->ptr[stack->pos - 1].f32;
+        stack->ptr[stack->pos - 1].f32 = sqrtf(a);
+      }
+
+      break;
+    case PWASM_OP_F32_ADD:
+      {
+        const float a = stack->ptr[stack->pos - 2].f32;
+        const float b = stack->ptr[stack->pos - 1].f32;
+        stack->ptr[stack->pos - 2].f32 = a + b;
+        stack->pos--;
+      }
+
+      break;
+    case PWASM_OP_F32_SUB:
+      {
+        const float a = stack->ptr[stack->pos - 2].f32;
+        const float b = stack->ptr[stack->pos - 1].f32;
+        stack->ptr[stack->pos - 2].f32 = a - b;
+        stack->pos--;
+      }
+
+      break;
+    case PWASM_OP_F32_MUL:
+      {
+        const float a = stack->ptr[stack->pos - 2].f32;
+        const float b = stack->ptr[stack->pos - 1].f32;
+        stack->ptr[stack->pos - 2].f32 = a * b;
+        stack->pos--;
+      }
+
+      break;
+    case PWASM_OP_F32_DIV:
+      {
+        const float a = stack->ptr[stack->pos - 2].f32;
+        const float b = stack->ptr[stack->pos - 1].f32;
+        stack->ptr[stack->pos - 2].f32 = a / b;
+        stack->pos--;
+      }
+
+      break;
+    case PWASM_OP_F32_MIN:
+      {
+        const float a = stack->ptr[stack->pos - 2].f32;
+        const float b = stack->ptr[stack->pos - 1].f32;
+        stack->ptr[stack->pos - 2].f32 = fminf(a, b);
+        stack->pos--;
+      }
+
+      break;
+    case PWASM_OP_F32_MAX:
+      {
+        const float a = stack->ptr[stack->pos - 2].f32;
+        const float b = stack->ptr[stack->pos - 1].f32;
+        stack->ptr[stack->pos - 2].f32 = fmaxf(a, b);
+        stack->pos--;
+      }
+
+      break;
+    case PWASM_OP_F32_COPYSIGN:
+      {
+        const float a = stack->ptr[stack->pos - 2].f32;
+        const float b = stack->ptr[stack->pos - 1].f32;
+        stack->ptr[stack->pos - 2].f32 = copysignf(a, b);
+        stack->pos--;
+      }
+
+      break;
+    case PWASM_OP_F64_ABS:
+      {
+        const double a = stack->ptr[stack->pos - 1].f64;
+        stack->ptr[stack->pos - 1].f64 = fabs(a);
+      }
+
+      break;
+    case PWASM_OP_F64_NEG:
+      {
+        const double a = stack->ptr[stack->pos - 1].f64;
+        stack->ptr[stack->pos - 1].f64 = -a;
+      }
+
+      break;
+    case PWASM_OP_F64_CEIL:
+      {
+        const double a = stack->ptr[stack->pos - 1].f64;
+        stack->ptr[stack->pos - 1].f64 = ceil(a);
+      }
+
+      break;
+    case PWASM_OP_F64_FLOOR:
+      {
+        const double a = stack->ptr[stack->pos - 1].f64;
+        stack->ptr[stack->pos - 1].f64 = floor(a);
+      }
+
+      break;
+    case PWASM_OP_F64_TRUNC:
+      {
+        const double a = stack->ptr[stack->pos - 1].f64;
+        stack->ptr[stack->pos - 1].f64 = trunc(a);
+      }
+
+      break;
+    case PWASM_OP_F64_NEAREST:
+      {
+        const double a = stack->ptr[stack->pos - 1].f64;
+        stack->ptr[stack->pos - 1].f64 = round(a);
+      }
+
+      break;
+    case PWASM_OP_F64_SQRT:
+      {
+        const double a = stack->ptr[stack->pos - 1].f64;
+        stack->ptr[stack->pos - 1].f64 = sqrt(a);
+      }
+
+      break;
+    case PWASM_OP_F64_ADD:
+      {
+        const double a = stack->ptr[stack->pos - 2].f64;
+        const double b = stack->ptr[stack->pos - 1].f64;
+        stack->ptr[stack->pos - 2].f64 = a + b;
+        stack->pos--;
+      }
+
+      break;
+    case PWASM_OP_F64_SUB:
+      {
+        const double a = stack->ptr[stack->pos - 2].f64;
+        const double b = stack->ptr[stack->pos - 1].f64;
+        stack->ptr[stack->pos - 2].f64 = a - b;
+        stack->pos--;
+      }
+
+      break;
+    case PWASM_OP_F64_MUL:
+      {
+        const double a = stack->ptr[stack->pos - 2].f64;
+        const double b = stack->ptr[stack->pos - 1].f64;
+        stack->ptr[stack->pos - 2].f64 = a * b;
+        stack->pos--;
+      }
+
+      break;
+    case PWASM_OP_F64_DIV:
+      {
+        const double a = stack->ptr[stack->pos - 2].f64;
+        const double b = stack->ptr[stack->pos - 1].f64;
+        stack->ptr[stack->pos - 2].f64 = a / b;
+        stack->pos--;
+      }
+
+      break;
+    case PWASM_OP_F64_MIN:
+      {
+        const double a = stack->ptr[stack->pos - 2].f64;
+        const double b = stack->ptr[stack->pos - 1].f64;
+        stack->ptr[stack->pos - 2].f64 = fmin(a, b);
+        stack->pos--;
+      }
+
+      break;
+    case PWASM_OP_F64_MAX:
+      {
+        const double a = stack->ptr[stack->pos - 2].f64;
+        const double b = stack->ptr[stack->pos - 1].f64;
+        stack->ptr[stack->pos - 2].f64 = fmax(a, b);
+        stack->pos--;
+      }
+
+      break;
+    case PWASM_OP_F64_COPYSIGN:
+      {
+        const double a = stack->ptr[stack->pos - 2].f64;
+        const double b = stack->ptr[stack->pos - 1].f64;
+        stack->ptr[stack->pos - 2].f64 = copysign(a, b);
+        stack->pos--;
+      }
+
+      break;
+    case PWASM_OP_I32_WRAP_I64:
+      {
+        const uint64_t a = stack->ptr[stack->pos - 1].i64;
+        stack->ptr[stack->pos - 1].i32 = (uint32_t) a;
+      }
+
+      break;
+    case PWASM_OP_I32_TRUNC_F32_S:
+      {
+        const float a = stack->ptr[stack->pos - 1].f32;
+        stack->ptr[stack->pos - 1].i32 = (int32_t) a;
+      }
+
+      break;
+    case PWASM_OP_I32_TRUNC_F32_U:
+      {
+        const float a = stack->ptr[stack->pos - 1].f32;
+        stack->ptr[stack->pos - 1].i32 = (uint32_t) a;
+      }
+
+      break;
+    case PWASM_OP_I32_TRUNC_F64_S:
+      {
+        const double a = stack->ptr[stack->pos - 1].f64;
+        stack->ptr[stack->pos - 1].i32 = (int32_t) a;
+      }
+
+      break;
+    case PWASM_OP_I32_TRUNC_F64_U:
+      {
+        const double a = stack->ptr[stack->pos - 1].f64;
+        stack->ptr[stack->pos - 1].i32 = (uint32_t) a;
+      }
+
+      break;
+    case PWASM_OP_I64_EXTEND_I32_S:
+      {
+        const int32_t a = (int32_t) stack->ptr[stack->pos - 1].i32;
+        stack->ptr[stack->pos - 1].i64 = (int64_t) a;
+      }
+
+      break;
+    case PWASM_OP_I64_EXTEND_I32_U:
+      {
+        const uint32_t a = stack->ptr[stack->pos - 1].i32;
+        stack->ptr[stack->pos - 1].i64 = (uint64_t) a;
+      }
+
+      break;
+    case PWASM_OP_I64_TRUNC_F32_S:
+      {
+        const float a = stack->ptr[stack->pos - 1].f32;
+        stack->ptr[stack->pos - 1].i64 = (int64_t) a;
+      }
+
+      break;
+    case PWASM_OP_I64_TRUNC_F32_U:
+      {
+        const float a = stack->ptr[stack->pos - 1].f32;
+        stack->ptr[stack->pos - 1].i64 = (uint64_t) a;
+      }
+
+      break;
+    case PWASM_OP_I64_TRUNC_F64_S:
+      {
+        const double a = stack->ptr[stack->pos - 1].f64;
+        stack->ptr[stack->pos - 1].i64 = (int64_t) a;
+      }
+
+      break;
+    case PWASM_OP_I64_TRUNC_F64_U:
+      {
+        const double a = stack->ptr[stack->pos - 1].f64;
+        stack->ptr[stack->pos - 1].i64 = (uint64_t) a;
+      }
+
+      break;
+    case PWASM_OP_F32_CONVERT_I32_S:
+      {
+        const int32_t a = (int32_t) stack->ptr[stack->pos - 1].i32;
+        stack->ptr[stack->pos - 1].f32 = (float) a;
+      }
+
+      break;
+    case PWASM_OP_F32_CONVERT_I32_U:
+      {
+        const uint32_t a = (uint32_t) stack->ptr[stack->pos - 1].i32;
+        stack->ptr[stack->pos - 1].f32 = (float) a;
+      }
+
+      break;
+    case PWASM_OP_F32_CONVERT_I64_S:
+      {
+        const int64_t a = (int64_t) stack->ptr[stack->pos - 1].i64;
+        stack->ptr[stack->pos - 1].f32 = (float) a;
+      }
+
+      break;
+    case PWASM_OP_F32_CONVERT_I64_U:
+      {
+        const uint64_t a = (uint64_t) stack->ptr[stack->pos - 1].i64;
+        stack->ptr[stack->pos - 1].f32 = (float) a;
+      }
+
+      break;
+    case PWASM_OP_F32_DEMOTE_F64:
+      {
+        const double a = stack->ptr[stack->pos - 1].f64;
+        stack->ptr[stack->pos - 1].f32 = (float) a;
+      }
+
+      break;
+    case PWASM_OP_F64_CONVERT_I32_S:
+      {
+        const int32_t a = (int32_t) stack->ptr[stack->pos - 1].i32;
+        stack->ptr[stack->pos - 1].f64 = (double) a;
+      }
+
+      break;
+    case PWASM_OP_F64_CONVERT_I32_U:
+      {
+        const uint32_t a = (uint32_t) stack->ptr[stack->pos - 1].i32;
+        stack->ptr[stack->pos - 1].f64 = (double) a;
+      }
+
+      break;
+    case PWASM_OP_F64_CONVERT_I64_S:
+      {
+        const int64_t a = (int64_t) stack->ptr[stack->pos - 1].i64;
+        stack->ptr[stack->pos - 1].f64 = (double) a;
+      }
+
+      break;
+    case PWASM_OP_F64_CONVERT_I64_U:
+      {
+        const uint64_t a = (uint64_t) stack->ptr[stack->pos - 1].i64;
+        stack->ptr[stack->pos - 1].f64 = (double) a;
+      }
+
+      break;
+    case PWASM_OP_F64_PROMOTE_F32:
+      {
+        const float a = stack->ptr[stack->pos - 1].f32;
+        stack->ptr[stack->pos - 1].f64 = a;
+      }
+
+      break;
+    case PWASM_OP_I32_REINTERPRET_F32:
+      {
+        const union {
+          uint32_t i32;
+          float f32;
+        } v = { .f32 = stack->ptr[stack->pos - 1].f32 };
+        stack->ptr[stack->pos - 1].i32 = v.i32;
+      }
+
+      break;
+    case PWASM_OP_I64_REINTERPRET_F64:
+      {
+        const union {
+          uint64_t i64;
+          double f64;
+        } v = { .f64 = stack->ptr[stack->pos - 1].f64 };
+        stack->ptr[stack->pos - 1].i64 = v.i64;
+      }
+
+      break;
+    case PWASM_OP_F32_REINTERPRET_I32:
+      {
+        const union {
+          uint32_t i32;
+          float f32;
+        } v = { .i32 = stack->ptr[stack->pos - 1].i32 };
+        stack->ptr[stack->pos - 1].f32 = v.f32;
+      }
+
+      break;
+    case PWASM_OP_F64_REINTERPRET_I64:
+      {
+        const union {
+          uint32_t i64;
+          float f64;
+        } v = { .i64 = stack->ptr[stack->pos - 1].i64 };
+        stack->ptr[stack->pos - 1].f64 = v.f64;
+      }
+
+      break;
+    default:
+      // log error, return failure
+      pwasm_env_fail(frame.env, "unknown instruction");
+      return false;
+    }
+  }
+
+  // return success (i think?)
+  return true;
+}
+
+/**
+ * world's second shittiest initial interpreter
+ */
+static bool
+pwasm_new_interp_call_func(
+  pwasm_env_t * const env,
+  const pwasm_mod_t * const mod,
+  uint32_t func_ofs
+) {
+  pwasm_stack_t * const stack = env->stack;
+  // will be used for CALL and CALL_INDIRECT
+  // const size_t stack_pos = env->stack->pos;
+
+  // get func parameters and results
+  const pwasm_slice_t params = mod->types[mod->funcs[func_ofs]].params;
+  const pwasm_slice_t results = mod->types[mod->funcs[func_ofs]].results;
+
+  // check stack position (e.g. missing parameters)
+  // (FIXME: do we need this, should it be handled in check?)
+  if (stack->pos < params.len) {
+    // log error, return failure
+    D("missing parameters: stack->pos = %zu, params.len = %zu", stack->pos, params.len);
+    pwasm_env_fail(env, "missing function parameters");
+    return false;
+  }
+
+  // get number of local slots and total frame size
+  const size_t max_locals = mod->codes[func_ofs].max_locals;
+  const size_t frame_size = mod->codes[func_ofs].frame_size;
+  if (max_locals > 0) {
+    // clear local slots
+    memset(stack->ptr + stack->pos, 0, sizeof(pwasm_val_t) * max_locals);
+  }
+
+  // skip past locals
+  stack->pos += max_locals;
+
+  // build interpreter frame
+  pwasm_interp_frame_t frame = {
+    .env = env,
+    .mod = mod,
+    .params = params,
+    .locals = {
+      .ofs = stack->pos - frame_size,
+      .len = frame_size,
+    },
+  };
+
+  // get expr instructions slice
+  const pwasm_slice_t expr = mod->codes[func_ofs].expr;
+
+  const bool ok = pwasm_new_interp_eval_expr(frame, expr);
+  if (!ok) {
+    // return failure
+    return false;
+  }
+
+  // get func results
+  if (frame_size > 0) {
+    // calc dst and src stack positions
+    const size_t dst_pos = frame.locals.ofs;
+    const size_t src_pos = stack->pos - results.len;
+    const size_t num_bytes = sizeof(pwasm_val_t) * results.len;
+
+    // D("stack->pos: old = %zu, new = %zu", stack->pos, dst_pos + results.len);
+    // copy results, update stack position
+    memmove(stack->ptr + dst_pos, stack->ptr + src_pos, num_bytes);
+    stack->pos = dst_pos + results.len;
+  }
+
+  // return success
+  return true;
+}
+
+static bool
+pwasm_new_interp_call(
+  pwasm_env_t * const env,
+  const uint32_t func_id
+) {
+  pwasm_new_interp_t * const interp = env->env_data;
+  const pwasm_vec_t * const funcs_vec = &(interp->funcs);
+  const pwasm_vec_t * const mods_vec = &(interp->mods);
+  const pwasm_new_interp_func_t * const funcs = pwasm_vec_get_data(funcs_vec);
+  const pwasm_new_interp_mod_t * const mods = pwasm_vec_get_data(mods_vec);
+  const size_t num_funcs = pwasm_vec_get_size(funcs_vec);
+  const size_t num_mods = pwasm_vec_get_size(mods_vec);
+
+  // check that func_id is in bounds
+  if (!func_id || func_id > num_funcs) {
+    D("bad func_id: %u", func_id);
+    pwasm_env_fail(env, "function index out of bounds");
+    return false;
+  }
+
+  // get function row
+  const pwasm_new_interp_func_t func = funcs[func_id - 1];
+
+  // check mod_ofs
+  if (func.mod_ofs >= num_mods) {
+    D("bad func mod_ofs: %u", func.mod_ofs);
+    pwasm_env_fail(env, "function mod offset out of bounds");
+    return false;
+  }
+
+  // get mod
+  const pwasm_new_interp_mod_t mod = mods[func.mod_ofs];
+
+  // check func_ofs
+  if (func.func_ofs >= mod.funcs.len) {
+    D("bad func_ofs: %u", func.mod_ofs);
+    pwasm_env_fail(env, "function offset out of bounds");
+    return false;
+  }
+
+  switch(mod.type) {
+  case PWASM_NEW_INTERP_MOD_TYPE_MOD:
+    D("found func, calling it: %u", func_id);
+    return pwasm_new_interp_call_func(env, mod.mod, func.func_ofs);
+  case PWASM_NEW_INTERP_MOD_TYPE_NATIVE:
+    D("found native func, calling it: %u", func_id);
+    const pwasm_native_func_t * const f = mod.native->funcs + func.func_ofs;
+    return f->func(env, mod.native);
+  default:
+    D("func_id %u maps to invalid mod type %u", func_id, mod.type);
+    pwasm_env_fail(env, "invalid function module type");
+    return false;
+  }
+}
+
+static bool
+pwasm_new_interp_call_indirect(
+  const pwasm_interp_frame_t frame,
+  const uint32_t func_ofs
+) {
+  // TODO
+  (void) frame;
+  (void) func_ofs;
+
+  // return failure
+  return false;
+}
+
+//
+// new interpreter callbacks
+//
+
+static bool
+pwasm_new_interp_on_init(
+  pwasm_env_t * const env
+) {
+  return pwasm_new_interp_init(env);
+}
+
+static void
+pwasm_new_interp_on_fini(
+  pwasm_env_t * const env
+) {
+  pwasm_new_interp_fini(env);
+}
+
+static uint32_t
+  pwasm_new_interp_on_add_native(
+  pwasm_env_t * const env,
+  const char * const name,
+  const pwasm_native_t * const mod
+) {
+  return pwasm_new_interp_add_native(env, name, mod);
+}
+
+static uint32_t
+pwasm_new_interp_on_add_mod(
+  pwasm_env_t * const env,
+  const char * const name,
+  const pwasm_mod_t * const mod
+) {
+  return pwasm_new_interp_add_mod(env, name, mod);
+}
+
+static uint32_t
+pwasm_new_interp_on_find_mod(
+  pwasm_env_t * const env,
+  const pwasm_buf_t name
+) {
+  return pwasm_new_interp_find_mod(env, name);
+}
+
+static uint32_t
+pwasm_new_interp_on_find_func(
+  pwasm_env_t * const env,
+  const uint32_t mod_id,
+  const pwasm_buf_t name
+) {
+  return pwasm_new_interp_find_func(env, mod_id, name);
+}
+
+static uint32_t
+pwasm_new_interp_on_find_mem(
+  pwasm_env_t * const env,
+  const uint32_t mod_id,
+  const pwasm_buf_t name
+) {
+  return pwasm_new_interp_find_mem(env, mod_id, name);
+}
+
+static pwasm_env_mem_t *
+pwasm_new_interp_on_get_mem(
+  pwasm_env_t * const env,
+  const uint32_t mem_id
+) {
+  return pwasm_new_interp_get_mem(env, mem_id);
+}
+
+static bool
+pwasm_new_interp_on_mem_load(
+  pwasm_env_t * const env,
+  const pwasm_inst_t in,
+  const uint32_t arg_ofs,
+  pwasm_val_t * const ret_val
+) {
+  return pwasm_new_interp_mem_load(env, in, arg_ofs, ret_val);
+}
+
+static bool
+pwasm_new_interp_on_mem_store(
+  pwasm_env_t * const env,
+  const pwasm_inst_t in,
+  const uint32_t arg_ofs,
+  const pwasm_val_t val
+) {
+  return pwasm_new_interp_mem_store(env, in, arg_ofs, val);
+}
+
+static bool
+pwasm_new_interp_on_mem_size(
+  pwasm_env_t * const env,
+  uint32_t * const ret_val
+) {
+  return pwasm_new_interp_mem_size(env, ret_val);
+}
+
+static bool
+pwasm_new_interp_on_mem_grow(
+  pwasm_env_t * const env,
+  const uint32_t grow,
+  uint32_t * const ret_val
+) {
+  return pwasm_new_interp_mem_grow(env, grow, ret_val);
+}
+
+static bool
+pwasm_new_interp_on_get_elem(
+  pwasm_env_t * const env,
+  const uint32_t table_id,
+  const uint32_t elem_ofs,
+  uint32_t * const ret_val
+) {
+  return pwasm_new_interp_get_elem(env, table_id, elem_ofs, ret_val);
+}
+
+static uint32_t
+pwasm_new_interp_on_find_import(
+  pwasm_env_t * const env,
+  const uint32_t mod_id,
+  const pwasm_import_type_t type,
+  const pwasm_buf_t name
+) {
+  return pwasm_new_interp_find_import(env, mod_id, type, name);
+}
+
+static bool
+pwasm_new_interp_on_get_global(
+  pwasm_env_t * const env,
+  const uint32_t id,
+  pwasm_val_t * const ret_val
+) {
+  return pwasm_new_interp_get_global(env, id, ret_val);
+}
+
+static bool
+pwasm_new_interp_on_set_global(
+  pwasm_env_t * const env,
+  const uint32_t id,
+  const pwasm_val_t val
+) {
+  return pwasm_new_interp_set_global(env, id, val);
+}
+
+static bool
+pwasm_new_interp_on_call(
+  pwasm_env_t * const env,
+  const uint32_t func_id
+) {
+  return pwasm_new_interp_call(env, func_id);
+}
+
+/**
+ * Interpreter environment callbacks.
+ */
+static const pwasm_env_cbs_t
+NEW_PWASM_INTERP_CBS = {
+  .init         = pwasm_new_interp_on_init,
+  .fini         = pwasm_new_interp_on_fini,
+  .add_native   = pwasm_new_interp_on_add_native,
+  .add_mod      = pwasm_new_interp_on_add_mod,
+  .find_mod     = pwasm_new_interp_on_find_mod,
+  .find_func    = pwasm_new_interp_on_find_func,
+  .find_mem     = pwasm_new_interp_on_find_mem,
+  .get_mem      = pwasm_new_interp_on_get_mem,
+  .mem_load     = pwasm_new_interp_on_mem_load,
+  .mem_store    = pwasm_new_interp_on_mem_store,
+  .mem_size     = pwasm_new_interp_on_mem_size,
+  .mem_grow     = pwasm_new_interp_on_mem_grow,
+  .get_elem     = pwasm_new_interp_on_get_elem,
+  .find_import  = pwasm_new_interp_on_find_import,
+  .get_global   = pwasm_new_interp_on_get_global,
+  .set_global   = pwasm_new_interp_on_set_global,
+  .call         = pwasm_new_interp_on_call,
+};
+
+/**
+ * Return new interpreter environment callbacks.
+ */
+const pwasm_env_cbs_t *
+pwasm_new_interpreter_get_cbs(void) {
+  return &NEW_PWASM_INTERP_CBS;
 }

@@ -818,6 +818,22 @@ typedef struct {
   size_t pos;
 } pwasm_stack_t;
 
+/**
+ * Memory instance.
+ */
+typedef struct {
+  pwasm_buf_t buf;
+  pwasm_limits_t limits;
+} pwasm_env_mem_t;
+
+/**
+ * Global instance.
+ */
+typedef struct {
+  pwasm_global_type_t type;
+  pwasm_val_t val;
+} pwasm_env_global_t;
+
 #define PWASM_PEEK(stack, ofs) ((stack)->ptr[(stack)->pos - 1 - (ofs)])
 
 typedef struct pwasm_env_t pwasm_env_t;
@@ -830,7 +846,7 @@ typedef struct {
 
 typedef _Bool (*pwasm_native_func_cb_t)(
   pwasm_env_t *,
-  const pwasm_native_instance_t *
+  const pwasm_native_t *
 );
 
 typedef struct {
@@ -858,6 +874,18 @@ typedef struct {
 } pwasm_native_table_t;
 
 typedef struct {
+  const char * const name;
+  pwasm_buf_t buf;
+  const pwasm_limits_t limits;
+} pwasm_native_mem_t;
+
+typedef struct {
+  const char * const name;
+  pwasm_global_type_t type;
+  pwasm_val_t val;
+} pwasm_native_global_t;
+
+typedef struct {
   pwasm_import_type_t type;
   const char *mod;
   const char *name;
@@ -871,23 +899,14 @@ struct pwasm_native_t {
   const pwasm_native_func_t * const funcs;
 
   const size_t num_mems;
-  pwasm_buf_t * const mems;
+  pwasm_native_mem_t * const mems;
 
   const size_t num_globals;
-  const pwasm_val_t * const globals;
+  const pwasm_native_global_t * const globals;
 
   const size_t num_tables;
   const pwasm_native_table_t * const tables;
 };
-
-/**
- * Memory instance.
- */
-typedef struct {
-  pwasm_buf_t buf;
-  size_t size;
-  const pwasm_limits_t limits;
-} pwasm_env_mem_t;
 
 typedef struct {
   // init env (alloc memory)
@@ -1109,6 +1128,17 @@ uint32_t pwasm_env_find_mem(
 );
 
 /**
+ * Find global in given environment and module and return a handle.
+ *
+ * Returns zero if an error occurred or the global could not be found.
+ */
+uint32_t pwasm_env_find_global(
+  pwasm_env_t *,
+  const uint32_t,
+  const pwasm_buf_t
+);
+
+/**
  * Find table in given environment and module and return a handle.
  *
  * Returns zero if an error occurred or the table could not be found.
@@ -1116,7 +1146,7 @@ uint32_t pwasm_env_find_mem(
 uint32_t pwasm_env_find_table(
   pwasm_env_t *,
   const uint32_t,
-  const uint32_t
+  const pwasm_buf_t
 );
 
 /**
@@ -1244,9 +1274,14 @@ _Bool pwasm_call(
 );
 
 /**
- * Get callbacks for an interpreter environment.
+ * Get callbacks for old interpreter environment.
  */
-const pwasm_env_cbs_t *pwasm_interpreter_get_cbs(void);
+const pwasm_env_cbs_t *pwasm_old_interpreter_get_cbs(void);
+
+/**
+ * Get callbacks for new interpreter environment.
+ */
+const pwasm_env_cbs_t *pwasm_new_interpreter_get_cbs(void);
 
 #ifdef __cplusplus
 };
