@@ -7,8 +7,9 @@ Each entry in this list is prefixed with category tags.
 See the "Tag Definitions" section below for a brief description of each
 tag.
 
-* code, test: add global get/set test
+* code, test: add table tests
 * code, test: add import test
+* code: add global, table, and mem init, call start func
 * code, check: add control stack validation
 * code, check: check `call_immediate` at invocation
 * code, parse: cache control opcode targets at parse time
@@ -59,7 +60,8 @@ Items in this section have been completed.
   `mods` and `funcs` should be `union`s to distinguish between native
   and internal.
 * code, test: test new interpreter
-* code, test: add rest of memory get/set test
+* code, test: add rest of memory get/set test (`tests/wat/03-mem.wat`)
+* code, test: add global get/set test (`tests/wat/04-global.wat`)
 
 ## Tag Definitions
 
