@@ -23,4 +23,6 @@
     (i32.store (local.get $pos) (local.get $val))
     (local.get $val)
   )
+
+  (export "set" (func $set))
 )

@@ -367,6 +367,23 @@ static const uint8_t VEC_WASM[] = {
   0x94, 0x93, 0x0b
 };
 
+// mem.wasm: memory test module with two functions:
+// * mem.set(i32, i32) -> i32
+// * mem.get(i32) -> i32
+//
+// (source: tests/wat/03-mem.wat)
+static const uint8_t MEM_WASM[] = {
+  0x00, 0x61, 0x73, 0x6d, 0x01, 0x00, 0x00, 0x00,
+  0x01, 0x0c, 0x02, 0x60, 0x01, 0x7f, 0x01, 0x7f,
+  0x60, 0x02, 0x7f, 0x7f, 0x01, 0x7f, 0x03, 0x03,
+  0x02, 0x00, 0x01, 0x05, 0x03, 0x01, 0x00, 0x01,
+  0x07, 0x0d, 0x02, 0x03, 0x6d, 0x65, 0x6d, 0x02,
+  0x00, 0x03, 0x67, 0x65, 0x74, 0x00, 0x00, 0x0a,
+  0x15, 0x02, 0x07, 0x00, 0x20, 0x00, 0x28, 0x02,
+  0x00, 0x0b, 0x0b, 0x00, 0x20, 0x00, 0x20, 0x01,
+  0x36, 0x02, 0x00, 0x20, 0x01, 0x0b
+};
+
 static const struct {
   const char * const name;
   const pwasm_buf_t data;
@@ -382,6 +399,9 @@ static const struct {
 }, {
   .name = "vec",
   .data = { VEC_WASM, sizeof(VEC_WASM) },
+}, {
+  .name = "mem",
+  .data = { MEM_WASM, sizeof(MEM_WASM) },
 }};
 
 static const pwasm_val_t
@@ -441,6 +461,32 @@ WASM_TEST_VALS[] = {
 
   // mod: "fib", func: "fib_iterate", test: 2, type: "result", num: 1
   { .i32 = 5 },
+
+  // mod: "mem", func: "set", test: 1, type: "params", num: 2
+  { .i32 = 0 },
+  { .i32 = 3141 },
+
+  // mod: "mem", func: "set", test: 1, type: "result", num: 1
+  { .i32 = 3141 },
+
+  // mod: "mem", func: "set", test: 2, type: "params", num: 2
+  { .i32 = 1 },
+  { .i32 = 5926 },
+
+  // mod: "mem", func: "set", test: 2, type: "result", num: 1
+  { .i32 = 5926 },
+
+  // mod: "mem", func: "get", test: 1, type: "params", num: 1
+  { .i32 = 0 },
+
+  // mod: "mem", func: "get", test: 1, type: "result", num: 1
+  { .i32 = 3141 },
+
+  // mod: "mem", func: "get", test: 2, type: "params", num: 2
+  { .i32 = 1 },
+
+  // mod: "mem", func: "get", test: 2, type: "result", num: 1
+  { .i32 = 5926 },
 };
 
 typedef struct {
@@ -515,6 +561,34 @@ WASM_TEST_CALLS[] = {{
   .func   = "fib_iterate",
   .params = { 18, 1 },
   .result = { 19, 1 },
+  .type   = PWASM_RESULT_TYPE_I32,
+}, {
+  .text   = "mem.set(0, 3141)",
+  .mod    = "mem",
+  .func   = "set",
+  .params = { 20, 2 },
+  .result = { 22, 1 },
+  .type   = PWASM_RESULT_TYPE_I32,
+}, {
+  .text   = "mem.set(1, 5926)",
+  .mod    = "mem",
+  .func   = "set",
+  .params = { 23, 2 },
+  .result = { 25, 1 },
+  .type   = PWASM_RESULT_TYPE_I32,
+}, {
+  .text   = "mem.get(0)",
+  .mod    = "mem",
+  .func   = "get",
+  .params = { 26, 1 },
+  .result = { 27, 1 },
+  .type   = PWASM_RESULT_TYPE_I32,
+}, {
+  .text   = "mem.get(1)",
+  .mod    = "mem",
+  .func   = "get",
+  .params = { 28, 1 },
+  .result = { 29, 1 },
   .type   = PWASM_RESULT_TYPE_I32,
 }};
 
