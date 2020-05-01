@@ -3599,7 +3599,7 @@ pwasm_mod_init_unsafe_on_codes(
     memcpy(tmp, rows + i, num_bytes);
 
     // check maximum offset for this batch, check for error
-    if (funcs_ofs + num_rows >= num_funcs) {
+    if (funcs_ofs + num_rows > num_funcs) {
       pwasm_mod_init_unsafe_on_error("push codes failed: funcs overflow", data);
     }
 
@@ -7182,7 +7182,7 @@ pwasm_interp_call(
 
   // get mod row, check mod type
   const pwasm_interp_row_t mod_row = rows[func_row.func.mod_id - 1];
-  switch(mod_row.type) {
+  switch (mod_row.type) {
   case PWASM_INTERP_ROW_TYPE_MOD:
     D("found func, calling it: %u", func_id);
     return pwasm_interp_call_func(env, mod_row.mod.mod, func_row.func.func_id);
@@ -7766,6 +7766,45 @@ pwasm_new_interp_fini(
  *   return true;
  * }
  */
+static bool
+pwasm_new_interp_push_u32s(
+  pwasm_env_t * const env,
+  const pwasm_slice_t slice
+) {
+  pwasm_new_interp_t * const interp = env->env_data;
+  pwasm_vec_t * const u32s = &(interp->u32s);
+
+  uint32_t ids[PWASM_BATCH_SIZE];
+  size_t num = 0;
+
+  for (size_t i = 0; i < slice.len; i++) {
+    ids[num++] = slice.ofs + i;
+
+    if (num == LEN(ids)) {
+      // clear count
+      num = 0;
+
+      // append results, check for error
+      if (!pwasm_vec_push(u32s, LEN(ids), ids, NULL)) {
+        // log error, return failure
+        pwasm_env_fail(env, "append offsets failed");
+        return false;
+      }
+    }
+  }
+
+  if (num > 0) {
+    // append results, check for error
+    if (!pwasm_vec_push(u32s, num, ids, NULL)) {
+      // log error, return failure
+      pwasm_env_fail(env, "append remaining offsets failed");
+      return false;
+    }
+  }
+
+  // return success
+  return true;
+}
 
 static bool
 pwasm_new_interp_add_native_funcs(
@@ -7777,6 +7816,7 @@ pwasm_new_interp_add_native_funcs(
   pwasm_new_interp_t * const interp = env->env_data;
   pwasm_vec_t * const dst = &(interp->funcs);
   const size_t dst_ofs = pwasm_vec_get_size(dst);
+  const size_t u32s_ofs = pwasm_vec_get_size(&(interp->u32s));
 
   // TODO: add native import functions (do we want this?)
 
@@ -7809,6 +7849,15 @@ pwasm_new_interp_add_native_funcs(
       pwasm_env_fail(env, "append remaining native functions failed");
       return false;
     }
+  }
+
+  // add IDs
+  if (!pwasm_new_interp_push_u32s(env, (pwasm_slice_t) {
+    .ofs = u32s_ofs,
+    .len = mod->num_funcs,
+  })) {
+    // return failure
+    return false;
   }
 
   // populate result
@@ -8036,8 +8085,7 @@ pwasm_new_interp_add_mod_imports(
     }
 
     // add item to results, increment count
-    ids[num_ids] = id;
-    num_ids++;
+    ids[num_ids++] = id;
 
     if (num_ids == LEN(ids)) {
       // clear count
@@ -8080,6 +8128,7 @@ pwasm_new_interp_add_mod_funcs(
 ) {
   pwasm_new_interp_t * const interp = env->env_data;
   pwasm_vec_t * const dst = &(interp->funcs);
+  const size_t funcs_ofs = pwasm_vec_get_size(dst);
 
   // add imported functions, check for error
   pwasm_slice_t imports;
@@ -8116,6 +8165,13 @@ pwasm_new_interp_add_mod_funcs(
       pwasm_env_fail(env, "append remaining functions failed");
       return false;
     }
+  }
+
+  if (!pwasm_new_interp_push_u32s(env, (pwasm_slice_t) {
+    .ofs = funcs_ofs,
+    .len = mod->num_funcs,
+  })) {
+    return false;
   }
 
   // populate result
@@ -8430,36 +8486,36 @@ pwasm_new_interp_find_func(
   }
 
   // get mod
-  const pwasm_new_interp_mod_t * const mod = mods + (mod_id - 1);
+  const pwasm_new_interp_mod_t mod = mods[mod_id - 1];
 
-  switch (mod->type) {
+  switch (mod.type) {
   case PWASM_NEW_INTERP_MOD_TYPE_MOD:
-    for (size_t i = 0; i < mod->mod->num_exports; i++) {
-      const pwasm_export_t row = mod->mod->exports[i];
+    for (size_t i = 0; i < mod.mod->num_exports; i++) {
+      const pwasm_export_t row = mod.mod->exports[i];
 
       if (
         (row.type == PWASM_EXPORT_TYPE_FUNC) &&
         (row.name.len == name.len) &&
-        !memcmp(mod->mod->bytes + row.name.ofs, name.ptr, name.len)
+        !memcmp(mod.mod->bytes + row.name.ofs, name.ptr, name.len)
       ) {
         // return offset + 1 (prevent zero IDs)
-        return mod->funcs.ofs + row.id + 1;
+        return u32s[mod.funcs.ofs + row.id] + 1;
       }
     }
 
     break;
   case PWASM_NEW_INTERP_MOD_TYPE_NATIVE:
-    for (size_t i = 0; i < mod->native->num_funcs; i++) {
-      const pwasm_native_func_t row = mod->native->funcs[i];
+    for (size_t i = 0; i < mod.native->num_funcs; i++) {
+      const pwasm_native_func_t row = mod.native->funcs[i];
       const pwasm_buf_t row_buf = pwasm_buf_str(row.name);
 
       if (
         (row_buf.len == name.len) &&
         !memcmp(row_buf.ptr, name.ptr, name.len)
       ) {
-        D("u32s = %p, mod->funcs.ofs = %zu, i = %zu", (void*) u32s, mod->funcs.ofs, i);
+        D("u32s = %p, mod->funcs.ofs = %zu, i = %zu", (void*) u32s, mod.funcs.ofs, i);
         // return offset + 1 (prevent zero IDs)
-        return mod->funcs.ofs + i + 1;
+        return u32s[mod.funcs.ofs + i] + 1;
       }
     }
 
@@ -10284,7 +10340,7 @@ pwasm_new_interp_call(
     return false;
   }
 
-  // get function row
+  // convert func_id to offset, get function row
   const pwasm_new_interp_func_t func = funcs[func_id - 1];
 
   // check mod_ofs
@@ -10304,7 +10360,7 @@ pwasm_new_interp_call(
     return false;
   }
 
-  switch(mod.type) {
+  switch (mod.type) {
   case PWASM_NEW_INTERP_MOD_TYPE_MOD:
     D("found func, calling it: %u", func_id);
     return pwasm_new_interp_call_func(env, mod.mod, func.func_ofs);
