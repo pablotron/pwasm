@@ -676,7 +676,7 @@ WASM_TEST_CALLS[] = {{
   .text   = "global.i32.get()",
   .mod    = "global",
   .func   = "i32.get",
-  .params = { 31, 1 },
+  .result = { 31, 1 },
   .type   = PWASM_RESULT_TYPE_I32,
 }, {
   .text   = "global.i64.set(31415926535987)",
@@ -688,7 +688,7 @@ WASM_TEST_CALLS[] = {{
   .text   = "global.i64.get()",
   .mod    = "global",
   .func   = "i64.get",
-  .params = { 33, 1 },
+  .result = { 33, 1 },
   .type   = PWASM_RESULT_TYPE_I64,
 }, {
   .text   = "global.f32.set(3.14159)",
@@ -700,7 +700,7 @@ WASM_TEST_CALLS[] = {{
   .text   = "global.f32.get()",
   .mod    = "global",
   .func   = "f32.get",
-  .params = { 35, 1 },
+  .result = { 35, 1 },
   .type   = PWASM_RESULT_TYPE_F32,
 }, {
   .text   = "global.f64.set(2.718281)",
@@ -712,7 +712,7 @@ WASM_TEST_CALLS[] = {{
   .text   = "global.f64.get()",
   .mod    = "global",
   .func   = "f64.get",
-  .params = { 37, 1 },
+  .result = { 37, 1 },
   .type   = PWASM_RESULT_TYPE_F64,
 }};
 

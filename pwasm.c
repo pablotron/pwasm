@@ -4956,6 +4956,59 @@ pwasm_get_mem(
 }
 
 /**
+ * Find global in environment by module name and global name and return
+ * a handle to the global instance.
+ *
+ * Note: This is a convenience wrapper around pwasm_env_get_global().
+ *
+ * Returns 0 if an error occurred.
+ */
+uint32_t pwasm_find_global(
+  pwasm_env_t * const env,
+  const char * const mod,
+  const char * const name
+) {
+  const uint32_t mod_id = pwasm_find_mod(env, mod);
+  return pwasm_env_find_global(env, mod_id, pwasm_buf_str(name));
+}
+
+/**
+ * Find global in environment by module name and global name and return
+ * a pointer to the global instance.
+ *
+ * Note: This is a convenience wrapper around pwasm_env_get_global().
+ *
+ * Returns NULL if an error occurred.
+ */
+bool pwasm_get_global(
+  pwasm_env_t * const env,
+  const char * const mod,
+  const char * const name,
+  pwasm_val_t * const ret
+) {
+  const uint32_t id = pwasm_find_global(env, mod, name);
+  return pwasm_env_get_global(env, id, ret);
+}
+
+/**
+ * Find set value of global in environment by module name and global
+ * name.
+ *
+ * Note: This is a convenience wrapper around pwasm_env_set_global().
+ *
+ * Returns false if an error occurred.
+ */
+bool pwasm_set_global(
+  pwasm_env_t * const env,
+  const char * const mod,
+  const char * const name,
+  const pwasm_val_t val
+) {
+  const uint32_t id = pwasm_find_global(env, mod, name);
+  return pwasm_env_set_global(env, id, val);
+}
+
+/**
  * Friendly wrapper around pwasm_env_call() which accepts the
  * module name and function name as a string instead of a buffer.
  */
@@ -8239,7 +8292,7 @@ pwasm_new_interp_add_mod_globals(
 ) {
   pwasm_new_interp_t * const interp = env->env_data;
   pwasm_vec_t * const dst = &(interp->globals);
-  const size_t globals_ofs = pwasm_vec_get_size(dst); // FIXME: move after imports?
+  const size_t globals_ofs = pwasm_vec_get_size(dst);
   (void) mod_ofs;
 
   // add imported globals, check for error
@@ -8850,6 +8903,7 @@ pwasm_new_interp_check_global(
 
   if (!id || id > num_rows) {
     // log error, return failure
+    D("global index = %u", id);
     pwasm_env_fail(env, "global index out of bounds");
     return false;
   }
@@ -8968,6 +9022,22 @@ pwasm_new_interp_get_end_ofs(
   return 0;
 }
 
+/**
+ * Convert an internal global ID to an externally visible global handle.
+ *
+ * Returns 0 on error.
+ */
+static uint32_t
+pwasm_new_interp_get_global_index(
+  pwasm_env_t * const env,
+  pwasm_new_interp_mod_t * const mod,
+  uint32_t id
+) {
+  pwasm_new_interp_t * const interp = env->env_data;
+  const pwasm_vec_t * const vec = &(interp->u32s);
+  const uint32_t * const u32s = ((uint32_t*) pwasm_vec_get_data(vec)) + mod->globals.ofs;
+  return (id < mod->globals.len) ? u32s[id] + 1 : 0;
+}
 
 // forward references
 static bool pwasm_new_interp_call_func(pwasm_env_t *, pwasm_new_interp_mod_t *, uint32_t);
@@ -9253,7 +9323,7 @@ pwasm_new_interp_eval_expr(
     case PWASM_OP_GLOBAL_GET:
       {
         // get global index
-        const uint32_t id = in.v_index.id;
+        const uint32_t id = pwasm_new_interp_get_global_index(frame.env, frame.mod, in.v_index.id);
 
         // get global value, check for error
         pwasm_val_t val;
@@ -9270,7 +9340,7 @@ pwasm_new_interp_eval_expr(
     case PWASM_OP_GLOBAL_SET:
       {
         // get global index
-        const uint32_t id = in.v_index.id;
+        const uint32_t id = pwasm_new_interp_get_global_index(frame.env, frame.mod, in.v_index.id);
 
         // set global value, check for error
         if (!pwasm_env_set_global(frame.env, id, PWASM_PEEK(stack, 0))) {
@@ -10448,7 +10518,7 @@ pwasm_new_interp_call_func(
   const size_t num_mems = interp_mod->mems.len;
   const uint32_t * const mems = ((uint32_t*) pwasm_vec_get_data(&(interp->u32s))) + interp_mod->mems.ofs;
 
-  D("mems slice = { %zu, %zu }, len = %zu, mems[0] = %u", interp_mod->mems.ofs, interp_mod->mems.len, num_mems, num_mems ? mems[0] : 0);
+  // D("mems slice = { %zu, %zu }, len = %zu, mems[0] = %u", interp_mod->mems.ofs, interp_mod->mems.len, num_mems, num_mems ? mems[0] : 0);
   // build interpreter frame
   pwasm_new_interp_frame_t frame = {
     .env = env,

@@ -1269,6 +1269,50 @@ pwasm_env_mem_t *pwasm_get_mem(
 );
 
 /**
+ * Find global in environment by module name and global name and return
+ * a handle to the global instance.
+ *
+ * Note: This is a convenience wrapper around pwasm_env_get_global().
+ *
+ * Returns 0 if an error occurred.
+ */
+uint32_t pwasm_find_global(
+  pwasm_env_t *,
+  const char *,
+  const char *
+);
+
+/**
+ * Find global in environment by module name and global name and return
+ * a pointer to the global instance.
+ *
+ * Note: This is a convenience wrapper around pwasm_env_get_global().
+ *
+ * Returns NULL if an error occurred.
+ */
+_Bool pwasm_get_global(
+  pwasm_env_t *,
+  const char *,
+  const char *,
+  pwasm_val_t *
+);
+
+/**
+ * Find set value of global in environment by module name and global
+ * name.
+ *
+ * Note: This is a convenience wrapper around pwasm_env_set_global().
+ *
+ * Returns false if an error occurred.
+ */
+_Bool pwasm_set_global(
+  pwasm_env_t *,
+  const char *,
+  const char *,
+  const pwasm_val_t
+);
+
+/**
  * Find and invoke function by module name and function name.
  *
  * Note: This is a convenience wrapper around pwasm_env_call().
