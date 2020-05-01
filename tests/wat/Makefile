@@ -1,4 +1,4 @@
-WASMS=00-module.wasm 01-fib.wasm 02-vec.wasm 03-mem.wasm
+WASMS=00-module.wasm 01-fib.wasm 02-vec.wasm 03-mem.wasm 04-global.wasm
 
 .PHONY=all clean
 
