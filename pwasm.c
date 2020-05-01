@@ -7626,6 +7626,15 @@ typedef struct {
   const size_t size; // size, in bytes
 } pwasm_new_interp_mem_chunk_t;
 
+/*
+ * static void
+ * pwasm_new_interp_dump_mem_chunk(
+ *   const pwasm_new_interp_mem_chunk_t chunk
+ * ) {
+ *   D("{ .mem = %p, .ofs = %zu, .size = %zu }", (void*) chunk.mem, chunk.ofs, chunk.size);
+ * }
+ */
+
 typedef struct {
   // vec of uint64_ts indicating whether elements are set
   pwasm_vec_t mask;
@@ -8660,23 +8669,47 @@ pwasm_new_interp_get_mem(
  * Get the absolute memory offset from the immediate offset and the
  * offset operand.
  */
-static inline pwasm_new_interp_mem_chunk_t
+static bool
 pwasm_new_interp_get_mem_chunk(
   pwasm_env_t * const env,
   const uint32_t mem_id,
   const pwasm_inst_t in,
-  const uint32_t arg_ofs
+  const uint32_t arg_ofs,
+  pwasm_new_interp_mem_chunk_t * const ret
 ) {
   pwasm_env_mem_t * const mem = pwasm_new_interp_get_mem(env, mem_id);
   size_t ofs = in.v_mem.offset + arg_ofs;
   size_t size = pwasm_op_get_num_bits(in.op) / 8;
-  const bool ok = mem && ofs && size && (ofs + size < mem->buf.len);
+  const bool ok = mem && size && (ofs + size < mem->buf.len);
 
-  return (pwasm_new_interp_mem_chunk_t) {
-    .mem  = ok ? mem : NULL,
-    .ofs  = ok ? ofs : 0,
-    .size = ok ? size : 0,
+  if (!ok) {
+    // dissect error
+    if (!mem) {
+      D("mem_id = %u", mem_id);
+      pwasm_env_fail(env, "invalid memory index");
+    } else if (!size) {
+      D("op = %s", pwasm_op_get_name(in.op));
+      pwasm_env_fail(env, "invalid memory instruction");
+    } else {
+      D("ofs = %zu, size = %zu", ofs, size);
+      pwasm_env_fail(env, "invalid memory address");
+    }
+
+    // return failure
+    return false;
+  }
+
+  const pwasm_new_interp_mem_chunk_t tmp = {
+    .mem  = mem,
+    .ofs  = ofs,
+    .size = size,
   };
+
+  // populate result
+  memcpy(ret, &tmp, sizeof(pwasm_new_interp_mem_chunk_t));
+
+  // return success
+  return true;
 }
 
 static bool
@@ -8688,10 +8721,13 @@ pwasm_new_interp_mem_load(
   pwasm_val_t * const ret_val
 ) {
   // get memory chunk, check for error
-  const pwasm_new_interp_mem_chunk_t chunk = pwasm_new_interp_get_mem_chunk(env, mem_id, in, arg_ofs);
-  if (!chunk.size) {
+  pwasm_new_interp_mem_chunk_t chunk;
+  if (!pwasm_new_interp_get_mem_chunk(env, mem_id, in, arg_ofs, &chunk)) {
     return false;
   }
+
+  // pwasm_new_interp_dump_mem_chunk(chunk);
+  // D("load i32 = %u", ((pwasm_val_t*) (chunk.mem->buf.ptr + chunk.ofs))->i32);
 
   // copy to result
   memcpy(ret_val, chunk.mem->buf.ptr + chunk.ofs, chunk.size);
@@ -8709,10 +8745,13 @@ pwasm_new_interp_mem_store(
   const pwasm_val_t val
 ) {
   // get memory chunk, check for error
-  const pwasm_new_interp_mem_chunk_t chunk = pwasm_new_interp_get_mem_chunk(env, mem_id, in, arg_ofs);
-  if (!chunk.size) {
+  pwasm_new_interp_mem_chunk_t chunk;
+  if (!pwasm_new_interp_get_mem_chunk(env, mem_id, in, arg_ofs, &chunk)) {
     return false;
   }
+
+  // pwasm_new_interp_dump_mem_chunk(chunk);
+  // D("store i32 = %u", val.i32);
 
   // copy to result
   memcpy((uint8_t*) chunk.mem->buf.ptr + chunk.ofs, &val, chunk.size);
@@ -9276,8 +9315,8 @@ pwasm_new_interp_eval_expr(
     case PWASM_OP_I64_STORE32:
       {
         // get offset operand and value
-        const uint32_t ofs = stack->ptr[stack->pos - 1].i32;
-        const pwasm_val_t val = stack->ptr[stack->pos - 2];
+        const uint32_t ofs = stack->ptr[stack->pos - 2].i32;
+        const pwasm_val_t val = stack->ptr[stack->pos - 1];
         stack->pos -= 2;
 
         // store value, check for error
@@ -10397,14 +10436,17 @@ pwasm_new_interp_call_func(
   // skip past locals
   stack->pos += max_locals;
 
-  const uint32_t * const u32s = pwasm_vec_get_data(&(interp->u32s));
+  // get mems count and pointer in this module
+  const size_t num_mems = interp_mod->mems.len;
+  const uint32_t * const mems = ((uint32_t*) pwasm_vec_get_data(&(interp->u32s))) + interp_mod->mems.ofs;
 
+  D("mems slice = { %zu, %zu }, len = %zu, mems[0] = %u", interp_mod->mems.ofs, interp_mod->mems.len, num_mems, num_mems ? mems[0] : 0);
   // build interpreter frame
   pwasm_new_interp_frame_t frame = {
     .env = env,
     .mod = interp_mod,
     // FIXME: is this right?
-    .mem_id = interp_mod->mems.len ? u32s[interp_mod->mems.ofs] : 0,
+    .mem_id = num_mems ? mems[0] : 0,
     .params = params,
     .locals = {
       .ofs = stack->pos - frame_size,

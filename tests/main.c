@@ -471,7 +471,7 @@ WASM_TEST_VALS[] = {
   { .i32 = 3141 },
 
   // mod: "mem", func: "set", test: 2, type: "params", num: 2
-  { .i32 = 1 },
+  { .i32 = 4 },
   { .i32 = 5926 },
 
   // mod: "mem", func: "set", test: 2, type: "result", num: 1
@@ -483,8 +483,8 @@ WASM_TEST_VALS[] = {
   // mod: "mem", func: "get", test: 1, type: "result", num: 1
   { .i32 = 3141 },
 
-  // mod: "mem", func: "get", test: 2, type: "params", num: 2
-  { .i32 = 1 },
+  // mod: "mem", func: "get", test: 2, type: "params", num: 1
+  { .i32 = 4 },
 
   // mod: "mem", func: "get", test: 2, type: "result", num: 1
   { .i32 = 5926 },
@@ -571,7 +571,7 @@ WASM_TEST_CALLS[] = {{
   .result = { 22, 1 },
   .type   = PWASM_RESULT_TYPE_I32,
 }, {
-  .text   = "mem.set(1, 5926)",
+  .text   = "mem.set(4, 5926)",
   .mod    = "mem",
   .func   = "set",
   .params = { 23, 2 },
@@ -585,7 +585,7 @@ WASM_TEST_CALLS[] = {{
   .result = { 27, 1 },
   .type   = PWASM_RESULT_TYPE_I32,
 }, {
-  .text   = "mem.get(1)",
+  .text   = "mem.get(4)",
   .mod    = "mem",
   .func   = "get",
   .params = { 28, 1 },
