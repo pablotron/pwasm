@@ -66,3 +66,42 @@ cli_read_file(
     .len = len,
   };
 }
+
+/**
+ * Escaped UTF-8 data and pass it to given callback.
+ */
+void cli_write_utf8(
+  const pwasm_mod_t * const mod,
+  const pwasm_slice_t slice,
+  void (*on_data)(const pwasm_buf_t, void *),
+  void *data
+) {
+  // FIXME: escape
+  const pwasm_buf_t buf = { mod->bytes + slice.ofs, slice.len };
+  on_data(buf, data);
+}
+
+void cli_with_mod(
+  pwasm_mem_ctx_t * const mem_ctx,
+  const char * const path,
+  void (*on_mod)(const pwasm_mod_t *, void *),
+  void *data
+) {
+  // read file data
+  pwasm_buf_t buf = cli_read_file(mem_ctx, path);
+
+  // parse mod, check for error
+  pwasm_mod_t mod;
+  if (!pwasm_mod_init(mem_ctx, &mod, buf)) {
+    errx(EXIT_FAILURE, "%s: pwasm_mod_init() failed", path);
+  }
+
+  // write module to output
+  on_mod(&mod, data);
+
+  // free mod
+  pwasm_mod_fini(&mod);
+
+  // free file data
+  pwasm_realloc(mem_ctx, (void*) buf.ptr, 0);
+}

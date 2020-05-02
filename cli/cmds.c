@@ -17,8 +17,18 @@ static const cli_cmd_t CMDS[] = {{
 }, {
   .name = "wat",
   .tip  = "Convert one or more WASM files to WAT files.",
-  .help  = "Convert one or more WASM files to WAT files.",
+  .help = "Convert one or more WASM files to WAT files.",
   .func = cmd_wat,
+}, {
+  .name = "list-custom",
+  .tip  = "List custom sections in WASM file.",
+  .help = "List custom sections in WASM file.",
+  .func = cmd_list_custom,
+}, {
+  .name = "cat-custom",
+  .tip  = "Extract custom section from WASM file.",
+  .help = "Extract custom section from WASM file.",
+  .func = cmd_cat_custom,
 }};
 
 const cli_cmd_t *cli_get_cmds(

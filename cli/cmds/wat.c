@@ -2,63 +2,25 @@
 #include <stdlib.h> // size_t
 #include <stdio.h> // fopen(), printf()
 #include <err.h> // err()
+#include "../utils.h" // cli_read_file()
 #include "../../pwasm.h" // pwasm_mod_init(), etc
 
-static pwasm_buf_t
-read_file(
-  pwasm_mem_ctx_t * const mem_ctx,
-  const char * const path
+static void
+wat_write_utf8_on_data(
+  const pwasm_buf_t buf,
+  void *data
 ) {
-  // open file, check for error
-  FILE *fh = fopen(path, "rb");
-  if (!fh) {
-    // exit with error
-    err(EXIT_FAILURE, "fopen(\"%s\")", path);
-  }
+  FILE *io = data;
+  fwrite(buf.ptr, buf.len, 1, io);
+}
 
-  // seek to end, check for error
-  if (fseek(fh, 0, SEEK_END)) {
-    // exit with error
-    err(EXIT_FAILURE, "fseek()");
-  }
-
-  // get length, check for error
-  long len = ftell(fh);
-  if (len < 0) {
-    // exit with error
-    err(EXIT_FAILURE, "ftell()");
-  }
-
-  // seek to start, check for error
-  if (fseek(fh, 0, SEEK_SET)) {
-    // exit with error
-    err(EXIT_FAILURE, "fseek()");
-  }
-
-  // alloc memory, check for error
-  void * const mem = pwasm_realloc(mem_ctx, NULL, len);
-  if (!mem) {
-    // exit with error
-    err(EXIT_FAILURE, "malloc(%zu)", len);
-  }
-
-  // read file
-  if (!fread(mem, len, 1, fh)) {
-    // exit with error
-    err(EXIT_FAILURE, "fread()");
-  }
-
-  // close file, check for error
-  if (fclose(fh)) {
-    // log error, continue
-    warn("fclose()");
-  }
-
-  // return result
-  return (pwasm_buf_t) {
-    .ptr = mem,
-    .len = len,
-  };
+static void
+wat_write_utf8(
+  FILE * const io,
+  const pwasm_mod_t * const mod,
+  const pwasm_slice_t slice
+) {
+  cli_write_utf8(mod, slice, wat_write_utf8_on_data, io);
 }
 
 static void
@@ -97,16 +59,6 @@ wat_write_global_type(
   } else {
     fputs(val_type_name, io);
   }
-}
-
-static void
-wat_write_utf8(
-  FILE * const io,
-  const pwasm_mod_t * const mod,
-  const pwasm_slice_t slice
-) {
-  // FIXME: escape
-  fwrite(mod->bytes + slice.ofs, slice.len, 1, io);
 }
 
 static void
@@ -437,7 +389,7 @@ wat_convert(
   const char * const path
 ) {
   // read file data
-  pwasm_buf_t buf = read_file(mem_ctx, path);
+  pwasm_buf_t buf = cli_read_file(mem_ctx, path);
 
   // parse mod, check for error
   pwasm_mod_t mod;
