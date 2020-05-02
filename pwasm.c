@@ -516,18 +516,21 @@ pwasm_op_get_name(
   return (op < 0x100) ? PWASM_OPS[op].name : "invalid opcode";
 }
 
+/**
+ * Get immediate type for opcode.
+ */
+pwasm_imm_t
+pwasm_op_get_imm(
+  const pwasm_op_t op
+) {
+  return PWASM_OPS[op].imm;
+}
+
 static inline bool
 pwasm_op_is_valid(
   const uint8_t byte
 ) {
   return PWASM_OPS[byte].is_valid;
-}
-
-static inline pwasm_imm_t
-pwasm_op_get_imm(
-  const pwasm_op_t op
-) {
-  return PWASM_OPS[op].imm;
 }
 
 static inline bool

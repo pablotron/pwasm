@@ -22,11 +22,9 @@ tag.
 * code, cleanup: consider calloc() for memory init (zero mem, bounds check)
 * code, test: check uses of realloc() for overflow (security)
 * cli: add `dump` command (e.g. `objdump` to JSON)
-* cli: add `disasm` command (dump to `wat`?)
 * test: add tests for all opcodes
 * test: add tests for all module sections
 * build: add meson support
-* build, test: add test suite
 * build, test: add clang static analysis support
 * build: build dynamic library
 * doc: add user guide (`docs/` via `mkdocs`?)
@@ -38,12 +36,16 @@ tag.
 * ci, web: regenerate api docs for all tags and master on push (e.g. `pablotron.github.io/pwasm/$TAG/docs/api/`, `docs.pwasm.org/$TAG/api/`, etc)
 * ci, web: regenerate sites for all tags and master on push
 
+## In Progress
+* cli: add `wat` command (added `cli/cmd/wat.c`)
+* build, test: add test suite (under `cli/tests/*.c`)
+
 ## Done
 
 Items in this section have been completed.
 
 * refactor examples (added `examples/`)
-* add interpreter (mostly done)
+* add interpreter
 * add generic vec(u32) (added `u32s` to `pwasm_mod_t` and builder)
 * add function code parsing (done)
 * limit elements to const ops (and globals, in `mod_check_const_expr`)

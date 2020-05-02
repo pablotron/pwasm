@@ -17,5 +17,6 @@ const cli_cmd_t *cli_get_cmds(size_t *);
 // commands
 int cmd_help(const int argc, const char **);
 int cmd_test(const int argc, const char **);
+int cmd_wat(const int argc, const char **);
 
 #endif /* CLI_CMDS_H */

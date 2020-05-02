@@ -385,11 +385,7 @@ PWASM_OP_DEFS
 #undef PWASM_OP_RESERVED
 
 const char *pwasm_op_get_name(const pwasm_op_t);
-
-typedef struct {
-  pwasm_buf_t buf;
-} pwasm_expr_t;
-
+pwasm_imm_t pwasm_op_get_imm(const pwasm_op_t);
 
 typedef struct {
   uint32_t align;

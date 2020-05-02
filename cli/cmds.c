@@ -11,9 +11,14 @@ static const cli_cmd_t CMDS[] = {{
   .func = cmd_help,
 }, {
   .name = "test",
-  .tip  = "Run test.",
-  .help = "Show help.",
+  .tip  = "Run tests.",
+  .help = "Run tests.",
   .func = cmd_test,
+}, {
+  .name = "wat",
+  .tip  = "Convert one or more WASM files to WAT files.",
+  .help  = "Convert one or more WASM files to WAT files.",
+  .func = cmd_wat,
 }};
 
 const cli_cmd_t *cli_get_cmds(
