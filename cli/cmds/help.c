@@ -3,7 +3,8 @@
 #include "../cmds.h" // cli_cmd_t, cli_get_cmds()
 
 static const char USAGE[] =
-  "Usage: %s <command> [args]\n"
+  "Usage:\n"
+  "  %s <command> [args]\n"
   "\n"
   "Commands:\n";
 
@@ -34,7 +35,7 @@ static int list(const int argc, const char **argv) {
   printf(USAGE, argv[0]);
   for (size_t i = 0; i < num_cmds; i++) {
     // print command summary
-    printf("%s: %s\n", cmds[i].name, cmds[i].tip);
+    printf("  %s: %s\n", cmds[i].name, cmds[i].tip);
   }
 
   return 0;

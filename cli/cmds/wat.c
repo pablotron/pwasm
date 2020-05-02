@@ -378,6 +378,46 @@ wat_write_funcs(
   }
 }
 
+static const char *
+wat_get_export_type_name(
+  const pwasm_export_type_t type
+) {
+  switch (type) {
+  case PWASM_EXPORT_TYPE_FUNC: return "func";
+  case PWASM_EXPORT_TYPE_GLOBAL: return "global";
+  case PWASM_EXPORT_TYPE_MEM: return "memory";
+  case PWASM_EXPORT_TYPE_TABLE: return "table";
+  default:
+    errx(EXIT_FAILURE, "unkown export type: %u", type);
+  }
+}
+
+static void
+wat_write_exports(
+  FILE * const io,
+  const pwasm_mod_t * const mod
+) {
+  for (size_t i = 0; i < mod->num_exports; i++) {
+    const pwasm_export_t export = mod->exports[i];
+    const char * const type_name = wat_get_export_type_name(export.type);
+
+    // write export prefix
+    wat_indent(io, 1);
+    fputs("(export ", io);
+
+    // write name
+    fputc('"', io);
+    wat_write_utf8(io, mod, export.name);
+    fputc('"', io);
+
+    // write export descriptor
+    fprintf(io, " (%s $%c%u)", type_name, type_name[0], export.id);
+
+    // write export prefix
+    fputc(')', io);
+  }
+}
+
 static void
 wat_write_mod(
   FILE * const io,
@@ -386,6 +426,7 @@ wat_write_mod(
   fputs("(module", io);
   wat_write_imports(io, mod);
   wat_write_funcs(io, mod);
+  wat_write_exports(io, mod);
   fputs(")\n", io);
 }
 
