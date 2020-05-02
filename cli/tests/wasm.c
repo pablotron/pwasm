@@ -38,7 +38,7 @@ static const uint8_t PYTHAG_WASM[] = {
 // - fib_recurse(i32) -> i32
 // - fib_iterate(i32) -> i32
 //
-// (source: tests/wat/01-fib.wat)
+// (source: data/wat/01-fib.wat)
 static const uint8_t FIB_WASM[] = {
   0x00, 0x61, 0x73, 0x6d, 0x01, 0x00, 0x00, 0x00,
   0x01, 0x06, 0x01, 0x60, 0x01, 0x7f, 0x01, 0x7f,
@@ -63,7 +63,7 @@ static const uint8_t FIB_WASM[] = {
 // fib.wasm: test module with several vector functions and a memory
 // export.
 //
-// (source: tests/wat/02-vec.wat)
+// (source: data/wat/02-vec.wat)
 static const uint8_t VEC_WASM[] = {
   0x00, 0x61, 0x73, 0x6d, 0x01, 0x00, 0x00, 0x00,
   0x01, 0x35, 0x08, 0x60, 0x03, 0x7f, 0x7f, 0x7f,
@@ -187,7 +187,7 @@ static const uint8_t VEC_WASM[] = {
 // * set(i32, i32) -> i32
 // * get(i32) -> i32
 //
-// (source: tests/wat/03-mem.wat)
+// (source: data/wat/03-mem.wat)
 static const uint8_t MEM_WASM[] = {
   0x00, 0x61, 0x73, 0x6d, 0x01, 0x00, 0x00, 0x00,
   0x01, 0x0c, 0x02, 0x60, 0x01, 0x7f, 0x01, 0x7f,
@@ -213,7 +213,7 @@ static const uint8_t MEM_WASM[] = {
 // * f64.get() -> f64
 // * f64.set(f64)
 //
-// (source: tests/wat/04-global.wat)
+// (source: data/wat/04-global.wat)
 static const uint8_t GLOBAL_WASM[] = {
   0x00, 0x61, 0x73, 0x6d, 0x01, 0x00, 0x00, 0x00,
   0x01, 0x21, 0x08, 0x60, 0x00, 0x01, 0x7f, 0x60,
