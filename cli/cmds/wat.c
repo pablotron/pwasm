@@ -40,9 +40,9 @@ wat_write_limits(
   const pwasm_limits_t limits
 ) {
   if (limits.has_max) {
-    fprintf(io, "%u %u", limits.min, limits.max);
+    fprintf(io, " %u %u", limits.min, limits.max);
   } else {
-    fprintf(io, "%u", limits.min);
+    fprintf(io, " %u", limits.min);
   }
 }
 
@@ -179,6 +179,22 @@ wat_write_imports(
   for (size_t i = 0; i < mod->num_imports; i++) {
     const pwasm_import_t import = mod->imports[i];
     wat_write_import(io, mod, sums[import.type]++, import);
+  }
+}
+
+static void
+wat_write_mems(
+  FILE * const io,
+  const pwasm_mod_t * const mod
+) {
+  for (size_t i = 0; i < mod->num_mems; i++) {
+    const pwasm_limits_t mem = mod->mems[i];
+    const size_t id = mod->num_import_types[PWASM_IMPORT_TYPE_MEM] + i;
+
+    wat_indent(io, 1);
+    fprintf(io, "(memory $m%zu", id);
+    wat_write_limits(io, mem);
+    fputc(')', io);
   }
 }
 
@@ -377,6 +393,7 @@ wat_write_mod(
 ) {
   fputs("(module", io);
   wat_write_imports(io, mod);
+  wat_write_mems(io, mod);
   wat_write_funcs(io, mod);
   wat_write_exports(io, mod);
   fputs(")\n", io);
