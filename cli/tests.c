@@ -1,6 +1,6 @@
 #include <stdlib.h>
 #include <string.h> // strlen()
-#include "cli-tests.h"
+#include "tests.h"
 
 static const cli_test_t TESTS[] = {{
   .suite  = "cli",

@@ -21,12 +21,8 @@ tag.
 * code, cleanup: remove old interpreter
 * code, cleanup: consider calloc() for memory init (zero mem, bounds check)
 * code, test: check uses of realloc() for overflow (security)
-* cli: add command line tool
-* cli, doc: add `help` command
-* cli, test: add `test` command (e.g. `test foo-bar`, `test all`, etc)
 * cli: add `dump` command (e.g. `objdump` to JSON)
 * cli: add `disasm` command (dump to `wat`?)
-* test: refactor tests (add `tests/`)
 * test: add tests for all opcodes
 * test: add tests for all module sections
 * build: add meson support
@@ -62,6 +58,10 @@ Items in this section have been completed.
 * code, test: test new interpreter
 * code, test: add rest of memory get/set test (`tests/wat/03-mem.wat`)
 * code, test: add global get/set test (`tests/wat/04-global.wat`)
+* cli: add command line tool (added `cli/`)
+* cli, doc: add `help` command (added `cli/cmds/help.c`)
+* cli, test: add `test` command (e.g. `test foo-bar`, `test all`, etc) (added `cli/cmds/test.c`)
+* test: refactor tests (added `cli/tests/`)
 
 ## Tag Definitions
 

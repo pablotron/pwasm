@@ -1,7 +1,7 @@
 #include <stdlib.h> // size_t
 #include <stdio.h> // fprintf()
 #include <string.h> // strlen()
-#include "cli.h"
+#include "cmds.h"
 
 // full list of commands
 static const cli_cmd_t CMDS[] = {{

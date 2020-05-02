@@ -1,6 +1,6 @@
 #include <stdlib.h> // size_t
 #include <stdio.h> // printf()
-#include "cli.h" // cli_cmd_t, cli_get_cmds()
+#include "../cmds.h" // cli_cmd_t, cli_get_cmds()
 
 static const char USAGE[] =
   "Usage: %s <command> [args]\n"

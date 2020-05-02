@@ -6,9 +6,9 @@ CFLAGS=-W -Wall -Wextra -Werror -std=c11 -pedantic -g -pg -DPWASM_DEBUG
 LIBS=-lm
 APP=pwasm
 # OBJS=pwasm.o tests/main.o tests/mod-tests.o tests/func-tests.o
-OBJS=pwasm.o cli/main.o cli/cli-cmds.o cli/cli-tests.o \
-     cli/cmd-help.o cli/cmd-test.o cli/test-init.o \
-     cli/test-native.o cli/test-wasm.o cli/test-cli.o
+OBJS=pwasm.o cli/main.o cli/cmds.o cli/tests.o \
+     cli/cmds/help.o cli/cmds/test.o cli/tests/init.o \
+     cli/tests/native.o cli/tests/wasm.o cli/tests/cli.o
 
 .PHONY=all clean
 

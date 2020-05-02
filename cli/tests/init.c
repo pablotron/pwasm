@@ -1,7 +1,7 @@
 #include <stdbool.h> // bool
 #include <stdint.h> // size_t
-#include "cli-tests.h"
-#include "../pwasm.h"
+#include "../tests.h"
+#include "../../pwasm.h"
 
 #define LEN(ary) (sizeof(ary) / sizeof(ary[0]))
 

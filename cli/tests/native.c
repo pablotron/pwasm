@@ -2,8 +2,8 @@
 #include <string.h> // memcpy()
 #include <stdio.h> // snprintf()
 #include <float.h> // FLT_EPSILON, DBL_EPSILON
-#include "cli-tests.h"
-#include "../pwasm.h"
+#include "../tests.h"
+#include "../../pwasm.h"
 
 #define LEN(ary) (sizeof(ary) / sizeof(ary[0]))
 

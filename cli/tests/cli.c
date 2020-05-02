@@ -1,5 +1,4 @@
-#include "cli-tests.h"
-#include "../pwasm.h"
+#include "../tests.h"
 
 void test_cli_null(
   cli_test_ctx_t * const test_ctx,

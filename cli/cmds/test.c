@@ -1,8 +1,8 @@
 #include <stdlib.h> // size_t
 #include <stdio.h> // fprintf()
 #include <err.h> // errx
-#include "cli.h" // cli_cmd_t, cli_get_cmds()
-#include "cli-tests.h"
+#include "../cmds.h" // cli_cmd_t, cli_get_cmds()
+#include "../tests.h"
 
 typedef struct {
   FILE *io;
