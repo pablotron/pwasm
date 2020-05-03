@@ -7,10 +7,8 @@ Each entry in this list is prefixed with category tags.
 See the "Tag Definitions" section below for a brief description of each
 tag.
 
-* [ ] code, cli: `wat`: add `tables`
-* [ ] code, cli: `wat`: add `start`
-* [ ] code, cli: `wat`: add `elem`
-* [ ] code, cli: `wat`: add `data`
+* [ ] code, cli: `wat`: add `br_table` immediate
+* [ ] code, cli: `wat`: add `call_indirect` immediate
 * [ ] code, test: add table tests
 * [ ] code, test: add import test
 * [ ] code: add global, table, and mem init, call start func
@@ -69,6 +67,10 @@ Items in this section have been completed.
 * [x] cli, test: add `test` command (e.g. `test foo-bar`, `test all`,
   etc) (added `cli/cmds/test.c`)
 * [x] test: refactor tests (added `cli/tests/`)
+* [x] code, cli: `wat`: add `tables`
+* [x] code, cli: `wat`: add `start`
+* [x] code, cli: `wat`: add `elem`
+* [x] code, cli: `wat`: add `data`
 
 ## Tag Definitions
 
