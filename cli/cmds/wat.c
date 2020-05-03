@@ -88,7 +88,7 @@ wat_write_value_types(
 }
 
 static void
-wat_write_import_type(
+wat_write_type(
   FILE * const io,
   const pwasm_mod_t * const mod,
   const pwasm_type_t type
@@ -146,7 +146,7 @@ wat_write_import(
 
   switch (import.type) {
   case PWASM_IMPORT_TYPE_FUNC:
-    wat_write_import_type(io, mod, mod->types[import.func]);
+    wat_write_type(io, mod, mod->types[import.func]);
     break;
   case PWASM_IMPORT_TYPE_TABLE:
     wat_write_limits(io, import.table.limits);
@@ -202,7 +202,7 @@ wat_get_inst_index_prefix(
   switch (in.op) {
   case PWASM_OP_BR:
   case PWASM_OP_BR_IF:
-    // TODO (for now, use literal)
+    // FIXME: add labels?
     return "";
   case PWASM_OP_LOCAL_GET:
   case PWASM_OP_LOCAL_SET:
@@ -266,10 +266,15 @@ wat_write_inst_imm(
     fprintf(io, " %f", in.v_f64.val);
     break;
   case PWASM_IMM_BR_TABLE:
-    // TODO
+    for (size_t i = 0; i < in.v_br_table.labels.slice.len; i++) {
+      // print branch target
+      fprintf(io, " %u", mod->u32s[in.v_br_table.labels.slice.ofs + i]);
+    }
+
     break;
   case PWASM_IMM_CALL_INDIRECT:
-    // TODO
+    // write indirect call type
+    wat_write_type(io, mod, mod->types[in.v_index.id]);
     break;
   default:
     errx(EXIT_FAILURE, "Unknown instruction immediate type: %u", imm);
