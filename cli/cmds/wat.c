@@ -233,6 +233,10 @@ wat_write_inst_imm(
   case PWASM_IMM_NONE:
     // do nothing
     break;
+  case PWASM_IMM_BLOCK:
+    // write block result type
+    fprintf(io, " (result %s)", pwasm_result_type_get_name(in.v_block.type));
+    break;
   case PWASM_IMM_INDEX:
     // write index
     fprintf(io, " %s%u", wat_get_inst_index_prefix(in), in.v_index.id);
@@ -261,9 +265,14 @@ wat_write_inst_imm(
   case PWASM_IMM_F64_CONST:
     fprintf(io, " %f", in.v_f64.val);
     break;
-  default:
-    // TODO: add remaining immediates
+  case PWASM_IMM_BR_TABLE:
+    // TODO
     break;
+  case PWASM_IMM_CALL_INDIRECT:
+    // TODO
+    break;
+  default:
+    errx(EXIT_FAILURE, "Unknown instruction immediate type: %u", imm);
   }
 }
 
@@ -374,14 +383,39 @@ wat_write_funcs(
   }
 }
 
+static const char *
+wat_get_table_type_name(
+  const uint32_t type
+) {
+  if (type == 0x70) {
+    return "funcref";
+  } else {
+    errx(EXIT_FAILURE, "Unknown table type: %u", type);
+  }
+}
+
 static void
 wat_write_tables(
   FILE * const io,
   const pwasm_mod_t * const mod
 ) {
-  (void) mod;
-  wat_indent(io, 1);
-  fputs(";; TODO: tables\n", io);
+  for (size_t i = 0; i < mod->num_tables; i++) {
+    // get table and ID
+    const pwasm_table_t table = mod->tables[i];
+    const size_t id = mod->num_import_types[PWASM_IMPORT_TYPE_TABLE] + i;
+
+    // write prefix
+    wat_indent(io, 1);
+    fprintf(io, "(table $t%zu", id);
+
+    // write limits and type
+    wat_write_limits(io, table.limits);
+    fputc(' ', io);
+    fputs(wat_get_table_type_name(table.elem_type), io);
+
+    // write suffix
+    fputc(')', io);
+  }
 }
 
 static void
@@ -389,9 +423,10 @@ wat_write_start(
   FILE * const io,
   const pwasm_mod_t * const mod
 ) {
-  (void) mod;
-  wat_indent(io, 1);
-  fputs(";; TODO: start\n", io);
+  if (mod->has_start) {
+    wat_indent(io, 1);
+    fprintf(io, "(start $f%u)", mod->start);
+  }
 }
 
 static void
