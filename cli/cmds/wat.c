@@ -451,6 +451,41 @@ wat_write_segments(
 }
 
 static void
+wat_write_elems(
+  FILE * const io,
+  const pwasm_mod_t * const mod
+) {
+  for (size_t i = 0; i < mod->num_segments; i++) {
+    // get element
+    const pwasm_elem_t elem = mod->elems[i];
+
+    // write prefix
+    wat_indent(io, 1);
+    fputs("(elem", io);
+
+    if (elem.table_id) {
+      // append table ID
+      fprintf(io, " $t%u", elem.table_id);
+    }
+
+    if (elem.expr.len > 0) {
+      // append offset
+      fputs(" (offset ", io);
+      wat_write_expr(io, mod, elem.expr, 0);
+      fputc(')', io);
+    }
+
+    // write func IDs
+    for (size_t j = 0; j < elem.funcs.len; j++) {
+      fprintf(io, " $f%u", mod->u32s[elem.funcs.ofs + j]);
+    }
+
+    // write suffix
+    fputc(')', io);
+  }
+}
+
+static void
 cmd_wat_on_mod(
   const pwasm_mod_t * const mod,
   void *data
@@ -469,6 +504,7 @@ cmd_wat_on_mod(
   wat_write_start(io, mod);
   wat_write_exports(io, mod);
   wat_write_segments(io, mod);
+  wat_write_elems(io, mod);
 
   // write mod footer
   fputs(")\n", io);
