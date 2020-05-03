@@ -10,6 +10,7 @@ tag.
 * [ ] code, cli: `wat`: fix alignment
 * [ ] code, test: add table tests
 * [ ] code, test: add import test
+* [ ] code, test: add wat2wasm round-trip tests
 * [ ] code: add global, table, and mem init, call start func
 * [ ] code, check: add control stack validation
 * [ ] code, check: check `call_immediate` at invocation
