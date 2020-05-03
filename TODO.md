@@ -7,7 +7,7 @@ Each entry in this list is prefixed with category tags.
 See the "Tag Definitions" section below for a brief description of each
 tag.
 
-* [ ] code, cli: `wat`: support `if`, `block`, `loop`, etc
+* [ ] code, cli: `wat`: fix alignment
 * [ ] code, test: add table tests
 * [ ] code, test: add import test
 * [ ] code: add global, table, and mem init, call start func
@@ -72,6 +72,7 @@ Items in this section have been completed.
 * [x] code, cli: `wat`: add `data`
 * [x] code, cli: `wat`: add `br_table` immediate
 * [x] code, cli: `wat`: add `call_indirect` immediate
+* [x] code, cli: `wat`: support `if`, `block`, `loop`, etc
 
 ## Tag Definitions
 

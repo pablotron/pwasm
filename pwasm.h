@@ -518,6 +518,9 @@ _Bool pwasm_vec_fini(pwasm_vec_t *);
 
 size_t pwasm_vec_get_size(const pwasm_vec_t *);
 const void *pwasm_vec_get_data(const pwasm_vec_t *);
+_Bool pwasm_vec_push(pwasm_vec_t * const, size_t, const void *, size_t *);
+_Bool pwasm_vec_pop(pwasm_vec_t *, void *);
+void pwasm_vec_clear(pwasm_vec_t *);
 
 typedef struct {
   pwasm_section_type_t type;

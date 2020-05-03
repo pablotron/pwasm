@@ -2787,6 +2787,36 @@ pwasm_vec_push(
   return true;
 }
 
+void
+pwasm_vec_clear(
+  pwasm_vec_t * const vec
+) {
+  vec->num_rows = 0;
+}
+
+bool
+pwasm_vec_pop(
+  pwasm_vec_t * const vec,
+  void * const dst
+) {
+  // check row count
+  if (!vec->num_rows) {
+    // return error
+    return false;
+  }
+
+  if (dst) {
+    // copy tail to destination
+    uint8_t * const src = vec->rows + vec->stride * (vec->num_rows - 1);
+    memcpy(dst, src, vec->stride);
+  }
+
+  // decriment row count, return success
+  vec->num_rows--;
+  return true;
+}
+
+
 #define BUILDER_VECS \
   BUILDER_VEC(u32, uint32_t, dummy) \
   BUILDER_VEC(section, uint32_t, u32) \
