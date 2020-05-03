@@ -7,6 +7,10 @@ Each entry in this list is prefixed with category tags.
 See the "Tag Definitions" section below for a brief description of each
 tag.
 
+* [ ] code, cli: `wat`: add `tables`
+* [ ] code, cli: `wat`: add `start`
+* [ ] code, cli: `wat`: add `elem`
+* [ ] code, cli: `wat`: add `data`
 * [ ] code, test: add table tests
 * [ ] code, test: add import test
 * [ ] code: add global, table, and mem init, call start func

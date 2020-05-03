@@ -28,9 +28,13 @@ wat_indent(
   FILE * const io,
   const size_t depth
 ) {
-  fputs("\n", io);
-  for (size_t i = 0; i < depth; i++) {
-    fputs("  ", io);
+  if (depth > 0) {
+    fputs("\n", io);
+    for (size_t i = 0; i < depth; i++) {
+      fputs("  ", io);
+    }
+  } else {
+    fputc(' ', io);
   }
 }
 
@@ -114,13 +118,6 @@ wat_write_func_type(
   wat_write_value_types(io, mod, "result", type.results);
 }
 
-static const char *IMPORTS[] = {
-  "func",
-  "table",
-  "memory",
-  "global",
-};
-
 static void
 wat_write_import(
   FILE * const io,
@@ -128,7 +125,7 @@ wat_write_import(
   const size_t id,
   const pwasm_import_t import
 ) {
-  const char * const type_name = IMPORTS[import.type];
+  const char * const type_name = pwasm_import_type_get_name(import.type);
 
   // write import prefix
   wat_indent(io, 1);
@@ -196,53 +193,6 @@ wat_write_mems(
     fprintf(io, "(memory $m%zu", id);
     wat_write_limits(io, mem);
     fputc(')', io);
-  }
-}
-
-static void
-wat_write_globals(
-  FILE * const io,
-  const pwasm_mod_t * const mod
-) {
-  for (size_t i = 0; i < mod->num_globals; i++) {
-    const pwasm_global_t global = mod->globals[i];
-    const size_t id = mod->num_import_types[PWASM_IMPORT_TYPE_GLOBAL] + i;
-
-    // write prefix and id
-    wat_indent(io, 1);
-    fprintf(io, "(global $g%zu", id);
-
-    // write type
-    wat_write_global_type(io, global.type);
-
-    // TODO: write expr
-
-    // write suffix
-    fputc(')', io);
-  }
-}
-
-
-static void
-wat_write_func_locals(
-  FILE * const io,
-  const pwasm_mod_t * const mod,
-  const size_t func_ofs,
-  size_t ofs
-) {
-  const pwasm_slice_t slice = mod->codes[func_ofs].locals;
-
-  for (size_t i = 0; i < slice.len; i++) {
-    const pwasm_local_t local = mod->locals[slice.ofs + i];
-    const char * const name = pwasm_value_type_get_name(local.type);
-
-    for (size_t j = 0; j < local.num; j++) {
-      wat_indent(io, 2);
-      fprintf(io, "(local $v%zu %s)", ofs + j, name);
-    }
-
-    // increment offset
-    ofs += local.num;
   }
 }
 
@@ -320,14 +270,12 @@ wat_write_inst_imm(
 }
 
 static void
-wat_write_func_insts(
+wat_write_expr(
   FILE * const io,
   const pwasm_mod_t * const mod,
-  const size_t func_ofs
+  const pwasm_slice_t expr,
+  size_t depth
 ) {
-  const pwasm_slice_t expr = mod->codes[func_ofs].expr;
-  size_t depth = 2;
-
   for (size_t i = 0; i < expr.len - 1; i++) {
     const pwasm_inst_t in = mod->insts[expr.ofs + i];
     const bool has_imm = pwasm_op_get_imm(in.op) != PWASM_IMM_NONE;
@@ -347,8 +295,52 @@ wat_write_func_insts(
     fputs(has_imm ? ")" : "", io);
 
     // update depth
-    depth += (in.op == PWASM_OP_IF || in.op == PWASM_OP_LOOP || in.op == PWASM_OP_BLOCK);
+    depth += (in.op == PWASM_OP_IF || in.op == PWASM_OP_ELSE || in.op == PWASM_OP_LOOP || in.op == PWASM_OP_BLOCK);
+  }
+}
 
+static void
+wat_write_globals(
+  FILE * const io,
+  const pwasm_mod_t * const mod
+) {
+  for (size_t i = 0; i < mod->num_globals; i++) {
+    const pwasm_global_t global = mod->globals[i];
+    const size_t id = mod->num_import_types[PWASM_IMPORT_TYPE_GLOBAL] + i;
+
+    // write prefix and id
+    wat_indent(io, 1);
+    fprintf(io, "(global $g%zu", id);
+
+    // write type and expr
+    wat_write_global_type(io, global.type);
+    wat_write_expr(io, mod, global.expr, 0);
+
+    // write suffix
+    fputc(')', io);
+  }
+}
+
+static void
+wat_write_func_locals(
+  FILE * const io,
+  const pwasm_mod_t * const mod,
+  const size_t func_ofs,
+  size_t ofs
+) {
+  const pwasm_slice_t slice = mod->codes[func_ofs].locals;
+
+  for (size_t i = 0; i < slice.len; i++) {
+    const pwasm_local_t local = mod->locals[slice.ofs + i];
+    const char * const name = pwasm_value_type_get_name(local.type);
+
+    for (size_t j = 0; j < local.num; j++) {
+      wat_indent(io, 2);
+      fprintf(io, "(local $v%zu %s)", ofs + j, name);
+    }
+
+    // increment offset
+    ofs += local.num;
   }
 }
 
@@ -368,7 +360,7 @@ wat_write_func(
 
   wat_write_func_type(io, mod, mod->types[mod->funcs[func_ofs]]);
   wat_write_func_locals(io, mod, func_ofs, num_params);
-  wat_write_func_insts(io, mod, func_ofs);
+  wat_write_expr(io, mod, mod->codes[func_ofs].expr, 2);
 
   // write func suffix
   fputc(')', io);
@@ -384,18 +376,24 @@ wat_write_funcs(
   }
 }
 
-static const char *
-wat_get_export_type_name(
-  const pwasm_export_type_t type
+static void
+wat_write_tables(
+  FILE * const io,
+  const pwasm_mod_t * const mod
 ) {
-  switch (type) {
-  case PWASM_EXPORT_TYPE_FUNC: return "func";
-  case PWASM_EXPORT_TYPE_GLOBAL: return "global";
-  case PWASM_EXPORT_TYPE_MEM: return "memory";
-  case PWASM_EXPORT_TYPE_TABLE: return "table";
-  default:
-    errx(EXIT_FAILURE, "unkown export type: %u", type);
-  }
+  (void) mod;
+  wat_indent(io, 1);
+  fputs(";; TODO: tables\n", io);
+}
+
+static void
+wat_write_start(
+  FILE * const io,
+  const pwasm_mod_t * const mod
+) {
+  (void) mod;
+  wat_indent(io, 1);
+  fputs(";; TODO: start\n", io);
 }
 
 static void
@@ -405,7 +403,7 @@ wat_write_exports(
 ) {
   for (size_t i = 0; i < mod->num_exports; i++) {
     const pwasm_export_t export = mod->exports[i];
-    const char * const type_name = wat_get_export_type_name(export.type);
+    const char * const type_name = pwasm_export_type_get_name(export.type);
 
     // write export prefix
     wat_indent(io, 1);
@@ -439,6 +437,8 @@ cmd_wat_on_mod(
   wat_write_mems(io, mod);
   wat_write_globals(io, mod);
   wat_write_funcs(io, mod);
+  wat_write_tables(io, mod);
+  wat_write_start(io, mod);
   wat_write_exports(io, mod);
 
   // write mod footer

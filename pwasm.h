@@ -452,11 +452,11 @@ typedef struct {
 
 // FIXME: s/function/func/, s/memory/mem/
 #define PWASM_IMPORT_TYPES \
-  PWASM_IMPORT_TYPE(FUNC, "function", function) \
+  PWASM_IMPORT_TYPE(FUNC, "func", function) \
   PWASM_IMPORT_TYPE(TABLE, "table", table) \
   PWASM_IMPORT_TYPE(MEM, "memory", memory) \
   PWASM_IMPORT_TYPE(GLOBAL, "global", global) \
-  PWASM_IMPORT_TYPE(LAST, "unknown import desc", invalid)
+  PWASM_IMPORT_TYPE(LAST, "unknown import type", invalid)
 
 #define PWASM_IMPORT_TYPE(a, b, c) PWASM_IMPORT_TYPE_##a,
 typedef enum {
@@ -467,7 +467,7 @@ PWASM_IMPORT_TYPES
 const char *pwasm_import_type_get_name(const pwasm_import_type_t);
 
 #define PWASM_EXPORT_TYPES \
-  PWASM_EXPORT_TYPE(FUNC, "function", func) \
+  PWASM_EXPORT_TYPE(FUNC, "func", func) \
   PWASM_EXPORT_TYPE(TABLE, "table", table) \
   PWASM_EXPORT_TYPE(MEM, "memory", mem) \
   PWASM_EXPORT_TYPE(GLOBAL, "global", global) \
