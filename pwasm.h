@@ -64,8 +64,8 @@ typedef struct {
 
 #define PWASM_VALUE_TYPE_DEFS \
   PWASM_VALUE_TYPE(0x7F, I32, "i32") \
-  PWASM_VALUE_TYPE(0x7D, I64, "i64") \
-  PWASM_VALUE_TYPE(0x7E, F32, "f32") \
+  PWASM_VALUE_TYPE(0x7E, I64, "i64") \
+  PWASM_VALUE_TYPE(0x7D, F32, "f32") \
   PWASM_VALUE_TYPE(0x7C, F64, "f64") \
   PWASM_VALUE_TYPE(0x00, LAST, "unknown value type")
 

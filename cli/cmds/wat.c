@@ -443,14 +443,15 @@ wat_write_func(
   const size_t func_ofs
 ) {
   // get param count
-  const size_t num_params = mod->types[mod->funcs[func_ofs]].params.len;
+  const pwasm_type_t type = mod->types[mod->funcs[func_ofs]];
+  const size_t num_params = type.params.len;
   const size_t id = mod->num_import_types[PWASM_IMPORT_TYPE_FUNC] + func_ofs;
 
   // write func prefix
   wat_indent(wat, 1);
   fprintf(wat->io, "(func $f%zu", id);
 
-  wat_write_func_type(wat, mod, mod->types[mod->funcs[func_ofs]]);
+  wat_write_func_type(wat, mod, type);
   wat_write_func_locals(wat, mod, func_ofs, num_params);
   wat_write_expr(wat, mod, mod->codes[func_ofs].expr, 2);
 
