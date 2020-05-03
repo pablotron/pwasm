@@ -17,7 +17,7 @@ pwasm_buf_t cli_read_file(
 /**
  * write escaped UTF-8 data from mod to file handle.
  */
-void cli_write_utf8(
+void cli_escape_bytes(
   const pwasm_mod_t * const,
   const pwasm_slice_t,
   void (*)(const pwasm_buf_t, void *),

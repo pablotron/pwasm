@@ -6,7 +6,7 @@
 #include "../../pwasm.h" // pwasm_mod_init(), etc
 
 static void
-wat_write_utf8_on_data(
+wat_write_bytes_on_data(
   const pwasm_buf_t buf,
   void *data
 ) {
@@ -15,12 +15,14 @@ wat_write_utf8_on_data(
 }
 
 static void
-wat_write_utf8(
+wat_write_bytes(
   FILE * const io,
   const pwasm_mod_t * const mod,
   const pwasm_slice_t slice
 ) {
-  cli_write_utf8(mod, slice, wat_write_utf8_on_data, io);
+  fputc('"', io);
+  cli_escape_bytes(mod, slice, wat_write_bytes_on_data, io);
+  fputc('"', io);
 }
 
 static void
@@ -132,16 +134,12 @@ wat_write_import(
   fputs("(import", io);
 
   // write import module name
-  fputc('"', io);
-  wat_write_utf8(io, mod, import.module);
-  fputc('"', io);
+  wat_write_bytes(io, mod, import.module);
 
   fputc(' ', io);
 
   // write import entry name
-  fputc('"', io);
-  wat_write_utf8(io, mod, import.name);
-  fputc('"', io);
+  wat_write_bytes(io, mod, import.name);
 
   // write import type descriptor and id
   fprintf(io, "(%s $%c%zu", type_name, type_name[0], id);
@@ -410,14 +408,44 @@ wat_write_exports(
     fputs("(export ", io);
 
     // write name
-    fputc('"', io);
-    wat_write_utf8(io, mod, export.name);
-    fputc('"', io);
+    wat_write_bytes(io, mod, export.name);
 
     // write export descriptor
     fprintf(io, " (%s $%c%u)", type_name, type_name[0], export.id);
 
     // write export prefix
+    fputc(')', io);
+  }
+}
+
+static void
+wat_write_segments(
+  FILE * const io,
+  const pwasm_mod_t * const mod
+) {
+  for (size_t i = 0; i < mod->num_segments; i++) {
+    const pwasm_segment_t segment = mod->segments[i];
+
+    // write segment prefix
+    wat_indent(io, 1);
+    fputs("(data", io);
+
+    if (segment.mem_id) {
+      // append memory ID
+      fprintf(io, " %u", segment.mem_id);
+    }
+
+    if (segment.expr.len > 0) {
+      // append offset
+      fputs(" (offset ", io);
+      wat_write_expr(io, mod, segment.expr, 0);
+      fputc(')', io);
+    }
+
+    // write segment data
+    wat_write_bytes(io, mod, segment.data);
+
+    // write segment suffix
     fputc(')', io);
   }
 }
@@ -440,6 +468,7 @@ cmd_wat_on_mod(
   wat_write_tables(io, mod);
   wat_write_start(io, mod);
   wat_write_exports(io, mod);
+  wat_write_segments(io, mod);
 
   // write mod footer
   fputs(")\n", io);

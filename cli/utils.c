@@ -67,19 +67,83 @@ cli_read_file(
   };
 }
 
+#define FLUSH() do { \
+  if (tmp_ofs) { \
+    on_data((pwasm_buf_t) { tmp, tmp_ofs }, data); \
+    tmp_ofs = 0; \
+  } \
+} while (0)
+
+#define PUSH(b) do { \
+  tmp[tmp_ofs++] = (b); \
+  if (tmp_ofs == sizeof(tmp)) { \
+    FLUSH(); \
+  } \
+} while (0)
+
+const uint8_t HEX[] = {
+  '0', '1', '2', '3', '4', '5', '6', '7',
+  '8', '9', 'A', 'B', 'C', 'D', 'E', 'F',
+};
+
 /**
- * Escaped UTF-8 data and pass it to given callback.
+ * Escape string data and pass it to given callback.
  */
-void cli_write_utf8(
+void cli_escape_bytes(
   const pwasm_mod_t * const mod,
   const pwasm_slice_t slice,
   void (*on_data)(const pwasm_buf_t, void *),
   void *data
 ) {
-  // FIXME: escape
-  const pwasm_buf_t buf = { mod->bytes + slice.ofs, slice.len };
-  on_data(buf, data);
+  uint8_t tmp[1024];
+  size_t tmp_ofs = 0;
+
+  for (size_t i = 0 ; i < slice.len; i++) {
+    const uint8_t byte = mod->bytes[slice.ofs + i];
+
+    switch (byte) {
+    case '\t':
+      PUSH('\\');
+      PUSH('t');
+      break;
+    case '\n':
+      PUSH('\\');
+      PUSH('n');
+      break;
+    case '\r':
+      PUSH('\\');
+      PUSH('r');
+      break;
+    case '"':
+      PUSH('\\');
+      PUSH('"');
+      break;
+    case '\'':
+      PUSH('\\');
+      PUSH('\'');
+      break;
+    case '\\':
+      PUSH('\\');
+      PUSH('\\');
+      break;
+    default:
+      if (byte >= 32 && byte <= 126) {
+        // push unescaped byte
+        PUSH(byte);
+      } else {
+        // push hex-encoded byte
+        PUSH('\\');
+        PUSH(HEX[byte >> 16]);
+        PUSH(HEX[byte & 0x0F]);
+      }
+    }
+  }
+
+  FLUSH();
 }
+
+#undef FLUSH
+#undef PUSH
 
 void cli_with_mod(
   pwasm_mem_ctx_t * const mem_ctx,

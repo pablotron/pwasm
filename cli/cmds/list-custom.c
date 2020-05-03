@@ -27,7 +27,7 @@ on_mod(
     const pwasm_custom_section_t section = mod->custom_sections[i];
 
     fprintf(io, "%zu,\"", i);
-    cli_write_utf8(mod, section.name, on_mod_data, io);
+    cli_escape_bytes(mod, section.name, on_mod_data, io);
     fputs("\"\n", io);
   }
 }
