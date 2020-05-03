@@ -6,7 +6,7 @@
 // full list of commands
 static const cli_cmd_t CMDS[] = {{
   .name = "help",
-  .tip  = "Show help.",
+  .tip  = "Show help.  Use \"help <command>\" for help on a command.",
   .help = "Show help.",
   .func = cmd_help,
 }, {
@@ -80,7 +80,7 @@ cli_cmd_t cli_find_cmd(const char * const op) {
     const cli_cmd_t cmd = cmds[i];
 
     // check name
-    if (!strncmp(cmd.name, op, op_len)) {
+    if (op_len && !strncmp(cmd.name, op, op_len + 1)) {
       // name matches, return command
       return cmd;
     }

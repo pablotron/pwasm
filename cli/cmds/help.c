@@ -10,12 +10,13 @@ static const char USAGE[] =
 
 static int show(const int argc, const char **argv) {
   // get command
-  const char * const op = (argc > 2) ? argv[1] : "";
+  const char * const op = (argc > 2) ? argv[2] : "";
   const cli_cmd_t cmd = cli_find_cmd(op);
 
   if (cmd.help) {
     // print command help
-    printf(cmd.help, argv[0]);
+    fputs(cmd.help, stdout);
+    fputc('\n', stdout);
     return 0;
   } else {
     // print error
