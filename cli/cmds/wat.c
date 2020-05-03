@@ -54,6 +54,7 @@ wat_write_global_type(
   const pwasm_value_type_t val_type = type.type;
   const char * const val_type_name = pwasm_value_type_get_name(val_type);
 
+  fputc(' ', io);
   if (type.mutable) {
     fprintf(io, "(mut %s)", val_type_name);
   } else {
@@ -199,6 +200,30 @@ wat_write_mems(
 }
 
 static void
+wat_write_globals(
+  FILE * const io,
+  const pwasm_mod_t * const mod
+) {
+  for (size_t i = 0; i < mod->num_globals; i++) {
+    const pwasm_global_t global = mod->globals[i];
+    const size_t id = mod->num_import_types[PWASM_IMPORT_TYPE_GLOBAL] + i;
+
+    // write prefix and id
+    wat_indent(io, 1);
+    fprintf(io, "(global $g%zu", id);
+
+    // write type
+    wat_write_global_type(io, global.type);
+
+    // TODO: write expr
+
+    // write suffix
+    fputc(')', io);
+  }
+}
+
+
+static void
 wat_write_func_locals(
   FILE * const io,
   const pwasm_mod_t * const mod,
@@ -216,6 +241,7 @@ wat_write_func_locals(
       fprintf(io, "(local $v%zu %s)", ofs + j, name);
     }
 
+    // increment offset
     ofs += local.num;
   }
 }
@@ -262,6 +288,18 @@ wat_write_inst_imm(
   case PWASM_IMM_INDEX:
     // write index
     fprintf(io, " %s%u", wat_get_inst_index_prefix(in), in.v_index.id);
+    break;
+  case PWASM_IMM_MEM:
+    // write alignment
+    if (in.v_mem.align) {
+      fprintf(io, " align=%u", in.v_mem.align);
+    }
+
+    // write offset
+    if (in.v_mem.offset) {
+      fprintf(io, " offset=%u", in.v_mem.offset);
+    }
+
     break;
   case PWASM_IMM_I32_CONST:
     fprintf(io, " %u", in.v_i32.val);
@@ -387,54 +425,36 @@ wat_write_exports(
 }
 
 static void
-wat_write_mod(
-  FILE * const io,
-  const pwasm_mod_t * const mod
+cmd_wat_on_mod(
+  const pwasm_mod_t * const mod,
+  void *data
 ) {
+  FILE * const io = data;
+
+  // write mod header
   fputs("(module", io);
+
+  // write body
   wat_write_imports(io, mod);
   wat_write_mems(io, mod);
+  wat_write_globals(io, mod);
   wat_write_funcs(io, mod);
   wat_write_exports(io, mod);
+
+  // write mod footer
   fputs(")\n", io);
-}
-
-static void
-wat_convert(
-  FILE * const io,
-  pwasm_mem_ctx_t * const mem_ctx,
-  const char * const path
-) {
-  // read file data
-  pwasm_buf_t buf = cli_read_file(mem_ctx, path);
-
-  // parse mod, check for error
-  pwasm_mod_t mod;
-  if (!pwasm_mod_init(mem_ctx, &mod, buf)) {
-    errx(EXIT_FAILURE, "%s: pwasm_mod_init() failed", path);
-  }
-
-  // write module to output
-  wat_write_mod(io, &mod);
-
-  // free mod
-  pwasm_mod_fini(&mod);
-
-  // free file data
-  pwasm_realloc(mem_ctx, (void*) buf.ptr, 0);
 }
 
 int cmd_wat(
   const int argc,
-  const char ** argv
+  const char **argv
 ) {
   // create memory context
   pwasm_mem_ctx_t mem_ctx = pwasm_mem_ctx_init_defaults(NULL);
 
   // walk path arguments
   for (int i = 2; i < argc; i++) {
-    // convert parse wasm module in path and write it to stdout
-    wat_convert(stdout, &mem_ctx, argv[i]);
+    cli_with_mod(&mem_ctx, argv[i], cmd_wat_on_mod, stdout);
   }
 
   // return success
