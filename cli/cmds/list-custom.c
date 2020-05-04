@@ -38,7 +38,7 @@ int cmd_list_custom(
 ) {
   // check args
   if (argc < 3) {
-    fputs("Error: Missing WASM file naem.\nSee help for usage.\n", stderr);
+    fputs("Error: Missing WASM file name.\nSee help for usage.\n", stderr);
     return -1;
   }
 
