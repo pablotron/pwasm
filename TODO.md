@@ -29,7 +29,7 @@ tag.
 * [ ] build: add meson support
 * [ ] build, test: add clang static analysis support
 * [ ] build: build dynamic library
-* [ ] doc: add user guide (`docs/` via `mkdocs`, `cinder` theme)
+* [ ] doc: add user guide (`mkdocs`, `cinder` or `mkdocs-material` theme)
 * [ ] doc: add full API documentation (`doxygen`?)
 * [ ] ci, test: run full test suite on push
 * [ ] ci, test: build on compilers on push
