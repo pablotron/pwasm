@@ -1,0 +1,19 @@
+site_name: PWASM
+theme:
+  name: material
+  features: tabs
+
+extra:
+  manifest: manifest.webmanifest
+  social:
+    - icon: fontawesome/brands/github-alt
+      link: https://github.com/pablotron/pwasm
+
+markdown_extensions:
+ - codehilite:
+    guess_lang: false
+
+plugins:
+  # - search # necessary for search to work
+  - minify: # pip install mkdocs-minify-plugin
+      minify_html: true

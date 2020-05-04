@@ -1,83 +1,17 @@
-# PWASM
+# Library
 
 ## Overview
 
-[PWASM][] (pronounced "possum") is a command-line tool and library
-for handling [WebAssembly][] modules.
+The [PWASM][] library allows you to parse [WebAssembly][] modules and
+and run functions from [WebAssembly][] modules inside your application.
 
-The `pwasm` command lets you inspect and disassemble [WebAssembly][]
-modules.  See the [PWASM Command-Line Tool](#pwasm-command-line-tool)
-section below for more.
-
-The library allows you to parse [WebAssembly][] modules and and run
-functions from [WebAssembly][] modules inside your application.  See
-the [PWASM Library](#pwasm-library) section below for more.
-
-## PWASM Command-Line Tool
-
-The `pwasm` command lets you inspect and disassemble [WebAssembly][]
-modules.
-
-### Features
-
-The `pwasm` tool can:
-
-* Disassemble [WebAssembly][] modules into [WebAssembly Text (WAT)][wat]
-  files.
-* Extract the data from custom sections of [WebAssembly][] modules.
-* Run the built-in test suite.
-
-### Usage
-
-Use the `pwasm help` command for a list of command-line options:
-
-```
-> pwasm help
-Usage:
-  pwasm <command> [args]
-
-Commands:
-  help: Show help.  Use "help <command>" for help on a command.
-  test: Run tests.
-  wat: Convert one or more WASM files to WAT files.
-  list-custom: List custom sections in WASM file.
-  cat-custom: Extract custom section from WASM file.
-```
-
-### Example
-
-Here's an example which uses the `pwasm` command-line tool to
-disassemble a [WebAssembly][] module named `03-mem.wasm` into
-[WebAssembly text (WAT)][wat] format.
-
-```
-> pwasm wat ./03-mem.wasm
-(module
-  (memory $m0 1)
-  (func $f0 (param $v0 i32) (result i32)
-    (local.get $v0)
-    (i32.load)
-  )
-  (func $f1 (param $v0 i32) (param $v1 i32) (result i32)
-    (local.get $v0)
-    (local.get $v1)
-    (i32.store)
-    (local.get $v1)
-  )
-  (export "mem" (memory $m0))
-  (export "get" (func $f0))
-  (export "set" (func $f1)))
-```
-
-## PWASM Library
-
-### Features
+## Features
 
 The [PWASM][] library has the following features:
 
 * Easy to embed. Two files: `pwasm.c` and `pwasm.h`.
-* Easy to create isolated execution environments.
-* Built-in [interpreter][] which should run on just about anything.
+* Supports isolated execution environments.
+* Built-in [interpreter][] which should run just about anywhere.
 * Modular architecture.  Use the parser and ignore the interpreter,
   write your own [JIT][], etc.
 * No dependencies other than the [C standard library][stdlib].
@@ -94,7 +28,7 @@ The [PWASM][] library has the following features:
 * Threaded parser.
 * Vector instruction extension.
 
-### Usage
+## Usage
 
 PWASM is meant to be embedded in an existing application.
 
@@ -114,7 +48,7 @@ To execute functions from a [WebAssembly][] module, do the following:
 5. Add the parsed module into the environment with `pwasm_env_add_mod()`.
 6. Call module functions with `pwasm_call()`.
 
-### Example
+## Example
 
 The example below does the following:
 
@@ -270,58 +204,11 @@ int main(void) {
 }
 ```
 
-## Documentation
-
-The [PWASM][] documentation is available online at <https://pwasm.org/>.
-
-You can also build the [PWASM][] documentation yourself using
-[MkDocs][], by doing the following:
-
-1. Clone the [PWASM Git repository][pwasm-git].
-2. Create and activate a `pwasm` virtual environment.
-3. Switch to the directory of the cloned Git repository.
-4. Install the following packages in the virtual environment: `mkdocs`, `mkdocs-minify-plugin`, `mkdocs-material`
-5. Run `mkdocs build` to generate the documentation in the `site/`
-   directory.
-
-**Example:**
-
-```
-# create venv in ~/venv/pwasm-docs
-# debian uses "python3"; your distribution may differ
-> python3 -m venv ~/venv/pwasm-docs
-
-# activate virtual environment
-> source ~/venv/pwasm-docs/bin/activate
-
-# install packages
-> pip install mkdocs mkdocs-minify-plugin mkdocs-material
-
-# clone pwasm git repo into ~/git/pwasm
-> git clone https://github.com/pablotron/pwasm ~/git/pwasm
-> cd ~/git/pwasm
-
-# build docs in ./site/
-> mkdocs build
-```
-
 [pwasm]: https://pwasm.org/
-  "PWASM"
-[pwasm-git]: https://github.com/pablotron/pwasm
-  "PWASM Git repository"
 [webassembly]: https://en.wikipedia.org/wiki/WebAssembly
-  "WebAssembly"
 [c11]: https://en.wikipedia.org/wiki/C11_(C_standard_revision)
-  "C11 standard"
 [jit]: https://en.wikipedia.org/wiki/Just-in-time_compilation
-  "Just-in-time compiler"
 [aot]: https://en.wikipedia.org/wiki/Ahead-of-time_compilation
-  "Ahead-of-time compiler"
 [interpreter]: https://en.wikipedia.org/wiki/Interpreter_(computing)
-  "Interpreter"
 [stdlib]: https://en.wikipedia.org/wiki/C_standard_library
-  "C standard library"
 [wat]: https://webassembly.github.io/spec/core/text/index.html
-  "WebAssembly text format"
-[mkdocs]: https://mkdocs.org/
-  "Project documentation with Markdown"
