@@ -8526,6 +8526,79 @@ pwasm_new_interp_add_mod_tables(
   return true;
 }
 
+// forward reference
+static bool pwasm_new_interp_eval_expr(
+  pwasm_new_interp_frame_t frame,
+  const pwasm_slice_t
+);
+
+static bool
+pwasm_new_interp_init_globals(
+  pwasm_new_interp_frame_t frame
+) {
+  pwasm_new_interp_t * const interp = frame.env->env_data;
+  pwasm_env_global_t *env_globals = (pwasm_env_global_t*) pwasm_vec_get_data(&(interp->globals));
+  pwasm_stack_t * const stack = frame.env->stack;
+  const pwasm_global_t * const mod_globals = frame.mod->mod->globals;
+  const uint32_t * interp_u32s = (uint32_t*) pwasm_vec_get_data(&(interp->u32s)) + frame.mod->globals.ofs;
+  const size_t num_globals = frame.mod->mod->num_globals;
+  const pwasm_val_t zero = { .i64 = 0 };
+
+  for (size_t i = 0; i < num_globals; i++) {
+    // clear stack
+    stack->pos = 0;
+
+    // evaluate init
+    if (!pwasm_new_interp_eval_expr(frame, mod_globals[i].expr)) {
+      // return failure
+      return false;
+    }
+
+    // get destination offset, save value to global
+    const uint32_t ofs = interp_u32s[frame.mod->globals.ofs + i];
+    env_globals[ofs].val = stack->pos ? stack->ptr[0] : zero;
+  }
+
+  // return success
+  return true;
+}
+
+static bool
+pwasm_new_interp_init_elems(
+  pwasm_new_interp_frame_t frame
+) {
+  (void) frame;
+
+  // TODO: init table elements
+
+  // return success
+  return true;
+}
+
+static bool
+pwasm_new_interp_init_segments(
+  pwasm_new_interp_frame_t frame
+) {
+  (void) frame;
+
+  // TODO: init data segments
+
+  // return success
+  return true;
+}
+
+static bool
+pwasm_new_interp_init_start(
+  pwasm_new_interp_frame_t frame
+) {
+  (void) frame;
+
+  // TODO: call start
+
+  // return success
+  return true;
+}
+
 static uint32_t
 pwasm_new_interp_add_mod(
   pwasm_env_t * const env,
@@ -8563,8 +8636,8 @@ pwasm_new_interp_add_mod(
     return 0;
   }
 
-  // build row
-  const pwasm_new_interp_mod_t interp_mod = {
+  // build mod instance
+  pwasm_new_interp_mod_t interp_mod = {
     .type     = PWASM_NEW_INTERP_MOD_TYPE_MOD,
     .name     = pwasm_buf_str(name),
     .mod      = mod,
@@ -8575,16 +8648,47 @@ pwasm_new_interp_add_mod(
     .tables   = tables,
   };
 
-  // append native mod, check for error
+  // append mod, check for error
   if (!pwasm_vec_push(&(interp->mods), 1, &interp_mod, NULL)) {
     // log error, return failure
-    pwasm_env_fail(env, "append native mod failed");
+    pwasm_env_fail(env, "append mod failed");
     return 0;
   }
 
-  // TODO: init globals, mems, tables, and start
+  // set up a temporary frame to init globals, tables, and mems
+  pwasm_new_interp_frame_t frame = {
+    .env = env,
+    .mod = &interp_mod,
+  };
 
-  // convert offset to ID by adding 1
+  // init globals, mems, tables, and start (in that order)
+  // source: https://webassembly.github.io/spec/core/exec/modules.html#exec-instantiation)
+
+  // init globals, check for error
+  if (!pwasm_new_interp_init_globals(frame)) {
+    // return failure
+    return 0;
+  }
+
+  // init tables, check for error
+  if (!pwasm_new_interp_init_elems(frame)) {
+    // return failure
+    return 0;
+  }
+
+  // init segments, check for error
+  if (!pwasm_new_interp_init_segments(frame)) {
+    // return failure
+    return 0;
+  }
+
+  // call start func, check for error
+  if (!pwasm_new_interp_init_start(frame)) {
+    // return failure
+    return 0;
+  }
+
+  // return success, convert offset to ID by adding 1
   return mod_ofs + 1;
 }
 
