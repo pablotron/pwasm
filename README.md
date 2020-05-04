@@ -1,68 +1,50 @@
 # pwasm
 
-[PWASM][] (pronounced "possum") is a library and command-line tool
+## Overview
+
+[PWASM][] (pronounced "possum") is a command-line tool and library
 for handling [WebAssembly][] modules.
 
+The `pwasm` command lets you inspect and disassemble [WebAssembly][]
+modules.  See the [PWASM Command-Line Tool](#pwasm-command-line-tool)
+section below for more.
+
 The library allows you to parse [WebAssembly][] modules and and run
-functions from [WebAssembly][] modules inside your application.
+functions from [WebAssembly][] modules inside your application.  See
+the [PWASM Library](#pwasm-library) section below for more.
+
+## PWASM Command-Line Tool
 
 The `pwasm` command lets you inspect and disassemble [WebAssembly][]
 modules.
 
-**Library Features**
+### Features
 
-The [PWASM][] library has the following features:
-
-* Easy to embed. Two files: `pwasm.c` and `pwasm.h`.
-* Easy to create isolated execution environments.
-* Built-in [interpreter][] which should run on just about anything.
-* Modular architecture.  Use the parser and ignore the interpreter,
-  write your own [JIT][], etc.
-* No dependencies other than the [C standard library][stdlib].
-* Customizable memory allocator.
-* Parser uses amortized O(1) memory allocation.
-* "Native" module support.  Call native functions from a [WebAssembly][]
-  module.
-* Written in modern [C11][].
-* MIT-licensed.
-
-**Command Features**
-
-The `pwasm` tool which can:
+The `pwasm` tool can:
 
 * Disassemble [WebAssembly][] modules into [WebAssembly Text (WAT)][wat]
   files.
 * Extract the data from custom sections of [WebAssembly][] modules.
 * Run the built-in test suite.
 
-**Coming Soon**
+### Usage
 
-* [JIT][] and [AOT][] compiler.
-* Threaded parser.
-* Vector instruction extension.
-* Documentation.
+Use the `pwasm help` command for a list of command-line options:
 
-## Usage
+```
+> pwasm help
+Usage:
+  pwasm <command> [args]
 
-PWASM is meant to be embedded in an existing application.
+Commands:
+  help: Show help.  Use "help <command>" for help on a command.
+  test: Run tests.
+  wat: Convert one or more WASM files to WAT files.
+  list-custom: List custom sections in WASM file.
+  cat-custom: Extract custom section from WASM file.
+```
 
-Here's how:
-
-1. Copy `pwasm.h` and `pwasm.c` into the source directory of an existing
-   application.
-2. Add `pwasm.c` to your build.
-3. Link against `-lm`.
-
-To execute functions from a [WebAssembly][] module, do the following:
-
-1. Create a PWASM memory context.
-2. Read the contents of the module.
-3. Parse the module with `pwasm_mod_init()`.
-4. Create an interpreter environment with `pwasm_env_init()`.
-5. Add the parsed module into the environment with `pwasm_env_add_mod()`.
-6. Call module functions with `pwasm_call()`.
-
-## Command Example
+### Example
 
 Here's an example of using the `pwasm` command-line tool to disassemble
 a [WebAssembly][] module file `03-mem.wasm` into [WebAssembly text (WAT)][]
@@ -87,7 +69,52 @@ format.
   (export "set" (func $f1)))
 ```
 
-## Library Example
+## PWASM Library
+
+### Features
+
+The [PWASM][] library has the following features:
+
+* Easy to embed. Two files: `pwasm.c` and `pwasm.h`.
+* Easy to create isolated execution environments.
+* Built-in [interpreter][] which should run on just about anything.
+* Modular architecture.  Use the parser and ignore the interpreter,
+  write your own [JIT][], etc.
+* No dependencies other than the [C standard library][stdlib].
+* Customizable memory allocator.
+* Parser uses amortized O(1) memory allocation.
+* "Native" module support.  Call native functions from a [WebAssembly][]
+  module.
+* Written in modern [C11][].
+* MIT-licensed.
+
+**Coming Soon**
+
+* [JIT][] and [AOT][] compiler.
+* Threaded parser.
+* Vector instruction extension.
+
+### Usage
+
+PWASM is meant to be embedded in an existing application.
+
+Here's how:
+
+1. Copy `pwasm.h` and `pwasm.c` into the source directory of an existing
+   application.
+2. Add `pwasm.c` to your build.
+3. Link against `-lm`.
+
+To execute functions from a [WebAssembly][] module, do the following:
+
+1. Create a PWASM memory context.
+2. Read the contents of the module.
+3. Parse the module with `pwasm_mod_init()`.
+4. Create an interpreter environment with `pwasm_env_init()`.
+5. Add the parsed module into the environment with `pwasm_env_add_mod()`.
+6. Call module functions with `pwasm_call()`.
+
+### Examples
 
 The example below does the following:
 
