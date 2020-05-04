@@ -11,8 +11,8 @@ tag.
 * [ ] code, test: add table tests
 * [ ] code, test: add import test
 * [ ] code, test: add wat2wasm round-trip tests
-* [ ] code: add global, table, and mem init, call start func
 * [ ] code, check: add control stack validation
+* [ ] code, check: add global, elem, and segment expr validation
 * [ ] code, check: check `call_immediate` at invocation
 * [ ] code, parse: cache control opcode targets at parse time
 * [ ] code, ops: add extended opcode support (`0xFC ...`)
@@ -29,7 +29,7 @@ tag.
 * [ ] build: add meson support
 * [ ] build, test: add clang static analysis support
 * [ ] build: build dynamic library
-* [ ] doc: add user guide (`docs/` via `mkdocs`?)
+* [ ] doc: add user guide (`docs/` via `mkdocs`, `cinder` theme)
 * [ ] doc: add full API documentation (`doxygen`?)
 * [ ] ci, test: run full test suite on push
 * [ ] ci, test: build on compilers on push
@@ -41,6 +41,7 @@ tag.
 ## In Progress
 * [ ] cli: add `wat` command (added `cli/cmd/wat.c`)
 * [ ] build, test: add test suite (under `cli/tests/*.c`)
+* [ ] code: add global, table, and mem init, call start func
 
 ## Done
 
