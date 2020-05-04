@@ -46,8 +46,8 @@ Commands:
 
 ### Example
 
-Here's an example of using the `pwasm` command-line tool to disassemble
-a [WebAssembly][] module in the file file `03-mem.wasm` into
+Here's an example which uses the `pwasm` command-line tool to
+disassemble a [WebAssembly][] module named `03-mem.wasm` into
 [WebAssembly text (WAT)][wat] format.
 
 ```
