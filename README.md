@@ -1,4 +1,4 @@
-# pwasm
+# PWASM
 
 ## Overview
 
@@ -47,8 +47,8 @@ Commands:
 ### Example
 
 Here's an example of using the `pwasm` command-line tool to disassemble
-a [WebAssembly][] module file `03-mem.wasm` into [WebAssembly text (WAT)][]
-format.
+a [WebAssembly][] module in the file file `03-mem.wasm` into
+[WebAssembly text (WAT)][wat] format.
 
 ```
 > pwasm wat ./03-mem.wasm
@@ -114,7 +114,7 @@ To execute functions from a [WebAssembly][] module, do the following:
 5. Add the parsed module into the environment with `pwasm_env_add_mod()`.
 6. Call module functions with `pwasm_call()`.
 
-### Examples
+### Example
 
 The example below does the following:
 
@@ -132,7 +132,7 @@ The example below does the following:
  * example-00-pythag.c: minimal standalone pwasm example.
  *
  * Usage:
- *   # compile examples/00-pythag.c and pwasm.c
+ *   # compile 00-pythag.c and pwasm.c
  *   cc -c -W -Wall -Wextra -Werror -pedantic -std=c11 -I. -O3 examples/example-00-pythag.c
  *   cc -c -W -Wall -Wextra -Werror -pedantic -std=c11 -I. -O3 pwasm.c
  *
