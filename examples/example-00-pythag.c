@@ -111,7 +111,7 @@ int main(void) {
   };
 
   // get interpreter callbacks
-  const pwasm_env_cbs_t * const interp_cbs = pwasm_interpreter_get_cbs();
+  const pwasm_env_cbs_t * const interp_cbs = pwasm_new_interpreter_get_cbs();
 
   // create interpreter environment, check for error
   pwasm_env_t env;

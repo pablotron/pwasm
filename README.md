@@ -1,24 +1,43 @@
 # pwasm
 
-PWASM (pronounced "possum") is an embeddable [WebAssembly][] parser and
-interpreter, written in [C11][].
+[PWASM][] (pronounced "possum") is a library and command-line tool
+for handling [WebAssembly][] modules.
 
-Features:
-* Written in modern [C11][].
-* Easy to embed.
-* MIT-licensed.
-* Built-in [interpreter][], runs on any platform that supports [C11][]
-  and a minimal subset of the [C standard library][stdlib].
+The library allows you to parse [WebAssembly][] modules and and run
+functions from [WebAssembly][] modules inside your application.
+
+The `pwasm` command lets you inspect and disassemble [WebAssembly][]
+modules.
+
+**Library Features**
+
+The [PWASM][] library has the following features:
+
+* Easy to embed. Two files: `pwasm.c` and `pwasm.h`.
+* Easy to create isolated execution environments.
+* Built-in [interpreter][] which should run on just about anything.
 * Modular architecture.  Use the parser and ignore the interpreter,
-  write your own [JIT][] environment, etc.
-* Amortized O(1) memory allocation.
+  write your own [JIT][], etc.
+* No dependencies other than the [C standard library][stdlib].
+* Customizable memory allocator.
+* Parser uses amortized O(1) memory allocation.
 * "Native" module support.  Call native functions from a [WebAssembly][]
   module.
-* Custom memory allocator support.
+* Written in modern [C11][].
+* MIT-licensed.
 
-Coming soon:
+**Command Features**
+
+The `pwasm` tool which can:
+
+* Disassemble [WebAssembly][] modules into [WebAssembly Text (WAT)][wat]
+  files.
+* Extract the data from custom sections of [WebAssembly][] modules.
+* Run the built-in test suite.
+
+**Coming Soon**
+
 * [JIT][] and [AOT][] compiler.
-* Command-line utility (e.g. `objdump`, `disasm`, etc)
 * Threaded parser.
 * Vector instruction extension.
 * Documentation.
@@ -29,30 +48,55 @@ PWASM is meant to be embedded in an existing application.
 
 Here's how:
 
-1. Copy `pwasm.[hc]` the source directory of an existing application.
+1. Copy `pwasm.h` and `pwasm.c` into the source directory of an existing
+   application.
 2. Add `pwasm.c` to your build.
 3. Link against `-lm`.
 
 To execute functions from a [WebAssembly][] module, do the following:
 
-1. Initialize a PWASM memory context (`pwasm_mem_ctx_init_defaults()`).
-2. Parse one or more modules (`pwasm_mod_init()`).
-3. Initialize an interpreter environment (`pwasm_env_init()`).
-4. Add the parsed modules into the environment (`pwasm_env_add_mod()`).
-5. Call [WebAssembly][] functions.
-6. Finalize the environment (`pwasam_env_fini()`).
-7. Finalize the parsed modules (`pwasm_mod_fini()`).
+1. Create a PWASM memory context.
+2. Read the contents of the module.
+3. Parse the module with `pwasm_mod_init()`.
+4. Create an interpreter environment with `pwasm_env_init()`.
+5. Add the parsed module into the environment with `pwasm_env_add_mod()`.
+6. Call module functions with `pwasm_call()`.
 
-## Example
+## Command Example
 
-Below is a self-contained example which does the following:
+Here's an example of using the `pwasm` command-line tool to disassemble
+a [WebAssembly][] module file `03-mem.wasm` into [WebAssembly text (WAT)][]
+format.
 
-1. Parses a [WebAssembly][] module containing two functions.
-2. Initializes an interpreter environment.
+```
+> pwasm wat ./03-mem.wasm
+(module
+  (memory $m0 1)
+  (func $f0 (param $v0 i32) (result i32)
+    (local.get $v0)
+    (i32.load)
+  )
+  (func $f1 (param $v0 i32) (param $v1 i32) (result i32)
+    (local.get $v0)
+    (local.get $v1)
+    (i32.store)
+    (local.get $v1)
+  )
+  (export "mem" (memory $m0))
+  (export "get" (func $f0))
+  (export "set" (func $f1)))
+```
+
+## Library Example
+
+The example below does the following:
+
+1. Parses a [WebAssembly][] module.
+2. Creates an interpreter environment.
 3. Adds the parsed module to the interpreter.
-4. Executes the `f32.pythag()` function from the parsed module.
+4. Executes the `f32.pythag()` module function.
 5. Prints the result to standard output.
-6. Executes `f64.pythag()` function from the parsed module.
+6. Executes `f64.pythag()` module function.
 7. Prints the result to standard output.
 8. Finalizes the interpreter and the parsed module.
 
@@ -170,7 +214,7 @@ int main(void) {
   };
 
   // get interpreter callbacks
-  const pwasm_env_cbs_t * const interp_cbs = pwasm_interpreter_get_cbs();
+  const pwasm_env_cbs_t * const interp_cbs = pwasm_new_interpreter_get_cbs();
 
   // create interpreter environment, check for error
   pwasm_env_t env;
@@ -199,9 +243,11 @@ int main(void) {
 }
 ```
 
+[pwasm]: https://pwasm.org/
 [webassembly]: https://en.wikipedia.org/wiki/WebAssembly
 [c11]: https://en.wikipedia.org/wiki/C11_(C_standard_revision)
 [jit]: https://en.wikipedia.org/wiki/Just-in-time_compilation
 [aot]: https://en.wikipedia.org/wiki/Ahead-of-time_compilation
 [interpreter]: https://en.wikipedia.org/wiki/Interpreter_(computing)
 [stdlib]: https://en.wikipedia.org/wiki/C_standard_library
+[wat]: https://webassembly.github.io/spec/core/text/index.html
