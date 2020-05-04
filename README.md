@@ -272,7 +272,8 @@ int main(void) {
 
 ## Documentation
 
-The [PWASM][] documentation is available online at <https://pwasm.org/>.
+The latest [PWASM][] documentation is available online at
+<https://pwasm.org/docs/latest/>.
 
 You can also build the [PWASM][] documentation yourself using
 [MkDocs][], by doing the following:
