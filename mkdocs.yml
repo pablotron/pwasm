@@ -1,4 +1,13 @@
 site_name: PWASM
+site_description: WebAssembly parser and interpreter.
+site_author: Paul Duncan
+
+# disabled stuff
+# site_url: https://pwasm.org/docs/latest/
+# copyright: "&copy; 2020 Paul Duncan"
+# repo_name: pablotron/pwasm
+# repo_url: https://github.com/pablotron/pwasm
+
 theme:
   name: material
   logo: ims/logo-3.svg
