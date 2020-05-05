@@ -1,4 +1,4 @@
-# About
+# About PWASM
 
 [PWASM][] (pronounced "possum") is a command-line tool and library
 for handling [WebAssembly][] modules.
