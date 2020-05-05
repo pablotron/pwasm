@@ -15,21 +15,20 @@ the [PWASM Library](#pwasm-library) section below for more.
 
 ## PWASM Command-Line Tool
 
-The `pwasm` command lets you inspect and disassemble [WebAssembly][]
-modules.
+The `pwasm` command lets you inspect [WebAssembly][] module files.
 
 ### Features
 
 The `pwasm` tool can:
 
-* Disassemble [WebAssembly][] modules into [WebAssembly Text (WAT)][wat]
-  files.
-* Extract the data from custom sections of [WebAssembly][] modules.
+* Disassemble modules into [WebAssembly Text (WAT)][wat] files.
+* List the imports and exports of a module.
+* Extract the contents of a custom section from a module.
 * Run the built-in test suite.
 
 ### Usage
 
-Use the `pwasm help` command for a list of command-line options:
+Use the `pwasm help` command for a list of available commands:
 
 ```
 > pwasm help
@@ -53,8 +52,9 @@ to extract information from a [WebAssembly][] module.
 
 #### `pwasm exports`
 
-This example uses the `exports` command to list the name and type of the
-exports in a [WebAssembly][] module named `01-fib.wasm`.
+This example uses the `exports` command to list the type and name of
+the exports in a [WebAssembly][] module stored in the file
+`01-fib.wasm`.
 
 ```
 > pwasm exports 01-fib.wasm
@@ -66,7 +66,8 @@ func,"fib_iterate"
 #### `pwasm wat`
 
 This example uses the `wat` command disassemble a [WebAssembly][] module
-named `03-mem.wasm` into [WebAssembly text (WAT)][wat] format.
+stored in the file `03-mem.wasm` into [WebAssembly text (WAT)][wat]
+format.
 
 ```
 > pwasm wat ./03-mem.wasm
