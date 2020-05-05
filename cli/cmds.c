@@ -29,6 +29,11 @@ static const cli_cmd_t CMDS[] = {{
   .tip  = "Extract custom section from WASM file.",
   .help = "Extract custom section from WASM file.",
   .func = cmd_cat_custom,
+}, {
+  .name = "exports",
+  .tip  = "List exports in a WASM file.",
+  .help = "List exports in a WASM file.",
+  .func = cmd_exports,
 }};
 
 const cli_cmd_t *cli_get_cmds(

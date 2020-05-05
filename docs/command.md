@@ -29,13 +29,30 @@ Commands:
   wat: Convert one or more WASM files to WAT files.
   list-custom: List custom sections in WASM file.
   cat-custom: Extract custom section from WASM file.
+  exports: List exports in a WASM file.
 ```
 
-## Example
+## Examples
 
-Here's an example which uses the `pwasm` command-line tool to
-disassemble a [WebAssembly][] module named `03-mem.wasm` into
-[WebAssembly text (WAT)][wat] format.
+Below are a couple of examples which use the `pwasm` command-line tool
+to extract information from a [WebAssembly][] module.
+
+### `pwasm exports`
+
+This example uses the `exports` command to list the name and type of the
+exports in a [WebAssembly][] module named `01-fib.wasm`.
+
+```
+> pwasm exports 01-fib.wasm
+type,name
+func,"fib_recurse"
+func,"fib_iterate"
+```
+
+### `pwasm wat`
+
+This example uses the `wat` command disassemble a [WebAssembly][] module
+named `03-mem.wasm` into [WebAssembly text (WAT)][wat] format.
 
 ```
 > pwasm wat ./03-mem.wasm
