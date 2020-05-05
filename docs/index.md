@@ -32,3 +32,5 @@ application.  [Learn more](./library.md).
   "Project documentation with Markdown"
 [me]: https://github.com/pablotron
   "My GitHub page"
+[mit]: https://opensource.org/licenses/MIT
+  "MIT license"

@@ -20,7 +20,7 @@ The [PWASM][] library has the following features:
 * "Native" module support.  Call native functions from a [WebAssembly][]
   module.
 * Written in modern [C11][].
-* MIT-licensed.
+* [MIT-licensed][mit].
 
 **Coming Soon**
 
@@ -226,3 +226,5 @@ int main(void) {
   "Project documentation with Markdown"
 [me]: https://github.com/pablotron
   "My GitHub page"
+[mit]: https://opensource.org/licenses/MIT
+  "MIT license"

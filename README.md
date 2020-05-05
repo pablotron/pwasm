@@ -86,7 +86,7 @@ The [PWASM][] library has the following features:
 * "Native" module support.  Call native functions from a [WebAssembly][]
   module.
 * Written in modern [C11][].
-* MIT-licensed.
+* [MIT-licensed][mit].
 
 **Coming Soon**
 
@@ -96,7 +96,7 @@ The [PWASM][] library has the following features:
 
 ### Usage
 
-PWASM is meant to be embedded in an existing application.
+[PWASM][] is meant to be embedded in an existing application.
 
 Here's how:
 
@@ -351,3 +351,5 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
   "Project documentation with Markdown"
 [me]: https://github.com/pablotron
   "My GitHub page"
+[mit]: https://opensource.org/licenses/MIT
+  "MIT license"
