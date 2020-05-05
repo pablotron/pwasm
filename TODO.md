@@ -29,7 +29,6 @@ tag.
 * [ ] build: add meson support
 * [ ] build, test: add clang static analysis support
 * [ ] build: build dynamic library
-* [ ] doc: add user guide (`mkdocs`, `cinder` or `mkdocs-material` theme)
 * [ ] doc: add full API documentation (`doxygen`?)
 * [ ] ci, test: run full test suite on push
 * [ ] ci, test: build on compilers on push
@@ -39,8 +38,6 @@ tag.
 * [ ] ci, web: regenerate sites for all tags and master on push
 
 ## In Progress
-* [ ] cli: add `wat` command (added `cli/cmd/wat.c`)
-* [ ] build, test: add test suite (under `cli/tests/*.c`)
 * [ ] code: add global, table, and mem init, call start func
 
 ## Done
@@ -75,6 +72,9 @@ Items in this section have been completed.
 * [x] code, cli: `wat`: add `br_table` immediate
 * [x] code, cli: `wat`: add `call_indirect` immediate
 * [x] code, cli: `wat`: support `if`, `block`, `loop`, etc
+* [x] cli: add `wat` command (added `cli/cmd/wat.c`)
+* [x] build, test: add test suite (under `cli/tests/*.c`)
+* [x] doc: add user guide (added `mkdocs` with `mkdocs-material` theme)
 
 ## Tag Definitions
 
