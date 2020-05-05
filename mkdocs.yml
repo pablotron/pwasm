@@ -1,8 +1,8 @@
 site_name: PWASM
 theme:
   name: material
-  logo: ims/logo-1.svg
-  favicon: ims/logo-1.svg
+  logo: ims/logo-3.svg
+  favicon: ims/logo-3.svg
 
 extra:
   manifest: manifest.webmanifest
