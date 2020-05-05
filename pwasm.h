@@ -75,8 +75,15 @@ PWASM_VALUE_TYPE_DEFS
 #undef PWASM_VALUE_TYPE
 } pwasm_value_type_t;
 
-// typedef uint32_t pwasm_value_type_t;
-
+/**
+ * Get name of value type.
+ *
+ * Returns a pointer to the null-terminated name of a value type, or a
+ * pointer to the string "unknown value type" if the given value type
+ * is unknown.
+ *
+ * Note: The strings returned by this function should not be freed.
+ */
 const char *pwasm_value_type_get_name(const pwasm_value_type_t);
 
 #define PWASM_RESULT_TYPE_DEFS \
@@ -93,6 +100,15 @@ PWASM_RESULT_TYPE_DEFS
 #undef PWASM_RESULT_TYPE
 } pwasm_result_type_t;
 
+/**
+ * Get name of return value type.
+ *
+ * Returns a pointer to the null-terminated name of a result type, or a
+ * pointer to the string "unknown result type" if the given result type
+ * is unknown.
+ *
+ * Note: The strings returned by this function should not be freed.
+ */
 const char *pwasm_result_type_get_name(const pwasm_result_type_t);
 
 #define PWASM_IMM_DEFS \
@@ -114,6 +130,15 @@ PWASM_IMM_DEFS
 #undef PWASM_IMM
 } pwasm_imm_t;
 
+/**
+ * Get name of an immediate type.
+ *
+ * Returns a pointer to the null-terminated name of an immediate type,
+ * or a pointer to the string "invalid" if the given immediate type is
+ * unknown.
+ *
+ * Note: The strings returned by this function should not be freed.
+ */
 const char *pwasm_imm_get_name(const pwasm_imm_t);
 
 #define PWASM_OP_DEFS \
@@ -689,8 +714,17 @@ typedef struct {
   void (*on_error)(const char *, void *);
 } pwasm_mod_parse_cbs_t;
 
+/**
+ * Parse the module contained in the buffer +src+ with the given module
+ * parsing callbacks and return the number of bytes consumed.
+ *
+ * Returns 0 on error.
+ *
+ * Note: You shouldn't need to call this function directly; it is called
+ * by `pwasm_mod_init()`.
+ */
 size_t pwasm_mod_parse(
-  const pwasm_buf_t src,
+  const pwasm_buf_t,
   const pwasm_mod_parse_cbs_t *,
   void *cb_data
 );
