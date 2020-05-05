@@ -1,7 +1,8 @@
 site_name: PWASM
 theme:
   name: material
-  # features: tabs
+  logo: ims/logo-1.svg
+  favicon: ims/logo-1.svg
 
 extra:
   manifest: manifest.webmanifest
