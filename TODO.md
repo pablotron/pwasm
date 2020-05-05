@@ -24,6 +24,8 @@ tag.
 * [ ] code, cleanup: consider calloc() for memory init (zero mem, bounds check)
 * [ ] code, test: check uses of realloc() for overflow (security)
 * [ ] cli: add `dump` command (e.g. `objdump` to JSON)
+* [ ] cli: add `exports` command (list module exports as CSV)
+* [ ] cli: add `imports` command (list module imports as CSV)
 * [ ] test: add tests for all opcodes
 * [ ] test: add tests for all module sections
 * [ ] build: add meson support

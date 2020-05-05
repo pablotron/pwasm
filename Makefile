@@ -26,5 +26,8 @@ $(APP): $(OBJS)
 test: $(APP)
 	./$(APP)
 
+docs:
+	mkdocs build
+
 clean:
 	$(RM) -f $(APP) $(OBJS)
