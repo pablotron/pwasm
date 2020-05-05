@@ -384,7 +384,25 @@ PWASM_OP_DEFS
 #undef PWASM_OP_CONST
 #undef PWASM_OP_RESERVED
 
+/**
+ * Get opcode name.
+ *
+ * Returns a pointer to a null-terminated string containing the opcode
+ * name.
+ *
+ * If given an invalid opcode, then this function returns a
+ * pointer to a null-terminated string pointing containing the string
+ * "invalid opcode".
+ *
+ * This function never returns a NULL pointer.
+ */
 const char *pwasm_op_get_name(const pwasm_op_t);
+
+/**
+ * Get opcode immediate type.
+ *
+ * Get the type of immediate value associated with this opcode.
+ */
 pwasm_imm_t pwasm_op_get_imm(const pwasm_op_t);
 
 typedef struct {
@@ -464,6 +482,9 @@ PWASM_IMPORT_TYPES
 } pwasm_import_type_t;
 #undef PWASM_IMPORT_TYPE
 
+/**
+ * Get the name of the given import type.
+ */
 const char *pwasm_import_type_get_name(const pwasm_import_type_t);
 
 #define PWASM_EXPORT_TYPES \
@@ -479,6 +500,9 @@ PWASM_EXPORT_TYPES
 } pwasm_export_type_t;
 #undef PWASM_EXPORT_TYPE
 
+/**
+ * Get the name of the given export type.
+ */
 const char *pwasm_export_type_get_name(const pwasm_export_type_t);
 
 typedef struct {
@@ -496,8 +520,33 @@ typedef struct {
   void *cb_data;
 } pwasm_mem_ctx_t;
 
+/**
+ * Create a new memory context initialized with default values.
+ */
 pwasm_mem_ctx_t pwasm_mem_ctx_init_defaults(void *);
 
+/**
+ * Allocate memory from the given memory context.
+ *
+ * This function behaves similar to realloc():
+ *
+ * 1. If the pointer is NULL and the size is not zero, then this
+ *    function is equivalent to malloc().
+ * 2. If the pointer is non-NULL and the size is not zero, then this
+ *    function is equivalent to realloc().
+ * 3. If the pointer is non-NULL and the size is zero, then this
+ *    function is equivalent to free().
+ *
+ * This function returns NULL if cases #1 or #2 fail.  It always returns
+ * NULL in case #3, so you should check for error by checking for a NULL
+ * return value AND a non-zero size, like so:
+ *
+ *     // resize memory, check for error
+ *     void *new_ptr = pwasm_realloc(mem_ctx, old_ptr, new_size);
+ *     if (!new_ptr && new_size > 0) {
+ *       // handle error here
+ *     }
+ */
 void *pwasm_realloc(pwasm_mem_ctx_t *, void *, const size_t);
 
 typedef struct {
@@ -767,13 +816,35 @@ typedef struct {
   uint32_t start;
 } pwasm_builder_t;
 
+/**
+ * Initialize a new mod builder.
+ *
+ * Note: The pwasm_builder_* functions are used internally by
+ * pwasm_mod_init() and pwasm_mod_init_unsafe(); you shouldn't need to
+ * call them directly.
+ */
 _Bool pwasm_builder_init(
   pwasm_mem_ctx_t *,
   pwasm_builder_t *
 );
 
+/**
+ * Finalize a mod builder and free any memory associated with it.
+ *
+ * Note: The pwasm_builder_* functions are used internally by
+ * pwasm_mod_init() and pwasm_mod_init_unsafe(); you shouldn't need to
+ * call them directly.
+ */
 void pwasm_builder_fini(pwasm_builder_t *);
 
+/**
+ * Populate a pwasm_mod_t structure with the parsed module data
+ * contained in a pwasm_builder_t structure.
+ *
+ * Note: The pwasm_builder_* functions are used internally by
+ * pwasm_mod_init() and pwasm_mod_init_unsafe(); you shouldn't need to
+ * call them directly.
+ */
 _Bool pwasm_build(
   const pwasm_builder_t *,
   pwasm_mod_t *
@@ -1066,6 +1137,18 @@ struct pwasm_env_t {
   void *user_data;
 };
 
+/**
+ * Initialize a new execution environment with the given memory context,
+ * environment callbacks pointer, stack pointer, and user data pointer.
+ *
+ * The stack parameter is used to pass parameters to module functions
+ * and to get module function results.
+ *
+ * The environment callbacks indicate the type environment type; at the
+ * moment the only built-in implementation is an interpreter
+ * environment.  You can get the callbacks for an interpreter
+ * environment by calling `pwasm_new_interpreter_get_cbs()`.
+ */
 _Bool pwasm_env_init(
   pwasm_env_t *,
   pwasm_mem_ctx_t *,
@@ -1074,6 +1157,10 @@ _Bool pwasm_env_init(
   void *user_data
 );
 
+/**
+ * Finalize an execution environment and free all memory associated with
+ * the context.
+ */
 void pwasm_env_fini(pwasm_env_t *);
 
 /**
@@ -1162,6 +1249,11 @@ _Bool pwasm_env_call(
   const uint32_t
 );
 
+/**
+ * Load value from memory index at given memory address.
+ *
+ * Returns false if an error occurred.
+ */
 _Bool pwasm_env_mem_load(
   pwasm_env_t *,
   const uint32_t,
@@ -1170,6 +1262,11 @@ _Bool pwasm_env_mem_load(
   pwasm_val_t *
 );
 
+/**
+ * Store value to memory index at given address.
+ *
+ * Returns false if an error occurred.
+ */
 _Bool pwasm_env_mem_store(
   pwasm_env_t *,
   const uint32_t,
@@ -1178,12 +1275,22 @@ _Bool pwasm_env_mem_store(
   const pwasm_val_t
 );
 
+/**
+ * Get the size, in pages of a given memory index.
+ *
+ * Returns false if an error occurred.
+ */
 _Bool pwasm_env_mem_size(
   pwasm_env_t *,
   const uint32_t,
   uint32_t *
 );
 
+/**
+ * Grow the given memory index and return the new size.
+ *
+ * Returns false if an error occurred.
+ */
 _Bool pwasm_env_mem_grow(
   pwasm_env_t *,
   const uint32_t,
@@ -1326,6 +1433,9 @@ _Bool pwasm_call(
 
 /**
  * Get callbacks for old interpreter environment.
+ *
+ * Note: This interpreter is not fully functional and will eventually be
+ * removed.
  */
 const pwasm_env_cbs_t *pwasm_old_interpreter_get_cbs(void);
 
