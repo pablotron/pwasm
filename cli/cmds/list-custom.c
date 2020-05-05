@@ -47,7 +47,7 @@ int cmd_list_custom(
 
   for (int i = 3; i < argc; i++) {
     // load module, invoke callback with module
-    cli_with_mod(&mem_ctx, argv[2], on_mod, stdout);
+    cli_with_mod(&mem_ctx, argv[i], on_mod, stdout);
   }
 
   // return success
