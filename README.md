@@ -35,14 +35,18 @@ Use the `pwasm help` command for a list of available commands:
 Usage:
   pwasm <command> [args]
 
-Commands:
-  help: Show help.  Use "help <command>" for help on a command.
-  test: Run tests.
-  wat: Convert one or more WASM files to WAT files.
-  list-custom: List custom sections in WASM file.
-  cat-custom: Extract custom section from WASM file.
+Module Commands:
+  cat: Extract data for a custom section from a WASM file.
+  customs: List custom sections in a WASM file.
   exports: List exports in a WASM file.
   imports: List imports in a WASM file.
+  wat: Convert one or more WASM files to WAT files.
+
+Other Commands:
+  help: Show help.
+  test: Run tests.
+
+Use "help <command>" for more details on a specific command.
 ```
 
 ### Examples

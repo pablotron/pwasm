@@ -3,42 +3,60 @@
 #include <string.h> // strlen()
 #include "cmds.h"
 
+static const char *SET_NAMES[] = {
+#define CMD_SET(a, b) b,
+CMD_SETS
+#undef CMD_SET
+  "Unknown Set",
+};
+
+const char *cli_get_cmd_set_name(const cli_cmd_set_t set) {
+  return SET_NAMES[(set < CLI_CMD_SET_LAST) ? set : CLI_CMD_SET_LAST];
+}
+
 // full list of commands
 static const cli_cmd_t CMDS[] = {{
+  .set  = CLI_CMD_SET_OTHER,
   .name = "help",
-  .tip  = "Show help.  Use \"help <command>\" for help on a command.",
+  .tip  = "Show help.",
   .help = "Show help.",
   .func = cmd_help,
 }, {
+  .set  = CLI_CMD_SET_OTHER,
   .name = "test",
   .tip  = "Run tests.",
   .help = "Run tests.",
   .func = cmd_test,
 }, {
-  .name = "wat",
-  .tip  = "Convert one or more WASM files to WAT files.",
-  .help = "Convert one or more WASM files to WAT files.",
-  .func = cmd_wat,
+  .set  = CLI_CMD_SET_MOD,
+  .name = "cat",
+  .tip  = "Extract data for a custom section from a WASM file.",
+  .help = "Extract data for a custom section from a WASM file.",
+  .func = cmd_cat,
 }, {
-  .name = "list-custom",
-  .tip  = "List custom sections in WASM file.",
-  .help = "List custom sections in WASM file.",
-  .func = cmd_list_custom,
+  .set  = CLI_CMD_SET_MOD,
+  .name = "customs",
+  .tip  = "List custom sections in a WASM file.",
+  .help = "List custom sections in a WASM file.",
+  .func = cmd_customs,
 }, {
-  .name = "cat-custom",
-  .tip  = "Extract custom section from WASM file.",
-  .help = "Extract custom section from WASM file.",
-  .func = cmd_cat_custom,
-}, {
+  .set  = CLI_CMD_SET_MOD,
   .name = "exports",
   .tip  = "List exports in a WASM file.",
   .help = "List exports in a WASM file.",
   .func = cmd_exports,
 }, {
+  .set  = CLI_CMD_SET_MOD,
   .name = "imports",
   .tip  = "List imports in a WASM file.",
   .help = "List imports in a WASM file.",
   .func = cmd_imports,
+}, {
+  .set  = CLI_CMD_SET_MOD,
+  .name = "wat",
+  .tip  = "Convert one or more WASM files to WAT files.",
+  .help = "Convert one or more WASM files to WAT files.",
+  .func = cmd_wat,
 }};
 
 const cli_cmd_t *cli_get_cmds(

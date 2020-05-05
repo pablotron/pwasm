@@ -32,7 +32,7 @@ on_mod(
   }
 }
 
-int cmd_list_custom(
+int cmd_customs(
   const int argc,
   const char ** argv
 ) {

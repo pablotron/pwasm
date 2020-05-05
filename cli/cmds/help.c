@@ -2,11 +2,13 @@
 #include <stdio.h> // printf()
 #include "../cmds.h" // cli_cmd_t, cli_get_cmds()
 
-static const char USAGE[] =
+static const char USAGE_HEADER[] =
   "Usage:\n"
-  "  %s <command> [args]\n"
+  "  %s <command> [args]\n";
+
+static const char USAGE_FOOTER[] =
   "\n"
-  "Commands:\n";
+  "Use \"help <command>\" for more details on a specific command.\n";
 
 static int show(const int argc, const char **argv) {
   // get command
@@ -33,11 +35,23 @@ static int list(const int argc, const char **argv) {
   const cli_cmd_t * const cmds = cli_get_cmds(&num_cmds);
 
   // print usage header and then summary of each command
-  printf(USAGE, argv[0]);
-  for (size_t i = 0; i < num_cmds; i++) {
-    // print command summary
-    printf("  %s: %s\n", cmds[i].name, cmds[i].tip);
+  printf(USAGE_HEADER, argv[0]);
+
+  // print command sets
+  for (size_t i = 0; i < CLI_CMD_SET_LAST; i++) {
+    printf("\n%s Commands:\n", cli_get_cmd_set_name(i));
+
+    // print commands in set
+    for (size_t j = 0; j < num_cmds; j++) {
+      if (cmds[j].set == i) {
+        // print command summary
+        printf("  %s: %s\n", cmds[j].name, cmds[j].tip);
+      }
+    }
   }
+
+  // print usage footer
+  fputs(USAGE_FOOTER, stdout);
 
   return 0;
 }

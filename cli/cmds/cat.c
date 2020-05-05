@@ -35,7 +35,7 @@ on_mod(
   }
 }
 
-int cmd_cat_custom(
+int cmd_cat(
   const int argc,
   const char ** argv
 ) {
