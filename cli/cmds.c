@@ -34,6 +34,11 @@ static const cli_cmd_t CMDS[] = {{
   .tip  = "List exports in a WASM file.",
   .help = "List exports in a WASM file.",
   .func = cmd_exports,
+}, {
+  .name = "imports",
+  .tip  = "List imports in a WASM file.",
+  .help = "List imports in a WASM file.",
+  .func = cmd_imports,
 }};
 
 const cli_cmd_t *cli_get_cmds(

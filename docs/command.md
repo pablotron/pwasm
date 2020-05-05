@@ -30,6 +30,7 @@ Commands:
   list-custom: List custom sections in WASM file.
   cat-custom: Extract custom section from WASM file.
   exports: List exports in a WASM file.
+  imports: List imports in a WASM file.
 ```
 
 ## Examples

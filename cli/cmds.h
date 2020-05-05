@@ -21,5 +21,6 @@ int cmd_wat(const int argc, const char **);
 int cmd_list_custom(const int argc, const char **);
 int cmd_cat_custom(const int argc, const char **);
 int cmd_exports(const int argc, const char **);
+int cmd_imports(const int argc, const char **);
 
 #endif /* CLI_CMDS_H */

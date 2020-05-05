@@ -10,7 +10,8 @@ APP=pwasm
 # OBJS=pwasm.o tests/main.o tests/mod-tests.o tests/func-tests.o
 OBJS=pwasm.o cli/main.o cli/cmds.o cli/tests.o cli/utils.o \
      cli/cmds/help.o cli/cmds/test.o cli/cmds/wat.o \
-     cli/cmds/list-custom.o cli/cmds/cat-custom.o cli/cmds/exports.o \
+     cli/cmds/list-custom.o cli/cmds/cat-custom.o \
+     cli/cmds/imports.o cli/cmds/exports.o \
      cli/tests/init.o cli/tests/native.o cli/tests/wasm.o cli/tests/cli.o
 
 .PHONY=all clean
