@@ -11,10 +11,10 @@ tag.
 * [ ] code, test: add table tests
 * [ ] code, test: add import test
 * [ ] code, test: add wat2wasm round-trip tests
-* [ ] code, check: add control stack validation
+* [ ] code, check: add control stack validation (re-add)
 * [ ] code, check: add global, elem, and segment expr validation
 * [ ] code, check: check `call_immediate` at invocation
-* [ ] code, parse: cache control opcode targets at parse time
+* [ ] code, parse: cache control target offsets at parse time
 * [ ] code, ops: add extended opcode support (`0xFC ...`)
 * [ ] code, ops: add vector op support (`0xFD ...`)
 * [ ] code, jit: add jit (`dynasm`?)
@@ -24,7 +24,6 @@ tag.
 * [ ] code, cleanup: consider calloc() for memory init (zero mem, bounds check)
 * [ ] code, test: check uses of realloc() for overflow (security)
 * [ ] cli: add `dump` command (e.g. `objdump` to JSON)
-* [ ] cli: add `exports` command (list module exports as CSV)
 * [ ] cli: add `imports` command (list module imports as CSV)
 * [ ] test: add tests for all opcodes
 * [ ] test: add tests for all module sections
@@ -40,7 +39,8 @@ tag.
 * [ ] ci, web: regenerate sites for all tags and master on push
 
 ## In Progress
-* [ ] code: add global, table, and mem init, call start func
+* [ ] code: add global, table, and mem init, call start func (added,
+      but untested)
 
 ## Done
 
@@ -77,6 +77,7 @@ Items in this section have been completed.
 * [x] cli: add `wat` command (added `cli/cmd/wat.c`)
 * [x] build, test: add test suite (under `cli/tests/*.c`)
 * [x] doc: add user guide (added `mkdocs` with `mkdocs-material` theme)
+* [x] cli: add `exports` command (list module exports as CSV)
 
 ## Tag Definitions
 
