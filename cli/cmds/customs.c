@@ -45,7 +45,7 @@ int cmd_customs(
   // create memory context
   pwasm_mem_ctx_t mem_ctx = pwasm_mem_ctx_init_defaults(NULL);
 
-  for (int i = 3; i < argc; i++) {
+  for (int i = 2; i < argc; i++) {
     // load module, invoke callback with module
     cli_with_mod(&mem_ctx, argv[i], on_mod, stdout);
   }
