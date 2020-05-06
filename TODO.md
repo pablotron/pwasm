@@ -7,7 +7,6 @@ Each entry in this list is prefixed with category tags.
 See the "Tag Definitions" section below for a brief description of each
 tag.
 
-* [ ] code, cli: add `func` command to show parameters and results
 * [ ] code, cli: `wat`: fix alignment
 * [ ] code, test: add table tests
 * [ ] code, test: add import test
@@ -24,8 +23,8 @@ tag.
 * [ ] code, cleanup: remove old interpreter
 * [ ] code, cleanup: consider calloc() for memory init (zero mem, bounds check)
 * [ ] code, test: check uses of realloc() for overflow (security)
+* [ ] cli, cleanup: properly escape values in CSV columns
 * [ ] cli: add `dump` command (e.g. `objdump` to JSON)
-* [ ] cli: add `imports` command (list module imports as CSV)
 * [ ] test: add tests for all opcodes
 * [ ] test: add tests for all module sections
 * [ ] build: add meson support
@@ -79,6 +78,8 @@ Items in this section have been completed.
 * [x] build, test: add test suite (under `cli/tests/*.c`)
 * [x] doc: add user guide (added `mkdocs` with `mkdocs-material` theme)
 * [x] cli: add `exports` command (list module exports as CSV)
+* [x] code, cli: add `func` command to show parameters and results
+* [x] cli: add `imports` command (list module imports as CSV)
 
 ## Tag Definitions
 
