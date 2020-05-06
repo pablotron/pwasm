@@ -31,9 +31,11 @@ Use "help <command>" for more details on a specific command.
 
 The `pwasm` tool can:
 
-* Disassemble modules into [WebAssembly Text (WAT)][wat] files.
+* Convert modules into [WebAssembly Text (WAT)][wat] files.
 * List the imports and exports in a module file.
-* Extract the contents of a custom section from a module file.
+* Show the parameters and results of an exported function in a module
+  file.
+* Extract the contents of a custom section in a module file.
 * Run the built-in test suite.
 
 ## Module Commands
@@ -100,14 +102,9 @@ An *export* is a module component that can be accessed by [PWASM][] or
 imported into another module.  For example, exported functions can be
 called by [PWASM][] using the `pwasm_call()` function.
 
-Each available export type is described in the table below.
+See [Import and Export Types](#import-and-export-types) for a
+description of the `type` column.
 
-|Type|Name|Description|
-|----|----|-----------|
-|`func`|Function|Exported functions can be called by [PWASM][] using the `pwasm_call()` function.|
-|`global`|Global Variable|Exported global variables can be read and written by [PWASM][] using the `pwasm_get_global()` and `pwasm_set_global()` functions, respectively.|
-|`memory`|Memory|Exported memory blocks can be accessed by [PWASM][] via the `pwasm_get_mem()` function.|
-|`table`|Table|Tables contain function references and are used by the `call_indirect` opcode in [WebAssembly][] modules.|
 
 #### Example
 
@@ -131,9 +128,12 @@ exported function in a module to standard output in [CSV][] format.
 The columns of the [CSV][] are:
 
 * `function`: The name of the function.
-* `row type`: Row type.  One of: `param` or `result`.
-* `sort`: The sort order of the entry.
-* `value type`: The type of parameter or result.  One of: `i32`, `i64`, `f32`, or `f64`.
+* `class`: The row type.  One of `param` or `result`, indicating a
+  function parameter or a function result, respectively.
+* `sort`: The position of this entry within the given class, starting
+  from zero.  For example, a `class` of `param` and a `sort` of `1`
+  indicates the second parameter of the given function.
+* `type`: The value type.  One of `i32`, `i64`, `f32`, or `f64`. See [Value Types](#value-types).
 
 #### Example
 
@@ -160,14 +160,8 @@ output in [CSV][] format.
 An *import* is a component that a [WebAssembly][] module needs in order
 to function.
 
-Each available import type is described in the table below.
-
-|Type|Name|Description|
-|----|----|-----------|
-|`func`|Function|A function that is exported by a another module.|
-|`global`|Global Variable|A global variable that is exported by another module.|
-|`memory`|Memory|A memory component that is exported by another module.|
-|`table`|Table|A table component that is exported by another module.|
+See [Import and Export Types](#import-and-export-types) for a
+description of the `type` column.
 
 #### Example
 
@@ -188,8 +182,8 @@ func,"trek","archer"
 
 #### Description
 
-The `pwasm wat` command converts a [WebAssmebly][] module file to
-[WebAssembly Text (WAT)][] format and prints the result to standard
+The `pwasm wat` command converts a [WebAssembly][] module file to
+[WebAssembly Text (WAT)][wat] format and prints the result to standard
 output.
 
 #### Example
@@ -276,7 +270,7 @@ This example runs the `test` command.  I have omitted most of the output
 for brevity.
 
 ```
-pabs@flex:~/git/pwasm> ./pwasm test
+> pwasm test
 result,suite,test,assertion
 PASS,cli,null,null test
 PASS,init,mods,short length
@@ -285,6 +279,43 @@ PASS,init,mods,good header
 ... (lots of rows omitted) ...
 108/110
 ```
+
+## Types
+
+This section describes the values of the `type` column in the output of
+the following commands:
+
+* [`pwasm exports`](#pwasm-exports)
+* [`pwasm func`](#pwasm-func)
+* [`pwasm imports`](#pwasm-imports)
+
+### Import and Export Types
+
+The possible values of the `type` column in the output of the [`pwasm
+imports`](#pwasm-imports) and [`pwasm exports`](#pwasm-exports) commands
+are shown in the table below.
+
+|Type|Name|Description|
+|----|----|-----------|
+|`func`|Function|Exported functions can be called by [PWASM][] using the `pwasm_call()` function.|
+|`global`|Global Variable|Exported global variables can be read and written by [PWASM][] using the `pwasm_get_global()` and `pwasm_set_global()` functions, respectively.|
+|`memory`|Memory|Exported memory blocks can be accessed by [PWASM][] via the `pwasm_get_mem()` function.|
+|`table`|Table|Tables contain function references and are used by the `call_indirect` opcode in [WebAssembly][] modules.|
+
+### Value Types
+
+The possible values of the `type` column in the output of the [`pwasm
+func`](#pwasm-func) command are shown in the table below.
+
+|Name|Description|
+|----|-----------|
+|`i32`|32-bit integer.|
+|`i64`|64-bit integer.|
+|`f32`|[IEEE 754 32-bit single-precision floating-point value][f32].|
+|`f64`|[IEEE 754 64-bit double-precision floating-point value][f64].|
+
+**Note:** In [WebAssembly][], the `i32` and `i64` value types represent
+both *signed* and *unsigned* integers.
 
 [pwasm]: https://pwasm.org/
   "PWASM"
@@ -310,3 +341,7 @@ PASS,init,mods,good header
   "My GitHub page"
 [csv]: https://en.wikipedia.org/wiki/Comma-separated_values
   "Comma-separated value"
+[f32]: https://en.wikipedia.org/wiki/Single-precision_floating-point_format
+  "IEEE 754 32-bit single-precision floating-point value"
+[f64]: https://en.wikipedia.org/wiki/Double-precision_floating-point_format
+  "IEEE 754 64-bit double-precision floating-point value"
