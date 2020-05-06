@@ -7,6 +7,7 @@ Each entry in this list is prefixed with category tags.
 See the "Tag Definitions" section below for a brief description of each
 tag.
 
+* [ ] code, cli: add `func` command to show parameters and results
 * [ ] code, cli: `wat`: fix alignment
 * [ ] code, test: add table tests
 * [ ] code, test: add import test
