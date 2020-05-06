@@ -16,6 +16,7 @@ Module Commands:
   cat: Extract data for a custom section from a WASM file.
   customs: List custom sections in a WASM file.
   exports: List exports in a WASM file.
+  func: Show parameters and results for an exported function.
   imports: List imports in a WASM file.
   wat: Convert one or more WASM files to WAT files.
 
@@ -120,6 +121,35 @@ func,"fib_recurse"
 func,"fib_iterate"
 ```
 
+### `pwasm func`
+
+#### Description
+
+The `pwasm func` command prints the parameters and results of an
+exported function in a module to standard output in [CSV][] format.
+
+The columns of the [CSV][] are:
+
+* `function`: The name of the function.
+* `row type`: Row type.  One of: `param` or `result`.
+* `sort`: The sort order of the entry.
+* `value type`: The type of parameter or result.  One of: `i32`, `i64`, `f32`, or `f64`.
+
+#### Example
+
+This example uses the `func` command to list the parameters and results
+of the exported function `v2.store` in the [WebAssembly][] module file
+`02-vec.wasm`.
+
+```
+> pwasm func 02-vec.wasm v2.store
+function name,row type,sort,value type
+"v2.store",param,0,i32
+"v2.store",param,1,f32
+"v2.store",param,2,f32
+"v2.store",result,0,i32
+```
+
 ### `pwasm imports`
 
 #### Description
@@ -208,6 +238,7 @@ Module Commands:
   cat: Extract data for a custom section from a WASM file.
   customs: List custom sections in a WASM file.
   exports: List exports in a WASM file.
+  func: Show parameters and results for an exported function.
   imports: List imports in a WASM file.
   wat: Convert one or more WASM files to WAT files.
 
@@ -251,7 +282,7 @@ PASS,cli,null,null test
 PASS,init,mods,short length
 PASS,init,mods,bad header
 PASS,init,mods,good header
-... (lots of rows skipped) ...
+... (lots of rows omitted) ...
 108/110
 ```
 

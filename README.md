@@ -39,6 +39,7 @@ Module Commands:
   cat: Extract data for a custom section from a WASM file.
   customs: List custom sections in a WASM file.
   exports: List exports in a WASM file.
+  func: Show parameters and results for an exported function.
   imports: List imports in a WASM file.
   wat: Convert one or more WASM files to WAT files.
 

@@ -47,6 +47,12 @@ static const cli_cmd_t CMDS[] = {{
   .func = cmd_exports,
 }, {
   .set  = CLI_CMD_SET_MOD,
+  .name = "func",
+  .tip  = "Show parameters and results for an exported function.",
+  .help = "Show parameters and results for an exported function.",
+  .func = cmd_func,
+}, {
+  .set  = CLI_CMD_SET_MOD,
   .name = "imports",
   .tip  = "List imports in a WASM file.",
   .help = "List imports in a WASM file.",

@@ -36,5 +36,6 @@ int cmd_customs(const int argc, const char **);
 int cmd_cat(const int argc, const char **);
 int cmd_exports(const int argc, const char **);
 int cmd_imports(const int argc, const char **);
+int cmd_func(const int argc, const char **);
 
 #endif /* CLI_CMDS_H */
