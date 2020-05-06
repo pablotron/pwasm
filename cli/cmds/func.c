@@ -52,7 +52,7 @@ on_mod(
     find_func_export(mod, data->argv[i]);
   }
 
-  fputs("function name,row type,sort,value type\n", data->io);
+  fputs("function,class,sort,type\n", data->io);
   // pass through all the arguments to look for errors
   for (int i = 3; i < data->argc; i++) {
     const char * const name = data->argv[i];
