@@ -1406,7 +1406,7 @@ pwasm_parse_inst(
       }
 
       // save labels buffer, increment length
-      in.v_br_table.labels.slice = labels;
+      in.v_br_table = labels;
 
       // advance
       curr = pwasm_buf_step(curr, len);
@@ -5756,7 +5756,7 @@ pwasm_interp_eval_expr(
       {
         // get value from stack, branch labels, label offset, and then index
         const uint32_t val = stack->ptr[--stack->pos].i32;
-        const pwasm_slice_t labels = in.v_br_table.labels.slice;
+        const pwasm_slice_t labels = in.v_br_table;
         const size_t labels_ofs = labels.ofs + MIN(val, labels.len - 1);
         const uint32_t id = frame.mod->u32s[labels_ofs];
 
@@ -9350,7 +9350,7 @@ pwasm_new_interp_eval_expr(
       {
         // get value from stack, branch labels, label offset, and then index
         const uint32_t val = stack->ptr[--stack->pos].i32;
-        const pwasm_slice_t labels = in.v_br_table.labels.slice;
+        const pwasm_slice_t labels = in.v_br_table;
         const size_t labels_ofs = labels.ofs + MIN(val, labels.len - 1);
         const uint32_t id = frame.mod->mod->u32s[labels_ofs];
 

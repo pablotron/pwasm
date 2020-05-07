@@ -273,9 +273,9 @@ wat_write_inst_imm(
     fprintf(wat->io, " %f", in.v_f64.val);
     break;
   case PWASM_IMM_BR_TABLE:
-    for (size_t i = 0; i < in.v_br_table.labels.slice.len; i++) {
+    for (size_t i = 0; i < in.v_br_table.len; i++) {
       // print branch target
-      fprintf(wat->io, " %u", mod->u32s[in.v_br_table.labels.slice.ofs + i]);
+      fprintf(wat->io, " %u", mod->u32s[in.v_br_table.ofs + i]);
     }
 
     break;

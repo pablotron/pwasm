@@ -13,7 +13,7 @@ extern "C" {
 #include <stdint.h> // uint8_t, uint32_t, etc
 
 /**
- * @defgroup util Utilities.
+ * @defgroup util Utilities
  */
 
 /**
@@ -538,13 +538,12 @@ typedef struct {
       size_t end_ofs;
     } v_block;
 
-    /// Data for `br_table` instruction.
-    struct {
-      union {
-        /// Slice of `u32s` in mod containing branch targets.
-        pwasm_slice_t slice;
-      } labels;
-    } v_br_table;
+    /**
+     * Data for `br_table` instruction.
+     *
+     * Slice of `u32s` containing branch targets.
+     */
+    pwasm_slice_t v_br_table;
 
     /**
      * Data for `br`, `br_if`, `call`, `call_indirect`, `local.get`,
