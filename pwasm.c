@@ -1425,7 +1425,7 @@ pwasm_parse_inst(
       }
 
       // save index
-      in.v_index.id = id;
+      in.v_index = id;
 
       // advance
       curr = pwasm_buf_step(curr, len);
@@ -1444,7 +1444,7 @@ pwasm_parse_inst(
       }
 
       // save index
-      in.v_index.id = id;
+      in.v_index = id;
 
       // advance
       curr = pwasm_buf_step(curr, len);
@@ -4002,7 +4002,7 @@ pwasm_mod_check_const_expr_inst(
   const size_t num_global_imports = mod->num_import_types[PWASM_IMPORT_TYPE_GLOBAL];
 
   // instruction index immediate
-  const uint32_t id = in.v_index.id;
+  const uint32_t id = in.v_index;
 
   // is this a valid instruction for a constant expr?
   if (
@@ -4470,7 +4470,7 @@ pwasm_mod_check_code(
   for (size_t i = 0; i < func.expr.len; i++) {
     // get instruction and index immediate
     const pwasm_inst_t in = insts[i];
-    const uint32_t id = in.v_index.id;
+    const uint32_t id = in.v_index;
 
     // FIXME: we should probably switch on opcode here or immediate
     // rather than a series of ad-hoc conditionals
@@ -5697,12 +5697,12 @@ pwasm_interp_eval_expr(
       {
         // check branch index
         // FIXME: check in check for overflow here
-        if (in.v_index.id >= depth - 1) {
+        if (in.v_index >= depth - 1) {
           return false;
         }
 
         // decriment control stack
-        depth -= in.v_index.id;
+        depth -= in.v_index;
 
         const pwasm_ctl_stack_entry_t ctl_tail = ctl_stack[depth - 1];
 
@@ -5727,12 +5727,12 @@ pwasm_interp_eval_expr(
       if (stack->ptr[--stack->pos].i32) {
         // check branch index
         // FIXME: need to check in "check" for overflow here
-        if (in.v_index.id >= depth - 1) {
+        if (in.v_index >= depth - 1) {
           return false;
         }
 
         // decriment control stack
-        depth -= in.v_index.id;
+        depth -= in.v_index;
 
         const pwasm_ctl_stack_entry_t ctl_tail = ctl_stack[depth - 1];
 
@@ -5792,7 +5792,7 @@ pwasm_interp_eval_expr(
       return true;
     case PWASM_OP_CALL:
       // call function, check for error
-      if (!pwasm_interp_call_func(frame.env, frame.mod, in.v_index.id)) {
+      if (!pwasm_interp_call_func(frame.env, frame.mod, in.v_index)) {
         // return failure
         return false;
       }
@@ -5800,7 +5800,7 @@ pwasm_interp_eval_expr(
       break;
     case PWASM_OP_CALL_INDIRECT:
       // call function, check for error
-      if (!pwasm_interp_call_indirect(frame, in.v_index.id)) {
+      if (!pwasm_interp_call_indirect(frame, in.v_index)) {
         // return failure
         return false;
       }
@@ -5821,7 +5821,7 @@ pwasm_interp_eval_expr(
     case PWASM_OP_LOCAL_GET:
       {
         // get local index
-        const uint32_t id = in.v_index.id;
+        const uint32_t id = in.v_index;
 
         // check local index
         if (id >= frame.locals.len) {
@@ -5838,7 +5838,7 @@ pwasm_interp_eval_expr(
     case PWASM_OP_LOCAL_SET:
       {
         // get local index
-        const uint32_t id = in.v_index.id;
+        const uint32_t id = in.v_index;
 
         // check local index
         if (id >= frame.locals.len) {
@@ -5856,7 +5856,7 @@ pwasm_interp_eval_expr(
     case PWASM_OP_LOCAL_TEE:
       {
         // get local index
-        const uint32_t id = in.v_index.id;
+        const uint32_t id = in.v_index;
 
         // check local index
         if (id >= frame.locals.len) {
@@ -5873,7 +5873,7 @@ pwasm_interp_eval_expr(
     case PWASM_OP_GLOBAL_GET:
       {
         // get global index
-        const uint32_t id = in.v_index.id;
+        const uint32_t id = in.v_index;
 
         // get global value, check for error
         pwasm_val_t val;
@@ -5890,7 +5890,7 @@ pwasm_interp_eval_expr(
     case PWASM_OP_GLOBAL_SET:
       {
         // get global index
-        const uint32_t id = in.v_index.id;
+        const uint32_t id = in.v_index;
 
         // set global value, check for error
         if (!pwasm_env_set_global(frame.env, id, PWASM_PEEK(stack, 0))) {
@@ -9291,12 +9291,12 @@ pwasm_new_interp_eval_expr(
       {
         // check branch index
         // FIXME: check in check for overflow here
-        if (in.v_index.id >= depth - 1) {
+        if (in.v_index >= depth - 1) {
           return false;
         }
 
         // decriment control stack
-        depth -= in.v_index.id;
+        depth -= in.v_index;
 
         const pwasm_ctl_stack_entry_t ctl_tail = ctl_stack[depth - 1];
 
@@ -9321,12 +9321,12 @@ pwasm_new_interp_eval_expr(
       if (stack->ptr[--stack->pos].i32) {
         // check branch index
         // FIXME: need to check in "check" for overflow here
-        if (in.v_index.id >= depth - 1) {
+        if (in.v_index >= depth - 1) {
           return false;
         }
 
         // decriment control stack
-        depth -= in.v_index.id;
+        depth -= in.v_index;
 
         const pwasm_ctl_stack_entry_t ctl_tail = ctl_stack[depth - 1];
 
@@ -9386,7 +9386,7 @@ pwasm_new_interp_eval_expr(
       return true;
     case PWASM_OP_CALL:
       // call function, check for error
-      if (!pwasm_new_interp_call_func(frame.env, frame.mod, in.v_index.id)) {
+      if (!pwasm_new_interp_call_func(frame.env, frame.mod, in.v_index)) {
         // return failure
         return false;
       }
@@ -9394,7 +9394,7 @@ pwasm_new_interp_eval_expr(
       break;
     case PWASM_OP_CALL_INDIRECT:
       // call function, check for error
-      if (!pwasm_new_interp_call_indirect(frame, in.v_index.id)) {
+      if (!pwasm_new_interp_call_indirect(frame, in.v_index)) {
         // return failure
         return false;
       }
@@ -9415,7 +9415,7 @@ pwasm_new_interp_eval_expr(
     case PWASM_OP_LOCAL_GET:
       {
         // get local index
-        const uint32_t id = in.v_index.id;
+        const uint32_t id = in.v_index;
 
         // check local index
         if (id >= frame.locals.len) {
@@ -9432,7 +9432,7 @@ pwasm_new_interp_eval_expr(
     case PWASM_OP_LOCAL_SET:
       {
         // get local index
-        const uint32_t id = in.v_index.id;
+        const uint32_t id = in.v_index;
 
         // check local index
         if (id >= frame.locals.len) {
@@ -9450,7 +9450,7 @@ pwasm_new_interp_eval_expr(
     case PWASM_OP_LOCAL_TEE:
       {
         // get local index
-        const uint32_t id = in.v_index.id;
+        const uint32_t id = in.v_index;
 
         // check local index
         if (id >= frame.locals.len) {
@@ -9467,7 +9467,7 @@ pwasm_new_interp_eval_expr(
     case PWASM_OP_GLOBAL_GET:
       {
         // get global index
-        const uint32_t id = pwasm_new_interp_get_global_index(frame.env, frame.mod, in.v_index.id);
+        const uint32_t id = pwasm_new_interp_get_global_index(frame.env, frame.mod, in.v_index);
 
         // get global value, check for error
         pwasm_val_t val;
@@ -9484,7 +9484,7 @@ pwasm_new_interp_eval_expr(
     case PWASM_OP_GLOBAL_SET:
       {
         // get global index
-        const uint32_t id = pwasm_new_interp_get_global_index(frame.env, frame.mod, in.v_index.id);
+        const uint32_t id = pwasm_new_interp_get_global_index(frame.env, frame.mod, in.v_index);
 
         // set global value, check for error
         if (!pwasm_env_set_global(frame.env, id, PWASM_PEEK(stack, 0))) {

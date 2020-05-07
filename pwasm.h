@@ -546,13 +546,11 @@ typedef struct {
     pwasm_slice_t v_br_table;
 
     /**
-     * Data for `br`, `br_if`, `call`, `call_indirect`, `local.get`,
-     * `local.set`, `local.tee`, `global.get`, and `global.set`
-     * instructions.
+     * Index immediate for `br`, `br_if`, `call`, `call_indirect`,
+     * `local.get`, `local.set`, `local.tee`, `global.get`, and
+     * `global.set` instructions.
      */
-    struct {
-      uint32_t id; //< index immediate
-    } v_index;
+    uint32_t v_index;
 
     /**
      * Memory immediate for `*.load` and `*.store` instructions.

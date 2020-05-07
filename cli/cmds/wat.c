@@ -246,7 +246,7 @@ wat_write_inst_imm(
     break;
   case PWASM_IMM_INDEX:
     // write index
-    fprintf(wat->io, " %s%u", wat_get_inst_index_prefix(in), in.v_index.id);
+    fprintf(wat->io, " %s%u", wat_get_inst_index_prefix(in), in.v_index);
     break;
   case PWASM_IMM_MEM:
     // write alignment (disabled for now)
@@ -281,7 +281,7 @@ wat_write_inst_imm(
     break;
   case PWASM_IMM_CALL_INDIRECT:
     // write indirect call type
-    wat_write_type(wat, mod, mod->types[in.v_index.id]);
+    wat_write_type(wat, mod, mod->types[in.v_index]);
     break;
   default:
     errx(EXIT_FAILURE, "Unknown instruction immediate type: %u", imm);
