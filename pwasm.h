@@ -1211,7 +1211,7 @@ typedef struct {
 /**
  * Parse a module from source +src+ into the module +mod+.
  *
- * Returns 0 on error.
+ * @return Number of bytes consumed, or `0` on error.
  *
  * @ingroup mod
  */
@@ -1225,7 +1225,7 @@ size_t pwasm_mod_init(
  * Finalize a module and free any memory associated with it.
  * @ingroup mod
  */
-void pwasm_mod_fini(pwasm_mod_t *);
+void pwasm_mod_fini(pwasm_mod_t *mod);
 
 typedef struct {
   pwasm_mem_ctx_t * const mem_ctx;
