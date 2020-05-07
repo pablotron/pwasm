@@ -10,7 +10,7 @@ tag.
 * [ ] code, cli: `wat`: fix alignment
 * [ ] code, test: add table tests
 * [ ] code, test: add import test
-* [ ] code, test: add wat2wasm round-trip tests
+* [ ] test: add wat2wasm round-trip tests
 * [ ] code, check: add control stack validation (re-add)
 * [ ] code, check: add global, elem, and segment expr validation
 * [ ] code, check: check `call_immediate` at invocation
@@ -30,9 +30,8 @@ tag.
 * [ ] build: add meson support
 * [ ] build, test: add clang static analysis support
 * [ ] build: build dynamic library
-* [ ] doc: add full API documentation (`doxygen`?)
 * [ ] ci, test: run full test suite on push
-* [ ] ci, test: build on compilers on push
+* [ ] ci, test: build on all compilers on push
 * [ ] ci, test: run static analysis passes on push
 * [ ] ci, web: regenerate user guides for all tags and master on push (e.g. `pablotron.github.io/pwasm/$TAG/docs/guide/`, `docs.pwasm.org/$TAG/guide/`, etc)
 * [ ] ci, web: regenerate api docs for all tags and master on push (e.g. `pablotron.github.io/pwasm/$TAG/docs/api/`, `docs.pwasm.org/$TAG/api/`, etc)
@@ -41,6 +40,7 @@ tag.
 ## In Progress
 * [ ] code: add global, table, and mem init, call start func (added,
       but untested)
+* [ ] doc: add full API documentation (`doxygen`?)
 
 ## Done
 
