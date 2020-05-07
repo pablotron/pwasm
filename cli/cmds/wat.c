@@ -261,16 +261,16 @@ wat_write_inst_imm(
 
     break;
   case PWASM_IMM_I32_CONST:
-    fprintf(wat->io, " %u", in.v_i32.val);
+    fprintf(wat->io, " %u", in.v_i32);
     break;
   case PWASM_IMM_I64_CONST:
-    fprintf(wat->io, " %lu", in.v_i64.val);
+    fprintf(wat->io, " %lu", in.v_i64);
     break;
   case PWASM_IMM_F32_CONST:
-    fprintf(wat->io, " %f", in.v_f32.val);
+    fprintf(wat->io, " %f", in.v_f32);
     break;
   case PWASM_IMM_F64_CONST:
-    fprintf(wat->io, " %f", in.v_f64.val);
+    fprintf(wat->io, " %f", in.v_f64);
     break;
   case PWASM_IMM_BR_TABLE:
     for (size_t i = 0; i < in.v_br_table.len; i++) {

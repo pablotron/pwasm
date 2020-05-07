@@ -560,30 +560,22 @@ typedef struct {
     /**
      * Immediate value for `const.i32` instructions.
      */
-    struct {
-      uint32_t val; //< immediate i32 value
-    } v_i32;
+    uint32_t v_i32;
 
     /**
      * Immediate value for `const.i64` instructions.
      */
-    struct {
-      uint64_t val; //< immediate i64 value
-    } v_i64;
+    uint64_t v_i64;
 
     /**
      * Immediate value for `const.f32` instructions.
      */
-    struct {
-      float val; //< immediate f32 value
-    } v_f32;
+    float v_f32;
 
     /**
      * Immediate for `const.f64` instructions.
      */
-    struct {
-      double val; //< immediate f64 value
-    } v_f64;
+    double v_f64;
   };
 } pwasm_inst_t;
 

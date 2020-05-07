@@ -1499,7 +1499,7 @@ pwasm_parse_inst(
       }
 
       // save value
-      in.v_i32.val = val;
+      in.v_i32 = val;
 
       // advance
       curr = pwasm_buf_step(curr, len);
@@ -1518,7 +1518,7 @@ pwasm_parse_inst(
       }
 
       // save value
-      in.v_i64.val = val;
+      in.v_i64 = val;
 
       // advance
       curr = pwasm_buf_step(curr, len);
@@ -1544,7 +1544,7 @@ pwasm_parse_inst(
       memcpy(u.u8, curr.ptr, len);
 
       // save value, increment length
-      in.v_f32.val = u.f32;
+      in.v_f32 = u.f32;
 
       // advance
       curr = pwasm_buf_step(curr, len);
@@ -1570,7 +1570,7 @@ pwasm_parse_inst(
       memcpy(u.u8, curr.ptr, len);
 
       // save value, increment length
-      in.v_f64.val = u.f64;
+      in.v_f64 = u.f64;
 
       // advance
       curr = pwasm_buf_step(curr, len);
@@ -5984,19 +5984,19 @@ pwasm_interp_eval_expr(
 
       break;
     case PWASM_OP_I32_CONST:
-      stack->ptr[stack->pos++].i32 = in.v_i32.val;
+      stack->ptr[stack->pos++].i32 = in.v_i32;
 
       break;
     case PWASM_OP_I64_CONST:
-      stack->ptr[stack->pos++].i64 = in.v_i64.val;
+      stack->ptr[stack->pos++].i64 = in.v_i64;
 
       break;
     case PWASM_OP_F32_CONST:
-      stack->ptr[stack->pos++].f32 = in.v_f32.val;
+      stack->ptr[stack->pos++].f32 = in.v_f32;
 
       break;
     case PWASM_OP_F64_CONST:
-      stack->ptr[stack->pos++].f64 = in.v_f64.val;
+      stack->ptr[stack->pos++].f64 = in.v_f64;
 
       break;
     case PWASM_OP_I32_EQZ:
@@ -9578,19 +9578,19 @@ pwasm_new_interp_eval_expr(
 
       break;
     case PWASM_OP_I32_CONST:
-      stack->ptr[stack->pos++].i32 = in.v_i32.val;
+      stack->ptr[stack->pos++].i32 = in.v_i32;
 
       break;
     case PWASM_OP_I64_CONST:
-      stack->ptr[stack->pos++].i64 = in.v_i64.val;
+      stack->ptr[stack->pos++].i64 = in.v_i64;
 
       break;
     case PWASM_OP_F32_CONST:
-      stack->ptr[stack->pos++].f32 = in.v_f32.val;
+      stack->ptr[stack->pos++].f32 = in.v_f32;
 
       break;
     case PWASM_OP_F64_CONST:
-      stack->ptr[stack->pos++].f64 = in.v_f64.val;
+      stack->ptr[stack->pos++].f64 = in.v_f64;
 
       break;
     case PWASM_OP_I32_EQZ:
