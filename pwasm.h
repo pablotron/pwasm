@@ -37,6 +37,10 @@ typedef struct {
   size_t len; //< Total length of slice.
 } pwasm_slice_t;
 
+/**
+ * @defgroup type Types
+ */
+
 #define PWASM_SECTION_TYPES \
   PWASM_SECTION_TYPE(CUSTOM, custom) \
   PWASM_SECTION_TYPE(TYPE, type) \
@@ -52,6 +56,10 @@ typedef struct {
   PWASM_SECTION_TYPE(SEGMENT, segment) \
   PWASM_SECTION_TYPE(LAST, invalid)
 
+/**
+ * Section types
+ * @ingroup type
+ */
 typedef enum {
 #define PWASM_SECTION_TYPE(a, b) PWASM_SECTION_TYPE_##a,
 PWASM_SECTION_TYPES
@@ -60,6 +68,8 @@ PWASM_SECTION_TYPES
 
 /**
  * Get name of section type.
+ *
+ * @ingroup type
  *
  * @return Pointer to the null-terminated name of a section, or a
  * pointer to the string "unknown section" if the given section type is
@@ -71,6 +81,7 @@ const char *pwasm_section_type_get_name(const pwasm_section_type_t);
 
 /**
  * Representation of WebAssembly limits.
+ * @ingroup mod
  */
 typedef struct {
   uint32_t min;   //< Lower bound.
@@ -80,11 +91,13 @@ typedef struct {
 
 /**
  * Table element type.
+ * @ingroup mod
  */
 typedef uint32_t pwasm_elem_type_t;
 
 /**
  * Parsed Web Assembly table.
+ * @ingroup mod
  */
 typedef struct {
   pwasm_elem_type_t elem_type;  //< Table type.  Must be `0x70`.
@@ -98,6 +111,10 @@ typedef struct {
   PWASM_VALUE_TYPE(0x7C, F64, "f64") \
   PWASM_VALUE_TYPE(0x00, LAST, "unknown value type")
 
+/**
+ * Value type
+ * @ingroup type
+ */
 typedef enum {
 #define PWASM_VALUE_TYPE(a, b, c) PWASM_VALUE_TYPE_ ## b = (a),
 PWASM_VALUE_TYPE_DEFS
@@ -107,11 +124,16 @@ PWASM_VALUE_TYPE_DEFS
 /**
  * Get name of value type.
  *
- * Returns a pointer to the null-terminated name of a value type, or a
- * pointer to the string "unknown value type" if the given value type
- * is unknown.
+ * @ingroup type
  *
- * Note: The strings returned by this function should not be freed.
+ * @param type Value type
+ *
+ * @return Pointer to the `NULL~-terminated value type name, or a
+ * pointer to the string "unknown value type" if given an invalid value
+ * type.
+ *
+ * @note The strings returned by this function should not be freed.
+ * @note This function never returns a `NULL` pointer.
  */
 const char *pwasm_value_type_get_name(const pwasm_value_type_t);
 
@@ -123,6 +145,10 @@ const char *pwasm_value_type_get_name(const pwasm_value_type_t);
   PWASM_RESULT_TYPE(0x40, VOID, "void") \
   PWASM_RESULT_TYPE(0x00, LAST, "unknown result type")
 
+/**
+ * Block result types
+ * @ingroup type
+ */
 typedef enum {
 #define PWASM_RESULT_TYPE(a, b, c) PWASM_RESULT_TYPE_ ## b = (a),
 PWASM_RESULT_TYPE_DEFS
@@ -130,13 +156,18 @@ PWASM_RESULT_TYPE_DEFS
 } pwasm_result_type_t;
 
 /**
- * Get name of return value type.
+ * Get name of result type.
  *
- * Returns a pointer to the null-terminated name of a result type, or a
- * pointer to the string "unknown result type" if the given result type
- * is unknown.
+ * @ingroup type
  *
- * Note: The strings returned by this function should not be freed.
+ * @param type Block result type
+ *
+ * @return Pointer to the `NULL`-terminated result type name, or a
+ * pointer to the string "unknown result type" if given an invalid
+ * result type.
+ *
+ * @note The strings returned by this function should not be freed.
+ * @note This function never returns a `NULL` pointer.
  */
 const char *pwasm_result_type_get_name(const pwasm_result_type_t);
 
@@ -153,6 +184,10 @@ const char *pwasm_result_type_get_name(const pwasm_result_type_t);
   PWASM_IMM(F64_CONST, "f64_const") \
   PWASM_IMM(LAST, "invalid")
 
+/**
+ * Immediate type.
+ * @ingroup type
+ */
 typedef enum {
 #define PWASM_IMM(a, b) PWASM_IMM_##a,
 PWASM_IMM_DEFS
@@ -162,11 +197,16 @@ PWASM_IMM_DEFS
 /**
  * Get name of an immediate type.
  *
- * Returns a pointer to the null-terminated name of an immediate type,
- * or a pointer to the string "invalid" if the given immediate type is
- * unknown.
+ * @ingroup type
  *
- * Note: The strings returned by this function should not be freed.
+ * @param type Immediate type
+ *
+ * @return Pointer to the `NULL`-terminated immediate type name, or a
+ * pointer to the string "unknown result type" if given an invalid
+ * immediate type.
+ *
+ * @note The strings returned by this function should not be freed.
+ * @note This function never returns a `NULL` pointer.
  */
 const char *pwasm_imm_get_name(const pwasm_imm_t);
 
@@ -428,6 +468,10 @@ const char *pwasm_imm_get_name(const pwasm_imm_t);
   /* 0xFE */ PWASM_OP_RESERVED(_FE, "fe") \
   /* 0xFF */ PWASM_OP_RESERVED(_FF, "ff")
 
+/**
+ * Opcode
+ * @ingroup type
+ */
 typedef enum {
 #define PWASM_OP(a, b, c) PWASM_OP_ ## a,
 #define PWASM_OP_CONST(a, b, c) PWASM_OP_ ## a,
@@ -441,21 +485,26 @@ PWASM_OP_DEFS
 /**
  * Get opcode name.
  *
- * Returns a pointer to a null-terminated string containing the opcode
- * name.
+ * @ingroup type
  *
- * If given an invalid opcode, then this function returns a
- * pointer to a null-terminated string pointing containing the string
- * "invalid opcode".
+ * @param op Opcode number
  *
- * This function never returns a NULL pointer.
+ * @return Pointer to the `NULL`-terminated opcode name, or a pointer to
+ * the string "unknown result type" if given an invalid opcode.
+ *
+ * @note The strings returned by this function should not be freed.
+ * @note This function never returns a `NULL` pointer.
  */
 const char *pwasm_op_get_name(const pwasm_op_t);
 
 /**
- * Get opcode immediate type.
+ * Get immediate type of opcode.
  *
- * Get the type of immediate value associated with this opcode.
+ * @ingroup type
+ *
+ * @param op Opocode
+ *
+ * @return Immediate type of opcode.
  */
 pwasm_imm_t pwasm_op_get_imm(const pwasm_op_t);
 
@@ -640,7 +689,12 @@ pwasm_mem_ctx_t pwasm_mem_ctx_init_defaults(void *);
 void *pwasm_realloc(pwasm_mem_ctx_t *, void *, const size_t);
 
 /**
+ * @defgroup vec Vectors
+ */
+
+/**
  * Resizable vector of data.
+ * @ingroup vec
  */
 typedef struct {
   /** memory context */
@@ -660,34 +714,65 @@ typedef struct {
 } pwasm_vec_t;
 
 /**
+ * Create a new vector.
+ *
  * Create a new vector bound to the given memory context with the given
  * stride.
  *
- * Returns false if memory could not be allocated.
+ * @ingroup vec
+ *
+ * @param[in]   mem_ctx Memory context
+ * @param[out]  vec     Destination vector
+ * @param[in]   stride  Size of individual entries, in bytes
+ *
+ * @return `true` on success, or `false` if memory could not be
+ * allocated.
  */
 _Bool pwasm_vec_init(
-  pwasm_mem_ctx_t * const,
+  pwasm_mem_ctx_t *mem_ctx,
   pwasm_vec_t *,
   const size_t
 );
 
 /**
- * Finalize a vector and free all memory associated with it.
+ * Finalize a vector.
+ *
+ * Finalize a vector and free any memory associated with it.
+ *
+ * @ingroup vec
+ *
+ * @param vec Vector
+ *
+ * @return `true` on success, or `false` if an error occurred.
  */
 _Bool pwasm_vec_fini(pwasm_vec_t *);
 
 /**
  * Get the number of entries in this vector.
+ *
+ * @ingroup vec
+ *
+ * @param vec Vector
+ *
+ * @return Number of entries.
  */
 size_t pwasm_vec_get_size(const pwasm_vec_t *);
 
 /**
  * Get a pointer to the data (rows) for this vector.
+ *
+ * @ingroup vec
+ *
+ * @param vec Vector
+ *
+ * @return Pointer to internal elements.
  */
 const void *pwasm_vec_get_data(const pwasm_vec_t *);
 
 /**
  * Append new entries to this vector.
+ *
+ * @ingroup vec
  *
  * @param[in] vec Destination vector.
  * @param[in] num_rows Number of entries to append.
@@ -704,92 +789,160 @@ _Bool pwasm_vec_push(
   const void *entries,
   size_t *ret_ofs
 );
-_Bool pwasm_vec_pop(pwasm_vec_t *, void *);
+
+/**
+ * Pop last element of vector.
+ *
+ * @ingroup vec
+ *
+ * @param[in]   vec Vector
+ * @param[out]  ret Pointer to output memory of size `stride` to write
+ * removed value (optional, may be `NULL`).
+ *
+ * @return `true` on success, or `false` on error.
+ */
+_Bool pwasm_vec_pop(pwasm_vec_t *vec, void *ret);
+
+/**
+ * Clear vector.
+ *
+ * @ingroup vec
+ *
+ * @param[in]   vec Vector
+ */
 void pwasm_vec_clear(pwasm_vec_t *);
 
+/**
+ * @defgroup mod Modules
+ */
+
+/**
+ * Module section header.
+ * @ingroup mod
+ */
 typedef struct {
-  pwasm_section_type_t type;
-  uint32_t len;
+  pwasm_section_type_t type; //< section type
+  uint32_t len; //< section length, in bytes
 } pwasm_header_t;
 
+/**
+ * Module custom section.
+ * @ingroup mod
+ */
 typedef struct {
-  pwasm_slice_t name;
-  pwasm_slice_t data;
+  pwasm_slice_t name; //< custom section name
+  pwasm_slice_t data; //< custom section data
 } pwasm_custom_section_t;
 
+/**
+ * Function type
+ * @ingroup mod
+ */
 typedef struct {
-  pwasm_slice_t params;
-  pwasm_slice_t results;
+  pwasm_slice_t params; //< function parameters
+  pwasm_slice_t results; //< function results
 } pwasm_type_t;
 
+/**
+ * Module import.
+ * @ingroup mod
+ */
 typedef struct {
-  pwasm_slice_t module;
-  pwasm_slice_t name;
-  pwasm_import_type_t type;
+  pwasm_slice_t module; //< import module name
+  pwasm_slice_t name; //< import name
+  pwasm_import_type_t type; //< import type
 
   union {
-    /* type index */
+    /** import function type index*/
     uint32_t func;
 
+    /** import table properties */
     pwasm_table_t table;
 
+    /** import memory limits */
     pwasm_limits_t mem;
 
+    /** import global type */
     pwasm_global_type_t global;
   };
 } pwasm_import_t;
 
+/**
+ * Module global variable.
+ * @ingroup mod
+ */
 typedef struct {
+  /** global variable type */
   pwasm_global_type_t type;
 
-  // slice of insts with offset init instructions
+  /** global variable init constant expresssion */
   pwasm_slice_t expr;
 } pwasm_global_t;
 
+/**
+ * Module function.
+ * @ingroup mod
+ */
 typedef struct {
-  // offset of function prototype in function_types
+  /// offset of function prototype in function_types
   size_t type_id;
 
-  // local variable slots (only used for module functions)
-  //
-  // NOTE: each local has a num parameter so you cannot use .len to
-  // calculate the total number of locals without iterating through
-  // the elements; use max_locals or frame_size instead.
+  /**
+   * local variable slots (only used for module functions)
+   *
+   * @note Each local has a `num` parameter, so you cannot use .len to
+   * calculate the total number of locals without iterating through /
+   * the elements; use `max_locals` or `frame_size` instead.
+   */
   pwasm_slice_t locals;
 
-  // number of local slots, excluding parameters
+  /** number of local slots, excluding parameters */
   size_t max_locals;
 
-  // total number of local slots, including parameters
+  /** total number of local slots, including parameters */
   size_t frame_size;
 
-  // instructions
+  /** function instructions */
   pwasm_slice_t expr;
 } pwasm_func_t;
 
+/**
+ * Module export.
+ * @ingroup mod
+ */
 typedef struct {
-  pwasm_slice_t name;
-  pwasm_export_type_t type;
-  uint32_t id;
+  pwasm_slice_t name; //< Export name
+  pwasm_export_type_t type; //< Export type
+  uint32_t id; //< Export index
 } pwasm_export_t;
 
+/**
+ * Module table element
+ * @ingroup mod
+ */
 typedef struct {
+  /** Table ID */
   uint32_t table_id;
 
-  // slice of insts with expr instructions
+  /** Offset init constant expression */
   pwasm_slice_t expr;
 
-  // slice of u32s with function IDs
+  /** Slice of u32s `with` function IDs */
   pwasm_slice_t funcs;
 } pwasm_elem_t;
 
+/**
+ * Module memory segment
+ * @ingroup mod
+ */
 typedef struct {
+  /** Memory ID */
   uint32_t mem_id;
 
-  // slice of insts with expr instructions
+  /** Offset init constant expression */
   pwasm_slice_t expr;
 
-  // slice of bytes with data
+  /** Slice of `bytes` with segment data */
   pwasm_slice_t data;
 } pwasm_segment_t;
 
@@ -833,6 +986,8 @@ typedef struct {
  *
  * Note: You shouldn't need to call this function directly; it is called
  * by `pwasm_mod_init()`.
+ *
+ * @ingroup mod
  */
 size_t pwasm_mod_parse(
   const pwasm_buf_t,
@@ -909,6 +1064,8 @@ typedef struct {
  * Parse a module from source +src+ into the module +mod+.
  *
  * Returns 0 on error.
+ *
+ * @ingroup mod
  */
 size_t pwasm_mod_init(
   pwasm_mem_ctx_t * const mem_ctx,
@@ -918,6 +1075,7 @@ size_t pwasm_mod_init(
 
 /**
  * Finalize a module and free any memory associated with it.
+ * @ingroup mod
  */
 void pwasm_mod_fini(pwasm_mod_t *);
 
@@ -995,24 +1153,43 @@ _Bool pwasm_build(
   pwasm_mod_t *
 );
 
+/**
+ * Module validation callbacks.
+ * @ingroup mod
+ */
 typedef struct {
+  /**
+   * Called when a validation warning occurs.
+   */
   void (*on_warning)(const char *, void *);
+
+  /**
+   * Called when a validation error occurs.
+   */
   void (*on_error)(const char *, void *);
 } pwasm_mod_check_cbs_t;
 
 /**
  * Verify that a parsed module is valid.
  *
- * Returns true if the module validates successfully and false
- * otherwise.
+ * If a validation error occurs, and the `cbs` parameter and `on_error`
+ * callback are both non-`NULL`, then the `on_error` callback will be
+ * invoked an error message describing the validation error.
  *
- * If a validation error occurs, and the +cbs+ parameter and
- * +cbs->on_error+ are both non-NULL, then +cbs->on_error+ will be
- * called with an error message describing the validation error.
- *
- * Note: this function is called by `pwasm_mod_init()`, so you only
- * need to call `pwasm_mod_check()` if you parsed the module with
+ * @note This function is called by `pwasm_mod_init()`, so you only need
+ * to call `pwasm_mod_check()` if you parsed the module with
  * `pwasm_mod_init_unsafe()`.
+ *
+ * @ingroup mod
+ *
+ * @param mod     Module
+ * @param cbs     Module validation callbacks (optional, may be NULL).
+ * @param cb_data Validation callback user data (optional, may be NULL).
+ *
+ * @return `true` if the module validates, and `false` otherwise.
+ *
+ * @see pwasm_mod_init()
+ * @see pwasm_mod_init_unsafe()
  */
 _Bool pwasm_mod_check(
   const pwasm_mod_t * const mod,
@@ -1020,6 +1197,18 @@ _Bool pwasm_mod_check(
   void *cb_data
 );
 
+/**
+ * @defgroup env Execution Environment
+ */
+
+/**
+ * @defgroup env-low Execution Environment (Low-Level)
+ */
+
+/**
+ * WebAssembly value.
+ * @ingroup env
+ */
 typedef union {
   uint32_t i32;
   uint64_t i64;
@@ -1027,6 +1216,15 @@ typedef union {
   double   f64;
 } pwasm_val_t;
 
+/**
+ * Value stack.
+ *
+ * Stack of values used to pass parameters and results to functions in
+ * an execution environment, and to store the internal state of the
+ * stack machine inside the execution environment.
+ *
+ * @ingroup env
+ */
 typedef struct {
   pwasm_val_t * const ptr;
   const size_t len;
@@ -1035,6 +1233,10 @@ typedef struct {
 
 /**
  * Memory instance.
+ *
+ * Memory instance inside an execution environment.
+ *
+ * @ingroup env
  */
 typedef struct {
   pwasm_buf_t buf;
@@ -1049,128 +1251,306 @@ typedef struct {
   pwasm_val_t val;
 } pwasm_env_global_t;
 
+/**
+ * Used to peek inside a value stack.
+ */
 #define PWASM_PEEK(stack, ofs) ((stack)->ptr[(stack)->pos - 1 - (ofs)])
+
+/**
+ * @defgroup native Native Modules
+ */
 
 typedef struct pwasm_env_t pwasm_env_t;
 typedef struct pwasm_native_t pwasm_native_t;
 
+/**
+ * Native instance.
+ * @ingroup native
+ * @deprecated Not used any more.  Will be removed.
+ */
 typedef struct {
   const uint32_t * const imports;
   const pwasm_native_t * const native;
 } pwasm_native_instance_t;
 
+/**
+ * Prototype for a native function callback.
+ * @ingroup native
+ */
 typedef _Bool (*pwasm_native_func_cb_t)(
-  pwasm_env_t *,
-  const pwasm_native_t *
+  pwasm_env_t *env,
+  const pwasm_native_t *mod
 );
 
+/**
+ * Native function type.
+ *
+ * Used to specify the parameters and results of a native function.
+ *
+ * @ingroup native
+ */
 typedef struct {
+  /** parameters */
   struct {
     const pwasm_value_type_t *ptr;
     const size_t len;
   } params;
 
+  /** results */
   struct {
     const pwasm_value_type_t *ptr;
     const size_t len;
   } results;
 } pwasm_native_type_t;
 
+/**
+ * Native function definition.
+ * @ingroup native
+ */
 typedef struct {
+  /** function name */
   const char * const name;
+
+  /** function callback */
   const pwasm_native_func_cb_t func;
+
+  /** function type */
   const pwasm_native_type_t type;
 } pwasm_native_func_t;
 
+/**
+ * Native table definition.
+ * @ingroup native
+ */
 typedef struct {
+  /** table type (must be 0x70) */
   const pwasm_elem_type_t type; /* must be 0x70 */
+
+  /** table elements */
   const uint32_t *vals;
+
+  /** number of table elements */
   const size_t num_vals;
 } pwasm_native_table_t;
 
+/**
+ * Native memory.
+ * @ingroup native
+ */
 typedef struct {
+  /** memory name */
   const char * const name;
+
+  /** memory buffer (pointer and size) */
   pwasm_buf_t buf;
+
+  /** memory limits */
   const pwasm_limits_t limits;
 } pwasm_native_mem_t;
 
+/**
+ * Native global variable.
+ * @ingroup native
+ */
 typedef struct {
+  /** global variable name */
   const char * const name;
+
+  /** global variable type */
   pwasm_global_type_t type;
+
+  /** global variable value */
   pwasm_val_t val;
 } pwasm_native_global_t;
 
+/**
+ * Native import.
+ *
+ * @note Not currently implemented.  May be removed.
+ *
+ * @ingroup native
+ */
 typedef struct {
+  /** import type */
   pwasm_import_type_t type;
+
+  /** import module name */
   const char *mod;
+
+  /** import name */
   const char *name;
 } pwasm_native_import_t;
 
+/**
+ * Native module.
+ * @ingroup native
+ */
 struct pwasm_native_t {
-  const size_t num_imports;
-  const pwasm_native_import_t * const imports;
+  const size_t num_imports; //< Number of imports
+  const pwasm_native_import_t * const imports; //< Imports (unused)
 
-  const size_t num_funcs;
-  const pwasm_native_func_t * const funcs;
+  const size_t num_funcs; //< Number of functions
+  const pwasm_native_func_t * const funcs; //< Functions
 
-  const size_t num_mems;
-  pwasm_native_mem_t * const mems;
+  const size_t num_mems; //< Number of memories
+  pwasm_native_mem_t * const mems; //< Memories
 
-  const size_t num_globals;
-  const pwasm_native_global_t * const globals;
+  const size_t num_globals; //< Number of globals
+  const pwasm_native_global_t * const globals; //< Globals
 
-  const size_t num_tables;
-  const pwasm_native_table_t * const tables;
+  const size_t num_tables; //< Number of tables
+  const pwasm_native_table_t * const tables; //< Tables
 };
 
+/**
+ * Execution environment interface.
+ *
+ * Implement the callbacks in this structure to implement a different
+ * execution environment.
+ *
+ * @ingroup env-low
+ */
 typedef struct {
-  // init env (alloc memory)
+  /**
+   * Initialize execution environment.
+   *
+   * Callback to initialize execution environment internal data
+   * (e.g. allocate memory).
+   *
+   * @param env Execution environment.
+   *
+   * @return `true` on success, or `false` on error.
+   */
   _Bool (*init)(pwasm_env_t *);
 
-  // finalize env (free memory)
+  /**
+   * Finalize execution environment.
+   *
+   * Callback to finalize execution environment internal data
+   * (e.g. free memory).
+   *
+   * @param env Execution environment.
+   */
   void (*fini)(pwasm_env_t *);
 
-  // add native module with given name
-  // (returns zero on error)
+  /**
+   * Add native module.
+   *
+   * Callback to add a native module to an execution environment with
+   * the given name.
+   *
+   * @param env   Execution environment
+   * @param name  Module name
+   * @param null  Native module
+   *
+   * @return Module handle on success, or `0` on error.
+   *
+   * @note This callback implements `pwasm_add_native()` and
+   * `pwasm_env_add_native().
+   */
   uint32_t (*add_native)(
     pwasm_env_t *, // env
     const char *, // instance name
     const pwasm_native_t * // native module
   );
 
-  // add module
-  // (returns zero on error)
+  /**
+   * Add module.
+   *
+   * Callback to add a module to an execution environment with the given
+   * name.
+   *
+   * @param env   Execution environment
+   * @param name  Module name
+   * @param null  module
+   *
+   * @return Module handle on success, or `0` on error.
+   *
+   * @note This callback implements `pwasm_add_mod()` and
+   * `pwasm_env_add_mod().
+   */
   uint32_t (*add_mod)(
     pwasm_env_t *, // env
     const char *, // instance name
     const pwasm_mod_t * // parsed module
   );
 
-  // get module handle by name
-  // (returns zero on error)
+  /**
+   * Get module by name.
+   *
+   * Callback to get a module from an execution environment with the
+   * given name.
+   *
+   * @param env   Execution environment
+   * @param name  Module name
+   *
+   * @return Module handle on success, or `0` on error.
+   *
+   * @note This callback implements `pwasm_find_mod()` and
+   * `pwasm_env_find_mod().
+   */
   uint32_t (*find_mod)(
     pwasm_env_t *, // env
     const pwasm_buf_t // name
   );
 
-  // get global handle by mod_id and name
-  // (returns zero on error)
+  /**
+   * Get global variable by name.
+   *
+   * Callback to get a global variable from an execution environment
+   * and module handle with the given name.
+   *
+   * @param env     Execution environment
+   * @param mod_id  Module handle
+   * @param name    Global variable name
+   *
+   * @return Global variable handle on success, or `0` on error.
+   *
+   * @note This callback implements `pwasm_find_global()` and
+   * `pwasm_env_find_global().
+   */
   uint32_t (*find_global)(
     pwasm_env_t *, // env
     const uint32_t, // module ID
     pwasm_buf_t // global name
   );
 
-  // get global value
-  // (returns false on error)
+  /**
+   * Get global variable value.
+   *
+   * Callback to get the value of a global variable from an execution
+   * environment.
+   *
+   * @param[in]   env       Execution environment
+   * @param[in]   global_id Global variable handle
+   * @param[out]  ret_val   Return value
+   *
+   * @return `true` on success, or `false` on error.
+   *
+   * @note This callback implements `pwasm_get_global()` and
+   * `pwasm_env_get_global().
+   */
   _Bool (*get_global)(
     pwasm_env_t *, // env
     const uint32_t, // global ID
     pwasm_val_t * // return value
   );
 
-  // set global value
-  // (returns false on error)
+  /**
+   * Set global variable value.
+   *
+   * Callback to set the value of a global variable in an execution
+   * environment.
+   *
+   * @param   env       Execution environment
+   * @param   global_id Global variable handle
+   * @param]  val       New value
+   *
+   * @return `true` on success, or `false` on error.
+   *
+   * @note This callback implements `pwasm_set_global()` and
+   * `pwasm_env_set_global().
+   */
   _Bool (*set_global)(
     pwasm_env_t *, // env
     const uint32_t, // global ID
@@ -1274,21 +1654,18 @@ typedef struct {
   );
 } pwasm_env_cbs_t;
 
+/**
+ * Execution environment.
+ *
+ * @ingroup env-low
+ */
 struct pwasm_env_t {
-  pwasm_mem_ctx_t *mem_ctx;
-  const pwasm_env_cbs_t *cbs;
-  pwasm_stack_t *stack;
-  void *env_data;
-  void *user_data;
+  pwasm_mem_ctx_t *mem_ctx;   //< memory context
+  const pwasm_env_cbs_t *cbs; //< execution environment callbacks
+  pwasm_stack_t *stack;       //< stack pointer
+  void *env_data;             //< internal environment data
+  void *user_data;            //< user data
 };
-
-/**
- * @defgroup env Execution Environment
- */
-
-/**
- * @defgroup env-low Execution Environment (Low-Level)
- */
 
 /**
  * Create a new execution environment.
@@ -1322,7 +1699,7 @@ _Bool pwasm_env_init(
   pwasm_mem_ctx_t *mem_ctx,
   const pwasm_env_cbs_t *cbs,
   pwasm_stack_t *stack,
-  void *user_data
+  void *data
 );
 
 /**
@@ -1339,79 +1716,155 @@ _Bool pwasm_env_init(
  * modules; use `pwasm_mod_fini()` for that.
  *
  * @see pwasm_env_init()
- * @see pwasm_mod_fini()
  */
 void pwasm_env_fini(pwasm_env_t *env);
 
 /**
- * Add a parsed WASM module to this environment and return a handle.
+ * Get the user data for an execution environment.
  *
- * Returns 0 on error.
+ * @ingroup env
+ *
+ * @param env Execution environment.
+ *
+ * @return Pointer to user data provided to `pwasm_env_init()`.
+ *
+ * @see pwasm_env_init()
+ */
+void *pwasm_env_get_data(const pwasm_env_t *env);
+
+/**
+ * Add a module to environment.
+ *
+ * Add parsed WebAssembly module to execution environment and return a
+ * handle to the module.
+ *
+ * @ingroup env
+ *
+ * @param env   Execution environment
+ * @param name  Module name
+ * @param mod   Module
+ *
+ * @return Module handle, or `0` on error.
+ *
+ * @see pwasm_mod_init()
+ * @see pwasm_env_add_native()
  */
 uint32_t pwasm_env_add_mod(
-  pwasm_env_t *,
-  const char * const,
-  const pwasm_mod_t *
+  pwasm_env_t *env,
+  const char * const name,
+  const pwasm_mod_t *mod
 );
 
 /**
- * Add a native module to this environment and return a handle.
+ * Add a native module to environment.
  *
- * Returns 0 on error.
+ * Add parsed WebAssembly module to execution environment and return a
+ * handle to the module.
+ *
+ * @ingroup env
+ *
+ * @param env   Execution environment
+ * @param name  Module name
+ * @param mod   Native module
+ *
+ * @return Module handle, or `0` on error.
+ *
+ * @see pwasm_env_add_mod()
  */
 uint32_t pwasm_env_add_native(
-  pwasm_env_t *,
-  const char * const,
-  const pwasm_native_t *
+  pwasm_env_t *env,
+  const char * const name,
+  const pwasm_native_t *mod
 );
 
 /**
- * Find module in this environment and return a handle.
+ * Find module and return handle.
  *
- * Returns zero if an error occurred or the module could not be found.
+ * @ingroup env-low
+ *
+ * @param env   Execution environment
+ * @param name  Module name
+ *
+ * @return Module handle, or `0` on error.
  */
 uint32_t pwasm_env_find_mod(
-  pwasm_env_t *,
-  const pwasm_buf_t
+  pwasm_env_t *env,
+  const pwasm_buf_t name
 );
 
 /**
- * Find function in given environment and module and return a handle.
+ * Get function handle.
  *
- * Returns zero if an error occurred or the function could not be found.
+ * Find function in given execution environment environment and module
+ * handle, and then return a handle to the function.
+ *
+ * @ingroup env-low
+ *
+ * @param env     Execution environment
+ * @param mod_id  Module handle
+ * @param name    Function name.
+ *
+ * @return Function handle, or `0` on error.
  */
 uint32_t pwasm_env_find_func(
-  pwasm_env_t *,
-  const uint32_t,
-  const pwasm_buf_t
+  pwasm_env_t *env,
+  const uint32_t mod_id,
+  const pwasm_buf_t name
 );
 
 /**
- * Find memory in given environment and module and return a handle.
+ * Get memory handle.
  *
- * Returns zero if an error occurred or the memory could not be found.
+ * Find memory in given execution environment environment and module
+ * handle, and then return a handle to the memory.
+ *
+ * @ingroup env-low
+ *
+ * @param env     Execution environment
+ * @param mod_id  Module handle
+ * @param name    Memory name.
+ *
+ * @return Memory handle, or `0` on error.
  */
 uint32_t pwasm_env_find_mem(
-  pwasm_env_t *,
-  const uint32_t,
-  const pwasm_buf_t
+  pwasm_env_t *env,
+  const uint32_t mod_id,
+  const pwasm_buf_t name
 );
 
 /**
- * Find global in given environment and module and return a handle.
+ * Get global variable handle.
  *
- * Returns zero if an error occurred or the global could not be found.
+ * Find global variable in given execution environment environment and
+ * module handle, and then return a handle to the global variable.
+ *
+ * @ingroup env-low
+ *
+ * @param env     Execution environment
+ * @param mod_id  Module handle
+ * @param name    Global variable name.
+ *
+ * @return Global variable handle, or `0` on error.
  */
 uint32_t pwasm_env_find_global(
-  pwasm_env_t *,
-  const uint32_t,
-  const pwasm_buf_t
+  pwasm_env_t *env,
+  const uint32_t mod_id,
+  const pwasm_buf_t name
 );
 
 /**
- * Find table in given environment and module and return a handle.
+ * Get table handle.
  *
- * Returns zero if an error occurred or the table could not be found.
+ * Find table in given execution environment environment and
+ * module handle, and then return a handle to the table.
+ *
+ * @ingroup env-low
+ *
+ * @param env     Execution environment
+ * @param mod_id  Module handle
+ * @param name    Table name.
+ *
+ * @return Table handle, or `0` on error.
  */
 uint32_t pwasm_env_find_table(
   pwasm_env_t *,
@@ -1422,7 +1875,24 @@ uint32_t pwasm_env_find_table(
 /**
  * Call function by handle.
  *
- * Returns false if an error occurred.
+ * Calls the function handle with the parameters stord on the stack in
+ * the given execution environment `env`.
+ *
+ * If `pwasm_env_call()` returns successfully, then the results of the
+ * function call (if any) will be stored in the stack.
+ *
+ * @ingroup env-low
+ *
+ * @param env     Execution environment.
+ * @param func_id Function handle.
+ *
+ * @return `true` on success, or `false` if an error occurred.
+ *
+ * @note This is a low-level execution environment function; see
+ * `pwasm_call()` for the high-level equivalent.
+ *
+ * @see pwasm_call()
+ * @see pwasm_env_find_func()
  */
 _Bool pwasm_env_call(
   pwasm_env_t *,
@@ -1432,81 +1902,162 @@ _Bool pwasm_env_call(
 /**
  * Load value from memory index at given memory address.
  *
- * Returns false if an error occurred.
+ * @ingroup env-low
+ *
+ * @param[in]   env     Execution environment.
+ * @param[in]   mem_id  Memory handle.
+ * @param[in]   inst    Instruction (used to determine mask).
+ * @param[in]   offset  Offset in memory handle.
+ * @param[out]  ret_val Pointer to destination value.
+ *
+ * @return `true` on success, or `false` if an error occurred.
+ *
+ * @see pwasm_env_mem_store()
+ * @see pwasm_env_find_mem()
  */
 _Bool pwasm_env_mem_load(
-  pwasm_env_t *,
-  const uint32_t,
-  const pwasm_inst_t,
-  const uint32_t,
-  pwasm_val_t *
+  pwasm_env_t *env,
+  const uint32_t mem_id,
+  const pwasm_inst_t inst,
+  const uint32_t offset,
+  pwasm_val_t *ret_val
 );
 
 /**
- * Store value to memory index at given address.
+ * Store value to memory handle at given address.
  *
- * Returns false if an error occurred.
+ * @ingroup env-low
+ *
+ * @param[in] env     Execution environment.
+ * @param[in] mem_id  Memory handle.
+ * @param[in] inst    Instruction (used to determine mask).
+ * @param[in] offset  Offset in memory handle.
+ * @param[in] val     Value to store in memory.
+ *
+ * @return `true` on success, or `false` if an error occurred.
+ *
+ * @see pwasm_env_mem_load()
+ * @see pwasm_env_find_mem()
  */
 _Bool pwasm_env_mem_store(
-  pwasm_env_t *,
-  const uint32_t,
-  const pwasm_inst_t,
-  const uint32_t,
-  const pwasm_val_t
+  pwasm_env_t * env,
+  const uint32_t mem_id,
+  const pwasm_inst_t inst,
+  const uint32_t offset,
+  const pwasm_val_t val
 );
 
 /**
- * Get the size, in pages of a given memory index.
+ * Get the size of a given memory handle.
  *
- * Returns false if an error occurred.
+ * Get the size in pages of the given memory handle and and returns the
+ * size in the output parameter `ret_val`.
+ *
+ * @ingroup env-low
+ *
+ * @param[in]   env     Execution environment.
+ * @param[in]   mem_id  Memory handle.
+ * @param[out]  ret_val Pointer to destination value.
+ *
+ * @return `true` on success, or `false` if an error occurred.
+ *
+ * @see pwasm_env_mem_grow()
  */
 _Bool pwasm_env_mem_size(
-  pwasm_env_t *,
-  const uint32_t,
-  uint32_t *
+  pwasm_env_t *env,
+  const uint32_t mem_id,
+  uint32_t *ret_val
 );
 
 /**
- * Grow the given memory index and return the new size.
+ * Grow the given memory handle.
  *
- * Returns false if an error occurred.
+ * Grows the given memory handle and and returns the new size in the
+ * output parameter `ret_val`.
+ *
+ * @ingroup env-low
+ *
+ * @param[in]   env     Execution environment.
+ * @param[in]   mem_id  Memory handle.
+ * @param[in]   grow    Number of pages to grow memory by.
+ * @param[out]  ret_val Pointer to destination value.
+ *
+ * @return `true` on success, or `false` if an error occurred.
+ *
+ * @see pwasm_env_mem_size()
  */
 _Bool pwasm_env_mem_grow(
-  pwasm_env_t *,
-  const uint32_t,
-  const uint32_t,
-  uint32_t *
+  pwasm_env_t *env,
+  const uint32_t mem_id,
+  const uint32_t grow,
+  uint32_t *ret_val
 );
 
 /**
- * Get global value.
+ * Get the value of a global variable.
  *
- * Returns true on success or false on error.
+ * @ingroup env-low
+ *
+ * @param[in]   env       Execution environment.
+ * @param[in]   global_id Global variable handle.
+ * @param[out]  ret_val   Pointer to destination value.
+ *
+ * @return `true` on success, or `false` if an error occurred.
+ *
+ * @note This is a low-level function; see `pwasm_get_global()` for the
+ * high-level counterpart.
+ *
+ * @see pwasm_get_global()
+ * @see pwasm_env_set_global()
  */
 _Bool pwasm_env_get_global(
-  pwasm_env_t *,
-  const uint32_t,
-  pwasm_val_t *
+  pwasm_env_t *env,
+  const uint32_t global_id,
+  pwasm_val_t *val
 );
 
 /**
- * Set global value.
+ * Set the value of a global variable.
  *
- * Returns true on success or false on error.
+ * Set the value of a global variable, given an execution environment
+ * and a handle for a global variable,
+ *
+ * @ingroup env-low
+ *
+ * @param env       Execution environment.
+ * @param global_id Global variable handle.
+ * @param val       New value of global variable.
+ *
+ * @return `true` on success, or `false` if an error occurred.
+ *
+ * @note This is a low-level function; see `pwasm_set_global()` for the
+ * high-level counterpart.
+ *
+ * @see pwasm_env_get_global()
+ * @see pwasm_set_global()
  */
 _Bool pwasm_env_set_global(
-  pwasm_env_t *,
-  const uint32_t,
-  const pwasm_val_t
+  pwasm_env_t *env,
+  const uint32_t global_id,
+  const pwasm_val_t val
 );
 
 /**
  * Get handle to import.
- * Find import by module ID, import type, and import name.
  *
- * Returns 0 if an error occurred.
+ * Find import by module handle, import type, and import name, and then
+ * return a handle to the import.
  *
- * FIXME: rename to pwasm_env_link()?
+ * @ingroup env-low
+ *
+ * @param env Execution environment.
+ * @param mod_id Module handle.
+ * @param type Import type.
+ * @param name Import name.
+ *
+ * @return Import handle, or `0` on error.
+ *
+ * @FIXME rename to `pwasm_env_link()`?
  */
 uint32_t pwasm_env_find_import(
   pwasm_env_t *env,
@@ -1629,7 +2180,6 @@ uint32_t pwasm_find_global(
  *
  * @see pwasm_set_global()
  * @see pwasm_env_get_global()
- *
  */
 _Bool pwasm_get_global(
   pwasm_env_t *env,

@@ -4751,6 +4751,13 @@ pwasm_env_fini(
   }
 }
 
+void *
+pwasm_env_get_data(
+  const pwasm_env_t * const env
+) {
+  return env->user_data;
+}
+
 uint32_t
 pwasm_env_add_mod(
   pwasm_env_t * const env,
