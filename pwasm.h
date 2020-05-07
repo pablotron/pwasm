@@ -595,6 +595,10 @@ typedef struct {
   PWASM_IMPORT_TYPE(GLOBAL, "global", global) \
   PWASM_IMPORT_TYPE(LAST, "unknown import type", invalid)
 
+/**
+ * Import types
+ * @ingroup type
+ */
 typedef enum {
 #define PWASM_IMPORT_TYPE(a, b, c) PWASM_IMPORT_TYPE_##a,
 PWASM_IMPORT_TYPES
@@ -613,6 +617,10 @@ const char *pwasm_import_type_get_name(const pwasm_import_type_t);
   PWASM_EXPORT_TYPE(GLOBAL, "global", global) \
   PWASM_EXPORT_TYPE(LAST, "unknown export type", invalid)
 
+/**
+ * Export types
+ * @ingroup type
+ */
 typedef enum {
 #define PWASM_EXPORT_TYPE(a, b, c) PWASM_EXPORT_TYPE_##a,
 PWASM_EXPORT_TYPES
@@ -621,61 +629,83 @@ PWASM_EXPORT_TYPES
 
 /**
  * Get the name of the given export type.
+ * @ingroup type
  */
 const char *pwasm_export_type_get_name(const pwasm_export_type_t);
 
 /**
- * Local variable attributes (count and type).
+ * @defgroup mem Memory Context
  */
-typedef struct {
-  uint32_t num; //< Number of local variables of this value type.
-  pwasm_value_type_t type; //< Value type of local variable.
-} pwasm_local_t;
 
 /**
  * Memory context callbacks.
+ * @ingroup mem
  */
 typedef struct {
+  /**
+   * Callback that is invoked to allocate, resize, or free memory.
+   */
   void *(*on_realloc)(void *, size_t, void *);
+
+  /**
+   * Callback that is invoked when an error occurs.
+   */
   void (*on_error)(const char *, void *);
 } pwasm_mem_cbs_t;
 
 /**
  * Memory context.
+ * @ingroup mem
  */
 typedef struct {
-  const pwasm_mem_cbs_t *cbs;
-  void *cb_data;
+  const pwasm_mem_cbs_t *cbs; //< Memory context callbacks
+  void *cb_data; //< Callback data
 } pwasm_mem_ctx_t;
 
 /**
  * Create a new memory context initialized with default values.
+ * @ingroup mem
  */
 pwasm_mem_ctx_t pwasm_mem_ctx_init_defaults(void *);
 
 /**
- * Allocate memory from the given memory context.
+ * Allocate, resize, or free memory.
  *
- * This function behaves similar to realloc():
+ * Allocate, resize, or free memory from the given memory context.
  *
- * 1. If the pointer is NULL and the size is not zero, then this
- *    function is equivalent to malloc().
- * 2. If the pointer is non-NULL and the size is not zero, then this
- *    function is equivalent to realloc().
- * 3. If the pointer is non-NULL and the size is zero, then this
- *    function is equivalent to free().
+ * This function behaves similar to `realloc()`:
  *
- * This function returns NULL if cases #1 or #2 fail.  It always returns
- * NULL in case #3, so you should check for error by checking for a NULL
- * return value AND a non-zero size, like so:
+ * 1. If `ptr` is `NULL` and `size` is not zero, then this function is
+ *    equivalent to `malloc()`.
+ * 2. If `ptr` is non-`NULL` and `size` is not zero, then this function
+ *    is equivalent to `realloc()`.
+ * 3. If `ptr` is non-`NULL` and `size` is zero, then this function is
+ *    equivalent to `free()`.
+ *
+ * @note `pwasm_realloc()` returns `NULL` if cases #1 or #2 fail.  It
+ * always returns `NULL` in case #3, so you should check for error by
+ * checking for a `NULL` return value AND a non-zero `size`, like so:
  *
  *     // resize memory, check for error
  *     void *new_ptr = pwasm_realloc(mem_ctx, old_ptr, new_size);
  *     if (!new_ptr && new_size > 0) {
  *       // handle error here
  *     }
+ *
+ * @ingroup mem
+ *
+ * @param mem_ctx Memory context
+ * @param ptr     Memory pointer, or NULL
+ * @param size    Number of bytes.
+ *
+ * @return Memory pointer or `NULL` on error.  Also returns `NULL` if
+ * `size` is sero.
  */
-void *pwasm_realloc(pwasm_mem_ctx_t *, void *, const size_t);
+void *pwasm_realloc(
+  pwasm_mem_ctx_t *mem_ctx,
+  void *ptr,
+  const size_t size
+);
 
 /**
  * @defgroup vec Vectors
@@ -719,8 +749,8 @@ typedef struct {
  */
 _Bool pwasm_vec_init(
   pwasm_mem_ctx_t *mem_ctx,
-  pwasm_vec_t *,
-  const size_t
+  pwasm_vec_t *vec,
+  const size_t stride
 );
 
 /**
@@ -734,7 +764,7 @@ _Bool pwasm_vec_init(
  *
  * @return `true` on success, or `false` if an error occurred.
  */
-_Bool pwasm_vec_fini(pwasm_vec_t *);
+_Bool pwasm_vec_fini(pwasm_vec_t *vec);
 
 /**
  * Get the number of entries in this vector.
@@ -745,7 +775,7 @@ _Bool pwasm_vec_fini(pwasm_vec_t *);
  *
  * @return Number of entries.
  */
-size_t pwasm_vec_get_size(const pwasm_vec_t *);
+size_t pwasm_vec_get_size(const pwasm_vec_t *vec);
 
 /**
  * Get a pointer to the data (rows) for this vector.
@@ -756,7 +786,7 @@ size_t pwasm_vec_get_size(const pwasm_vec_t *);
  *
  * @return Pointer to internal elements.
  */
-const void *pwasm_vec_get_data(const pwasm_vec_t *);
+const void *pwasm_vec_get_data(const pwasm_vec_t *vec);
 
 /**
  * Append new entries to this vector.
@@ -794,10 +824,8 @@ _Bool pwasm_vec_pop(pwasm_vec_t *vec, void *ret);
 
 /**
  * Clear vector.
- *
  * @ingroup vec
- *
- * @param[in]   vec Vector
+ * @param vec Vector
  */
 void pwasm_vec_clear(pwasm_vec_t *);
 
@@ -869,11 +897,20 @@ typedef struct {
 } pwasm_global_t;
 
 /**
+ * Local variable properties (count and type).
+ * @ingroup mod
+ */
+typedef struct {
+  uint32_t num; //< Number of local variables of this value type.
+  pwasm_value_type_t type; //< Value type of local variable.
+} pwasm_local_t;
+
+/**
  * Module function.
  * @ingroup mod
  */
 typedef struct {
-  /// offset of function prototype in function_types
+  //* offset of function prototype in function_types */
   size_t type_id;
 
   /**
@@ -935,28 +972,143 @@ typedef struct {
   pwasm_slice_t data;
 } pwasm_segment_t;
 
+/**
+ * Module parsing callbacks.
+ * @ingroup mod
+ */
 typedef struct {
+  /**
+   * Called when module parser encounters unsigned 32-bit integers.
+   *
+   * Callback should append u32s to internal u32s list and return a
+   * slice indicating the offset and length in the internal u32s list.
+   */
   pwasm_slice_t (*on_u32s)(const uint32_t *, const size_t, void *);
+
+  /**
+   * Called when module parser encounters arbitrary byte data.
+   *
+   * Callback should append bytes to internal byte buffer and return a
+   * slice indicating the offset and length wthin the internal byte
+   * buffer.
+   */
   pwasm_slice_t (*on_bytes)(const uint8_t *, const size_t, void *);
+
+  /**
+   * Called when module parser encounters instructions.
+   *
+   * Callback should append the instructions to an internal instructions
+   * vector and return a slice indicating the offset and length within
+   * the internal buffer.
+   */
   pwasm_slice_t (*on_insts)(const pwasm_inst_t *, const size_t, void *);
 
+  /**
+   * Called when module parser encounters a section header.
+   */
   void (*on_section)(const pwasm_header_t *, void *);
+
+  /**
+   * Called when module parser encounters a custom section.
+   *
+   * @note The custom section name and custom section data are
+   * represented as slices into the internal byte buffer.
+   */
   void (*on_custom_section)(const pwasm_custom_section_t *, void *);
+
+  /**
+   * Called when module parser encounters types.
+   *
+   * @note The parameters and results are represented as slices into the
+   * internal u32s buffer.
+   */
   void (*on_types)(const pwasm_type_t *, const size_t, void *);
+
+  /**
+   * Called when module parser encounters imports.
+   */
   void (*on_imports)(const pwasm_import_t *, const size_t, void *);
+
+  /**
+   * Called when module parser encounters functions.
+   *
+   * @note Functions are u32s representing an offset into the list of
+   * types.
+   */
   void (*on_funcs)(const uint32_t *, const size_t, void *);
 
+  /**
+   * Called when module parser encounters tables.
+   */
   void (*on_tables)(const pwasm_table_t *, const size_t, void *);
+
+  /**
+   * Called when module parser encounters memory declarations.
+   */
   void (*on_mems)(const pwasm_limits_t *, const size_t, void *);
+
+  /**
+   * Called when module parser encounters global variables.
+   *
+   * @note Global variable initialization expressions are represented as
+   * slices of instructions within the `insts` buffer.
+   */
   void (*on_globals)(const pwasm_global_t *, const size_t, void *);
+
+  /**
+   * Called when module parser encounters exports.
+   */
   void (*on_exports)(const pwasm_export_t *, const size_t, void *);
+
+  /**
+   * Called when module parser encounters table elements.
+   *
+   * @note the `funcs` field is represented as a slice into the `u32s`
+   * vector, and the `expr` field is represented as a slice into the
+   * `insts` vector.
+   */
   void (*on_elems)(const pwasm_elem_t *, const size_t, void *);
+
+  /**
+   * Called when module parser encounters a start function.
+   */
   void (*on_start)(const uint32_t, void *);
 
+  /**
+   * Called when module parser encounters local variables.
+   *
+   * Callback should append locals to internal `locals` buffer and
+   * return a slice indicating the offset and lenght within the `locals`
+   * buffer.
+   */
   pwasm_slice_t (*on_locals)(const pwasm_local_t *, const size_t, void *);
+
+  /**
+   * Called when module parser encounters label targets for the
+   * `br_table` instruction.
+   *
+   * Callback should append labels to internal `labels` buffer and
+   * return a slice indicating the offset and lenght within the `labels`
+   * vector.
+   */
   pwasm_slice_t (*on_labels)(const uint32_t *, const size_t, void *);
 
+  /**
+   * Called when module parser encounters function bodies.
+   *
+   * @note The locals in this function are represented as a slice into
+   * the `locals` internal vector, and the expression is represented as
+   * a slice into the internal `insts` vector.
+   */
   void (*on_codes)(const pwasm_func_t *, const size_t, void *);
+
+  /**
+   * Called when module parser encounters a data segment.
+   *
+   * @note The bytes in this function  are represented as a slice into
+   * the `bytes` internal vector, and the offset expression is
+   * represented as a slice into the internal `insts` vector.
+   */
   void (*on_segments)(const pwasm_segment_t *, const size_t, void *);
 
   // TODO (https://webassembly.github.io/spec/core/appendix/custom.html)
@@ -964,6 +1116,9 @@ typedef struct {
   // void (*on_func_names)(const pwasm_func_name_t *, const size_t, void *);
   // void (*on_local_names)(const pwasm_local_name_t *, const size_t, void *);
 
+  /**
+   * Called when a parsing error is encountered.
+   */
   void (*on_error)(const char *, void *);
 } pwasm_mod_parse_cbs_t;
 
@@ -984,6 +1139,10 @@ size_t pwasm_mod_parse(
   void *cb_data
 );
 
+/**
+ * Parsed module.
+ * @ingroup mod
+ */
 typedef struct {
   pwasm_mem_ctx_t * const mem_ctx;
 
