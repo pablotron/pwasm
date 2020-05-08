@@ -40,7 +40,6 @@ tag.
 ## In Progress
 * [ ] code: add global, table, and mem init, call start func (added,
       but untested)
-* [ ] doc: add full API documentation (`doxygen`?)
 
 ## Done
 
@@ -80,6 +79,7 @@ Items in this section have been completed.
 * [x] cli: add `exports` command (list module exports as CSV)
 * [x] code, cli: add `func` command to show parameters and results
 * [x] cli: add `imports` command (list module imports as CSV)
+* [x] doc: add full API documentation (`doxygen`)
 
 ## Tag Definitions
 

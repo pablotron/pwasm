@@ -1001,16 +1001,35 @@ pwasm_parse_labels(
   return num_bytes;
 }
 
+/**
+ * Type parser callbacks.
+ */
 typedef struct {
+  /**
+   * Called with u32s that should be cached.
+   *
+   * Callback should append u32s to internal list of u32s list and a
+   * slice indicating the offset.
+   *
+   * u32s are used by the WebAssembly types to indicate the value types
+   * of parameters and results.
+   */
   pwasm_slice_t (*on_u32s)(const uint32_t *, const size_t, void *);
+
+  /**
+   * Called when a parse error occurs.
+   */
   void (*on_error)(const char *, void *);
 } pwasm_parse_type_cbs_t;
 
+/**
+ * type parser state
+ */
 typedef struct {
-  const pwasm_parse_type_cbs_t * const cbs;
-  void *cb_data;
-  bool success;
-  pwasm_slice_t * const slice;
+  const pwasm_parse_type_cbs_t * const cbs; ///< callbacks
+  void *cb_data; ///< callback data
+  bool success; ///< result
+  pwasm_slice_t * const slice; ///< u32s slice
 } pwasm_parse_type_t;
 
 static void
@@ -1111,16 +1130,38 @@ pwasm_parse_type(
   return num_bytes;
 }
 
+/**
+ * Custom section parser callbacks.
+ */
 typedef struct {
+  /**
+   * Called when a custom section is encountered.
+   */
   void (*on_custom_section)(const pwasm_custom_section_t *, void *);
+
+  /**
+   * Called with bytes that should be cached.
+   *
+   * Callback should append bytes to internal byte buffer and then
+   * return a slice indicating the offset and length within the byte
+   * buffer.
+   *
+   */
   pwasm_slice_t (*on_bytes)(const uint8_t *, size_t, void *);
+
+  /**
+   * Called when a custom section parse error occurs.
+   */
   void (*on_error)(const char *, void *);
 } pwasm_parse_custom_section_cbs_t;
 
+/**
+ * Custom section parser state.
+ */
 typedef struct {
-  const pwasm_parse_custom_section_cbs_t * const cbs;
-  void *cb_data;
-  bool success;
+  const pwasm_parse_custom_section_cbs_t * const cbs; ///< callbacks
+  void *cb_data; ///< callback data
+  bool success; ///< parse result
 } pwasm_parse_custom_section_t;
 
 static void
@@ -1164,10 +1205,11 @@ pwasm_parse_custom_section(
   }
   D("len = %zu, buf.len = %zu", len, buf.len);
 
-  // pass bytes to callback, get name slice, check for error
+  // emint name bytes, get name slice, check for error
   const pwasm_slice_t name = cbs->on_bytes(buf.ptr, buf.len, cb_data);
   D("name = { .ofs = %zu, .len = %zu }", name.ofs, name.len);
   if (name.len != buf.len) {
+    // return failure
     return 0;
   }
 
@@ -1175,8 +1217,10 @@ pwasm_parse_custom_section(
   curr = pwasm_buf_step(curr, len);
   num_bytes += len;
 
+  // emit data bytes, get data slice, check for error
   const pwasm_slice_t rest = cbs->on_bytes(curr.ptr, curr.len, cb_data);
   if (rest.len != curr.len) {
+    // return failure
     return 0;
   }
 
@@ -1184,7 +1228,7 @@ pwasm_parse_custom_section(
   curr = pwasm_buf_step(curr, rest.len);
   num_bytes += rest.len;
 
-  // build section
+  // build custom section
   const pwasm_custom_section_t section = {
     .name = name,
     .data = rest,
@@ -1196,7 +1240,7 @@ pwasm_parse_custom_section(
     section.data.ofs, section.data.len
   );
 
-  // pass section to callback
+  // emit custom section
   cbs->on_custom_section(&section, cb_data);
 
   // return result
@@ -2488,9 +2532,33 @@ pwasm_parse_code(
   return num_bytes;
 }
 
+/**
+ * Data segment parser callbacks.
+ */
 typedef struct {
+  /**
+   * Called with bytes that should be cached.
+   *
+   * Callback should append bytes to internal byte buffer and then
+   * return a slice indicating the offset and length within the byte
+   * buffer.
+   *
+   */
   pwasm_slice_t (*on_bytes)(const uint8_t *, const size_t, void *);
+
+  /**
+   * Called with instructions that should be cached.
+   *
+   * Callback should append the instructions to an internal list of
+   * instructions and then slice indicating the offset and length within
+   * the internal instruction list.
+   *
+   */
   pwasm_slice_t (*on_insts)(const pwasm_inst_t *, const size_t, void *);
+
+  /**
+   * Called when a parse error occurs.
+   */
   void (*on_error)(const char *, void *);
 } pwasm_parse_segment_cbs_t;
 
@@ -5054,15 +5122,15 @@ pwasm_call(
   return pwasm_env_call(env, pwasm_find_func(env, mod_name, func_name));
 }
 
-/*
+/**
  * interpeter memory data
  *
- * FIXME: everything about this is crappy and slow
+ * @deprecated Used for old interpreter; will be removed.
  */
 typedef struct {
-  pwasm_env_mem_t * const env_mem; // memory pointer
-  const size_t ofs; // absolute offset, in bytes
-  const size_t size; // size, in bytes
+  pwasm_env_mem_t * const env_mem; ///< memory pointer
+  const size_t ofs; ///< absolute offset, in bytes
+  const size_t size; ///< size, in bytes
 } pwasm_interp_mem_t;
 
 typedef enum {
