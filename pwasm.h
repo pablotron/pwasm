@@ -742,13 +742,16 @@ pwasm_mem_ctx_t pwasm_mem_ctx_init_defaults(void *);
  *
  * @note `pwasm_realloc()` returns `NULL` if cases #1 or #2 fail.  It
  * always returns `NULL` in case #3, so you should check for error by
- * checking for a `NULL` return value AND a non-zero `size`, like so:
+ * checking for a `NULL` return value AND a non-zero `size`, like in the
+ * following example.
  *
- *     // resize memory, check for error
- *     void *new_ptr = pwasm_realloc(mem_ctx, old_ptr, new_size);
- *     if (!new_ptr && new_size > 0) {
- *       // handle error here
- *     }
+ * @code{.c}
+ * // resize memory, check for error
+ * void *new_ptr = pwasm_realloc(mem_ctx, old_ptr, new_size);
+ * if (!new_ptr && new_size > 0) {
+ *   // handle error here
+ * }
+ * @endcode
  *
  * @ingroup mem
  *
