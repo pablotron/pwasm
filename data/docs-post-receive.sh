@@ -34,7 +34,7 @@ mkdocs build -d "$DST_DIR"
 doxygen 
 
 # move api documentation into place
-mv api-docs "$DST_DIR/api"
+mv api-docs/html "$DST_DIR/api"
 
 # update documentation symlink
 rm -f "$SITE_DIR/htdocs/docs/latest"
