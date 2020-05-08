@@ -3916,9 +3916,12 @@ pwasm_mod_get_global_type(
   }
 }
 
+/**
+ * Internal data for pwasm_mod_check()
+ */
 typedef struct {
-  const pwasm_mod_check_cbs_t cbs;
-  void *cb_data;
+  const pwasm_mod_check_cbs_t cbs; /** callbacks */
+  void *cb_data; /** user data */
 } pwasm_mod_check_t;
 
 /**
@@ -4953,7 +4956,7 @@ pwasm_env_fail(
   env->mem_ctx->cbs->on_error(text, env->mem_ctx->cb_data);
 }
 
-/**
+/*
  * Friendly wrapper around pwasm_env_find_mod() which takes a string
  * pointer instead of a buffer.
  */
@@ -4965,7 +4968,7 @@ pwasm_find_mod(
   return pwasm_env_find_mod(env, pwasm_buf_str(mod_name));
 }
 
-/**
+/*
  * Friendly wrapper around pwasm_env_find_func() which takes a string
  * pointer module and function name instead of module handle and a
  * function name buffer.
@@ -4980,7 +4983,7 @@ pwasm_find_func(
   return pwasm_env_find_func(env, mod_id, pwasm_buf_str(name));
 }
 
-/**
+/*
  * Friendly wrapper around pwasm_env_get_mem() which takes a string
  * pointer module and memory name instead of a buffer.
  */
@@ -4995,7 +4998,7 @@ pwasm_get_mem(
   return pwasm_env_get_mem(env, mem_id);
 }
 
-/**
+/*
  * Find global in environment by module name and global name and return
  * a handle to the global instance.
  *
@@ -5012,7 +5015,7 @@ uint32_t pwasm_find_global(
   return pwasm_env_find_global(env, mod_id, pwasm_buf_str(name));
 }
 
-/**
+/*
  * Find global in environment by module name and global name and return
  * a pointer to the global instance.
  *
@@ -5030,15 +5033,8 @@ bool pwasm_get_global(
   return pwasm_env_get_global(env, id, ret);
 }
 
-/**
- * Find set value of global in environment by module name and global
- * name.
- *
- * Note: This is a convenience wrapper around pwasm_env_set_global().
- *
- * Returns false if an error occurred.
- */
-bool pwasm_set_global(
+bool
+pwasm_set_global(
   pwasm_env_t * const env,
   const char * const mod,
   const char * const name,
@@ -5048,10 +5044,6 @@ bool pwasm_set_global(
   return pwasm_env_set_global(env, id, val);
 }
 
-/**
- * Friendly wrapper around pwasm_env_call() which accepts the
- * module name and function name as a string instead of a buffer.
- */
 bool
 pwasm_call(
   pwasm_env_t * const env,
@@ -5062,7 +5054,7 @@ pwasm_call(
   return pwasm_env_call(env, pwasm_find_func(env, mod_name, func_name));
 }
 
-/**
+/*
  * interpeter memory data
  *
  * FIXME: everything about this is crappy and slow
@@ -5217,7 +5209,7 @@ pwasm_interp_fini(
   env->env_data = NULL;
 }
 
-/**
+/*
  * Add import mapping for native module and return a pointer to the
  * mapping.
  *
@@ -7025,7 +7017,7 @@ pwasm_interp_eval_expr(
   return true;
 }
 
-/**
+/*
  * world's shittiest initial interpreter
  */
 static bool
@@ -7120,7 +7112,7 @@ pwasm_interp_call_func(
   return true;
 }
 
-/**
+/*
  * Get the absolute memory offset from the immediate offset and the
  * offset operand.
  */
@@ -7644,7 +7636,7 @@ pwasm_interp_on_set_global(
   return pwasm_interp_set_global(env, id, val);
 }
 
-/**
+/*
  * Interpreter environment callbacks.
  */
 static const pwasm_env_cbs_t
@@ -7668,7 +7660,7 @@ PWASM_OLD_INTERP_CBS = {
   .set_global   = pwasm_interp_on_set_global,
 };
 
-/**
+/*
  * Return interpreter environment callbacks.
  */
 const pwasm_env_cbs_t *
@@ -7819,7 +7811,7 @@ pwasm_new_interp_fini(
   env->env_data = NULL;
 }
 
-/**
+/*
  * Resolve imports of a given type.
  *
  * On success, a slice of import IDs is stored in +ret+, and this
@@ -8172,7 +8164,7 @@ pwasm_new_interp_add_native(
   return mod_ofs + 1;
 }
 
-/**
+/*
  * Resolve imports of a given type.
  *
  * On success, a slice of import IDs is stored in +ret+, and this
@@ -8870,7 +8862,7 @@ pwasm_new_interp_get_mem(
   return (pwasm_env_mem_t*) rows + (mem_id - 1);
 }
 
-/**
+/*
  * Get the absolute memory offset from the immediate offset and the
  * offset operand.
  */
@@ -9166,7 +9158,7 @@ pwasm_new_interp_get_end_ofs(
   return 0;
 }
 
-/**
+/*
  * Convert an internal global ID to an externally visible global handle.
  *
  * Returns 0 on error.
@@ -10619,7 +10611,7 @@ pwasm_new_interp_eval_expr(
   return true;
 }
 
-/**
+/*
  * world's second shittiest initial interpreter
  */
 static bool
@@ -10927,7 +10919,7 @@ pwasm_new_interp_on_call(
   return pwasm_new_interp_call(env, func_id);
 }
 
-/**
+/*
  * Interpreter environment callbacks.
  */
 static const pwasm_env_cbs_t
@@ -10951,7 +10943,7 @@ NEW_PWASM_INTERP_CBS = {
   .call         = pwasm_new_interp_on_call,
 };
 
-/**
+/*
  * Return new interpreter environment callbacks.
  */
 const pwasm_env_cbs_t *
