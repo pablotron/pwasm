@@ -12,7 +12,6 @@ tag.
 * [ ] code, test: add import test
 * [ ] test: add wat2wasm round-trip tests
 * [ ] code, check: add control stack validation (re-add)
-* [ ] code, check: add global, elem, and segment expr validation
 * [ ] code, check: check `call_immediate` at invocation
 * [ ] code, parse: cache control target offsets at parse time
 * [ ] code, ops: add extended opcode support (`0xFC ...`)
@@ -80,6 +79,7 @@ Items in this section have been completed.
 * [x] code, cli: add `func` command to show parameters and results
 * [x] cli: add `imports` command (list module imports as CSV)
 * [x] doc: add full API documentation (`doxygen`)
+* [x] code, check: add global, elem, and segment expr validation
 
 ## Tag Definitions
 
