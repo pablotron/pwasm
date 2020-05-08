@@ -204,6 +204,26 @@ int main(void) {
 }
 ```
 
+## API Documentation
+
+The [API][] documentation covers the [PWASM][] library [API][].
+
+The latest [PWASM][] [API][] documentation is always available online at
+the following URL:
+
+<https://pwasm.org/docs/latest/api/>
+
+The [PWASM][] [API][] documentation is generated from annotations in the
+`pwasm.h` header file.  You can build the [API][] documentation yourself
+with [Doxygen][] by doing the following:
+
+1. Clone the [PWASM Git repository][pwasm-git].
+2. Switch to the directory of the cloned Git repository.
+3. Run `doxygen` to generate the [API][] documentation in the
+   `api-docs/` directory.
+
+**Note:** The [API][] documentation is currently incomplete.
+
 [pwasm]: https://pwasm.org/
   "PWASM"
 [pwasm-git]: https://github.com/pablotron/pwasm
@@ -228,3 +248,7 @@ int main(void) {
   "My GitHub page"
 [mit]: https://opensource.org/licenses/MIT
   "MIT license"
+[doxygen]: http://www.doxygen.nl/
+  "Doxygen API documentation generator"
+[api]: https://en.wikipedia.org/wiki/Application_programming_interface
+  "Application Programming Interface (API)"

@@ -351,10 +351,16 @@ with [MkDocs][] by doing the following:
 
 ### API Documentation
 
-The [API][] documentation covers the [PWASM][] library [API][], and is
-generated from annotations in the `pwasm.h` header file.  You can build
-the [API][] documentation yourself with [Doxygen][] by doing the
-following:
+The [API][] documentation covers the [PWASM][] library [API][].
+
+The latest [PWASM][] [API][] documentation is always available online at
+the following URL:
+
+<https://pwasm.org/docs/latest/api/>
+
+The [PWASM][] [API][] documentation is generated from annotations in the
+`pwasm.h` header file.  You can build the [API][] documentation yourself
+with [Doxygen][] by doing the following:
 
 1. Clone the [PWASM Git repository][pwasm-git].
 2. Switch to the directory of the cloned Git repository.
