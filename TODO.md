@@ -39,6 +39,7 @@ tag.
 ## In Progress
 * [ ] code: add global, table, and mem init, call start func (added,
       but untested)
+* [ ] code, test: add `br_table` test (added, unused)
 
 ## Done
 
