@@ -7,6 +7,9 @@
 
 #define LEN(ary) (sizeof(ary) / sizeof(ary[0]))
 
+// maximum test stack depth
+#define MAX_STACK_DEPTH 100
+
 // test module with one func "life" (void -> i32)
 static const uint8_t GUIDE_WASM[] = {
   0x00, 0x61, 0x73, 0x6d, 0x01, 0x00, 0x00, 0x00,
@@ -570,10 +573,10 @@ void test_wasm_calls(
   pwasm_mem_ctx_t mem_ctx = pwasm_mem_ctx_init_defaults(NULL);
 
   // set up stack
-  pwasm_val_t stack_vals[10];
+  pwasm_val_t stack_vals[MAX_STACK_DEPTH];
   pwasm_stack_t stack = {
     .ptr = stack_vals,
-    .len = 10,
+    .len = MAX_STACK_DEPTH,
   };
 
   // get interpreter callbacks
