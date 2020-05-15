@@ -9440,15 +9440,21 @@ pwasm_new_interp_eval_expr(
         if (ctl_tail.type == CTL_LOOP) {
           i = ctl_tail.ofs;
           stack->pos = ctl_tail.depth;
-        } else if (insts[ctl_tail.ofs].v_block.type == PWASM_RESULT_TYPE_VOID) {
-          // reset value stack, pop control stack
-          stack->pos = ctl_tail.depth;
-          depth--;
         } else {
-          // pop result, reset value stack, pop control stack
-          stack->ptr[ctl_tail.depth] = stack->ptr[stack->pos - 1];
-          stack->pos = ctl_tail.depth + 1;
-          depth--;
+          // skip to end inst
+          // FIXME: hack, and slow, move to check()
+          i += pwasm_new_interp_get_end_ofs(frame, expr, i);
+
+          if (insts[ctl_tail.ofs].v_block.type == PWASM_RESULT_TYPE_VOID) {
+            // reset value stack, pop control stack
+            stack->pos = ctl_tail.depth;
+            depth--;
+          } else {
+            // pop result, reset value stack, pop control stack
+            stack->ptr[ctl_tail.depth] = stack->ptr[stack->pos - 1];
+            stack->pos = ctl_tail.depth + 1;
+            depth--;
+          }
         }
       }
 
