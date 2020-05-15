@@ -35,6 +35,7 @@ tag.
 * [ ] ci, web: regenerate user guides for all tags and master on push (e.g. `pablotron.github.io/pwasm/$TAG/docs/guide/`, `docs.pwasm.org/$TAG/guide/`, etc)
 * [ ] ci, web: regenerate api docs for all tags and master on push (e.g. `pablotron.github.io/pwasm/$TAG/docs/api/`, `docs.pwasm.org/$TAG/api/`, etc)
 * [ ] ci, web: regenerate sites for all tags and master on push
+* [ ] code, cli: add `java` and `c` commands?
 
 ## In Progress
 * [ ] code: add global, table, and mem init, call start func (added,
