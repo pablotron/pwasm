@@ -251,6 +251,27 @@ static const uint8_t GLOBAL_WASM[] = {
   0x20, 0x00, 0x24, 0x03, 0x0b
 };
 
+// br_table.wasm: br_table test module with the following
+// function:
+//
+// * add_nth(i32, i32) -> i32
+//
+// (source: data/wat/07-br_table.wat)
+static const uint8_t BR_TABLE_WASM[] = {
+  0x00, 0x61, 0x73, 0x6d, 0x01, 0x00, 0x00, 0x00,
+  0x01, 0x07, 0x01, 0x60, 0x02, 0x7f, 0x7f, 0x01,
+  0x7f, 0x03, 0x02, 0x01, 0x00, 0x07, 0x0b, 0x01,
+  0x07, 0x61, 0x64, 0x64, 0x5f, 0x6e, 0x74, 0x68,
+  0x00, 0x00, 0x0a, 0x3b, 0x01, 0x39, 0x00, 0x20,
+  0x00, 0x02, 0x7f, 0x41, 0x01, 0x02, 0x7f, 0x41,
+  0x02, 0x02, 0x7f, 0x41, 0x03, 0x02, 0x7f, 0x41,
+  0x04, 0x02, 0x7f, 0x41, 0x05, 0x02, 0x7f, 0x41,
+  0x06, 0x02, 0x7f, 0x41, 0x00, 0x20, 0x01, 0x0e,
+  0x06, 0x00, 0x01, 0x02, 0x03, 0x04, 0x05, 0x06,
+  0x0b, 0x6a, 0x0b, 0x6a, 0x0b, 0x6a, 0x0b, 0x6a,
+  0x0b, 0x6a, 0x0b, 0x6a, 0x0b, 0x6a, 0x0b
+};
+
 static const struct {
   const char * const name;
   const pwasm_buf_t data;
@@ -272,6 +293,9 @@ static const struct {
 }, {
   .name = "global",
   .data = { GLOBAL_WASM, sizeof(GLOBAL_WASM) },
+}, {
+  .name = "br_table",
+  .data = { BR_TABLE_WASM, sizeof(BR_TABLE_WASM) },
 }};
 
 static const pwasm_val_t
@@ -381,6 +405,20 @@ TEST_VALS[] = {
 
   // mod: "global", func: "f64.get", test: 2, type: "result", num: 1
   { .f32 = 2.718281 },
+
+  // mod: "br_table", func: "add_nth", test: 0, type: "params", num: 2
+  { .i32 = 0 },
+  { .i32 = 0 },
+
+  // mod: "br_table", func: "add_nth", test: 0, type: "result", num: 1
+  { .i32 = 21 },
+
+  // mod: "br_table", func: "add_nth", test: 1, type: "params", num: 2
+  { .i32 = 3 },
+  { .i32 = 0 },
+
+  // mod: "br_table", func: "add_nth", test: 1, type: "result", num: 1
+  { .i32 = 24 },
 };
 
 typedef struct {
@@ -518,6 +556,20 @@ TEST_CALLS[] = {{
   .func   = "f64.get",
   .result = { 37, 1 },
   .type   = PWASM_RESULT_TYPE_F64,
+}, {
+  .text   = "br_table.add_nth(0, 0)",
+  .mod    = "br_table",
+  .func   = "add_nth",
+  .params = { 38, 2 },
+  .result = { 40, 1 },
+  .type   = PWASM_RESULT_TYPE_I32,
+}, {
+  .text   = "br_table.add_nth(3, 0)",
+  .mod    = "br_table",
+  .func   = "add_nth",
+  .params = { 41, 2 },
+  .result = { 43, 1 },
+  .type   = PWASM_RESULT_TYPE_I32,
 }};
 
 static bool is_valid_result_type(
