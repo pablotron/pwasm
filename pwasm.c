@@ -9286,7 +9286,7 @@ pwasm_new_interp_get_global_index(
 
 // forward references
 static bool pwasm_new_interp_call_func(pwasm_env_t *, pwasm_new_interp_mod_t *, uint32_t);
-static bool pwasm_new_interp_call_indirect(pwasm_new_interp_frame_t, uint32_t);
+static bool pwasm_new_interp_call_indirect(pwasm_new_interp_frame_t, pwasm_inst_t, uint32_t);
 
 static bool
 pwasm_new_interp_eval_expr(
@@ -9500,10 +9500,15 @@ pwasm_new_interp_eval_expr(
 
       break;
     case PWASM_OP_CALL_INDIRECT:
-      // call function, check for error
-      if (!pwasm_new_interp_call_indirect(frame, in.v_index)) {
-        // return failure
-        return false;
+      {
+        // pop function index from value stack
+        const uint32_t func_index = stack->ptr[--stack->pos].i32;
+
+        // call function, check for error
+        if (!pwasm_new_interp_call_indirect(frame, in, func_index)) {
+          // return failure
+          return false;
+        }
       }
 
       break;
@@ -10867,14 +10872,37 @@ pwasm_new_interp_call(
 static bool
 pwasm_new_interp_call_indirect(
   const pwasm_new_interp_frame_t frame,
-  const uint32_t func_ofs
+  const pwasm_inst_t in,
+  const uint32_t elem_ofs
 ) {
-  // TODO
-  (void) frame;
-  (void) func_ofs;
+  // get interpreter u32s
+  pwasm_new_interp_t * const data = frame.env->env_data;
+  const uint32_t * const u32s = pwasm_vec_get_data(&(data->u32s));
 
-  // return failure
-  return false;
+  // check local table index (table index inside of module)
+  const uint32_t local_id = 0;
+  if (local_id >= frame.mod->tables.len) {
+    D("local_id (%u) >= frame.mod->tables.len (%zu)", local_id, frame.mod->tables.len);
+    pwasm_env_fail(frame.env, "table index out of bounds");
+    return false;
+  }
+
+  // map local index to table ID in environment
+  const uint32_t table_id = u32s[frame.mod->tables.ofs + local_id];
+
+  // get function ID
+  // FIXME: this should be mapped from the source module's index space
+  // to the global index, i think
+  uint32_t func_id;
+  if (!pwasm_new_interp_get_elem(frame.env, table_id, elem_ofs, &func_id)) {
+    return false;
+  }
+
+  // TODO: check call_indirect type index against function type
+  (void) in;
+
+  // call function, return result
+  return pwasm_new_interp_call(frame.env, func_id);
 }
 
 //
