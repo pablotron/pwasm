@@ -566,10 +566,10 @@ pwasm_op_is_const(
   const uint8_t byte
 ) {
   return (
-    (byte == PWASM_IMM_I32_CONST) ||
-    (byte == PWASM_IMM_I64_CONST) ||
-    (byte == PWASM_IMM_F32_CONST) ||
-    (byte == PWASM_IMM_F32_CONST)
+    (byte == PWASM_OP_I32_CONST) ||
+    (byte == PWASM_OP_I64_CONST) ||
+    (byte == PWASM_OP_F32_CONST) ||
+    (byte == PWASM_OP_F64_CONST)
   );
 }
 
@@ -4089,8 +4089,8 @@ pwasm_mod_check_const_expr_inst(
 
   // is this a valid instruction for a constant expr?
   if (
-    !pwasm_op_is_const(in.op) ||
-    (in.op == PWASM_OP_GLOBAL_GET) ||
+    !pwasm_op_is_const(in.op) &&
+    (in.op != PWASM_OP_GLOBAL_GET) &&
     (in.op != PWASM_OP_END)
   ) {
     check->cbs.on_error("non-constant instruction found in constant expression", check->cb_data);
@@ -4787,7 +4787,7 @@ pwasm_mod_check(
   };
 
   // FIXME: disabled (until i fix tests)
-  return true;
+  // return true;
 
   // check start function
   if (!pwasm_mod_check_start(mod, &check)) {

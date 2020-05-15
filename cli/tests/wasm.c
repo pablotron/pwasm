@@ -407,7 +407,7 @@ TEST_VALS[] = {
   { .f64 = 2.718281 },
 
   // mod: "global", func: "f64.get", test: 2, type: "result", num: 1
-  { .f32 = 2.718281 },
+  { .f64 = 2.718281 },
 
   // mod: "br_table", func: "add_nth", test: 0, type: "params", num: 2
   { .i32 = 0 },
