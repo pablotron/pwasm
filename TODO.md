@@ -9,7 +9,6 @@ tag.
 
 * [ ] code, cli: `wat`: fix alignment
 * [ ] code, test: add table tests
-* [ ] code, test: add import test
 * [ ] test: add wat2wasm round-trip tests
 * [ ] code, check: add control stack validation (re-add)
 * [ ] code, check: check `call_immediate` at invocation
@@ -40,7 +39,6 @@ tag.
 ## In Progress
 * [ ] code: add global, table, and mem init, call start func (added,
       but untested)
-* [ ] code, test: add `br_table` test (added, unused)
 
 ## Done
 
@@ -82,6 +80,8 @@ Items in this section have been completed.
 * [x] cli: add `imports` command (list module imports as CSV)
 * [x] doc: add full API documentation (`doxygen`)
 * [x] code, check: add global, elem, and segment expr validation
+* [x] code, test: add `br_table` test
+* [x] code, test: add import test (added `data/wat/06-imports.wasm`)
 
 ## Tag Definitions
 
