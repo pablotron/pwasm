@@ -1443,7 +1443,7 @@ pwasm_parse_inst(
 
       // parse labels immediate, check for error
       pwasm_slice_t labels = { 0, 0 };
-      const size_t len = pwasm_parse_labels(&labels, curr, &labels_cbs, NULL);
+      const size_t len = pwasm_parse_labels(&labels, curr, &labels_cbs, cb_data);
       if (!len) {
         cbs->on_error("bad br_table labels immediate", cb_data);
         return 0;
