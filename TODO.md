@@ -8,7 +8,6 @@ See the "Tag Definitions" section below for a brief description of each
 tag.
 
 * [ ] code, cli: `wat`: fix alignment
-* [ ] code, test: add table tests
 * [ ] test: add wat2wasm round-trip tests
 * [ ] code, check: add control stack validation (re-add)
 * [ ] code, check: check `call_indirect` at invocation
@@ -39,6 +38,7 @@ tag.
 ## In Progress
 * [ ] code: add global, table, and mem init, call start func (added,
       but untested)
+* [ ] code, test: add table tests (added `08-call_indirect.wasm`)
 
 ## Done
 

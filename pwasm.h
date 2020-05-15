@@ -661,6 +661,9 @@ typedef struct {
      * Index immediate for `br`, `br_if`, `call`, `call_indirect`,
      * `local.get`, `local.set`, `local.tee`, `global.get`, and
      * `global.set` instructions.
+     *
+     * @note Eventually `call_indirect` will need it's own
+     * immediate to handle the table index.
      */
     uint32_t v_index;
 
