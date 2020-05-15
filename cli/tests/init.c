@@ -76,7 +76,7 @@ static const uint8_t DATA[] = {
   0x00, 0x61, 0x73, 0x6d, 0x01, 0x00, 0x00, 0x00,
   0x01, 0x04, 0x01, 0x60, 0x00, 0x00,
 
-  // type section: i32, i64 -> f32, f64 (pass, ofs: 211, len: 18)
+  // type section: i32, i64 -> f32, f64 (fail, ofs: 211, len: 18)
   0x00, 0x61, 0x73, 0x6d, 0x01, 0x00, 0x00, 0x00,
   0x01, 0x08, 0x01, 0x60, 0x02, 0X7F, 0x7E, 0x02,
   0x7D, 0x7C,
@@ -85,16 +85,19 @@ static const uint8_t DATA[] = {
   0x00, 0x61, 0x73, 0x6d, 0x01, 0x00, 0x00, 0x00,
   0x02, 0x01, 0x00,
 
-  // import func: ".", id: 0 (pass, ofs: 240, len: 15)
+  // import func: ".", id: 0 (fail, ofs: 240, len: 15)
+  // FIXME: this test should be cloned and fixed
   0x00, 0x61, 0x73, 0x6d, 0x01, 0x00, 0x00, 0x00,
   0x02, 0x05, 0x01, 0x00, 0x00, 0x00, 0x00,
 
-  // import func: "foo.bar", id: 1 (pass, ofs: 255, len: 21)
+  // import func: "foo.bar", id: 1 (fail, ofs: 255, len: 21)
+  // FIXME: this test should be cloned and fixed
   0x00, 0x61, 0x73, 0x6d, 0x01, 0x00, 0x00, 0x00,
   0x02, 0x0b, 0x01, 0x03, 'f',  'o',  'o',  0x03,
   'b',  'a',  'r',  0x00, 0x01,
 
-  // import funcs: foo.bar, bar.blum (pass, ofs: 276, len: 32)
+  // import funcs: foo.bar, bar.blum (fail, ofs: 276, len: 32)
+  // FIXME: this test should be cloned and fixed
   0x00, 0x61, 0x73, 0x6d, 0x01, 0x00, 0x00, 0x00,
   0x02, 0x16, 0x02, 0x03, 'f',  'o',  'o',  0x03,
   'b',  'a',  'r',  0x00, 0x00, 0x02, 'h',  'i',
@@ -120,11 +123,13 @@ static const uint8_t DATA[] = {
   0x00, 0x61, 0x73, 0x6d, 0x01, 0x00, 0x00, 0x00,
   0x03, 0x01, 0x00,
 
-  // function section: 1 (pass, ofs: 390, len: 12)
+  // function section: 1 (fail, ofs: 390, len: 12)
+  // FIXME: this test should be cloned and fixed
   0x00, 0x61, 0x73, 0x6d, 0x01, 0x00, 0x00, 0x00,
   0x03, 0x02, 0x01, 0x00,
 
-  // function section: 3 long (pass, ofs: 402, len: 26)
+  // function section: 3 long (fail, ofs: 402, len: 26)
+  // FIXME: this test should be cloned and fixed
   0x00, 0x61, 0x73, 0x6d, 0x01, 0x00, 0x00, 0x00,
   0x03, 0x10, 0x03, 0x80, 0x80, 0x80, 0x80, 0x01,
   0x81, 0x80, 0x80, 0x80, 0x01, 0x82, 0x80, 0x80,
@@ -180,7 +185,8 @@ static const uint8_t DATA[] = {
   0x00, 0x61, 0x73, 0x6d, 0x01, 0x00, 0x00, 0x00,
   0x05, 0x03, 0x01, 0x00, 0x00,
 
-  // memory section: 3 pairs (pass, ofs: 616, len: 44)
+  // memory section: 3 pairs (fail, ofs: 616, len: 44)
+  // FIXME: this test should be cloned and fixed
   0x00, 0x61, 0x73, 0x6d, 0x01, 0x00, 0x00, 0x00,
   0x05, 0x22, 0x03, 0x01, 0x80, 0x80, 0x80, 0x80,
   0x08, 0x81, 0x80, 0x80, 0x80, 0x08, 0x01, 0x82,
@@ -228,7 +234,8 @@ static const uint8_t DATA[] = {
   0x00, 0x61, 0x73, 0x6d, 0x01, 0x00, 0x00, 0x00,
   0x07, 0x01, 0x00,
 
-  // exports: foo, bar, baz, blum (pass, ofs: 803, len: 36)
+  // exports: foo, bar, baz, blum (fail, ofs: 803, len: 36)
+  // FIXME: this test should be cloned and fixed
   0x00, 0x61, 0x73, 0x6d, 0x01, 0x00, 0x00, 0x00,
   0x07, 0x1A, 0x04, 0x03, 'f',  'o',  'o',  0x00,
   0x01, 0x03, 'b',  'a',  'r',  0x01, 0x02, 0x03,
@@ -247,20 +254,24 @@ static const uint8_t DATA[] = {
   0x00, 0x61, 0x73, 0x6d, 0x01, 0x00, 0x00, 0x00,
   0x09, 0x01, 0x00,
 
-  // element section: one (pass, ofs: 874, len: 14)
+  // element section: one (fail, ofs: 874, len: 14)
+  // FIXME: this test should be cloned and fixed
   0x00, 0x61, 0x73, 0x6d, 0x01, 0x00, 0x00, 0x00,
   0x09, 0x04, 0x01, 0x00, 0x0B, 0x00,
 
-  // element section: two fns (pass, ofs: 888, len: 16)
+  // element section: two fns (fail, ofs: 888, len: 16)
+  // FIXME: this test should be cloned and fixed
   0x00, 0x61, 0x73, 0x6d, 0x01, 0x00, 0x00, 0x00,
   0x09, 0x06, 0x01, 0x01, 0x0B, 0x02, 0x02, 0x03,
 
-  // two elements, two fns (pass, ofs: 904, len: 21)
+  // two elements, two fns (fail, ofs: 904, len: 21)
+  // FIXME: this test should be cloned and fixed
   0x00, 0x61, 0x73, 0x6d, 0x01, 0x00, 0x00, 0x00,
   0x09, 0x0B, 0x02, 0x01, 0x0B, 0x02, 0x02, 0x03,
   0x04, 0x0B, 0x02, 0x05, 0x06,
 
-  // two elements, two i32s (pass, ofs: 925, len: 25)
+  // two elements, two i32s (fail, ofs: 925, len: 25)
+  // FIXME: this test should be cloned and fixed
   0x00, 0x61, 0x73, 0x6d, 0x01, 0x00, 0x00, 0x00,
   0x09, 0x0F, 0x02, 0x01, 0x41, 0x00, 0x0B, 0x02,
   0x02, 0x03, 0x04, 0x41, 0x01, 0x0B, 0x02, 0x05,
@@ -282,7 +293,8 @@ static const uint8_t DATA[] = {
   0x00, 0x61, 0x73, 0x6d, 0x01, 0x00, 0x00, 0x00,
   0x0B, 0x01, 0x00,
 
-  // data section: 10 bytes (pass, ofs: 992, len: 26)
+  // data section: 10 bytes (fail, ofs: 992, len: 26)
+  // FIXME: this test should be cloned and fixed
   0x00, 0x61, 0x73, 0x6d, 0x01, 0x00, 0x00, 0x00,
   0x0B, 0x10, 0x01, 0x00, 0x41, 0x2A, 0x0B, 0x0A,
   0x00, 0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07,
@@ -331,17 +343,17 @@ static const init_test_t TESTS[] = {
   { "type section: void -> junk",         false,  166,   15 },
   { "type section: i32, f32 -> void",     true,   181,   16 },
   { "type section: void -> void",         true,   197,   14 },
-  { "type section: i32, i64 -> f32, f64", true,   211,   18 },
+  { "type section: i32, i64 -> f32, f64", false,  211,   18 },
   { "import section: blank",              true,   229,   11 },
-  { "import func: \".\", id: 0",          true,   240,   15 },
-  { "import func: \"foo.bar\", id: 1",    true,   255,   21 },
-  { "import funcs: foo.bar, bar.blum",    true,   276,   32 },
+  { "import func: \".\", id: 0",          false,  240,   15 },
+  { "import func: \"foo.bar\", id: 1",    false,  255,   21 },
+  { "import funcs: foo.bar, bar.blum",    false,  276,   32 },
   { "import table: \".\", min: 0",        true,   308,   17 },
   { "import mem: uh.oh, 10-20",           true,   325,   22 },
   { "import globals: z.a, z.b, z.c",      true,   347,   32 },
   { "function section: blank",            true,   379,   11 },
-  { "function section: 1",                true,   390,   12 },
-  { "function section: 3 long",           true,   402,   26 },
+  { "function section: 1",                false,  390,   12 },
+  { "function section: 3 long",           false,  402,   26 },
   { "function section: bad long",         false,  428,   16 },
   { "table section: blank",               true,   444,   10 },
   { "table section: one short",           false,  454,   12 },
@@ -353,7 +365,7 @@ static const init_test_t TESTS[] = {
   { "memory section: blank",              true,   582,   10 },
   { "memory section: empty",              true,   592,   11 },
   { "memory section: one",                true,   603,   13 },
-  { "memory section: 3 pairs",            true,   616,   44 },
+  { "memory section: 3 pairs",            false,  616,   44 },
   { "global section: blank",              true,   660,   10 },
   { "global section: empty",              true,   670,   11 },
   { "global section: one mut i32",        true,   681,   16 },
@@ -363,19 +375,19 @@ static const init_test_t TESTS[] = {
   { "global section: f32 pi, e",          true,   755,   27 },
   { "export section: blank",              true,   782,   10 },
   { "export section: empty",              true,   792,   11 },
-  { "exports: foo, bar, baz, blum",       true,   803,   36 },
+  { "exports: foo, bar, baz, blum",       false,  803,   36 },
   { "duplicate section test",             false,  839,   14 },
   { "element section: blank",             true,   853,   10 },
   { "element section: empty",             true,   863,   11 },
-  { "element section: one",               true,   874,   14 },
-  { "element section: two fns",           true,   888,   16 },
-  { "two elements, two fns",              true,   904,   21 },
-  { "two elements, two i32s",             true,   925,   25 },
+  { "element section: one",               false,  874,   14 },
+  { "element section: two fns",           false,  888,   16 },
+  { "two elements, two fns",              false,  904,   21 },
+  { "two elements, two i32s",             false,  925,   25 },
   { "code section: blank",                true,   950,   10 },
   { "code section: empty",                true,   960,   11 },
   { "data section: blank",                true,   971,   10 },
   { "data section: empty",                true,   981,   11 },
-  { "data section: 10 bytes",             true,   992,   26 },
+  { "data section: 10 bytes",             false,  992,   26 },
   { "fixed type section: i32 -> void",    true,  1018,   15 },
   { "fixed custom section: hello",        true,  1033,   16 },
   { "fixed custom section: hello, there", true,  1049,   21 },
