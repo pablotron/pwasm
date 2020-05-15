@@ -2773,6 +2773,11 @@ bool
 pwasm_vec_fini(
   pwasm_vec_t * const vec
 ) {
+  if (!vec->max_rows) {
+    // return success
+    return true;
+  }
+
   return pwasm_vec_resize(vec, 0);
 }
 
