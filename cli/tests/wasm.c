@@ -584,35 +584,95 @@ static bool is_valid_result_type(
   );
 }
 
-static bool got_expected_result_value(
+/**
+ * get the name of a result check of a wasm_test_call_t
+ */
+static void get_result_check_name(
+  char * const buf, // dest buf
+  const size_t buf_len, // dest buf len
+  const wasm_test_call_t test // source test
+) {
+  // build result assertion name
+  snprintf(buf, buf_len, "check result (%s) of pwasm_call(&env, \"%s\", \"%s\")", pwasm_result_type_get_name(test.type), test.mod, test.func);
+}
+
+/**
+ * check test result value.
+ *
+ * if the result value matches the expected result, then return true.
+ *
+ * if the result value does not match the expected result, then print a
+ * description of the failure to buf and return false.
+ */
+static bool check_result(
   const wasm_test_call_t test,
-  const pwasm_stack_t * const stack
+  const pwasm_stack_t * const stack,
+  char * dst_buf,
+  const size_t dst_buf_len
 ) {
   const pwasm_val_t got_val = stack->pos ? stack->ptr[stack->pos - 1] : ((pwasm_val_t) { .i32 = 0 });
   const pwasm_val_t exp_val = TEST_VALS[test.result.ofs];
+  char buf[64] = { 0 };
+  bool r = false;
 
-  return ((
-    (test.type == PWASM_RESULT_TYPE_I32) &&
-    (stack->pos == 1) &&
-    (got_val.i32 == exp_val.i32)
-  ) || (
-    (test.type == PWASM_RESULT_TYPE_I64) &&
-    (stack->pos == 1) &&
-    (got_val.i64 == exp_val.i64)
-  ) || (
-    (test.type == PWASM_RESULT_TYPE_F32) &&
-    (stack->pos == 1) &&
-    (got_val.f32 - FLT_EPSILON <= exp_val.f32) &&
-    (got_val.f32 + FLT_EPSILON >= exp_val.f32)
-  ) || (
-    (test.type == PWASM_RESULT_TYPE_F64) &&
-    (stack->pos == 1) &&
-    (got_val.f64 - DBL_EPSILON <= exp_val.f64) &&
-    (got_val.f64 + DBL_EPSILON >= exp_val.f64)
-  ) || (
-    (test.type == PWASM_RESULT_TYPE_VOID) &&
-    (stack->pos == 0)
-  ));
+  if (test.type == PWASM_RESULT_TYPE_VOID) {
+    r = (stack->pos == 0);
+    if (!r) {
+      snprintf(buf, sizeof(buf), "stack->pos: expected 0, got %zu", stack->pos);
+    }
+  } else if (stack->pos != 1) {
+    snprintf(buf, sizeof(buf), "stack->pos: expected 1, got %zu", stack->pos);
+  } else {
+    switch (test.type) {
+    case PWASM_RESULT_TYPE_I32:
+      r = (got_val.i32 == exp_val.i32);
+      if (!r) {
+        // build error
+        snprintf(buf, sizeof(buf), "expected %u, got %u", exp_val.i32, got_val.i32);
+      }
+
+      break;
+    case PWASM_RESULT_TYPE_I64:
+      r = (got_val.i64 == exp_val.i64);
+      if (!r) {
+        // build error
+        snprintf(buf, sizeof(buf), "expected %lu, got %lu", exp_val.i64, got_val.i64);
+      }
+
+      break;
+    case PWASM_RESULT_TYPE_F32:
+      r = (got_val.f32 - FLT_EPSILON <= exp_val.f32) &&
+          (got_val.f32 + FLT_EPSILON >= exp_val.f32);
+
+      if (!r) {
+        // build error
+        snprintf(buf, sizeof(buf), "expected %f, got %f", exp_val.f32, got_val.f32);
+      }
+
+      break;
+    case PWASM_RESULT_TYPE_F64:
+      r = (got_val.f64 - DBL_EPSILON <= exp_val.f64) &&
+          (got_val.f64 + DBL_EPSILON >= exp_val.f64);
+
+      if (!r) {
+        // build error
+        snprintf(buf, sizeof(buf), "expected %f, got %f", exp_val.f32, got_val.f32);
+      }
+
+      break;
+    default:
+      // never reached
+      snprintf(buf, sizeof(buf), "unknown result type: %u", test.type);
+    }
+  }
+
+  if (!r) {
+    // populate destination buffer
+    snprintf(dst_buf, dst_buf_len, "check result (%s) of pwasm_call(&env, \"%s\", \"%s\"): %s", pwasm_result_type_get_name(test.type), test.mod, test.func, buf);
+  }
+
+  // return result
+  return r;
 }
 
 void test_wasm_calls(
@@ -692,13 +752,19 @@ void test_wasm_calls(
       cli_test_fail(test_ctx, cli_test, buf);
     }
 
-    // build assertion name
-    snprintf(buf, sizeof(buf), "check result (%s) of pwasm_call(&env, \"%s\", \"%s\")", pwasm_result_type_get_name(test.type), test.mod, test.func);
-
-    // check result value
-    if (call_ok && got_expected_result_value(test, &stack)) {
-      cli_test_pass(test_ctx, cli_test, buf);
+    if (call_ok) {
+      // call passed, check result value
+      if (check_result(test, &stack, buf, sizeof(buf))) {
+        // result check passed, log pass
+        get_result_check_name(buf, sizeof(buf), test);
+        cli_test_pass(test_ctx, cli_test, buf);
+      } else {
+        // result check failed, log fail
+        cli_test_fail(test_ctx, cli_test, buf);
+      }
     } else {
+      // call failed, so log unconditional result check fail
+      get_result_check_name(buf, sizeof(buf), test);
       cli_test_fail(test_ctx, cli_test, buf);
     }
   }
