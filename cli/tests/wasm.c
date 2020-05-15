@@ -10,6 +10,9 @@
 // maximum test stack depth
 #define MAX_STACK_DEPTH 100
 
+// are two floats/doubles approximately equal?
+#define NEARLY_EQUAL(a, b) (((a) - 0.00001 <= (b)) && ((a) + 0.00001 >= (b)))
+
 // test module with one func "life" (void -> i32)
 static const uint8_t GUIDE_WASM[] = {
   0x00, 0x61, 0x73, 0x6d, 0x01, 0x00, 0x00, 0x00,
@@ -336,10 +339,10 @@ TEST_VALS[] = {
   { .i32 = 3 },
 
   // mod: "fib", func: "fib_recurse", test: 1, type: "result", num: 1
-  { .i32 = 3 },
+  { .i32 = 2 },
 
   // mod: "fib", func: "fib_recurse", test: 2, type: "params", num: 1
-  { .i32 = 4 },
+  { .i32 = 5 },
 
   // mod: "fib", func: "fib_recurse", test: 2, type: "result", num: 1
   { .i32 = 5 },
@@ -348,10 +351,10 @@ TEST_VALS[] = {
   { .i32 = 3 },
 
   // mod: "fib", func: "fib_iterate", test: 1, type: "result", num: 1
-  { .i32 = 3 },
+  { .i32 = 2 },
 
   // mod: "fib", func: "fib_iterate", test: 2, type: "params", num: 1
-  { .i32 = 4 },
+  { .i32 = 5 },
 
   // mod: "fib", func: "fib_iterate", test: 2, type: "result", num: 1
   { .i32 = 5 },
@@ -513,7 +516,7 @@ TEST_CALLS[] = {{
   .mod    = "global",
   .func   = "i32.set",
   .params = { 30, 1 },
-  .type   = PWASM_RESULT_TYPE_I32,
+  .type   = PWASM_RESULT_TYPE_VOID,
 }, {
   .text   = "global.i32.get()",
   .mod    = "global",
@@ -537,7 +540,7 @@ TEST_CALLS[] = {{
   .mod    = "global",
   .func   = "f32.set",
   .params = { 34, 1 },
-  .type   = PWASM_RESULT_TYPE_F32,
+  .type   = PWASM_RESULT_TYPE_VOID,
 }, {
   .text   = "global.f32.get()",
   .mod    = "global",
@@ -549,7 +552,7 @@ TEST_CALLS[] = {{
   .mod    = "global",
   .func   = "f64.set",
   .params = { 36, 1 },
-  .type   = PWASM_RESULT_TYPE_F64,
+  .type   = PWASM_RESULT_TYPE_VOID,
 }, {
   .text   = "global.f64.get()",
   .mod    = "global",
@@ -641,9 +644,7 @@ static bool check_result(
 
       break;
     case PWASM_RESULT_TYPE_F32:
-      r = (got_val.f32 - FLT_EPSILON <= exp_val.f32) &&
-          (got_val.f32 + FLT_EPSILON >= exp_val.f32);
-
+      r = NEARLY_EQUAL(got_val.f32, exp_val.f32);
       if (!r) {
         // build error
         snprintf(buf, sizeof(buf), "expected %f, got %f", exp_val.f32, got_val.f32);
@@ -651,9 +652,7 @@ static bool check_result(
 
       break;
     case PWASM_RESULT_TYPE_F64:
-      r = (got_val.f64 - DBL_EPSILON <= exp_val.f64) &&
-          (got_val.f64 + DBL_EPSILON >= exp_val.f64);
-
+      r = NEARLY_EQUAL(got_val.f64, exp_val.f64);
       if (!r) {
         // build error
         snprintf(buf, sizeof(buf), "expected %f, got %f", exp_val.f32, got_val.f32);
