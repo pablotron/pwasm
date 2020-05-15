@@ -1479,20 +1479,43 @@ pwasm_parse_inst(
     break;
   case PWASM_IMM_CALL_INDIRECT:
     {
-      // get index, check for error
-      uint32_t id = 0;
-      const size_t len = pwasm_u32_decode(&id, curr);
-      if (!len) {
-        cbs->on_error("bad immediate index value", cb_data);
-        return 0;
+      {
+        // get type index, check for error
+        uint32_t id = 0;
+        const size_t len = pwasm_u32_decode(&id, curr);
+        if (!len) {
+          cbs->on_error("bad call_indirect type index", cb_data);
+          return 0;
+        }
+
+        // save index
+        in.v_index = id;
+
+        // advance
+        curr = pwasm_buf_step(curr, len);
+        num_bytes += len;
       }
 
-      // save index
-      in.v_index = id;
+      {
+        // get table ID, check for error
+        uint32_t table_id = 0;
+        const size_t len = pwasm_u32_decode(&table_id, curr);
+        if (!len) {
+          cbs->on_error("bad call_indirect table index", cb_data);
+          return 0;
+        }
 
-      // advance
-      curr = pwasm_buf_step(curr, len);
-      num_bytes += len;
+        // check table ID, check for error
+        // FIXME: should this be handled in validation layer?
+        if (table_id != 0) {
+          cbs->on_error("non-zero call_indirect table index", cb_data);
+          return 0;
+        }
+
+        // advance
+        curr = pwasm_buf_step(curr, len);
+        num_bytes += len;
+      }
     }
 
     break;
@@ -4664,6 +4687,12 @@ pwasm_mod_check_code(
       // is a table defined?
       if (!max_indices[PWASM_IMPORT_TYPE_TABLE]) {
         check->cbs.on_error("call_indirect instruction with no table", check->cb_data);
+        return false;
+      }
+
+      // check type index
+      if (in.v_index >= mod->num_types) {
+        check->cbs.on_error("call_indirect: invalid type index", check->cb_data);
         return false;
       }
 

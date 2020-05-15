@@ -37,7 +37,7 @@
   (func $map (param $val i32)     ;; value
              (param $func_id i32) ;; function to apply
              (result i32)
-    (call_indirect (local.get $id) (local.get $val))
+    (call_indirect (param i32) (result i32) (local.get $func_id) (local.get $val))
   )
 
   (export "map" (func $map))
