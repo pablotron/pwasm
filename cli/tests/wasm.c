@@ -588,30 +588,30 @@ static bool got_expected_result_value(
   const wasm_test_call_t test,
   const pwasm_stack_t * const stack
 ) {
-  const pwasm_val_t got_val = stack->ptr[0];
+  const pwasm_val_t got_val = stack->pos ? stack->ptr[stack->pos - 1] : ((pwasm_val_t) { .i32 = 0 });
   const pwasm_val_t exp_val = TEST_VALS[test.result.ofs];
 
   return ((
     (test.type == PWASM_RESULT_TYPE_I32) &&
-    (stack->len == 1) &&
+    (stack->pos == 1) &&
     (got_val.i32 == exp_val.i32)
   ) || (
     (test.type == PWASM_RESULT_TYPE_I64) &&
-    (stack->len == 1) &&
+    (stack->pos == 1) &&
     (got_val.i64 == exp_val.i64)
   ) || (
     (test.type == PWASM_RESULT_TYPE_F32) &&
-    (stack->len == 1) &&
+    (stack->pos == 1) &&
     (got_val.f32 - FLT_EPSILON <= exp_val.f32) &&
     (got_val.f32 + FLT_EPSILON >= exp_val.f32)
   ) || (
     (test.type == PWASM_RESULT_TYPE_F64) &&
-    (stack->len == 1) &&
+    (stack->pos == 1) &&
     (got_val.f64 - DBL_EPSILON <= exp_val.f64) &&
     (got_val.f64 + DBL_EPSILON >= exp_val.f64)
   ) || (
     (test.type == PWASM_RESULT_TYPE_VOID) &&
-    (stack->len == 0)
+    (stack->pos == 0)
   ));
 }
 
@@ -699,7 +699,7 @@ void test_wasm_calls(
     if (call_ok && got_expected_result_value(test, &stack)) {
       cli_test_pass(test_ctx, cli_test, buf);
     } else {
-      cli_test_pass(test_ctx, cli_test, buf);
+      cli_test_fail(test_ctx, cli_test, buf);
     }
   }
 
