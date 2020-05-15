@@ -2722,10 +2722,12 @@ pwasm_get_num_bytes(
 ) {
   const size_t page_size = sysconf(_SC_PAGESIZE);
   const size_t num_bytes = stride * num_items;
-
-  return page_size * (
-    (num_bytes / page_size) + ((num_bytes % page_size) ? 1 : 0)
+  const size_t num_pages = (
+    (num_bytes / page_size) +
+    ((num_bytes % page_size) ? 1 : 0)
   );
+
+  return page_size * num_pages;
 }
 
 static bool
