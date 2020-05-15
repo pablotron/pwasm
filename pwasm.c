@@ -2938,7 +2938,8 @@ pwasm_builder_fini(
 ) {
 #define BUILDER_VEC(name, type, prev) \
   if (!pwasm_vec_fini(&(builder->name ## s))) { \
-    /* TODO: log error */ \
+    /* log error */ \
+    pwasm_fail(builder->mem_ctx, "finalizing builder " #name " failed"); \
   }
 BUILDER_VECS
 #undef BUILDER_VEC
@@ -2953,8 +2954,13 @@ BUILDER_VECS
   ) { \
     pwasm_vec_t * const vec = &(builder->name ## s); \
     size_t ofs; \
-    const bool ok = pwasm_vec_push(vec, src_len, src_ptr, &ofs); \
-    return (pwasm_slice_t) { ok ? ofs : 0, ok ? src_len : 0 }; \
+    if (pwasm_vec_push(vec, src_len, src_ptr, &ofs)) { \
+      return (pwasm_slice_t) { ofs, src_len }; \
+    } else { \
+      /* log error */ \
+      pwasm_fail(builder->mem_ctx, "builder " #name " push failed"); \
+      return (pwasm_slice_t) { 0, 0 }; \
+    } \
   }
 BUILDER_VECS
 #undef BUILDER_VEC
