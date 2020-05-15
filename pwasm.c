@@ -7830,12 +7830,124 @@ typedef struct {
  */
 
 typedef struct {
-  // vec of uint64_ts indicating whether elements are set
-  pwasm_vec_t mask;
+  // limits from initial mod
+  const pwasm_limits_t limits;
 
-  // vec of values
-  pwasm_vec_t vals;
+  // vec of u32 values
+  uint32_t *vals;
+
+  // array of u64s indicating set elements
+  uint64_t *masks;
+
+  // maximum number of elements
+  size_t max_vals;
 } pwasm_new_interp_table_t;
+
+static pwasm_new_interp_table_t
+pwasm_new_interp_table_init(
+  pwasm_env_t * const env,
+  pwasm_limits_t limits
+) {
+  (void) env;
+  return (pwasm_new_interp_table_t) {
+    .limits   = limits,
+    .vals     = NULL,
+    .masks    = NULL,
+    .max_vals = 0,
+  };
+}
+
+static void
+pwasm_new_interp_table_fini(
+  pwasm_env_t * const env,
+  pwasm_new_interp_table_t * const table
+) {
+  if (!table->max_vals) {
+    return;
+  }
+
+  // free memory and masks
+  pwasm_realloc(env->mem_ctx, table->vals, 0);
+  pwasm_realloc(env->mem_ctx, table->masks, 0);
+  table->vals = NULL;
+  table->masks = NULL;
+  table->max_vals = 0;
+}
+
+static bool
+pwasm_new_interp_table_grow(
+  pwasm_env_t * const env,
+  pwasm_new_interp_table_t * const table,
+  const size_t src_new_len
+) {
+  // check existing capacity
+  if (src_new_len <= table->max_vals) {
+    return true;
+  }
+
+  // clamp to minimum size
+  const size_t new_len = (table->limits.min > src_new_len) ? table->limits.min : src_new_len;
+
+  // check table maximum limit
+  if (table->limits.has_max && src_new_len > table->limits.max) {
+    D("src_new_len = %zu, max = %u", src_len_len, table->limits.max);
+    pwasm_env_fail(env, "length greater than table limit");
+    return false;
+  }
+
+  // reallocate vals, check for error
+  uint32_t *tmp_vals = pwasm_realloc(env->mem_ctx, table->vals, new_len * sizeof(uint32_t));
+  if (!tmp_vals && new_len > 0) {
+    pwasm_env_fail(env, "vals pwasm_realloc() failed");
+    return false;
+  }
+
+  // reallocate masks, check for error
+  const size_t new_num_masks = (new_len / 64) + ((new_len & 0x3F) ? 1 : 0);
+  uint64_t *tmp_masks = pwasm_realloc(env->mem_ctx, table->masks, new_num_masks * sizeof(uint64_t));
+  if (!tmp_vals && new_len > 0) {
+    pwasm_env_fail(env, "masks pwasm_realloc() failed");
+    return false;
+  }
+
+  // clear masks
+  for (size_t i = table->max_vals; i < new_len; i++) {
+    tmp_masks[i >> 6] &= ~(((uint64_t) 1) << (i & 0x3F));
+  }
+
+  // update vals, masks, and max_len
+  table->vals = tmp_vals;
+  table->masks = tmp_masks;
+  table->max_vals = new_len;
+
+  // return success
+  return true;
+}
+
+static bool
+pwasm_new_interp_table_set(
+  pwasm_env_t * const env,
+  pwasm_new_interp_table_t * const table,
+  const size_t ofs,
+  const uint32_t * const vals,
+  const size_t num_vals
+) {
+  if (!pwasm_new_interp_table_grow(env, table, ofs + num_vals)) {
+    // return failure
+    return false;
+  }
+
+  // copy values
+  memcpy(table->vals + ofs, vals, num_vals * sizeof(uint32_t));
+
+  // set masks
+  for (size_t i = ofs; i < ofs + num_vals; i++) {
+    table->masks[i >> 6] |= ((uint64_t) 1) << (i & 0x3F);
+  }
+
+  // return success
+  return true;
+}
 
 #define PWASM_NEW_INTERP_VECS \
   PWASM_NEW_INTERP_VEC(u32s, uint32_t) \
@@ -7899,6 +8011,20 @@ pwasm_new_interp_init(
 }
 
 static void
+pwasm_new_interp_fini_tables(
+  pwasm_env_t * const env
+) {
+  pwasm_new_interp_t * const interp = env->env_data;
+  pwasm_vec_t * const vec = &(interp->tables);
+  pwasm_new_interp_table_t *rows = (pwasm_new_interp_table_t*) pwasm_vec_get_data(vec);
+  const size_t num_rows = pwasm_vec_get_size(vec);
+
+  for (size_t i = 0; i < num_rows; i++) {
+    pwasm_new_interp_table_fini(env, rows + i);
+  }
+}
+
+static void
 pwasm_new_interp_fini(
   pwasm_env_t * const env
 ) {
@@ -7910,6 +8036,9 @@ pwasm_new_interp_fini(
     return;
   }
 
+  // finalize tables
+  pwasm_new_interp_fini_tables(env);
+
   // free vectors
   #define PWASM_NEW_INTERP_VEC(NAME, TYPE) pwasm_vec_fini(&(data->NAME));
   PWASM_NEW_INTERP_VECS
@@ -7918,6 +8047,29 @@ pwasm_new_interp_fini(
   // free backing data
   pwasm_realloc(mem_ctx, data, 0);
   env->env_data = NULL;
+}
+
+static pwasm_new_interp_table_t *
+pwasm_new_interp_get_table(
+  pwasm_env_t * const env,
+  const uint32_t table_id
+) {
+  pwasm_new_interp_t * const interp = env->env_data;
+  pwasm_vec_t * const vec = &(interp->tables);
+  const pwasm_new_interp_table_t * const rows = pwasm_vec_get_data(vec);
+  const size_t num_rows = pwasm_vec_get_size(vec);
+  D("num tables: %zu", num_rows);
+
+  // check that table_id is in bounds
+  if (!table_id || table_id > num_rows) {
+    // log error, return failure
+    D("bad table_id: %u", mem_id);
+    pwasm_env_fail(env, "interpreter table index out of bounds");
+    return NULL;
+  }
+
+  // return pointer to table
+  return (pwasm_new_interp_table_t*) rows + (table_id - 1);
 }
 
 /*
@@ -8585,19 +8737,10 @@ pwasm_new_interp_add_mod_tables(
   size_t tmp_ofs = 0;
 
   for (size_t i = 0; i < mod->num_tables; i++) {
-    // init mask vector, check for error
-    if (!pwasm_vec_init(env->mem_ctx, &(tmp[tmp_ofs].mask), sizeof(uint64_t))) {
-      // log error, return failure
-      pwasm_env_fail(env, "init mod table mask vector failed");
-      return false;
-    }
-
-    // init vals vector, check for error
-    if (!pwasm_vec_init(env->mem_ctx, &(tmp[tmp_ofs].vals), sizeof(uint64_t))) {
-      // log error, return failure
-      pwasm_env_fail(env, "init mod table values vector failed");
-      return false;
-    }
+    // init table
+    const pwasm_limits_t limits = mod->tables[i].limits;
+    pwasm_new_interp_table_t table = pwasm_new_interp_table_init(env, limits);
+    memcpy(tmp + tmp_ofs, &table, sizeof(pwasm_new_interp_table_t));
 
     // increment offset
     tmp_ofs++;
@@ -8672,12 +8815,91 @@ pwasm_new_interp_init_globals(
 }
 
 static bool
+pwasm_new_interp_init_elem_funcs(
+  pwasm_new_interp_frame_t frame,
+  const uint32_t ofs,
+  const pwasm_elem_t elem
+) {
+  // get table and mod to interpreter func ID map
+  pwasm_new_interp_t * const interp = frame.env->env_data;
+  const uint32_t *u32s = pwasm_vec_get_data(&(interp->u32s));
+  const uint32_t table_id = u32s[frame.mod->tables.ofs + elem.table_id];
+  pwasm_new_interp_table_t *table = pwasm_new_interp_get_table(frame.env, table_id);
+  const uint32_t * const funcs = u32s + frame.mod->funcs.ofs;
+
+  uint32_t tmp[PWASM_BATCH_SIZE];
+  size_t tmp_ofs = 0;
+
+  for (size_t i = 0; i < elem.funcs.len; i++) {
+    // remap function id from module ID to interpreter ID
+    const uint32_t func_id = frame.mod->mod->u32s[elem.funcs.ofs + i];
+    tmp[tmp_ofs++] = funcs[func_id];
+
+    if (tmp_ofs == LEN(tmp)) {
+      // get destination offset
+      const size_t dst_ofs = ofs + i - LEN(tmp);
+
+      // set table elements, check for error
+      if (!pwasm_new_interp_table_set(frame.env, table, dst_ofs, tmp, LEN(tmp))) {
+        // return failure
+        return false;
+      }
+
+      // reset offset
+      tmp_ofs = 0;
+    }
+  }
+
+  if (tmp_ofs > 0) {
+    // get destination offset
+    const size_t dst_ofs = ofs + elem.funcs.len - tmp_ofs;
+
+    // flush table elements, check for error
+    if (!pwasm_new_interp_table_set(frame.env, table, dst_ofs, tmp, tmp_ofs)) {
+      // return failure
+      return false;
+    }
+  }
+
+  // return success
+  return true;
+}
+
+static bool
 pwasm_new_interp_init_elems(
   pwasm_new_interp_frame_t frame
 ) {
-  (void) frame;
+  const pwasm_elem_t * const elems = frame.mod->mod->elems;
+  const size_t num_elems = frame.mod->mod->num_elems;
+  pwasm_stack_t * const stack = frame.env->stack;
 
   // TODO: init table elements
+  for (size_t i = 0; i < num_elems; i++) {
+    const pwasm_elem_t elem = elems[i];
+
+    // evaluate offset expression, check for error
+    stack->pos = 0;
+    if (!pwasm_new_interp_eval_expr(frame, elem.expr)) {
+      // return failure
+      return false;
+    }
+
+    // check that const expr has at least one result
+    // FIXME: should this be done in check()?
+    if (!stack->pos) {
+      pwasm_env_fail(frame.env, "constant expression must return table offset");
+      return false;
+    }
+
+    // get destination offset
+    const uint32_t ofs = stack->ptr[stack->pos - 1].i32;
+
+    // populate table elements, check for error
+    if (!pwasm_new_interp_init_elem_funcs(frame, ofs, elem)) {
+      // return failure
+      return false;
+    }
+  }
 
   // return success
   return true;
@@ -10876,8 +11098,8 @@ pwasm_new_interp_call_indirect(
   const uint32_t elem_ofs
 ) {
   // get interpreter u32s
-  pwasm_new_interp_t * const data = frame.env->env_data;
-  const uint32_t * const u32s = pwasm_vec_get_data(&(data->u32s));
+  pwasm_new_interp_t * const interp = frame.env->env_data;
+  const uint32_t * const u32s = pwasm_vec_get_data(&(interp->u32s));
 
   // check local table index (table index inside of module)
   const uint32_t local_id = 0;
