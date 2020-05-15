@@ -11,7 +11,7 @@ tag.
 * [ ] code, test: add table tests
 * [ ] test: add wat2wasm round-trip tests
 * [ ] code, check: add control stack validation (re-add)
-* [ ] code, check: check `call_immediate` at invocation
+* [ ] code, check: check `call_indirect` at invocation
 * [ ] code, parse: cache control target offsets at parse time
 * [ ] code, ops: add extended opcode support (`0xFC ...`)
 * [ ] code, ops: add vector op support (`0xFD ...`)
