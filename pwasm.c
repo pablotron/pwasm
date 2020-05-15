@@ -7949,6 +7949,43 @@ pwasm_new_interp_table_set(
   return true;
 }
 
+/**
+ * Get element (u32) from table.
+ *
+ * At the moment the only supported types are function references, so
+ * this returns a u32 offset into the interpreters funcs table.
+ */
+static bool
+pwasm_new_interp_table_get_elem(
+  pwasm_env_t * const env,
+  pwasm_new_interp_table_t * const table,
+  const size_t ofs,
+  uint32_t * const ret_val
+) {
+  // check element offset
+  if (ofs >= table->max_vals) {
+    // log error, return failure
+    pwasm_env_fail(env, "table element offset out of bounds");
+    return false;
+  }
+
+  // check element mask
+  const bool set = table->masks[ofs >> 6] & ((uint64_t) 1) << (ofs & 0x3F);
+  if (!set) {
+    // log error, return failure
+    pwasm_env_fail(env, "table element is not set");
+    return false;
+  }
+
+  if (ret_val) {
+    // write value to destination
+    *ret_val = table->vals[ofs];
+  }
+
+  // return success
+  return true;
+}
+
 #define PWASM_NEW_INTERP_VECS \
   PWASM_NEW_INTERP_VEC(u32s, uint32_t) \
   PWASM_NEW_INTERP_VEC(mods, pwasm_new_interp_mod_t) \
@@ -8823,8 +8860,8 @@ pwasm_new_interp_init_elem_funcs(
   // get table and mod to interpreter func ID map
   pwasm_new_interp_t * const interp = frame.env->env_data;
   const uint32_t *u32s = pwasm_vec_get_data(&(interp->u32s));
-  const uint32_t table_id = u32s[frame.mod->tables.ofs + elem.table_id];
-  pwasm_new_interp_table_t *table = pwasm_new_interp_get_table(frame.env, table_id);
+  const uint32_t table_ofs = u32s[frame.mod->tables.ofs + elem.table_id];
+  pwasm_new_interp_table_t * const table = pwasm_new_interp_get_table(frame.env, table_ofs + 1);
   const uint32_t * const funcs = u32s + frame.mod->funcs.ofs;
 
   uint32_t tmp[PWASM_BATCH_SIZE];
@@ -9327,14 +9364,8 @@ pwasm_new_interp_get_elem(
   const uint32_t elem_ofs,
   uint32_t * const ret_val
 ) {
-  // TODO
-  (void) env;
-  (void) table_id;
-  (void) elem_ofs;
-  (void) ret_val;
-
-  // return failure
-  return false;
+  pwasm_new_interp_table_t * const table = pwasm_new_interp_get_table(env, table_id);
+  return pwasm_new_interp_table_get_elem(env, table, elem_ofs, ret_val);
 }
 
 static uint32_t
@@ -11109,14 +11140,12 @@ pwasm_new_interp_call_indirect(
     return false;
   }
 
-  // map local index to table ID in environment
-  const uint32_t table_id = u32s[frame.mod->tables.ofs + local_id];
+  // map local index to table offset in environment
+  const uint32_t table_ofs = u32s[frame.mod->tables.ofs + local_id];
 
-  // get function ID
-  // FIXME: this should be mapped from the source module's index space
-  // to the global index, i think
-  uint32_t func_id;
-  if (!pwasm_new_interp_get_elem(frame.env, table_id, elem_ofs, &func_id)) {
+  // get function offset
+  uint32_t func_ofs;
+  if (!pwasm_new_interp_get_elem(frame.env, table_ofs + 1, elem_ofs, &func_ofs)) {
     return false;
   }
 
@@ -11124,7 +11153,7 @@ pwasm_new_interp_call_indirect(
   (void) in;
 
   // call function, return result
-  return pwasm_new_interp_call(frame.env, func_id);
+  return pwasm_new_interp_call(frame.env, func_ofs + 1);
 }
 
 //
