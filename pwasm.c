@@ -2889,10 +2889,9 @@ pwasm_vec_pop(
   return true;
 }
 
-
 #define BUILDER_VECS \
   BUILDER_VEC(u32, uint32_t, dummy) \
-  BUILDER_VEC(section, uint32_t, u32) \
+  BUILDER_VEC(section, pwasm_header_t, u32) \
   BUILDER_VEC(custom_section, pwasm_custom_section_t, section) \
   BUILDER_VEC(type, pwasm_type_t, custom_section) \
   BUILDER_VEC(import, pwasm_import_t, type) \
@@ -3436,7 +3435,7 @@ pwasm_mod_init_unsafe_on_section(
   void *cb_data
 ) {
   pwasm_mod_init_unsafe_t * const data = cb_data;
-  if (!pwasm_builder_push_sections(data->builder, &(header->type), 1).len) {
+  if (!pwasm_builder_push_sections(data->builder, header, 1).len) {
     pwasm_mod_init_unsafe_on_error("push sections failed", data);
   }
 }
