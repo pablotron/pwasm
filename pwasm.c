@@ -7890,7 +7890,7 @@ pwasm_new_interp_table_grow(
 
   // check table maximum limit
   if (table->limits.has_max && src_new_len > table->limits.max) {
-    D("src_new_len = %zu, max = %u", src_len_len, table->limits.max);
+    D("src_new_len = %zu, max = %u", src_new_len, table->limits.max);
     pwasm_env_fail(env, "length greater than table limit");
     return false;
   }
@@ -7964,6 +7964,7 @@ pwasm_new_interp_table_get_elem(
 ) {
   // check element offset
   if (ofs >= table->max_vals) {
+    D("ofs = %zu, table->max_vals = %zu", ofs, table->max_vals);
     // log error, return failure
     pwasm_env_fail(env, "table element offset out of bounds");
     return false;
@@ -8086,6 +8087,12 @@ pwasm_new_interp_fini(
   env->env_data = NULL;
 }
 
+/**
+ * Given an environment and a table handle, return a pointer to the
+ * table instance.
+ *
+ * Returns `NULL` if the table handle is invalid.
+ */
 static pwasm_new_interp_table_t *
 pwasm_new_interp_get_table(
   pwasm_env_t * const env,
@@ -8095,12 +8102,11 @@ pwasm_new_interp_get_table(
   pwasm_vec_t * const vec = &(interp->tables);
   const pwasm_new_interp_table_t * const rows = pwasm_vec_get_data(vec);
   const size_t num_rows = pwasm_vec_get_size(vec);
-  D("num tables: %zu", num_rows);
 
   // check that table_id is in bounds
   if (!table_id || table_id > num_rows) {
     // log error, return failure
-    D("bad table_id: %u", mem_id);
+    D("bad table_id: %u", table_id);
     pwasm_env_fail(env, "interpreter table index out of bounds");
     return NULL;
   }
@@ -9754,11 +9760,11 @@ pwasm_new_interp_eval_expr(
       break;
     case PWASM_OP_CALL_INDIRECT:
       {
-        // pop function index from value stack
-        const uint32_t func_index = stack->ptr[--stack->pos].i32;
+        // pop element index from value stack
+        const uint32_t elem_ofs = stack->ptr[--stack->pos].i32;
 
         // call function, check for error
-        if (!pwasm_new_interp_call_indirect(frame, in, func_index)) {
+        if (!pwasm_new_interp_call_indirect(frame, in, elem_ofs)) {
           // return failure
           return false;
         }
@@ -11122,30 +11128,58 @@ pwasm_new_interp_call(
   }
 }
 
+/**
+ * Given a frame and a table ID, get the offset of the table instance in
+ * the interpreter.
+ *
+ * Returns false if the table_id is invalid for the current module.
+ */
+static bool
+pwasm_new_interp_get_mod_table_ofs(
+  const pwasm_new_interp_frame_t frame,
+  const uint32_t table_id,
+  uint32_t * const ret_ofs
+) {
+  pwasm_new_interp_t * const interp = frame.env->env_data;
+  const uint32_t * const u32s = pwasm_vec_get_data(&(interp->u32s));
+  const size_t num_tables = frame.mod->tables.len;
+
+  // bounds check table index
+  if (table_id >= num_tables) {
+    D("table_id (%u) >= num_tables (%zu)", table_id, num_tables);
+    pwasm_env_fail(frame.env, "table index out of bounds");
+    return false;
+  }
+
+  // map local index to table interpreter offset
+  *ret_ofs = u32s[frame.mod->tables.ofs + table_id];
+
+  // return success
+  return true;
+}
+
 static bool
 pwasm_new_interp_call_indirect(
   const pwasm_new_interp_frame_t frame,
   const pwasm_inst_t in,
   const uint32_t elem_ofs
 ) {
-  // get interpreter u32s
-  pwasm_new_interp_t * const interp = frame.env->env_data;
-  const uint32_t * const u32s = pwasm_vec_get_data(&(interp->u32s));
+  // get module-relative table index from instruction
+  // TODO: hard-coded for now, get from instruction eventually
+  const uint32_t mod_table_id = 0;
 
-  // check local table index (table index inside of module)
-  const uint32_t local_id = 0;
-  if (local_id >= frame.mod->tables.len) {
-    D("local_id (%u) >= frame.mod->tables.len (%zu)", local_id, frame.mod->tables.len);
-    pwasm_env_fail(frame.env, "table index out of bounds");
+  // get interpreter table offset
+  uint32_t table_ofs;
+  if (!pwasm_new_interp_get_mod_table_ofs(frame, mod_table_id, &table_ofs)) {
     return false;
   }
 
-  // map local index to table offset in environment
-  const uint32_t table_ofs = u32s[frame.mod->tables.ofs + local_id];
+  // convert table offset to ID
+  const uint32_t table_id = table_ofs + 1;
 
-  // get function offset
+  // get interpreter function offset, check for error
   uint32_t func_ofs;
-  if (!pwasm_new_interp_get_elem(frame.env, table_ofs + 1, elem_ofs, &func_ofs)) {
+  if (!pwasm_new_interp_get_elem(frame.env, table_id, elem_ofs, &func_ofs)) {
     return false;
   }
 

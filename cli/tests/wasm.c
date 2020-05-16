@@ -283,19 +283,29 @@ static const uint8_t BR_TABLE_WASM[] = {
 // (source: data/wat/08-call_indirect.wat)
 static const uint8_t CALL_INDIRECT_WASM[] = {
   0x00, 0x61, 0x73, 0x6d, 0x01, 0x00, 0x00, 0x00,
-  0x01, 0x0c, 0x02, 0x60, 0x01, 0x7f, 0x01, 0x7f,
-  0x60, 0x02, 0x7f, 0x7f, 0x01, 0x7f, 0x03, 0x06,
-  0x05, 0x00, 0x00, 0x00, 0x00, 0x01, 0x04, 0x05,
-  0x01, 0x70, 0x01, 0x04, 0x04, 0x07, 0x07, 0x01,
-  0x03, 0x6d, 0x61, 0x70, 0x00, 0x04, 0x09, 0x0a,
-  0x01, 0x00, 0x41, 0x00, 0x0b, 0x04, 0x00, 0x01,
-  0x02, 0x03, 0x0a, 0x2e, 0x05, 0x07, 0x00, 0x41,
-  0x02, 0x20, 0x00, 0x6c, 0x0b, 0x07, 0x00, 0x41,
-  0x03, 0x20, 0x00, 0x6c, 0x0b, 0x07, 0x00, 0x20,
-  0x00, 0x20, 0x00, 0x6c, 0x0b, 0x0a, 0x00, 0x20,
-  0x00, 0x20, 0x00, 0x20, 0x00, 0x6c, 0x6c, 0x0b,
-  0x09, 0x00, 0x20, 0x01, 0x20, 0x00, 0x11, 0x00,
-  0x00, 0x0b
+  0x01, 0x17, 0x04, 0x60, 0x01, 0x7f, 0x01, 0x7f,
+  0x60, 0x01, 0x7d, 0x01, 0x7d, 0x60, 0x02, 0x7f,
+  0x7f, 0x01, 0x7f, 0x60, 0x02, 0x7d, 0x7f, 0x01,
+  0x7d, 0x03, 0x0b, 0x0a, 0x00, 0x00, 0x00, 0x00,
+  0x01, 0x01, 0x01, 0x01, 0x02, 0x03, 0x04, 0x05,
+  0x01, 0x70, 0x01, 0x08, 0x08, 0x07, 0x15, 0x02,
+  0x07, 0x69, 0x33, 0x32, 0x5f, 0x6d, 0x61, 0x70,
+  0x00, 0x08, 0x07, 0x66, 0x33, 0x32, 0x5f, 0x6d,
+  0x61, 0x70, 0x00, 0x09, 0x09, 0x0e, 0x01, 0x00,
+  0x41, 0x00, 0x0b, 0x08, 0x00, 0x01, 0x02, 0x03,
+  0x04, 0x05, 0x06, 0x07, 0x0a, 0x61, 0x0a, 0x07,
+  0x00, 0x41, 0x02, 0x20, 0x00, 0x6c, 0x0b, 0x07,
+  0x00, 0x41, 0x03, 0x20, 0x00, 0x6c, 0x0b, 0x07,
+  0x00, 0x20, 0x00, 0x20, 0x00, 0x6c, 0x0b, 0x0a,
+  0x00, 0x20, 0x00, 0x20, 0x00, 0x20, 0x00, 0x6c,
+  0x6c, 0x0b, 0x0a, 0x00, 0x43, 0x00, 0x00, 0x00,
+  0x40, 0x20, 0x00, 0x94, 0x0b, 0x0a, 0x00, 0x43,
+  0x00, 0x00, 0x40, 0x40, 0x20, 0x00, 0x94, 0x0b,
+  0x07, 0x00, 0x20, 0x00, 0x20, 0x00, 0x94, 0x0b,
+  0x0a, 0x00, 0x20, 0x00, 0x20, 0x00, 0x20, 0x00,
+  0x94, 0x94, 0x0b, 0x09, 0x00, 0x20, 0x00, 0x20,
+  0x01, 0x11, 0x00, 0x00, 0x0b, 0x09, 0x00, 0x20,
+  0x00, 0x20, 0x01, 0x11, 0x01, 0x00, 0x0b
 };
 
 static const struct {
@@ -449,33 +459,61 @@ TEST_VALS[] = {
   // mod: "br_table", func: "add_nth", test: 1, type: "result", num: 1
   { .i32 = 24 },
 
-  // mod: "call_indirect", func: "map", test: 0, type: "params", num: 2
+  // mod: "call_indirect", func: "i32_map", test: 0, type: "params", num: 2
   { .i32 = 5 },
   { .i32 = 0 },
 
-  // mod: "call_indirect", func: "map", test: 0, type: "result", num: 1
+  // mod: "call_indirect", func: "i32_map", test: 0, type: "result", num: 1
   { .i32 = 10 },
 
-  // mod: "call_indirect", func: "map", test: 1, type: "params", num: 2
+  // mod: "call_indirect", func: "i32_map", test: 1, type: "params", num: 2
   { .i32 = 33 },
   { .i32 = 1 },
 
-  // mod: "call_indirect", func: "map", test: 1, type: "result", num: 1
+  // mod: "call_indirect", func: "i32_map", test: 1, type: "result", num: 1
   { .i32 = 99 },
 
-  // mod: "call_indirect", func: "map", test: 2, type: "params", num: 2
+  // mod: "call_indirect", func: "i32_map", test: 2, type: "params", num: 2
   { .i32 = 9 },
   { .i32 = 2 },
 
-  // mod: "call_indirect", func: "map", test: 2, type: "result", num: 1
+  // mod: "call_indirect", func: "i32_map", test: 2, type: "result", num: 1
   { .i32 = 81 },
 
-  // mod: "call_indirect", func: "map", test: 3, type: "params", num: 2
+  // mod: "call_indirect", func: "i32_map", test: 3, type: "params", num: 2
   { .i32 = 7 },
   { .i32 = 3 },
 
-  // mod: "call_indirect", func: "map", test: 3, type: "result", num: 1
+  // mod: "call_indirect", func: "i32_map", test: 3, type: "result", num: 1
   { .i32 = 343 },
+
+  // mod: "call_indirect", func: "f32_map", test: 0, type: "params", num: 2
+  { .f32 = 5 },
+  { .i32 = 4 },
+
+  // mod: "call_indirect", func: "f32_map", test: 0, type: "result", num: 1
+  { .f32 = 10 },
+
+  // mod: "call_indirect", func: "f32_map", test: 1, type: "params", num: 2
+  { .f32 = 33 },
+  { .i32 = 5 },
+
+  // mod: "call_indirect", func: "f32_map", test: 1, type: "result", num: 1
+  { .f32 = 99 },
+
+  // mod: "call_indirect", func: "f32_map", test: 2, type: "params", num: 2
+  { .f32 = 9 },
+  { .i32 = 6 },
+
+  // mod: "call_indirect", func: "f32_map", test: 2, type: "result", num: 1
+  { .f32 = 81 },
+
+  // mod: "call_indirect", func: "f32_map", test: 3, type: "params", num: 2
+  { .f32 = 7 },
+  { .i32 = 7 },
+
+  // mod: "call_indirect", func: "f32_map", test: 3, type: "result", num: 1
+  { .f32 = 343 },
 };
 
 typedef struct {
@@ -628,33 +666,61 @@ TEST_CALLS[] = {{
   .result = { 43, 1 },
   .type   = PWASM_RESULT_TYPE_I32,
 }, {
-  .text   = "call_indirect.map(5, 0)",
+  .text   = "call_indirect.i32_map(5, 0)",
   .mod    = "call_indirect",
-  .func   = "map",
+  .func   = "i32_map",
   .params = { 44, 2 },
   .result = { 46, 1 },
   .type   = PWASM_RESULT_TYPE_I32,
 }, {
-  .text   = "call_indirect.map(33, 1)",
+  .text   = "call_indirect.i32_map(33, 1)",
   .mod    = "call_indirect",
-  .func   = "map",
+  .func   = "i32_map",
   .params = { 47, 2 },
   .result = { 49, 1 },
   .type   = PWASM_RESULT_TYPE_I32,
 }, {
-  .text   = "call_indirect.map(9, 2)",
+  .text   = "call_indirect.i32_map(9, 2)",
   .mod    = "call_indirect",
-  .func   = "map",
+  .func   = "i32_map",
   .params = { 50, 2 },
-  .result = { 51, 1 },
+  .result = { 52, 1 },
   .type   = PWASM_RESULT_TYPE_I32,
 }, {
-  .text   = "call_indirect.map(7, 3)",
+  .text   = "call_indirect.i32_map(7, 3)",
   .mod    = "call_indirect",
-  .func   = "map",
-  .params = { 52, 2 },
-  .result = { 54, 1 },
+  .func   = "i32_map",
+  .params = { 53, 2 },
+  .result = { 55, 1 },
   .type   = PWASM_RESULT_TYPE_I32,
+}, {
+  .text   = "call_indirect.f32_map(5, 0)",
+  .mod    = "call_indirect",
+  .func   = "f32_map",
+  .params = { 56, 2 },
+  .result = { 58, 1 },
+  .type   = PWASM_RESULT_TYPE_F32,
+}, {
+  .text   = "call_indirect.f32_map(33, 1)",
+  .mod    = "call_indirect",
+  .func   = "f32_map",
+  .params = { 59, 2 },
+  .result = { 61, 1 },
+  .type   = PWASM_RESULT_TYPE_F32,
+}, {
+  .text   = "call_indirect.f32_map(9, 2)",
+  .mod    = "call_indirect",
+  .func   = "f32_map",
+  .params = { 62, 2 },
+  .result = { 64, 1 },
+  .type   = PWASM_RESULT_TYPE_F32,
+}, {
+  .text   = "call_indirect.f32_map(7, 3)",
+  .mod    = "call_indirect",
+  .func   = "f32_map",
+  .params = { 65, 2 },
+  .result = { 67, 1 },
+  .type   = PWASM_RESULT_TYPE_F32,
 }};
 
 static bool is_valid_result_type(
