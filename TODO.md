@@ -10,7 +10,6 @@ tag.
 * [ ] code, cli: `wat`: fix alignment
 * [ ] test: add wat2wasm round-trip tests
 * [ ] code, check: add control stack validation (re-add)
-* [ ] code, check: check `call_indirect` at invocation
 * [ ] code, parse: cache control target offsets at parse time
 * [ ] code, ops: add extended opcode support (`0xFC ...`)
 * [ ] code, ops: add vector op support (`0xFD ...`)
@@ -38,7 +37,6 @@ tag.
 ## In Progress
 * [ ] code: add global, table, and mem init, call start func (added,
       but untested)
-* [ ] code, test: add table tests (added `08-call_indirect.wasm`)
 
 ## Done
 
@@ -82,6 +80,8 @@ Items in this section have been completed.
 * [x] code, check: add global, elem, and segment expr validation
 * [x] code, test: add `br_table` test
 * [x] code, test: add import test (added `data/wat/06-imports.wasm`)
+* [x] code, test: add table tests (added `08-call_indirect.wasm`)
+* [x] code, check: check `call_indirect` at invocation
 
 ## Tag Definitions
 

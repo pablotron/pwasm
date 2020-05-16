@@ -11158,6 +11158,71 @@ pwasm_new_interp_get_mod_table_ofs(
   return true;
 }
 
+/**
+ * Given a frame and a call_indirect instruction, and a target function
+ * offset in the interpreter, compare the following types:
+ *
+ *  * in the index immediate of the call_indirect instruction, and
+ *  * the type of the target function and
+ *
+ * The comparison verifies all of the following:
+ *
+ *   * parameter count
+ *   * result count
+ *   * parameter value types
+ *   * result value types
+ *
+ * Returns `true` on success or `false` on error.
+ */
+static bool
+pwasm_new_interp_call_indirect_check_type(
+  const pwasm_new_interp_frame_t frame,
+  const pwasm_inst_t in,
+  const uint32_t func_ofs
+) {
+  pwasm_new_interp_t * const interp = frame.env->env_data;
+
+  // get instruction immediate type
+  const uint32_t * const in_u32s = frame.mod->mod->u32s;
+  const pwasm_type_t in_type = frame.mod->mod->types[in.v_index];
+
+  // get function type
+  const pwasm_vec_t * const fn_vec = &(interp->funcs);
+  const pwasm_new_interp_func_t * const fns = pwasm_vec_get_data(fn_vec);
+  const pwasm_new_interp_func_t fn = fns[func_ofs];
+  const pwasm_vec_t * const mod_vec = &(interp->mods);
+  const pwasm_new_interp_mod_t * const mods = pwasm_vec_get_data(mod_vec);
+  const pwasm_mod_t * const fn_mod = mods[fn.mod_ofs].mod;
+  const uint32_t * const fn_u32s = fn_mod->u32s;
+  const pwasm_type_t fn_type = fn_mod->types[fn_mod->funcs[fn.func_ofs]];
+
+  // check parameter count
+  if (in_type.params.len != fn_type.params.len) {
+    pwasm_env_fail(frame.env, "call_indirect parameter count mismatch");
+    return false;
+  }
+
+  // check result count
+  if (in_type.results.len != fn_type.results.len) {
+    pwasm_env_fail(frame.env, "call_indirect result count mismatch");
+    return false;
+  }
+
+  // check parameters
+  for (size_t i = 0 ; i < in_type.params.len; i++) {
+    const uint32_t in_param_type = in_u32s[in_type.params.ofs + i];
+    const uint32_t fn_param_type = fn_u32s[fn_type.params.ofs + i];
+
+    if (in_param_type != fn_param_type) {
+      pwasm_env_fail(frame.env, "call_indirect parameter type mismatch");
+      return false;
+    }
+  }
+
+  // return success
+  return true;
+}
+
 static bool
 pwasm_new_interp_call_indirect(
   const pwasm_new_interp_frame_t frame,
@@ -11183,8 +11248,10 @@ pwasm_new_interp_call_indirect(
     return false;
   }
 
-  // TODO: check call_indirect type index against function type
-  (void) in;
+  // check instruction type index against function type
+  if (!pwasm_new_interp_call_indirect_check_type(frame, in, func_ofs)) {
+    return false;
+  }
 
   // call function, return result
   return pwasm_new_interp_call(frame.env, func_ofs + 1);
