@@ -8,6 +8,8 @@ See the "Tag Definitions" section below for a brief description of each
 tag.
 
 * [ ] code, cli: `wat`: fix alignment
+* [ ] code, test: add invalid code tests
+* [ ] code, check: merge `insts` into  `stack` tests
 * [ ] test: add wat2wasm round-trip tests
 * [ ] code, parse: cache control target offsets at parse time
 * [ ] code, ops: add extended opcode support (`0xFC ...`)
