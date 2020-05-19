@@ -3,8 +3,8 @@
 # use -std=gnu11 for MAP_ANONYMOUS
 # CFLAGS=... -std=gnu11 -I$(LUAJIT_DIR)
 
-# CFLAGS=-W -Wall -Wextra -Werror -std=c11 -pedantic -g -pg -DPWASM_DEBUG
-CFLAGS=-W -Wall -Wextra -Werror -std=c11 -pedantic -O3
+CFLAGS=-W -Wall -Wextra -Werror -std=c11 -pedantic -g -pg -DPWASM_DEBUG
+# CFLAGS=-W -Wall -Wextra -Werror -std=c11 -pedantic -O3
 LIBS=-lm
 APP=pwasm
 OBJS=pwasm.o cli/main.o cli/cmds.o cli/tests.o cli/utils.o \

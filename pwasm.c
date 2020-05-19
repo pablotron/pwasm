@@ -2,6 +2,7 @@
 #include <string.h> // memcmp()
 #include <stdlib.h> // realloc()
 #include <unistd.h> // sysconf()
+#include <string.h> // snprintf()
 #include <math.h> // fabs(), fabsf(), etc
 #include "pwasm.h"
 
@@ -4339,14 +4340,13 @@ pwasm_checker_type_pop_expected(
       *ret_type = got_type;
     }
   } else if (got_type != exp_type) {
-    // log error, return failure
-    char buf[512];
-    snprintf(buf, sizeof(buf),
-      "type stack pop: type mismatch: got %s (%u), expected %s (%u)",
+    D("type stack pop: type mismatch: got %s (%u), expected %s (%u)",
       pwasm_checker_type_get_name(got_type), got_type,
       pwasm_checker_type_get_name(exp_type), exp_type
     );
-    pwasm_checker_fail(checker, buf);
+
+    // log error, return failure
+    pwasm_checker_fail(checker, "type stack pop: type mismatch");
     return false;
   }
 
@@ -4513,10 +4513,12 @@ pwasm_checker_get_local_type(
 
   pwasm_value_type_t val_type = PWASM_VALUE_TYPE_LAST;
   if (id < func_type.params.len) {
+    #ifdef PWASM_DEBUG
     for (size_t i = 0; i < func_type.params.len; i++) {
       const uint32_t val = mod->u32s[func_type.params.ofs + i];
       D("params[%zu] = %s (0x%02x)", i, pwasm_value_type_get_name(val), val);
     }
+    #endif /* PWASM_DEBUG */
 
     // get parameter type
     val_type = mod->u32s[func_type.params.ofs + id];
