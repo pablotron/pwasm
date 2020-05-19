@@ -4076,6 +4076,7 @@ typedef enum {
   PWASM_CHECKER_TYPE_LAST,
 } pwasm_checker_type_t;
 
+#ifdef PWASM_DEBUG
 static const char *
 pwasm_checker_type_get_name(
   const pwasm_checker_type_t type
@@ -4089,6 +4090,7 @@ pwasm_checker_type_get_name(
     return "invalid";
   }
 }
+#endif /* PWASM_DEBUG */
 
 /**
  * Convert a result type to a checker type.
