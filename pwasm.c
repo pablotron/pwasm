@@ -2914,6 +2914,37 @@ pwasm_vec_pop(
   return true;
 }
 
+/**
+ * Get a pointer to the Nth entry from the tail of the vector.
+ *
+ * Returns NULL if the vector is empty or if the offset is out of
+ * bounds.
+ */
+static const void *
+pwasm_vec_peek_tail(
+  const pwasm_vec_t * const vec,
+  const size_t ofs
+) {
+  const bool ok = (vec->num_rows > 0) && (ofs < vec->num_rows);
+  const size_t num_bytes = vec->stride * (vec->num_rows - 1 - ofs);
+  return ok ? vec->rows + num_bytes : NULL;
+}
+
+/**
+ * Truncate vector.
+ *
+ * Returns false if the new size is greater than the current size.
+ */
+static bool
+pwasm_vec_shrink(
+  pwasm_vec_t * const vec,
+  const size_t new_size
+) {
+  const bool ok = (new_size <= vec->num_rows);
+  vec->num_rows = ok ? new_size : vec->num_rows;
+  return ok;
+}
+
 #define BUILDER_VECS \
   BUILDER_VEC(u32, uint32_t, dummy) \
   BUILDER_VEC(section, pwasm_header_t, u32) \
@@ -3749,6 +3780,7 @@ pwasm_mod_init_unsafe_on_codes(
 
       // calculate frame size (num params + num locals)
       tmp[j].frame_size = types[type_id].params.len + tmp[j].max_locals;
+      tmp[j].type_id = type_id;
     }
 
     // flush rows, check for error
@@ -4020,12 +4052,1768 @@ pwasm_mod_get_global_type(
 }
 
 /**
+ * Map of code checker type to string name and result type.
+ *
+ * Used to convert result types to checker types and vice versa.
+ */
+#define PWASM_CHECKER_TYPES \
+  PWASM_CHECKER_TYPE(I32, "i32", I32) \
+  PWASM_CHECKER_TYPE(I64, "i64", I64) \
+  PWASM_CHECKER_TYPE(F32, "f32", F32) \
+  PWASM_CHECKER_TYPE(F64, "f64", F64) \
+  PWASM_CHECKER_TYPE(UNKNOWN, "unknown", LAST)
+
+/**
+ * Checker value types.
+ *
+ * Used as entries in code checker type stack.
+ */
+typedef enum {
+  #define PWASM_CHECKER_TYPE(a, b, c) PWASM_CHECKER_TYPE_ ## a,
+  PWASM_CHECKER_TYPES
+  #undef PWASM_CHECKER_TYPE
+  PWASM_CHECKER_TYPE_LAST,
+} pwasm_checker_type_t;
+
+static const char *
+pwasm_checker_type_get_name(
+  const pwasm_checker_type_t type
+) {
+  switch (type) {
+  #define PWASM_CHECKER_TYPE(a, b, c) \
+    case PWASM_CHECKER_TYPE_ ## a: return (b);
+  PWASM_CHECKER_TYPES
+  #undef PWASM_CHECKER_TYPE
+  default:
+    return "invalid";
+  }
+}
+
+/**
+ * Convert a result type to a checker type.
+ *
+ * Returns PWASM_CHECKER_TYPE_LAST if the result type is invalid.
+ */
+static pwasm_checker_type_t
+pwasm_result_type_to_checker_type(
+  const pwasm_result_type_t type
+) {
+  switch (type) {
+  #define PWASM_CHECKER_TYPE(a, b, c) \
+    case PWASM_RESULT_TYPE_ ## c: \
+      return PWASM_CHECKER_TYPE_ ## a;
+  PWASM_CHECKER_TYPES
+  #undef PWASM_CHECKER_TYPE
+  default:
+    return PWASM_CHECKER_TYPE_LAST;
+  }
+}
+
+/**
+ * Convert a value type to a checker type.
+ *
+ * Returns PWASM_CHECKER_TYPE_LAST if the result type is invalid.
+ */
+static pwasm_checker_type_t
+pwasm_value_type_to_checker_type(
+  const pwasm_value_type_t type
+) {
+  switch (type) {
+  #define PWASM_CHECKER_TYPE(a, b, c) \
+    case PWASM_VALUE_TYPE_ ## c: \
+      return PWASM_CHECKER_TYPE_ ## a;
+  PWASM_CHECKER_TYPES
+  #undef PWASM_CHECKER_TYPE
+  default:
+    return PWASM_CHECKER_TYPE_LAST;
+  }
+}
+
+/**
+ * Control frame.
+ *
+ * Used as entries in code checker control stack.
+ */
+typedef struct {
+  // control operator
+  pwasm_op_t op;
+
+  // result type
+  pwasm_result_type_t type;
+
+  // value stack height at entry
+  size_t size;
+
+  // unreachable flag
+  bool unreachable;
+} pwasm_checker_ctrl_t;
+
+/**
+ * Code checker data.
+ */
+typedef struct {
+  const pwasm_mod_check_cbs_t cbs; // callbacks
+  void *cb_data; // user data
+  pwasm_vec_t types; // vec(pwasm_checker_type_t)
+  pwasm_vec_t ctrls; // vec(pwasm_checker_ctrl_t)
+} pwasm_checker_t;
+
+/**
+ * Init code validator.
+ */
+static bool
+pwasm_checker_init(
+  pwasm_checker_t * const checker,
+  pwasm_mem_ctx_t * const mem_ctx,
+  const pwasm_mod_check_cbs_t * const src_cbs,
+  void *cb_data
+) {
+  const size_t type_size = sizeof(pwasm_checker_type_t);
+  const size_t ctrl_size = sizeof(pwasm_checker_ctrl_t);
+
+  const pwasm_mod_check_cbs_t cbs = {
+    .on_warning = (src_cbs && src_cbs->on_warning) ? src_cbs->on_warning : pwasm_null_on_error,
+    .on_error = (src_cbs && src_cbs->on_error) ? src_cbs->on_error : pwasm_null_on_error,
+  };
+
+  // init type stack, check for error
+  pwasm_vec_t types;
+  if (!pwasm_vec_init(mem_ctx, &types, type_size)) {
+    cbs.on_error("checker type stack init failed", cb_data);
+    return false;
+  }
+
+  // init ctrl stack, check for error
+  pwasm_vec_t ctrls;
+  if (!pwasm_vec_init(mem_ctx, &ctrls, ctrl_size)) {
+    cbs.on_error("checker type stack init failed", cb_data);
+    return false;
+  }
+
+  // populate result
+  const pwasm_checker_t tmp = {
+    .cbs = cbs,
+    .cb_data = cb_data,
+    .types = types,
+    .ctrls = ctrls,
+  };
+
+  // copy result to destination
+  memcpy(checker, &tmp, sizeof(pwasm_checker_t));
+
+  // return success
+  return true;
+}
+
+/**
+ * Finalize code checker.
+ */
+static void
+pwasm_checker_fini(
+  pwasm_checker_t * const checker
+) {
+  pwasm_vec_fini(&(checker->types));
+  pwasm_vec_fini(&(checker->ctrls));
+}
+
+/**
+ * Clear code checker stacks.
+ */
+static void
+pwasm_checker_clear(
+  pwasm_checker_t * const checker
+) {
+  pwasm_vec_clear(&(checker->types));
+  pwasm_vec_clear(&(checker->ctrls));
+}
+
+/**
+ * Log error message to checker `on_error` callback.
+ */
+static void
+pwasm_checker_fail(
+  pwasm_checker_t * const checker,
+  const char * const text
+) {
+  checker->cbs.on_error(text, checker->cb_data);
+}
+
+// forward references
+static const pwasm_checker_ctrl_t *pwasm_checker_ctrl_peek(const pwasm_checker_t *, const size_t);
+
+/**
+ * Count number of entries in type stack.
+ */
+static size_t
+pwasm_checker_type_get_size(
+  const pwasm_checker_t * const checker
+) {
+  return pwasm_vec_get_size(&(checker->types));
+}
+
+/**
+ * Push entry to type stack.
+ */
+static bool
+pwasm_checker_type_push(
+  pwasm_checker_t * const checker,
+  const pwasm_checker_type_t type
+) {
+  // push entry, check for error.
+  if (!pwasm_vec_push(&(checker->types), 1, &type, NULL)) {
+    pwasm_checker_fail(checker, "checker type stack push failed");
+    return false;
+  }
+
+  // return success
+  return true;
+}
+
+/**
+ * Pop entry from type stack.
+ *
+ * Note: This function implements the additional checks specified in the
+ * WebAssembly validation section, in order to handle type stack
+ * underflow and a polymorphic stack.
+ */
+static bool
+pwasm_checker_type_pop(
+  pwasm_checker_t * const checker,
+  pwasm_checker_type_t * const ret_type
+) {
+  // get control frame, check for error
+  const pwasm_checker_ctrl_t *tmp = pwasm_checker_ctrl_peek(checker, 0);
+  const pwasm_checker_ctrl_t ctrl = tmp ? *tmp : (pwasm_checker_ctrl_t) {
+    .size = 0,
+  };
+
+  // check type stack against control frame height
+  if (pwasm_checker_type_get_size(checker) > ctrl.size) {
+    // pop entry, check for error
+    if (!pwasm_vec_pop(&(checker->types), ret_type)) {
+      pwasm_checker_fail(checker, "checker type stack pop failed");
+      return false;
+    }
+  } else if (ctrl.unreachable) {
+    if (ret_type) {
+      // return unknown
+      *ret_type = PWASM_CHECKER_TYPE_UNKNOWN;
+    }
+  } else {
+    // log error, return failure
+    pwasm_checker_fail(checker, "checker type stack underflow");
+    return false;
+  }
+
+  // return success
+  return true;
+}
+
+/**
+ * Pop entry from type stack with an expected type.
+ *
+ * Returns the type popped in `ret_type`, which may be
+ * `PWASM_CHECKER_TYPE_UNKNOWN` rather than the expected type in certain
+ * situations.
+ */
+static bool
+pwasm_checker_type_pop_expected(
+  pwasm_checker_t * const checker,
+  const pwasm_checker_type_t exp_type,
+  pwasm_checker_type_t * const ret_type
+) {
+  // pop actual type, check for error
+  pwasm_checker_type_t got_type;
+  if (!pwasm_checker_type_pop(checker, &got_type)) {
+    return false;
+  }
+
+  if (got_type == PWASM_CHECKER_TYPE_UNKNOWN) {
+    // return expected type
+    if (ret_type) {
+      *ret_type = exp_type;
+    }
+  } else if (exp_type == PWASM_CHECKER_TYPE_UNKNOWN) {
+    // return actual type
+    if (ret_type) {
+      *ret_type = got_type;
+    }
+  } else if (got_type != exp_type) {
+    // log error, return failure
+    char buf[512];
+    snprintf(buf, sizeof(buf),
+      "type stack pop: type mismatch: got %s (%u), expected %s (%u)",
+      pwasm_checker_type_get_name(got_type), got_type,
+      pwasm_checker_type_get_name(exp_type), exp_type
+    );
+    pwasm_checker_fail(checker, buf);
+    return false;
+  }
+
+  // return actual type
+  if (ret_type) {
+    *ret_type = got_type;
+  }
+
+  // return success
+  return true;
+}
+
+/**
+ * Shrink type stack to desired size.
+ *
+ * Returns `true` on success or `false` on error.
+ */
+static bool
+pwasm_checker_type_shrink(
+  pwasm_checker_t * const checker,
+  const size_t new_size
+) {
+  return pwasm_vec_shrink(&(checker->types), new_size);
+}
+
+/**
+ * Push entry to control stack.
+ */
+static bool
+pwasm_checker_ctrl_push(
+  pwasm_checker_t * const checker,
+  const pwasm_checker_ctrl_t ctrl
+) {
+  // push entry, check for error.
+  if (!pwasm_vec_push(&(checker->ctrls), 1, &ctrl, NULL)) {
+    pwasm_checker_fail(checker, "checker control stack push failed");
+    return false;
+  }
+
+  // return success
+  return true;
+}
+
+/**
+ * Pop entry from control stack.
+ */
+static bool
+pwasm_checker_ctrl_pop(
+  pwasm_checker_t * const checker,
+  pwasm_checker_ctrl_t * const ret_ctrl
+) {
+  // pop control frame, check for error
+  pwasm_checker_ctrl_t ctrl;
+  if (!pwasm_vec_pop(&(checker->ctrls), &ctrl)) {
+    pwasm_checker_fail(checker, "checker control stack pop failed");
+    return false;
+  }
+
+  if (ctrl.type != PWASM_RESULT_TYPE_VOID) {
+    // convert checker type to result type
+    const pwasm_checker_type_t type = pwasm_result_type_to_checker_type(ctrl.type);
+
+    // pop expected result type, check for error
+    if (!pwasm_checker_type_pop_expected(checker, type, NULL)) {
+      return false;
+    }
+  }
+
+  // FIXME: check type stack size
+  // if (pwasm_checker_type_get_size(checker) != ctrl.size) {
+  //   D("type size = %zu, ctrl.size = %zu", pwasm_checker_type_get_size(checker), ctrl.size);
+  //   pwasm_checker_fail(checker, "incorrect type stack height");
+  //   return false;
+  // }
+
+  if (ret_ctrl) {
+    // copy control frame to destination
+    *ret_ctrl = ctrl;
+  }
+
+  // return success
+  return true;
+}
+
+/**
+ * Count number of entries in control stack.
+ */
+static size_t
+pwasm_checker_ctrl_get_size(
+  const pwasm_checker_t * const checker
+) {
+  return pwasm_vec_get_size(&(checker->ctrls));
+}
+
+/**
+ * Return pointer to last control stack entry, or NULL if control stack
+ * is empty.
+ */
+static const pwasm_checker_ctrl_t *
+pwasm_checker_ctrl_peek(
+  const pwasm_checker_t * const checker,
+  const size_t ofs
+) {
+  return pwasm_vec_peek_tail(&(checker->ctrls), ofs);
+}
+
+static bool
+pwasm_checker_ctrl_mark_unreachable(
+  pwasm_checker_t * const checker
+) {
+  // pop control frame, check for error
+  pwasm_checker_ctrl_t ctrl;
+  if (!pwasm_checker_ctrl_pop(checker, &ctrl)) {
+    D("ctrl_pop failed%s", "");
+    return false;
+  }
+
+  // shrink type stack, check for error
+  if (!pwasm_checker_type_shrink(checker, ctrl.size)) {
+    D("type_shrink failed%s", "");
+    return false;
+  }
+
+  // mark frame as unreachable
+  ctrl.unreachable = true;
+
+  // push control frame, check for error
+  if (!pwasm_checker_ctrl_push(checker, ctrl)) {
+    D("ctrl_push failed%s", "");
+    return false;
+  }
+
+  // return success
+  return true;
+}
+
+/**
+ * Get type of local variable.
+ *
+ * Returns `true` on success or `false` on error.
+ */
+static bool
+pwasm_checker_get_local_type(
+  pwasm_checker_t * const checker,
+  const pwasm_mod_t * const mod,
+  const pwasm_func_t func,
+  const uint32_t id,
+  pwasm_checker_type_t * const ret_type
+) {
+  // check local index
+  if (id >= func.frame_size) {
+    pwasm_checker_fail(checker, "local index out of bound");
+    return false;
+  }
+
+  D("func.type_id = %lu", func.type_id);
+
+  for (size_t i = 0; i < mod->num_funcs; i++) {
+    D("mod->funcs[%zu] = %u", i, mod->funcs[i]);
+  }
+
+  const pwasm_type_t func_type = mod->types[func.type_id];
+  D("id = %u", id);
+
+  pwasm_value_type_t val_type = PWASM_VALUE_TYPE_LAST;
+  if (id < func_type.params.len) {
+    for (size_t i = 0; i < func_type.params.len; i++) {
+      const uint32_t val = mod->u32s[func_type.params.ofs + i];
+      D("params[%zu] = %s (0x%02x)", i, pwasm_value_type_get_name(val), val);
+    }
+
+    // get parameter type
+    val_type = mod->u32s[func_type.params.ofs + id];
+    D("val_type = %s (%u)", pwasm_value_type_get_name(val_type), val_type);
+  } else {
+    const pwasm_local_t * const locals = mod->locals + func.locals.ofs;
+    const uint32_t local_id = id - func_type.params.len;
+
+    // walk locals, find match
+    size_t sum = 0;
+    for (size_t i = 0; i < func.locals.len; i++) {
+      if ((local_id >= sum) && (local_id < sum + locals[i].num)) {
+        // found match, save type
+        val_type = locals[i].type;
+      }
+
+      // increment sum
+      sum += locals[i].num;
+    }
+  }
+
+  // check value type
+  if (val_type == PWASM_VALUE_TYPE_LAST) {
+    // should never be reached
+    pwasm_checker_fail(checker, "invalid local value type");
+    return false;
+  }
+
+  // convert value type to checker type
+  const pwasm_checker_type_t type = pwasm_value_type_to_checker_type(val_type);
+  if (ret_type) {
+    *ret_type = type;
+  }
+
+  // return success
+  return true;
+}
+
+/**
+ * Get type of global.
+ *
+ * Returns `true` on success or `false` on error.
+ */
+static bool
+pwasm_checker_get_global_type(
+  pwasm_checker_t * const checker,
+  const pwasm_mod_t * const mod,
+  const uint32_t id,
+  pwasm_checker_type_t * const ret_type,
+  bool * const ret_mut
+) {
+  // check global index
+  if (id >= mod->max_indices[PWASM_IMPORT_TYPE_GLOBAL]) {
+    pwasm_checker_fail(checker, "global index out of bound");
+    return false;
+  }
+
+  const pwasm_global_type_t *global_type = NULL;
+  if (id < mod->num_import_types[PWASM_IMPORT_TYPE_GLOBAL]) {
+    // get imported global type
+    for (size_t i = 0, curr_global_id = 0; i < mod->num_imports; i++) {
+      if (mod->imports[i].type == PWASM_IMPORT_TYPE_GLOBAL) {
+        if (id == curr_global_id) {
+          global_type = &(mod->imports[i].global);
+        }
+        curr_global_id++;
+      }
+    }
+  } else {
+    // get internal module global type
+    const uint32_t global_id = id - mod->num_import_types[PWASM_IMPORT_TYPE_GLOBAL];
+    global_type = &(mod->globals[global_id].type);
+  }
+
+  // check value type
+  if (!global_type) {
+    // should never be reached
+    pwasm_checker_fail(checker, "invalid global value type");
+    return false;
+  }
+
+  // convert value type to checker type
+  const pwasm_checker_type_t type = pwasm_value_type_to_checker_type(global_type->type);
+  if (ret_type) {
+    *ret_type = type;
+  }
+
+  if (ret_mut) {
+    // copy mutable to destination
+    *ret_mut = global_type->mutable;
+  }
+
+  // return success
+  return true;
+}
+
+/**
+ * Verify that at least one memory is attached to this module.
+ *
+ * Returns `true` on success or `false` on error.
+ */
+static bool
+pwasm_checker_check_mem(
+  pwasm_checker_t * const checker,
+  const pwasm_mod_t * const mod
+) {
+  // check memory
+  if (!mod->max_indices[PWASM_IMPORT_TYPE_MEM]) {
+    pwasm_checker_fail(checker, "invalid memory op: no memory attached");
+    return false;
+  }
+
+  // return success
+  return true;
+}
+
+/**
+ * Verify memory load.
+ *
+ * Returns `true` on success or `false` on error.
+ */
+static bool
+pwasm_checker_check_load(
+  pwasm_checker_t * const checker,
+  const pwasm_mod_t * const mod,
+  const pwasm_checker_type_t type
+) {
+  // check memory
+  if (!pwasm_checker_check_mem(checker, mod)) {
+    return false;
+  }
+
+  // pop offset operand
+  if (!pwasm_checker_type_pop_expected(checker, PWASM_CHECKER_TYPE_I32, NULL)) {
+    return false;
+  }
+
+  // push type
+  if (!pwasm_checker_type_push(checker, type)) {
+    return false;
+  }
+
+  // return success
+  return true;
+}
+
+/**
+ * Verify memory store.
+ *
+ * Returns `true` on success or `false` on error.
+ */
+static bool
+pwasm_checker_check_store(
+  pwasm_checker_t * const checker,
+  const pwasm_mod_t * const mod,
+  const pwasm_checker_type_t exp_type
+) {
+  // check memory
+  if (!pwasm_checker_check_mem(checker, mod)) {
+    return false;
+  }
+
+  // pop value operand
+  if (!pwasm_checker_type_pop_expected(checker, exp_type, NULL)) {
+    return false;
+  }
+
+  // pop offset operand
+  if (!pwasm_checker_type_pop_expected(checker, PWASM_CHECKER_TYPE_I32, NULL)) {
+    return false;
+  }
+
+  // return success
+  return true;
+}
+
+/**
+ * Verify unary operation (`unop`).
+ *
+ * A `unop` takes a value of the given type and returns a value of the
+ * given type.
+ *
+ * Returns `true` on success or `false` on error.
+ */
+static bool
+pwasm_checker_check_unop(
+  pwasm_checker_t * const checker,
+  const pwasm_checker_type_t exp_type
+) {
+  // pop operand type
+  if (!pwasm_checker_type_pop_expected(checker, exp_type, NULL)) {
+    return false;
+  }
+
+  // push result
+  if (!pwasm_checker_type_push(checker, exp_type)) {
+    return false;
+  }
+
+  // return success
+  return true;
+}
+
+/**
+ * Verify test operation (`testop`).
+ *
+ * A `testop` takes a value of the given type and returns an `i32`.
+ *
+ * Returns `true` on success or `false` on error.
+ */
+static bool
+pwasm_checker_check_testop(
+  pwasm_checker_t * const checker,
+  const pwasm_checker_type_t exp_type
+) {
+  // pop operand type
+  if (!pwasm_checker_type_pop_expected(checker, exp_type, NULL)) {
+    return false;
+  }
+
+  // push result
+  if (!pwasm_checker_type_push(checker, PWASM_CHECKER_TYPE_I32)) {
+    return false;
+  }
+
+  // return success
+  return true;
+}
+
+/**
+ * Verify relative operation (`relop`).
+ *
+ * A `relop` takes two values of the given type and returns an `i32`.
+ *
+ * Returns `true` on success or `false` on error.
+ */
+static bool
+pwasm_checker_check_relop(
+  pwasm_checker_t * const checker,
+  const pwasm_checker_type_t exp_type
+) {
+  // pop operand type
+  if (!pwasm_checker_type_pop_expected(checker, exp_type, NULL)) {
+    return false;
+  }
+
+  // pop operand type
+  if (!pwasm_checker_type_pop_expected(checker, exp_type, NULL)) {
+    return false;
+  }
+
+  // push result
+  if (!pwasm_checker_type_push(checker, PWASM_CHECKER_TYPE_I32)) {
+    return false;
+  }
+
+  // return success
+  return true;
+}
+
+/**
+ * Verify binary operation (`binop`).
+ *
+ * A `binop` takes two values of the given type and returns a value of
+ * the given type.
+ *
+ * Returns `true` on success or `false` on error.
+ */
+static bool
+pwasm_checker_check_binop(
+  pwasm_checker_t * const checker,
+  const pwasm_checker_type_t exp_type
+) {
+  // pop operand type
+  if (!pwasm_checker_type_pop_expected(checker, exp_type, NULL)) {
+    return false;
+  }
+
+  // pop operand type
+  if (!pwasm_checker_type_pop_expected(checker, exp_type, NULL)) {
+    return false;
+  }
+
+  // push result
+  if (!pwasm_checker_type_push(checker, exp_type)) {
+    return false;
+  }
+
+  // return success
+  return true;
+}
+
+/**
+ * Verify convert operation (`cvtop`).
+ *
+ * A `cvtop` takes two types, it pops the source type and then pushes
+ * the destination type.
+ *
+ * Returns `true` on success or `false` on error.
+ */
+static bool
+pwasm_checker_check_cvtop(
+  pwasm_checker_t * const checker,
+  const pwasm_checker_type_t dst_type,
+  const pwasm_checker_type_t src_type
+) {
+  // pop src type
+  if (!pwasm_checker_type_pop_expected(checker, src_type, NULL)) {
+    return false;
+  }
+
+  // push dst type
+  if (!pwasm_checker_type_push(checker, dst_type)) {
+    return false;
+  }
+
+  // return success
+  return true;
+}
+
+#if 0
+static pwasm_result_type_t
+pwasm_value_type_to_result_type(
+  const pwasm_value_type_t type
+) {
+  switch (type) {
+  case PWASM_VALUE_TYPE_I32: return PWASM_RESULT_TYPE_I32;
+  case PWASM_VALUE_TYPE_I64: return PWASM_RESULT_TYPE_I64;
+  case PWASM_VALUE_TYPE_F32: return PWASM_RESULT_TYPE_F32;
+  case PWASM_VALUE_TYPE_F64: return PWASM_RESULT_TYPE_F64;
+  default:
+    return PWASM_RESULT_TYPE_LAST;
+  }
+}
+
+static pwasm_result_type_t
+pwasm_checker_get_func_result_type(
+  pwasm_checker_t * const checker,
+  const pwasm_mod_t * const mod,
+  const pwasm_func_t func
+) {
+  (void) checker;
+  const pwasm_slice_t slice = mod->types[func.type_id].results;
+  // TODO: redo this for multi-value funcs
+  if (slice.len) {
+    return pwasm_value_type_to_result_type(mod->u32s[slice.ofs]);
+  } else {
+    return PWASM_RESULT_TYPE_VOID;
+  }
+}
+
+static bool
+pwasm_checker_push_func_block(
+  pwasm_checker_t * const checker,
+  const pwasm_mod_t * const mod,
+  const pwasm_func_t func
+) {
+  // build control frame
+  const pwasm_checker_ctrl_t ctrl = {
+    .op   = PWASM_OP_BLOCK,
+    .type = pwasm_checker_get_func_result_type(checker, mod, func),
+    .size = 0,
+  };
+
+  // push control frame, return result
+  return pwasm_checker_ctrl_push(checker, ctrl);
+}
+#endif /* 0 */
+
+/**
+ * Check function code.
+ *
+ * Returns `true` on success, or `false` on error.
+ */
+static bool
+pwasm_checker_check_func(
+  pwasm_checker_t * const checker,
+  const pwasm_mod_t * const mod,
+  const pwasm_func_t func
+) {
+  // temporarily disabled
+  return true;
+
+  // get function instructions
+  const pwasm_inst_t * const insts = mod->insts + func.expr.ofs;
+
+  if (!func.expr.len) {
+    pwasm_checker_fail(checker, "empty expression");
+    return false;
+  } else if (insts[func.expr.len - 1].op != PWASM_OP_END) {
+    pwasm_checker_fail(checker, "unterminated expression");
+    return false;
+  }
+
+  // clear checker
+  pwasm_checker_clear(checker);
+
+  for (size_t i = 0; i < func.expr.len - 1; i++) {
+    // get instruction and index immediate
+    const pwasm_inst_t in = insts[i];
+    const uint32_t id = in.v_index;
+    D("in.op = %s", pwasm_op_get_name(in.op));
+
+    switch (in.op) {
+    case PWASM_OP_UNREACHABLE:
+      // mark control frame as unreachable
+      if (!pwasm_checker_ctrl_mark_unreachable(checker)) {
+        // return failure
+        D("%s: mark_unreachable failed", pwasm_op_get_name(in.op));
+        return false;
+      }
+
+      break;
+    case PWASM_OP_BLOCK:
+    case PWASM_OP_LOOP:
+      {
+        // build control frame
+        const pwasm_checker_ctrl_t ctrl = {
+          .op   = in.op,
+          .type = in.v_block.type,
+          .size = pwasm_checker_type_get_size(checker),
+        };
+
+        // push control frame, check for error
+        if (!pwasm_checker_ctrl_push(checker, ctrl)) {
+          // return failure
+          D("%s: ctrl_push failed", pwasm_op_get_name(in.op));
+          return false;
+        }
+      }
+
+      break;
+    case PWASM_OP_IF:
+      {
+        // pop type stack, check for error
+        if (!pwasm_checker_type_pop_expected(checker, PWASM_CHECKER_TYPE_I32, NULL)) {
+          // return failure
+          D("%s: pop_expected failed", pwasm_op_get_name(in.op));
+          return false;
+        }
+
+        // build control frame
+        const pwasm_checker_ctrl_t ctrl = {
+          .op   = in.op,
+          .type = in.v_block.type,
+          .size = pwasm_checker_type_get_size(checker),
+        };
+
+        // push control frame, check for error
+        if (!pwasm_checker_ctrl_push(checker, ctrl)) {
+          // return failure
+          D("%s: ctrl_push failed", pwasm_op_get_name(in.op));
+          return false;
+        }
+      }
+
+      break;
+    case PWASM_OP_ELSE:
+      {
+        // pop top of control stack, check for error
+        pwasm_checker_ctrl_t ctrl;
+        if (!pwasm_checker_ctrl_pop(checker, &ctrl)) {
+          // return failure
+          D("%s: ctrl_pop failed", pwasm_op_get_name(in.op));
+          return false;
+        }
+
+        // check for "if" op
+        if (ctrl.op != PWASM_OP_IF) {
+          // return failure
+          D("%s: op check failed", pwasm_op_get_name(in.op));
+          pwasm_checker_fail(checker, "else: missing if");
+          return false;
+        }
+
+        // update control frame
+        ctrl.op = PWASM_OP_ELSE;
+
+        // push control frame, check for error
+        if (!pwasm_checker_ctrl_push(checker, ctrl)) {
+          // return failure
+          D("%s: ctrl_push failed", pwasm_op_get_name(in.op));
+          return false;
+        }
+      }
+
+      break;
+    case PWASM_OP_END:
+      {
+        // pop top of control stack, check for error
+        pwasm_checker_ctrl_t ctrl;
+        if (!pwasm_checker_ctrl_pop(checker, &ctrl)) {
+          // return failure
+          D("%s: ctrl_pop failed", pwasm_op_get_name(in.op));
+          return false;
+        }
+
+        if (ctrl.type != PWASM_RESULT_TYPE_VOID) {
+          // convert block result to checker type
+          const pwasm_checker_type_t type = pwasm_result_type_to_checker_type(ctrl.type);
+
+          // push result to type stack, check for error
+          if (!pwasm_checker_type_push(checker, type)) {
+            // return failure
+            D("%s: type_push failed", pwasm_op_get_name(in.op));
+            return false;
+          }
+        }
+      }
+
+      break;
+    case PWASM_OP_BR:
+      {
+        // check branch target
+        if (id >= pwasm_checker_ctrl_get_size(checker)) {
+          pwasm_checker_fail(checker, "br: label out of bounds");
+          return false;
+        }
+
+        // get target control frame, check for error
+        const pwasm_checker_ctrl_t *ctrl = pwasm_checker_ctrl_peek(checker, id);
+        if (!ctrl) {
+          D("%s: null ctrl", pwasm_op_get_name(in.op));
+          return false;
+        }
+
+        if ((ctrl->type != PWASM_RESULT_TYPE_VOID) && (ctrl->op != PWASM_OP_LOOP)) {
+          // pop expected type from type stack, check for error
+          if (!pwasm_checker_type_pop_expected(checker, ctrl->type, NULL)) {
+            D("%s: type_pop_expected failed", pwasm_op_get_name(in.op));
+            return false;
+          }
+        }
+
+        // mark control frame as unreachable
+        if (!pwasm_checker_ctrl_mark_unreachable(checker)) {
+          D("%s: mark_unreachable failed", pwasm_op_get_name(in.op));
+          return false;
+        }
+      }
+
+      break;
+    case PWASM_OP_BR_IF:
+      {
+        // check branch target
+        if (id >= pwasm_checker_ctrl_get_size(checker)) {
+          pwasm_checker_fail(checker, "br: label out of bounds");
+          return false;
+        }
+
+        // get target control frame, check for error
+        const pwasm_checker_ctrl_t *ctrl = pwasm_checker_ctrl_peek(checker, id);
+        if (!ctrl) {
+          D("%s: null ctrl frame", pwasm_op_get_name(in.op));
+          return false;
+        }
+
+        // pop i32 from type stack, check for error
+        if (!pwasm_checker_type_pop_expected(checker, PWASM_CHECKER_TYPE_I32, NULL)) {
+          return false;
+        }
+
+        if ((ctrl->type != PWASM_RESULT_TYPE_VOID) && (ctrl->op != PWASM_OP_LOOP)) {
+          const pwasm_checker_type_t type = pwasm_result_type_to_checker_type(ctrl->type);
+
+          // pop expected type from type stack, check for error
+          if (!pwasm_checker_type_pop_expected(checker, type, NULL)) {
+            return false;
+          }
+
+          // push type to stack, check for error
+          if (!pwasm_checker_type_push(checker, type)) {
+            return false;
+          }
+        }
+      }
+
+      break;
+    case PWASM_OP_BR_TABLE:
+      {
+        const uint32_t max_label = pwasm_checker_ctrl_get_size(checker);
+        const pwasm_slice_t slice = in.v_br_table;
+        const uint32_t * const labels = mod->u32s + slice.ofs;
+        const uint32_t num_labels = slice.len;
+        const uint32_t last_label = labels[num_labels - 1];
+
+        // check default branch target
+        if (last_label >= max_label) {
+          pwasm_checker_fail(checker, "br_table: default label out of bounds");
+          return false;
+        }
+
+        // get control frame for default branch target, check for error
+        const pwasm_checker_ctrl_t * const last_ctrl = pwasm_checker_ctrl_peek(checker, last_label);
+        if (!last_ctrl) {
+          // should never happen
+          pwasm_checker_fail(checker, "br_table: null control frame for default label");
+          return false;
+        }
+
+        const pwasm_result_type_t last_type = (last_ctrl->op == PWASM_OP_LOOP) ? PWASM_RESULT_TYPE_VOID : last_ctrl->type;
+
+        for (uint32_t i = 0; i < num_labels - 1; i++) {
+          // get branch target, check bounds
+          const uint32_t label = labels[i];
+          if (label >= max_label) {
+            pwasm_checker_fail(checker, "br_table: label out of bounds");
+            return false;
+          }
+
+          // get target control frame, check for error
+          const pwasm_checker_ctrl_t *ctrl = pwasm_checker_ctrl_peek(checker, label);
+          if (!ctrl) {
+            // should never happen
+            pwasm_checker_fail(checker, "br_table: null control frame for label");
+            return false;
+          }
+
+          // get result type of target control frame
+          const pwasm_result_type_t type = (ctrl->op == PWASM_OP_LOOP) ? PWASM_RESULT_TYPE_VOID : ctrl->type;
+
+          if (type != last_type) {
+            pwasm_checker_fail(checker, "br_table: invalid label result type");
+            return false;
+          }
+        }
+
+        // pop i32 from type stack, check for error
+        if (!pwasm_checker_type_pop_expected(checker, PWASM_CHECKER_TYPE_I32, NULL)) {
+          D("%s: type_pop_expected failed (i32)", pwasm_op_get_name(in.op));
+          return false;
+        }
+
+        if (last_type != PWASM_RESULT_TYPE_VOID) {
+          const pwasm_checker_type_t type = pwasm_result_type_to_checker_type(last_type);
+          // pop expected type, check for error
+          if (!pwasm_checker_type_pop_expected(checker, type, NULL)) {
+            D("%s: type_pop_expected failed (val)", pwasm_op_get_name(in.op));
+            return false;
+          }
+        }
+
+        // mark control frame as unreachable
+        if (!pwasm_checker_ctrl_mark_unreachable(checker)) {
+          D("%s: ctrl_mark_unreachable failed", pwasm_op_get_name(in.op));
+          return false;
+        }
+      }
+
+      break;
+    case PWASM_OP_RETURN:
+      {
+        const pwasm_slice_t results = mod->types[func.type_id].results;
+        const uint32_t * const val_types = mod->u32s + results.ofs;
+
+        // check results
+        if (results.len >= pwasm_checker_type_get_size(checker)) {
+          pwasm_checker_fail(checker, "return: result count greater than stack size");
+          return false;
+        }
+
+        // pop/check function result types
+        for (size_t i = 0; i < results.len; i++) {
+          const pwasm_checker_type_t exp_type = pwasm_value_type_to_checker_type(val_types[results.len - 1 - i]);
+          if (!pwasm_checker_type_pop_expected(checker, exp_type, NULL)) {
+            return false;
+          }
+        }
+
+        // mark control frame as unreachable
+        // FIXME: is this correct?
+        if (!pwasm_checker_ctrl_mark_unreachable(checker)) {
+          return false;
+        }
+      }
+
+      break;
+    case PWASM_OP_CALL:
+      {
+        // map function to function type, get params and results
+        const pwasm_type_t func_type = mod->types[mod->funcs[id]];
+        const uint32_t * const params = mod->u32s + func_type.params.ofs;
+        const uint32_t * const results = mod->u32s + func_type.results.ofs;
+
+        // pop/check function parameter types in reverse order
+        for (size_t i = 0; i < func_type.params.len; i++) {
+          const pwasm_checker_type_t type = pwasm_value_type_to_checker_type(params[func_type.params.len - 1 - i]);
+          if (!pwasm_checker_type_pop_expected(checker, type, NULL)) {
+            return false;
+          }
+        }
+
+        // push function results to type stack
+        for (size_t i = 0; i < func_type.results.len; i++) {
+          const pwasm_checker_type_t type = pwasm_value_type_to_checker_type(results[func_type.results.len - 1 - i]);
+          if (!pwasm_checker_type_push(checker, type)) {
+            return false;
+          }
+        }
+      }
+
+      break;
+    case PWASM_OP_CALL_INDIRECT:
+      {
+        // get function type, params, and results
+        const pwasm_type_t func_type = mod->types[id];
+        const uint32_t * const params = mod->u32s + func_type.params.ofs;
+        const uint32_t * const results = mod->u32s + func_type.results.ofs;
+
+        // pop/check function parameter types in reverse order
+        for (size_t i = 0; i < func_type.params.len; i++) {
+          const pwasm_checker_type_t type = pwasm_value_type_to_checker_type(params[func_type.params.len - 1 - i]);
+          if (!pwasm_checker_type_pop_expected(checker, type, NULL)) {
+            return false;
+          }
+        }
+
+        // push function results to type stack
+        for (size_t i = 0; i < func_type.results.len; i++) {
+          const pwasm_checker_type_t type = pwasm_value_type_to_checker_type(results[func_type.results.len - 1 - i]);
+          if (!pwasm_checker_type_push(checker, type)) {
+            return false;
+          }
+        }
+      }
+
+      break;
+    case PWASM_OP_DROP:
+      if (!pwasm_checker_type_pop(checker, NULL)) {
+        return false;
+      }
+
+      break;
+    case PWASM_OP_SELECT:
+      {
+        // pop conditional
+        if (!pwasm_checker_type_pop_expected(checker, PWASM_CHECKER_TYPE_I32, NULL)) {
+          return false;
+        }
+
+        // pop first type
+        pwasm_checker_type_t type;
+        if (!pwasm_checker_type_pop(checker, &type)) {
+          return false;
+        }
+
+        // pop/check second type
+        if (!pwasm_checker_type_pop_expected(checker, type, NULL)) {
+          return false;
+        }
+
+        // push type
+        if (!pwasm_checker_type_push(checker, type)) {
+          return false;
+        }
+      }
+
+      break;
+    case PWASM_OP_LOCAL_GET:
+      {
+        // get checker type of local ID, check for error
+        pwasm_checker_type_t type;
+        if (!pwasm_checker_get_local_type(checker, mod, func, id, &type)) {
+          return false;
+        }
+        D("type = %s", pwasm_checker_type_get_name(type));
+
+        // push type
+        if (!pwasm_checker_type_push(checker, type)) {
+          return false;
+        }
+      }
+
+      break;
+    case PWASM_OP_LOCAL_SET:
+      {
+        // get checker type of local ID, check for error
+        pwasm_checker_type_t type;
+        if (!pwasm_checker_get_local_type(checker, mod, func, id, &type)) {
+          return false;
+        }
+
+        // pop type
+        if (!pwasm_checker_type_pop_expected(checker, type, NULL)) {
+          return false;
+        }
+      }
+
+      break;
+    case PWASM_OP_LOCAL_TEE:
+      {
+        // get checker type of local ID, check for error
+        pwasm_checker_type_t type;
+        if (!pwasm_checker_get_local_type(checker, mod, func, id, &type)) {
+          return false;
+        }
+
+        // pop type
+        if (!pwasm_checker_type_pop_expected(checker, type, NULL)) {
+          return false;
+        }
+
+        // push type
+        if (!pwasm_checker_type_push(checker, type)) {
+          return false;
+        }
+      }
+
+      break;
+    case PWASM_OP_GLOBAL_GET:
+      {
+        // get checker type of global, check for error
+        pwasm_checker_type_t type;
+        if (!pwasm_checker_get_global_type(checker, mod, id, &type, NULL)) {
+          return false;
+        }
+
+        // push type
+        if (!pwasm_checker_type_push(checker, type)) {
+          return false;
+        }
+      }
+
+      break;
+    case PWASM_OP_GLOBAL_SET:
+      {
+        // get checker type of global, check for error
+        bool mut = false;
+        pwasm_checker_type_t type;
+        if (!pwasm_checker_get_global_type(checker, mod, id, &type, &mut)) {
+          return false;
+        }
+
+        if (!mut) {
+          pwasm_checker_fail(checker, "global.set: immutable global");
+          return false;
+        }
+
+        // pop type
+        if (!pwasm_checker_type_pop_expected(checker, type, NULL)) {
+          return false;
+        }
+      }
+
+      break;
+    case PWASM_OP_I32_LOAD:
+    case PWASM_OP_I32_LOAD8_S:
+    case PWASM_OP_I32_LOAD8_U:
+    case PWASM_OP_I32_LOAD16_S:
+    case PWASM_OP_I32_LOAD16_U:
+      if (!pwasm_checker_check_load(checker, mod, PWASM_CHECKER_TYPE_I32)) {
+        return false;
+      }
+
+      break;
+    case PWASM_OP_I64_LOAD:
+    case PWASM_OP_I64_LOAD8_S:
+    case PWASM_OP_I64_LOAD8_U:
+    case PWASM_OP_I64_LOAD16_S:
+    case PWASM_OP_I64_LOAD16_U:
+    case PWASM_OP_I64_LOAD32_S:
+    case PWASM_OP_I64_LOAD32_U:
+      if (!pwasm_checker_check_load(checker, mod, PWASM_CHECKER_TYPE_I64)) {
+        return false;
+      }
+
+      break;
+    case PWASM_OP_F32_LOAD:
+      if (!pwasm_checker_check_load(checker, mod, PWASM_CHECKER_TYPE_F32)) {
+        return false;
+      }
+
+      break;
+    case PWASM_OP_F64_LOAD:
+      if (!pwasm_checker_check_load(checker, mod, PWASM_CHECKER_TYPE_F64)) {
+        return false;
+      }
+
+      break;
+    case PWASM_OP_I32_STORE:
+    case PWASM_OP_I32_STORE8:
+    case PWASM_OP_I32_STORE16:
+      if (!pwasm_checker_check_store(checker, mod, PWASM_CHECKER_TYPE_I32)) {
+        return false;
+      }
+
+      break;
+    case PWASM_OP_I64_STORE:
+    case PWASM_OP_I64_STORE8:
+    case PWASM_OP_I64_STORE16:
+    case PWASM_OP_I64_STORE32:
+      if (!pwasm_checker_check_store(checker, mod, PWASM_CHECKER_TYPE_I64)) {
+        return false;
+      }
+
+      break;
+    case PWASM_OP_F32_STORE:
+      if (!pwasm_checker_check_store(checker, mod, PWASM_CHECKER_TYPE_F32)) {
+        return false;
+      }
+
+      break;
+    case PWASM_OP_F64_STORE:
+      if (!pwasm_checker_check_store(checker, mod, PWASM_CHECKER_TYPE_F64)) {
+        return false;
+      }
+
+      break;
+    case PWASM_OP_MEMORY_SIZE:
+      {
+        // check memory
+        if (!pwasm_checker_check_mem(checker, mod)) {
+          return false;
+        }
+
+        // push size
+        if (!pwasm_checker_type_push(checker, PWASM_CHECKER_TYPE_I32)) {
+          return false;
+        }
+      }
+
+      break;
+    case PWASM_OP_MEMORY_GROW:
+      {
+        // check memory
+        if (!pwasm_checker_check_mem(checker, mod)) {
+          return false;
+        }
+
+        // pop size
+        if (!pwasm_checker_type_pop_expected(checker, PWASM_CHECKER_TYPE_I32, NULL)) {
+          return false;
+        }
+
+        // push result
+        if (!pwasm_checker_type_push(checker, PWASM_CHECKER_TYPE_I32)) {
+          return false;
+        }
+      }
+
+      break;
+    case PWASM_OP_I32_CONST:
+      // push type
+      if (!pwasm_checker_type_push(checker, PWASM_CHECKER_TYPE_I32)) {
+        return false;
+      }
+
+      break;
+    case PWASM_OP_I64_CONST:
+      // push type
+      if (!pwasm_checker_type_push(checker, PWASM_CHECKER_TYPE_I64)) {
+        return false;
+      }
+
+      break;
+    case PWASM_OP_F32_CONST:
+      // push type
+      if (!pwasm_checker_type_push(checker, PWASM_CHECKER_TYPE_F32)) {
+        return false;
+      }
+
+      break;
+    case PWASM_OP_F64_CONST:
+      // push type
+      if (!pwasm_checker_type_push(checker, PWASM_CHECKER_TYPE_F64)) {
+        return false;
+      }
+
+      break;
+    case PWASM_OP_I32_EQZ:
+      if (!pwasm_checker_check_testop(checker, PWASM_CHECKER_TYPE_I32)) {
+        return false;
+      }
+
+      break;
+    case PWASM_OP_I32_EQ:
+    case PWASM_OP_I32_NE:
+    case PWASM_OP_I32_LT_S:
+    case PWASM_OP_I32_LT_U:
+    case PWASM_OP_I32_GT_S:
+    case PWASM_OP_I32_GT_U:
+    case PWASM_OP_I32_LE_S:
+    case PWASM_OP_I32_LE_U:
+    case PWASM_OP_I32_GE_S:
+    case PWASM_OP_I32_GE_U:
+      if (!pwasm_checker_check_relop(checker, PWASM_CHECKER_TYPE_I32)) {
+        return false;
+      }
+
+      break;
+    case PWASM_OP_I64_EQZ:
+      if (!pwasm_checker_check_testop(checker, PWASM_CHECKER_TYPE_I64)) {
+        return false;
+      }
+
+      break;
+    case PWASM_OP_I64_EQ:
+    case PWASM_OP_I64_NE:
+    case PWASM_OP_I64_LT_S:
+    case PWASM_OP_I64_LT_U:
+    case PWASM_OP_I64_GT_S:
+    case PWASM_OP_I64_GT_U:
+    case PWASM_OP_I64_LE_S:
+    case PWASM_OP_I64_LE_U:
+    case PWASM_OP_I64_GE_S:
+    case PWASM_OP_I64_GE_U:
+      if (!pwasm_checker_check_relop(checker, PWASM_CHECKER_TYPE_I64)) {
+        return false;
+      }
+
+      break;
+    case PWASM_OP_F32_EQ:
+    case PWASM_OP_F32_NE:
+    case PWASM_OP_F32_LT:
+    case PWASM_OP_F32_GT:
+    case PWASM_OP_F32_LE:
+    case PWASM_OP_F32_GE:
+      if (!pwasm_checker_check_relop(checker, PWASM_CHECKER_TYPE_F32)) {
+        return false;
+      }
+
+      break;
+    case PWASM_OP_F64_EQ:
+    case PWASM_OP_F64_NE:
+    case PWASM_OP_F64_LT:
+    case PWASM_OP_F64_GT:
+    case PWASM_OP_F64_LE:
+    case PWASM_OP_F64_GE:
+      if (!pwasm_checker_check_relop(checker, PWASM_CHECKER_TYPE_F64)) {
+        return false;
+      }
+
+      break;
+    case PWASM_OP_I32_CLZ:
+    case PWASM_OP_I32_CTZ:
+    case PWASM_OP_I32_POPCNT:
+      if (!pwasm_checker_check_unop(checker, PWASM_CHECKER_TYPE_I32)) {
+        return false;
+      }
+
+      break;
+    case PWASM_OP_I32_ADD:
+    case PWASM_OP_I32_SUB:
+    case PWASM_OP_I32_MUL:
+    case PWASM_OP_I32_DIV_S:
+    case PWASM_OP_I32_DIV_U:
+    case PWASM_OP_I32_REM_S:
+    case PWASM_OP_I32_REM_U:
+    case PWASM_OP_I32_AND:
+    case PWASM_OP_I32_OR:
+    case PWASM_OP_I32_XOR:
+    case PWASM_OP_I32_SHL:
+    case PWASM_OP_I32_SHR_S:
+    case PWASM_OP_I32_SHR_U:
+    case PWASM_OP_I32_ROTL:
+    case PWASM_OP_I32_ROTR:
+      if (!pwasm_checker_check_binop(checker, PWASM_CHECKER_TYPE_I32)) {
+        return false;
+      }
+
+      break;
+    case PWASM_OP_I64_ADD:
+    case PWASM_OP_I64_SUB:
+    case PWASM_OP_I64_MUL:
+    case PWASM_OP_I64_DIV_S:
+    case PWASM_OP_I64_DIV_U:
+    case PWASM_OP_I64_REM_S:
+    case PWASM_OP_I64_REM_U:
+    case PWASM_OP_I64_AND:
+    case PWASM_OP_I64_OR:
+    case PWASM_OP_I64_XOR:
+    case PWASM_OP_I64_SHL:
+    case PWASM_OP_I64_SHR_S:
+    case PWASM_OP_I64_SHR_U:
+    case PWASM_OP_I64_ROTL:
+    case PWASM_OP_I64_ROTR:
+      if (!pwasm_checker_check_binop(checker, PWASM_CHECKER_TYPE_I64)) {
+        return false;
+      }
+
+      break;
+    case PWASM_OP_F32_ABS:
+    case PWASM_OP_F32_NEG:
+    case PWASM_OP_F32_CEIL:
+    case PWASM_OP_F32_FLOOR:
+    case PWASM_OP_F32_TRUNC:
+    case PWASM_OP_F32_NEAREST:
+    case PWASM_OP_F32_SQRT:
+      if (!pwasm_checker_check_unop(checker, PWASM_CHECKER_TYPE_F32)) {
+        return false;
+      }
+
+      break;
+    case PWASM_OP_F32_ADD:
+    case PWASM_OP_F32_SUB:
+    case PWASM_OP_F32_MUL:
+    case PWASM_OP_F32_DIV:
+    case PWASM_OP_F32_MIN:
+    case PWASM_OP_F32_MAX:
+    case PWASM_OP_F32_COPYSIGN:
+      if (!pwasm_checker_check_binop(checker, PWASM_CHECKER_TYPE_F32)) {
+        return false;
+      }
+
+      break;
+    case PWASM_OP_F64_ABS:
+    case PWASM_OP_F64_NEG:
+    case PWASM_OP_F64_CEIL:
+    case PWASM_OP_F64_FLOOR:
+    case PWASM_OP_F64_TRUNC:
+    case PWASM_OP_F64_NEAREST:
+    case PWASM_OP_F64_SQRT:
+      if (!pwasm_checker_check_unop(checker, PWASM_CHECKER_TYPE_F64)) {
+        return false;
+      }
+
+      break;
+    case PWASM_OP_F64_ADD:
+    case PWASM_OP_F64_SUB:
+    case PWASM_OP_F64_MUL:
+    case PWASM_OP_F64_DIV:
+    case PWASM_OP_F64_MIN:
+    case PWASM_OP_F64_MAX:
+    case PWASM_OP_F64_COPYSIGN:
+      if (!pwasm_checker_check_binop(checker, PWASM_CHECKER_TYPE_F64)) {
+        return false;
+      }
+
+      break;
+    case PWASM_OP_I32_WRAP_I64:
+      if (!pwasm_checker_check_cvtop(checker, PWASM_CHECKER_TYPE_I32, PWASM_CHECKER_TYPE_I64)) {
+        return false;
+      }
+
+      break;
+    case PWASM_OP_I32_TRUNC_F32_S:
+    case PWASM_OP_I32_TRUNC_F32_U:
+      if (!pwasm_checker_check_cvtop(checker, PWASM_CHECKER_TYPE_I32, PWASM_CHECKER_TYPE_F32)) {
+        return false;
+      }
+
+      break;
+    case PWASM_OP_I32_TRUNC_F64_S:
+    case PWASM_OP_I32_TRUNC_F64_U:
+      if (!pwasm_checker_check_cvtop(checker, PWASM_CHECKER_TYPE_I32, PWASM_CHECKER_TYPE_F64)) {
+        return false;
+      }
+
+      break;
+    case PWASM_OP_I64_EXTEND_I32_S:
+    case PWASM_OP_I64_EXTEND_I32_U:
+      if (!pwasm_checker_check_cvtop(checker, PWASM_CHECKER_TYPE_I64, PWASM_CHECKER_TYPE_I32)) {
+        return false;
+      }
+
+      break;
+    case PWASM_OP_I64_TRUNC_F32_S:
+    case PWASM_OP_I64_TRUNC_F32_U:
+      if (!pwasm_checker_check_cvtop(checker, PWASM_CHECKER_TYPE_I64, PWASM_CHECKER_TYPE_F32)) {
+        return false;
+      }
+
+      break;
+    case PWASM_OP_I64_TRUNC_F64_S:
+    case PWASM_OP_I64_TRUNC_F64_U:
+      if (!pwasm_checker_check_cvtop(checker, PWASM_CHECKER_TYPE_I64, PWASM_CHECKER_TYPE_F64)) {
+        return false;
+      }
+
+      break;
+    case PWASM_OP_F32_CONVERT_I32_S:
+    case PWASM_OP_F32_CONVERT_I32_U:
+      if (!pwasm_checker_check_cvtop(checker, PWASM_CHECKER_TYPE_F32, PWASM_CHECKER_TYPE_I32)) {
+        return false;
+      }
+
+      break;
+    case PWASM_OP_F32_CONVERT_I64_S:
+    case PWASM_OP_F32_CONVERT_I64_U:
+      if (!pwasm_checker_check_cvtop(checker, PWASM_CHECKER_TYPE_F32, PWASM_CHECKER_TYPE_I64)) {
+        return false;
+      }
+
+      break;
+    case PWASM_OP_F32_DEMOTE_F64:
+      if (!pwasm_checker_check_cvtop(checker, PWASM_CHECKER_TYPE_F32, PWASM_CHECKER_TYPE_F64)) {
+        return false;
+      }
+
+      break;
+    case PWASM_OP_F64_CONVERT_I32_S:
+    case PWASM_OP_F64_CONVERT_I32_U:
+      if (!pwasm_checker_check_cvtop(checker, PWASM_CHECKER_TYPE_F64, PWASM_CHECKER_TYPE_I32)) {
+        return false;
+      }
+
+      break;
+    case PWASM_OP_F64_CONVERT_I64_S:
+    case PWASM_OP_F64_CONVERT_I64_U:
+      if (!pwasm_checker_check_cvtop(checker, PWASM_CHECKER_TYPE_F64, PWASM_CHECKER_TYPE_I64)) {
+        return false;
+      }
+
+      break;
+    case PWASM_OP_F64_PROMOTE_F32:
+      if (!pwasm_checker_check_cvtop(checker, PWASM_CHECKER_TYPE_F64, PWASM_CHECKER_TYPE_F32)) {
+        return false;
+      }
+
+      break;
+    case PWASM_OP_I32_REINTERPRET_F32:
+      if (!pwasm_checker_check_cvtop(checker, PWASM_CHECKER_TYPE_I32, PWASM_CHECKER_TYPE_F32)) {
+        return false;
+      }
+
+      break;
+    case PWASM_OP_I64_REINTERPRET_F64:
+      if (!pwasm_checker_check_cvtop(checker, PWASM_CHECKER_TYPE_I64, PWASM_CHECKER_TYPE_F64)) {
+        return false;
+      }
+
+      break;
+    case PWASM_OP_F32_REINTERPRET_I32:
+      if (!pwasm_checker_check_cvtop(checker, PWASM_CHECKER_TYPE_F32, PWASM_CHECKER_TYPE_I32)) {
+        return false;
+      }
+
+      break;
+    case PWASM_OP_F64_REINTERPRET_I64:
+      if (!pwasm_checker_check_cvtop(checker, PWASM_CHECKER_TYPE_F64, PWASM_CHECKER_TYPE_I64)) {
+        return false;
+      }
+
+      break;
+    default:
+      // ignore
+      break;
+    }
+  }
+
+  // return success
+  return true;
+}
+
+/**
  * Internal data for pwasm_mod_check()
  */
 typedef struct {
   const pwasm_mod_check_cbs_t cbs; /** callbacks */
   void *cb_data; /** user data */
+  pwasm_checker_t checker; /** code checker */
 } pwasm_mod_check_t;
+
+/**
+ * Initialize mod checker internal data.
+ */
+static bool
+pwasm_mod_check_init(
+  pwasm_mod_check_t * const check,
+  pwasm_mem_ctx_t * const mem_ctx,
+  const pwasm_mod_check_cbs_t * const cbs,
+  void *cb_data
+) {
+  // init code checker, check for error
+  pwasm_checker_t checker;
+  if (!pwasm_checker_init(&checker, mem_ctx, cbs, cb_data)) {
+    // return failure
+    return false;
+  }
+
+  // populate result
+  pwasm_mod_check_t tmp = {
+    .cbs = {
+      .on_warning = (cbs && cbs->on_warning) ? cbs->on_warning : pwasm_null_on_error,
+      .on_error = (cbs && cbs->on_error) ? cbs->on_error : pwasm_null_on_error,
+    },
+    .cb_data = cb_data,
+
+    .checker = checker,
+  };
+
+  // copy to destination
+  memcpy(check, &tmp, sizeof(pwasm_mod_check_t));
+
+  // return success
+  return true;
+}
+
+/**
+ * Finalize mod checker internal data.
+ */
+static void
+pwasm_mod_check_fini(
+  pwasm_mod_check_t * const check
+) {
+  pwasm_checker_fini(&(check->checker));
+}
 
 /**
  * Verify that a limits structure in a module is valid.
@@ -4550,6 +6338,21 @@ pwasm_mod_check_export(
 }
 
 /**
+ * Verify that the stack operations in a function code entry in a module
+ * are valid.
+ *
+ * Returns `true` on success, and `false` otherwise.
+ */
+static bool
+pwasm_mod_check_code_stack(
+  const pwasm_mod_t * const mod,
+  pwasm_mod_check_t * const check,
+  const pwasm_func_t func
+) {
+  return pwasm_checker_check_func(&(check->checker), mod, func);
+}
+
+/**
  * Verify that a function code entry in a module is valid.
  *
  * Returns true if the function validates successfully and false
@@ -4558,9 +6361,12 @@ pwasm_mod_check_export(
  * If a validation error occurs, and the +cbs+ parameter and
  * +cbs->on_error+ are both non-NULL, then +cbs->on_error+ will be
  * called with an error message describing the validation error.
+ *
+ * TODO: pull bits from pwasm_mod_check_code_insts() into
+ * pwasm_checker_check_func() and remove pwasm
  */
 static bool
-pwasm_mod_check_code(
+pwasm_mod_check_code_insts(
   const pwasm_mod_t * const mod,
   const pwasm_mod_check_t * const check,
   const pwasm_func_t func
@@ -4708,6 +6514,36 @@ pwasm_mod_check_code(
 }
 
 /**
+ * Verify that a function code entry in a module is valid.
+ *
+ * Returns true if the function validates successfully and false
+ * otherwise.
+ *
+ * If a validation error occurs, and the +cbs+ parameter and
+ * +cbs->on_error+ are both non-NULL, then +cbs->on_error+ will be
+ * called with an error message describing the validation error.
+ */
+static bool
+pwasm_mod_check_code(
+  const pwasm_mod_t * const mod,
+  pwasm_mod_check_t * const check,
+  const pwasm_func_t func
+) {
+  if (!pwasm_mod_check_code_stack(mod, check, func)) {
+    // return failure
+    return false;
+  }
+
+  if (!pwasm_mod_check_code_insts(mod, check, func)) {
+    // return failure
+    return false;
+  }
+
+  // return success
+  return true;
+}
+
+/**
  * Verify that the start function in a module is valid.
  *
  * Returns true if the start function validates successfully and false
@@ -4773,7 +6609,7 @@ pwasm_mod_check_start(
 #define MOD_CHECK(NAME) \
   static bool pwasm_mod_check_ ## NAME ## s( \
     const pwasm_mod_t * const mod, \
-    const pwasm_mod_check_t * const check \
+    pwasm_mod_check_t * const check \
   ) { \
     for (size_t i = 0; i < mod->num_ ## NAME ## s; i++) { \
       if (!pwasm_mod_check_ ## NAME (mod, check, mod->NAME ## s[i])) { \
@@ -4807,13 +6643,11 @@ pwasm_mod_check(
   const pwasm_mod_check_cbs_t * const cbs,
   void *cb_data
 ) {
-  const pwasm_mod_check_t check = {
-    .cbs = {
-      .on_warning = (cbs && cbs->on_warning) ? cbs->on_warning : pwasm_null_on_error,
-      .on_error = (cbs && cbs->on_error) ? cbs->on_error : pwasm_null_on_error,
-    },
-    .cb_data = cb_data,
-  };
+  // init mod check context
+  pwasm_mod_check_t check;
+  if (!pwasm_mod_check_init(&check, mod->mem_ctx, cbs, cb_data)) {
+    return false;
+  }
 
   // FIXME: disabled (until i fix tests)
   // return true;
@@ -4830,6 +6664,9 @@ pwasm_mod_check(
     }
   MOD_CHECKS
   #undef MOD_CHECK
+
+  // fini mod check context
+  pwasm_mod_check_fini(&check);
 
   // return success
   return true;

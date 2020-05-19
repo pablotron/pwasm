@@ -7,7 +7,6 @@
 CFLAGS=-W -Wall -Wextra -Werror -std=c11 -pedantic -O3
 LIBS=-lm
 APP=pwasm
-# OBJS=pwasm.o tests/main.o tests/mod-tests.o tests/func-tests.o
 OBJS=pwasm.o cli/main.o cli/cmds.o cli/tests.o cli/utils.o \
      cli/cmds/help.o cli/cmds/test.o cli/cmds/wat.o \
      cli/cmds/customs.o cli/cmds/cat.o cli/cmds/func.o \

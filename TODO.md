@@ -9,7 +9,6 @@ tag.
 
 * [ ] code, cli: `wat`: fix alignment
 * [ ] test: add wat2wasm round-trip tests
-* [ ] code, check: add control stack validation (re-add)
 * [ ] code, parse: cache control target offsets at parse time
 * [ ] code, ops: add extended opcode support (`0xFC ...`)
 * [ ] code, ops: add vector op support (`0xFD ...`)
@@ -37,6 +36,8 @@ tag.
 ## In Progress
 * [ ] code: add global, table, and mem init, call start func (added,
       but untested)
+* [ ] code, check: add control stack validation (added
+  `pwasm_checker_*`, but untested)
 
 ## Done
 
