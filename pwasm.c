@@ -8925,7 +8925,7 @@ pwasm_new_interp_eval_expr(
     case PWASM_OP_BR_IF:
       if (stack->ptr[--stack->pos].i32) {
         // check branch index
-        // FIXME: need to check in "check" for overflow here
+        // TODO: remove, handled by checker
         if (in.v_index >= depth - 1) {
           return false;
         }
@@ -8960,7 +8960,7 @@ pwasm_new_interp_eval_expr(
         const uint32_t id = frame.mod->mod->u32s[labels_ofs];
 
         // check for branch index overflow
-        // FIXME: move to check()
+        // TODO: remove, handled by checker
         if (id >= depth - 1) {
           return false;
         }
@@ -9033,6 +9033,7 @@ pwasm_new_interp_eval_expr(
         const uint32_t id = in.v_index;
 
         // check local index
+        // TODO: remove, handled by checker
         if (id >= frame.locals.len) {
           // log error, return failure
           pwasm_env_fail(frame.env, "local index out of bounds");
