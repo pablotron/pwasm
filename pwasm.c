@@ -8705,71 +8705,6 @@ pwasm_new_interp_set_global(
   return true;
 }
 
-#if 0
-// FIXME: complete hack, need to handle this during parsing
-static size_t
-pwasm_new_interp_get_else_ofs(
-  const pwasm_new_interp_frame_t frame,
-  const pwasm_slice_t expr,
-  const size_t inst_ofs
-) {
-  const pwasm_inst_t * const insts = frame.mod->mod->insts + expr.ofs;
-
-  size_t depth = 1;
-  for (size_t i = inst_ofs + 1; i < expr.len; i++) {
-    const pwasm_inst_t in = insts[i];
-    if (pwasm_op_is_enter(in.op)) {
-      depth++;
-    } else if (in.op == PWASM_OP_END) {
-      depth--;
-
-      if (!depth) {
-        // return failure (no else inst)
-        return 0;
-      }
-    } else if (in.op == PWASM_OP_ELSE) {
-      if (depth == 1) {
-        // return offset to else inst
-        return i - inst_ofs;
-      }
-    }
-  }
-
-  // log error, return failure
-  pwasm_env_fail(frame.env, "missing else or end instruction");
-  return 0;
-}
-
-// FIXME: complete hack, need to handle this during parsing
-static size_t
-pwasm_new_interp_get_end_ofs(
-  const pwasm_new_interp_frame_t frame,
-  const pwasm_slice_t expr,
-  const size_t inst_ofs
-) {
-  const pwasm_inst_t * const insts = frame.mod->mod->insts + expr.ofs;
-
-  size_t depth = 1;
-  for (size_t i = inst_ofs + 1; i < expr.len; i++) {
-    const pwasm_inst_t in = insts[i];
-    if (pwasm_op_is_enter(in.op)) {
-      depth++;
-    } else if (in.op == PWASM_OP_END) {
-      depth--;
-
-      if (!depth) {
-        // return offset to else inst
-        return i - inst_ofs;
-      }
-    }
-  }
-
-  // log error, return failure
-  pwasm_env_fail(frame.env, "missing end instruction");
-  return 0;
-}
-#endif /* 0 */
-
 /*
  * Convert an internal global ID to an externally visible global handle.
  *
@@ -8838,20 +8773,8 @@ pwasm_new_interp_eval_expr(
         // pop last value from value stack
         const uint32_t tail = stack->ptr[--stack->pos].i32;
 
-        // get else expr offset
+        // get else/end offset
         const size_t else_ofs = in.v_block.else_ofs ? in.v_block.else_ofs : in.v_block.end_ofs;
-        #if 0
-        {
-          // FIXME: this is a colossal hack (and slow), and should be
-          // handled in parsing
-          const size_t tmp_else_ofs = pwasm_new_interp_get_else_ofs(frame, expr, i);
-          const size_t tmp_end_ofs = pwasm_new_interp_get_end_ofs(frame, expr, i);
-          D("tmp_else_ofs = %zu, in.v_block.else_ofs = %zu", tmp_else_ofs, in.v_block.else_ofs);
-          D("tmp_end_ofs = %zu, in.v_block.end_ofs = %zu", tmp_end_ofs, in.v_block.end_ofs);
-          else_ofs = tmp_else_ofs ? tmp_else_ofs : tmp_end_ofs;
-        }
-        // D("else_ofs = %zu", else_ofs);
-        #endif /* 0 */
 
         // push to control stack
         ctl_stack[depth++] = (pwasm_ctl_stack_entry_t) {
