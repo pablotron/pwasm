@@ -7,9 +7,11 @@ Each entry in this list is prefixed with category tags.
 See the "Tag Definitions" section below for a brief description of each
 tag.
 
-* [ ] code, cli: `wat`: fix alignment
 * [ ] code, test: add invalid code tests
-* [ ] test: add wat2wasm round-trip tests
+* [ ] test: add tests for all opcodes
+* [ ] test: add tests for all module sections
+* [ ] code, test: fix memory leaks on parse/validation/exec errors
+* [ ] code: remove redundant checks in env calls
 * [ ] code, parse: cache control target offsets at parse time
 * [ ] code, ops: add extended opcode support (`0xFC ...`)
 * [ ] code, ops: add vector op support (`0xFD ...`)
@@ -20,8 +22,6 @@ tag.
 * [ ] code, test: check uses of realloc() for overflow (security)
 * [ ] cli, cleanup: properly escape values in CSV columns
 * [ ] cli: add `dump` command (e.g. `objdump` to JSON)
-* [ ] test: add tests for all opcodes
-* [ ] test: add tests for all module sections
 * [ ] build: add meson support
 * [ ] build, test: add clang static analysis support
 * [ ] build: build dynamic library
@@ -32,6 +32,8 @@ tag.
 * [ ] ci, web: regenerate api docs for all tags and master on push (e.g. `pablotron.github.io/pwasm/$TAG/docs/api/`, `docs.pwasm.org/$TAG/api/`, etc)
 * [ ] ci, web: regenerate sites for all tags and master on push
 * [ ] code, cli: add `java` and `c` commands?
+* [ ] code, cli: `wat`: fix alignment
+* [ ] test: add wat2wasm round-trip tests
 
 ## In Progress
 * [ ] code: add global, table, and mem init, call start func (added,
