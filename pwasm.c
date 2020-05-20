@@ -4015,6 +4015,7 @@ pwasm_mod_get_func_type(
   }
 }
 
+#if 0
 /**
  * Get a pointer to the global type for the given global index.
  *
@@ -4051,6 +4052,7 @@ pwasm_mod_get_global_type(
     return &(mod->globals[id - num_imports].type);
   }
 }
+#endif /* 0 */
 
 /**
  * Map of code checker type to string name and result type.
@@ -4618,6 +4620,8 @@ pwasm_checker_get_local_type(
  * Get type of global.
  *
  * Returns `true` on success or `false` on error.
+ *
+ * @TODO use pwasm_mod_get_global_type()
  */
 static bool
 pwasm_checker_get_global_type(
@@ -4693,6 +4697,43 @@ pwasm_checker_check_mem(
 }
 
 /**
+ * Verify values in memory immediate.
+ *
+ * Returns `true` on success or `false` on error.
+ */
+static bool
+pwasm_checker_check_mem_imm(
+  pwasm_checker_t * const checker,
+  const pwasm_mod_t * const mod,
+  const pwasm_inst_t in
+) {
+  // check memory
+  if (!pwasm_checker_check_mem(checker, mod)) {
+    return false;
+  }
+
+  // check alignment immediate
+  if (in.v_mem.align > 31) {
+    pwasm_checker_fail(checker, "memory alignment too large");
+    return false;
+  }
+
+  // get number of bits for instruction
+  const uint32_t num_bits = pwasm_op_get_num_bits(in.op);
+
+  // check alignment
+  // reference:
+  // https://webassembly.github.io/spec/core/valid/instructions.html#memory-instructions
+  if ((1U << in.v_mem.align) > (num_bits >> 3)) {
+    pwasm_checker_fail(checker, "invalid memory alignment");
+    return false;
+  }
+
+  // return succes
+  return true;
+}
+
+/**
  * Verify memory load.
  *
  * Returns `true` on success or `false` on error.
@@ -4701,10 +4742,11 @@ static bool
 pwasm_checker_check_load(
   pwasm_checker_t * const checker,
   const pwasm_mod_t * const mod,
+  const pwasm_inst_t in,
   const pwasm_checker_type_t type
 ) {
-  // check memory
-  if (!pwasm_checker_check_mem(checker, mod)) {
+  // check memory and immediate
+  if (!pwasm_checker_check_mem_imm(checker, mod, in)) {
     return false;
   }
 
@@ -4731,12 +4773,14 @@ static bool
 pwasm_checker_check_store(
   pwasm_checker_t * const checker,
   const pwasm_mod_t * const mod,
+  const pwasm_inst_t in,
   const pwasm_checker_type_t exp_type
 ) {
-  // check memory
-  if (!pwasm_checker_check_mem(checker, mod)) {
+  // check memory and immediate
+  if (!pwasm_checker_check_mem_imm(checker, mod, in)) {
     return false;
   }
+
 
   // pop value operand
   if (!pwasm_checker_type_pop_expected(checker, exp_type, NULL)) {
@@ -4951,7 +4995,7 @@ pwasm_checker_push_func_block(
  * Returns `true` on success, or `false` on error.
  */
 static bool
-pwasm_checker_check_func(
+pwasm_checker_check(
   pwasm_checker_t * const checker,
   const pwasm_mod_t * const mod,
   const pwasm_func_t func
@@ -5432,7 +5476,7 @@ pwasm_checker_check_func(
     case PWASM_OP_I32_LOAD8_U:
     case PWASM_OP_I32_LOAD16_S:
     case PWASM_OP_I32_LOAD16_U:
-      if (!pwasm_checker_check_load(checker, mod, PWASM_CHECKER_TYPE_I32)) {
+      if (!pwasm_checker_check_load(checker, mod, in, PWASM_CHECKER_TYPE_I32)) {
         return false;
       }
 
@@ -5444,19 +5488,19 @@ pwasm_checker_check_func(
     case PWASM_OP_I64_LOAD16_U:
     case PWASM_OP_I64_LOAD32_S:
     case PWASM_OP_I64_LOAD32_U:
-      if (!pwasm_checker_check_load(checker, mod, PWASM_CHECKER_TYPE_I64)) {
+      if (!pwasm_checker_check_load(checker, mod, in, PWASM_CHECKER_TYPE_I64)) {
         return false;
       }
 
       break;
     case PWASM_OP_F32_LOAD:
-      if (!pwasm_checker_check_load(checker, mod, PWASM_CHECKER_TYPE_F32)) {
+      if (!pwasm_checker_check_load(checker, mod, in, PWASM_CHECKER_TYPE_F32)) {
         return false;
       }
 
       break;
     case PWASM_OP_F64_LOAD:
-      if (!pwasm_checker_check_load(checker, mod, PWASM_CHECKER_TYPE_F64)) {
+      if (!pwasm_checker_check_load(checker, mod, in, PWASM_CHECKER_TYPE_F64)) {
         return false;
       }
 
@@ -5464,7 +5508,7 @@ pwasm_checker_check_func(
     case PWASM_OP_I32_STORE:
     case PWASM_OP_I32_STORE8:
     case PWASM_OP_I32_STORE16:
-      if (!pwasm_checker_check_store(checker, mod, PWASM_CHECKER_TYPE_I32)) {
+      if (!pwasm_checker_check_store(checker, mod, in, PWASM_CHECKER_TYPE_I32)) {
         return false;
       }
 
@@ -5473,19 +5517,19 @@ pwasm_checker_check_func(
     case PWASM_OP_I64_STORE8:
     case PWASM_OP_I64_STORE16:
     case PWASM_OP_I64_STORE32:
-      if (!pwasm_checker_check_store(checker, mod, PWASM_CHECKER_TYPE_I64)) {
+      if (!pwasm_checker_check_store(checker, mod, in, PWASM_CHECKER_TYPE_I64)) {
         return false;
       }
 
       break;
     case PWASM_OP_F32_STORE:
-      if (!pwasm_checker_check_store(checker, mod, PWASM_CHECKER_TYPE_F32)) {
+      if (!pwasm_checker_check_store(checker, mod, in, PWASM_CHECKER_TYPE_F32)) {
         return false;
       }
 
       break;
     case PWASM_OP_F64_STORE:
-      if (!pwasm_checker_check_store(checker, mod, PWASM_CHECKER_TYPE_F64)) {
+      if (!pwasm_checker_check_store(checker, mod, in, PWASM_CHECKER_TYPE_F64)) {
         return false;
       }
 
@@ -6403,182 +6447,6 @@ pwasm_mod_check_export(
 }
 
 /**
- * Verify that the stack operations in a function code entry in a module
- * are valid.
- *
- * Returns `true` on success, and `false` otherwise.
- */
-static bool
-pwasm_mod_check_code_stack(
-  const pwasm_mod_t * const mod,
-  pwasm_mod_check_t * const check,
-  const pwasm_func_t func
-) {
-  return pwasm_checker_check_func(&(check->checker), mod, func);
-}
-
-/**
- * Verify that a function code entry in a module is valid.
- *
- * Returns true if the function validates successfully and false
- * otherwise.
- *
- * If a validation error occurs, and the +cbs+ parameter and
- * +cbs->on_error+ are both non-NULL, then +cbs->on_error+ will be
- * called with an error message describing the validation error.
- *
- * TODO: pull bits from pwasm_mod_check_code_insts() into
- * pwasm_checker_check_func() and remove pwasm
- */
-static bool
-pwasm_mod_check_code_insts(
-  const pwasm_mod_t * const mod,
-  const pwasm_mod_check_t * const check,
-  const pwasm_func_t func
-) {
-  // get function instructions
-  const pwasm_inst_t * const insts = mod->insts + func.expr.ofs;
-
-  // get maximum type indices (e.g. the number of imports of a given
-  // type plus the number of internal items of a given type)
-  size_t max_indices[PWASM_IMPORT_TYPE_LAST];
-  memcpy(max_indices, mod->max_indices, sizeof(max_indices));
-
-  for (size_t i = 0; i < func.expr.len; i++) {
-    // get instruction and index immediate
-    const pwasm_inst_t in = insts[i];
-    const uint32_t id = in.v_index;
-
-    // FIXME: we should probably switch on opcode here or immediate
-    // rather than a series of ad-hoc conditionals
-    switch (in.op) {
-    case PWASM_OP_LOCAL_GET:
-    case PWASM_OP_LOCAL_SET:
-    case PWASM_OP_LOCAL_TEE:
-      // is this a local instruction with an invalid index?
-      if (id >= func.frame_size) {
-        check->cbs.on_error("invalid index in local instruction", check->cb_data);
-        return false;
-      }
-
-      break;
-    case PWASM_OP_GLOBAL_GET:
-      // is this a valid global index?
-      if (id >= max_indices[PWASM_IMPORT_TYPE_GLOBAL]) {
-        check->cbs.on_error("invalid index in global instruction", check->cb_data);
-        return false;
-      }
-
-      break;
-    case PWASM_OP_GLOBAL_SET:
-      // is this a valid global index?
-      if (id >= max_indices[PWASM_IMPORT_TYPE_GLOBAL]) {
-        check->cbs.on_error("invalid index in global instruction", check->cb_data);
-        return false;
-      }
-
-      // get global type, check for error
-      const pwasm_global_type_t * const type = pwasm_mod_get_global_type(mod, id);
-      if (!type) {
-        check->cbs.on_error("invalid global type", check->cb_data);
-        return false;
-      }
-
-      // is this a global.set inst to an immutable global index?
-      if (!type->mutable) {
-        check->cbs.on_error("global.set on an immutable global", check->cb_data);
-        return false;
-      }
-      break;
-    case PWASM_OP_I32_LOAD:
-    case PWASM_OP_I64_LOAD:
-    case PWASM_OP_F32_LOAD:
-    case PWASM_OP_F64_LOAD:
-    case PWASM_OP_I32_LOAD8_S:
-    case PWASM_OP_I32_LOAD8_U:
-    case PWASM_OP_I32_LOAD16_S:
-    case PWASM_OP_I32_LOAD16_U:
-    case PWASM_OP_I64_LOAD8_S:
-    case PWASM_OP_I64_LOAD8_U:
-    case PWASM_OP_I64_LOAD16_S:
-    case PWASM_OP_I64_LOAD16_U:
-    case PWASM_OP_I64_LOAD32_S:
-    case PWASM_OP_I64_LOAD32_U:
-    case PWASM_OP_I32_STORE:
-    case PWASM_OP_I64_STORE:
-    case PWASM_OP_F32_STORE:
-    case PWASM_OP_F64_STORE:
-    case PWASM_OP_I32_STORE8:
-    case PWASM_OP_I32_STORE16:
-    case PWASM_OP_I64_STORE8:
-    case PWASM_OP_I64_STORE16:
-    case PWASM_OP_I64_STORE32:
-      // check to make sure we have memory defined
-      if (!max_indices[PWASM_IMPORT_TYPE_MEM]) {
-        check->cbs.on_error("memory instruction with no memory defined", check->cb_data);
-        return false;
-      }
-
-      // check alignment immediate
-      if (in.v_mem.align > 31) {
-        check->cbs.on_error("memory alignment too large", check->cb_data);
-        return false;
-      }
-
-      // get number of bits for instruction
-      const uint32_t num_bits = pwasm_op_get_num_bits(in.op);
-
-      // check alignment
-      // reference:
-      // https://webassembly.github.io/spec/core/valid/instructions.html#memory-instructions
-      if ((1U << in.v_mem.align) > (num_bits >> 3)) {
-        check->cbs.on_error("invalid memory alignment", check->cb_data);
-        return false;
-      }
-
-      break;
-    case PWASM_OP_MEMORY_SIZE:
-    case PWASM_OP_MEMORY_GROW:
-      // check to make sure we have memory defined
-      if (!max_indices[PWASM_IMPORT_TYPE_MEM]) {
-        check->cbs.on_error("memory instruction with no memory defined", check->cb_data);
-        return false;
-      }
-
-      break;
-    case PWASM_OP_CALL:
-      // is this a valid function index?
-      if (id >= max_indices[PWASM_IMPORT_TYPE_FUNC]) {
-        check->cbs.on_error("invalid function index in call instruction", check->cb_data);
-        return false;
-      }
-
-      break;
-    case PWASM_OP_CALL_INDIRECT:
-      // is a table defined?
-      if (!max_indices[PWASM_IMPORT_TYPE_TABLE]) {
-        check->cbs.on_error("call_indirect instruction with no table", check->cb_data);
-        return false;
-      }
-
-      // check type index
-      if (in.v_index >= mod->num_types) {
-        check->cbs.on_error("call_indirect: invalid type index", check->cb_data);
-        return false;
-      }
-
-      break;
-    default:
-      // TODO: lots more
-      break;
-    }
-  }
-
-  // return success
-  return true;
-}
-
-/**
  * Verify that a function code entry in a module is valid.
  *
  * Returns true if the function validates successfully and false
@@ -6594,18 +6462,7 @@ pwasm_mod_check_code(
   pwasm_mod_check_t * const check,
   const pwasm_func_t func
 ) {
-  if (!pwasm_mod_check_code_stack(mod, check, func)) {
-    // return failure
-    return false;
-  }
-
-  if (!pwasm_mod_check_code_insts(mod, check, func)) {
-    // return failure
-    return false;
-  }
-
-  // return success
-  return true;
+  return pwasm_checker_check(&(check->checker), mod, func);
 }
 
 /**

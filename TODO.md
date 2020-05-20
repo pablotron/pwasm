@@ -7,7 +7,6 @@ Each entry in this list is prefixed with category tags.
 See the "Tag Definitions" section below for a brief description of each
 tag.
 
-* [ ] code, check: merge `insts` into  `stack` tests
 * [ ] code, cli: `wat`: fix alignment
 * [ ] code, test: add invalid code tests
 * [ ] test: add wat2wasm round-trip tests
@@ -84,6 +83,7 @@ Items in this section have been completed.
 * [x] code, check: check `call_indirect` at invocation
 * [x] code, check: add control stack validation (added `pwasm_checker_t`)
 * [x] code, cleanup: remove old interpreter
+* [x] code, check: merge `insts` into  `stack` tests
 
 ## Tag Definitions
 
