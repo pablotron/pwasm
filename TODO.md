@@ -7,9 +7,9 @@ Each entry in this list is prefixed with category tags.
 See the "Tag Definitions" section below for a brief description of each
 tag.
 
+* [ ] code, check: merge `insts` into  `stack` tests
 * [ ] code, cli: `wat`: fix alignment
 * [ ] code, test: add invalid code tests
-* [ ] code, check: merge `insts` into  `stack` tests
 * [ ] test: add wat2wasm round-trip tests
 * [ ] code, parse: cache control target offsets at parse time
 * [ ] code, ops: add extended opcode support (`0xFC ...`)
@@ -17,7 +17,6 @@ tag.
 * [ ] code, jit: add jit (`dynasm`?)
 * [ ] code, jit: add jit modes (lazy, aot, optimize, etc)
 * [ ] code: add `uint64_t pwasm_platform_get_value()` (e.g. compile-time limits, flags, etc)
-* [ ] code, cleanup: remove old interpreter
 * [ ] code, cleanup: consider calloc() for memory init (zero mem, bounds check)
 * [ ] code, test: check uses of realloc() for overflow (security)
 * [ ] cli, cleanup: properly escape values in CSV columns
@@ -38,8 +37,6 @@ tag.
 ## In Progress
 * [ ] code: add global, table, and mem init, call start func (added,
       but untested)
-* [ ] code, check: add control stack validation (added
-  `pwasm_checker_*`, but untested)
 
 ## Done
 
@@ -85,6 +82,8 @@ Items in this section have been completed.
 * [x] code, test: add import test (added `data/wat/06-imports.wasm`)
 * [x] code, test: add table tests (added `08-call_indirect.wasm`)
 * [x] code, check: check `call_indirect` at invocation
+* [x] code, check: add control stack validation (added `pwasm_checker_t`)
+* [x] code, cleanup: remove old interpreter
 
 ## Tag Definitions
 

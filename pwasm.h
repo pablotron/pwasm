@@ -2696,22 +2696,7 @@ _Bool pwasm_call(
  */
 
 /**
- * Get callbacks for old interpreter environment.
- *
- * @ingroup interp
- *
- * @return Pointer to execution environment callbacks.
- *
- * @deprecated This interpreter is not fully functional and should not
- * be used.  Use `pwasm_new_interpreter_get_cbs()` instead.
- *
- * @see pwasm_env_init()
- * @see pwasm_new_interpreter_get_cbs()
- */
-const pwasm_env_cbs_t *pwasm_old_interpreter_get_cbs(void);
-
-/**
- * Get callbacks for new interpreter environment.
+ * Get callbacks for interpreter environment.
  *
  * @ingroup interp
  *
