@@ -8791,7 +8791,6 @@ pwasm_new_interp_eval_expr(
     case PWASM_OP_ELSE:
       // skip to end inst
       i += insts[i].v_block.end_ofs - 1;
-      // i += pwasm_new_interp_get_end_ofs(frame, expr, i);
 
       break;
     case PWASM_OP_END:
@@ -8811,6 +8810,8 @@ pwasm_new_interp_eval_expr(
       } else {
         // return success
         // FIXME: is this correct?
+        // TODO: should walk expr.len - 1, and rely on checker to
+        // verify that last instruction is END
         return true;
       }
 
@@ -8818,7 +8819,7 @@ pwasm_new_interp_eval_expr(
     case PWASM_OP_BR:
       {
         // check branch index
-        // FIXME: check in check for overflow here
+        // TODO: remove, handled by checker
         if (in.v_index >= depth - 1) {
           return false;
         }
@@ -8974,6 +8975,7 @@ pwasm_new_interp_eval_expr(
         const uint32_t id = in.v_index;
 
         // check local index
+        // TODO: remove, handled by checker
         if (id >= frame.locals.len) {
           // log error, return failure
           pwasm_env_fail(frame.env, "local index out of bounds");
@@ -8992,6 +8994,7 @@ pwasm_new_interp_eval_expr(
         const uint32_t id = in.v_index;
 
         // check local index
+        // TODO: remove, handled by checker
         if (id >= frame.locals.len) {
           // log error, return failure
           pwasm_env_fail(frame.env, "local index out of bounds");
