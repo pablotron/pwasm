@@ -3033,6 +3033,97 @@ pwasm_builder_get_size(
   );
 }
 
+static bool
+pwasm_builder_resolve_jumps(
+  const pwasm_builder_t * const builder,
+  pwasm_mod_t * const mod
+) {
+  pwasm_inst_t * const insts = (pwasm_inst_t*) mod->insts;
+
+  // init offset stack
+  pwasm_vec_t stack;
+  if (!pwasm_vec_init(builder->mem_ctx, &stack, sizeof(size_t))) {
+    pwasm_fail(builder->mem_ctx, "builder control stack init");
+    return false;
+  }
+
+  for (size_t i = 0; i < mod->num_codes; i++) {
+    const pwasm_func_t func = mod->codes[i];
+
+    // clear stack
+    pwasm_vec_clear(&stack);
+
+    for (size_t j = 0; j < func.expr.len - 1; j++) {
+      const pwasm_inst_t in = insts[func.expr.ofs + j];
+
+      switch (in.op) {
+      case PWASM_OP_IF:
+      case PWASM_OP_BLOCK:
+      case PWASM_OP_LOOP:
+        // push control offset
+        if (!pwasm_vec_push(&stack, 1, &j, NULL)) {
+          pwasm_fail(builder->mem_ctx, "builder control stack push");
+          return false;
+        }
+
+        // clear else/end offsets
+        insts[func.expr.ofs + j].v_block.else_ofs = 0;
+        insts[func.expr.ofs + j].v_block.end_ofs = 0;
+
+        break;
+      case PWASM_OP_ELSE:
+        {
+          // get top of stack
+          const size_t * const ofs = pwasm_vec_peek_tail(&stack, 0);
+          if (!ofs) {
+            pwasm_fail(builder->mem_ctx, "builder control stack peek");
+            return false;
+          }
+
+          // save else offset
+          insts[func.expr.ofs + *ofs].v_block.else_ofs = j - *ofs;
+        }
+
+        break;
+      case PWASM_OP_END:
+        {
+          // get top of stack
+          size_t ofs;
+          if (!pwasm_vec_pop(&stack, &ofs)) {
+            pwasm_fail(builder->mem_ctx, "builder control stack pop");
+            return false;
+          }
+
+          if (
+            (insts[func.expr.ofs + ofs].op == PWASM_OP_IF) &&
+            (insts[func.expr.ofs + ofs].v_block.else_ofs)
+          ) {
+            const size_t if_ofs = func.expr.ofs + ofs;
+            const size_t else_ofs = if_ofs + insts[if_ofs].v_block.else_ofs;
+
+            // cache end ofs for else inst
+            insts[else_ofs].v_block.end_ofs = j - else_ofs;
+          }
+
+          // save end offset
+          insts[func.expr.ofs + ofs].v_block.end_ofs = j - ofs;
+        }
+
+        break;
+      default:
+        // do nothing
+        break;
+      }
+    }
+  }
+
+  // finalize offset stack
+  pwasm_vec_fini(&stack);
+
+  // return success
+  return true;
+}
+
 bool
 pwasm_builder_build_mod(
   const pwasm_builder_t * const builder,
@@ -3104,6 +3195,12 @@ pwasm_builder_build_mod(
 
   // copy result to output
   memcpy(dst, &mod, sizeof(pwasm_mod_t));
+
+  // resolve else/end insts for if/loop/block
+  if (!pwasm_builder_resolve_jumps(builder, dst)) {
+    // return failure
+    return false;
+  }
 
   // return success
   return true;
@@ -8608,6 +8705,7 @@ pwasm_new_interp_set_global(
   return true;
 }
 
+#if 0
 // FIXME: complete hack, need to handle this during parsing
 static size_t
 pwasm_new_interp_get_else_ofs(
@@ -8670,6 +8768,7 @@ pwasm_new_interp_get_end_ofs(
   pwasm_env_fail(frame.env, "missing end instruction");
   return 0;
 }
+#endif /* 0 */
 
 /*
  * Convert an internal global ID to an externally visible global handle.
@@ -8740,17 +8839,19 @@ pwasm_new_interp_eval_expr(
         const uint32_t tail = stack->ptr[--stack->pos].i32;
 
         // get else expr offset
-        // TODO
-        // const size_t else_ofs = in.v_block.else_ofs ? in.v_block.else_ofs : in.v_block.end_ofs;
-        size_t else_ofs;
+        const size_t else_ofs = in.v_block.else_ofs ? in.v_block.else_ofs : in.v_block.end_ofs;
+        #if 0
         {
           // FIXME: this is a colossal hack (and slow), and should be
           // handled in parsing
           const size_t tmp_else_ofs = pwasm_new_interp_get_else_ofs(frame, expr, i);
           const size_t tmp_end_ofs = pwasm_new_interp_get_end_ofs(frame, expr, i);
+          D("tmp_else_ofs = %zu, in.v_block.else_ofs = %zu", tmp_else_ofs, in.v_block.else_ofs);
+          D("tmp_end_ofs = %zu, in.v_block.end_ofs = %zu", tmp_end_ofs, in.v_block.end_ofs);
           else_ofs = tmp_else_ofs ? tmp_else_ofs : tmp_end_ofs;
         }
         // D("else_ofs = %zu", else_ofs);
+        #endif /* 0 */
 
         // push to control stack
         ctl_stack[depth++] = (pwasm_ctl_stack_entry_t) {
@@ -8766,9 +8867,8 @@ pwasm_new_interp_eval_expr(
       break;
     case PWASM_OP_ELSE:
       // skip to end inst
-      // TODO
-      // i = ctl_stack[depth - 1].ofs + insts[i].v_block.end_ofs - 1;
-      i += pwasm_new_interp_get_end_ofs(frame, expr, i);
+      i += insts[i].v_block.end_ofs - 1;
+      // i += pwasm_new_interp_get_end_ofs(frame, expr, i);
 
       break;
     case PWASM_OP_END:
@@ -8874,9 +8974,8 @@ pwasm_new_interp_eval_expr(
           i = ctl_tail.ofs;
           stack->pos = ctl_tail.depth;
         } else {
-          // skip to end inst
-          // FIXME: hack, and slow, move to check()
-          i += pwasm_new_interp_get_end_ofs(frame, expr, i);
+          // skip past end inst
+          i += in.v_block.end_ofs + 1;
 
           if (insts[ctl_tail.ofs].v_block.type == PWASM_RESULT_TYPE_VOID) {
             // reset value stack, pop control stack
