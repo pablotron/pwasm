@@ -7,12 +7,11 @@ Each entry in this list is prefixed with category tags.
 See the "Tag Definitions" section below for a brief description of each
 tag.
 
-* [ ] code, test: add invalid code tests
+* [ ] code, test: add invalid code tests (e.g. checker assertion tests)
 * [ ] test: add tests for all opcodes
 * [ ] test: add tests for all module sections
 * [ ] code, test: fix memory leaks on parse/validation/exec errors
-* [ ] code: remove redundant checks in env calls
-* [ ] code, parse: cache control target offsets at parse time
+* [ ] code: remove redundant validation checks in interp/env calls
 * [ ] code, ops: add extended opcode support (`0xFC ...`)
 * [ ] code, ops: add vector op support (`0xFD ...`)
 * [ ] code, jit: add jit (`dynasm`?)
@@ -86,6 +85,7 @@ Items in this section have been completed.
 * [x] code, check: add control stack validation (added `pwasm_checker_t`)
 * [x] code, cleanup: remove old interpreter
 * [x] code, check: merge `insts` into  `stack` tests
+* [x] code, parse: cache control target offsets at parse time
 
 ## Tag Definitions
 
