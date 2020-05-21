@@ -200,6 +200,8 @@ pwasm_u32_decode(
       shift += 7;
     }
   } else {
+    // no destination, just count size
+
     for (size_t i = 0; i < len; i++) {
       const uint32_t b = src.ptr[i];
 
@@ -245,6 +247,8 @@ pwasm_u64_decode(
       shift += 7;
     }
   } else {
+    // no destination, just count size
+
     for (size_t i = 0; i < len; i++) {
       const uint64_t b = src.ptr[i];
 
@@ -529,9 +533,12 @@ static inline bool
 pwasm_op_is_enter(
   const pwasm_op_t op
 ) {
-  return (op == PWASM_OP_BLOCK) || (op == PWASM_OP_LOOP) || (op == PWASM_OP_IF);
+  return (op == PWASM_OP_BLOCK) ||
+         (op == PWASM_OP_LOOP) ||
+         (op == PWASM_OP_IF);
 }
 
+#if 0
 static inline bool
 pwasm_op_is_local(
   const uint8_t byte
@@ -554,6 +561,14 @@ pwasm_op_is_global(
 }
 
 static inline bool
+pwasm_op_is_mem(
+  const uint8_t byte
+) {
+  return pwasm_op_get_imm(byte) == PWASM_IMM_MEM;
+}
+#endif /* 0 */
+
+static inline bool
 pwasm_op_is_const(
   const uint8_t byte
 ) {
@@ -563,13 +578,6 @@ pwasm_op_is_const(
     (byte == PWASM_OP_F32_CONST) ||
     (byte == PWASM_OP_F64_CONST)
   );
-}
-
-static inline bool
-pwasm_op_is_mem(
-  const uint8_t byte
-) {
-  return pwasm_op_get_imm(byte) == PWASM_IMM_MEM;
 }
 
 /**
@@ -1355,7 +1363,91 @@ typedef struct {
 } pwasm_parse_inst_cbs_t;
 
 /**
- * Parse inst into +dst+ from buffer +src+ of length +src_len+.
+ * Parse opcode into `dst` from buffer `src`.
+ *
+ * Returns number of bytes consumed, or 0 on error.
+ */
+static size_t
+pwasm_parse_op(
+  pwasm_op_t * const dst,
+  const pwasm_buf_t src,
+  const pwasm_parse_inst_cbs_t * const cbs,
+  void *cb_data
+) {
+  pwasm_buf_t curr = src;
+  size_t num_bytes = 0;
+
+  // check source length
+  if (curr.len < 1) {
+    cbs->on_error("short instruction", cb_data);
+    return 0;
+  }
+
+  // get initial byte
+  const uint8_t byte = curr.ptr[0];
+
+  // advance
+  curr = pwasm_buf_step(curr, 1);
+  num_bytes++;
+
+  // switch on initial byte (check for op set prefix)
+  switch (byte) {
+  case 0xFC: // trunc_sat set
+    {
+      // check length
+      if (!curr.len) {
+        // log error, return failure
+        cbs->on_error("missing trunc_sat opcode", cb_data);
+        return 0;
+      }
+
+      // TODO
+      // *dst = PWASM_OP_I32_TRUNC_SAT_F32_S + curr.ptr[0];
+      // return num_bytes + 1;
+      cbs->on_error("trunc_sat instructions not implemented", cb_data);
+      return 0;
+    }
+
+    break;
+  case 0xFD: // simd set
+    {
+      // get simd opcode, check for error
+      uint32_t val;
+      const size_t len = pwasm_u32_decode(&val, curr);
+      if (!len) {
+        // log error, return failure
+        cbs->on_error("invalid simd opcode", cb_data);
+        return 0;
+      }
+
+      // TODO
+      // *dst = PWASM_OP_V128_LOAD + val;
+      // return num_bytes + len;
+
+      cbs->on_error("simd instructions not implemented", cb_data);
+      return 0;
+    }
+
+    break;
+  default: // core
+    // check opcode validity
+    if (!pwasm_op_is_valid(byte)) {
+      D("invalid op = 0x%02X", byte);
+      cbs->on_error("invalid op", cb_data);
+      return 0;
+    }
+
+    // save result, return success
+    *dst = byte;
+    return 1;
+  }
+
+  // return failure
+  return 0;
+}
+
+/**
+ * Parse inst into `dst` from buffer `src`.
  *
  * Returns number of bytes consumed, or 0 on error.
  */
@@ -1371,26 +1463,18 @@ pwasm_parse_inst(
 
   // D("src.ptr = %p, src.len = %zu", (void*) src.ptr, src.len);
 
-  // check source length
-  if (src.len < 1) {
-    cbs->on_error("short instruction", cb_data);
-    return 0;
+  pwasm_op_t op;
+  {
+    // parse op, check for error
+    const size_t len = pwasm_parse_op(&op, src, cbs, cb_data);
+    if (!len) {
+      return 0;
+    }
+
+    // advance
+    curr = pwasm_buf_step(curr, len);
+    num_bytes += len;
   }
-
-  // get op, check for error
-  const pwasm_op_t op = curr.ptr[0];
-  if (!pwasm_op_is_valid(op)) {
-    D("invalid op = 0x%02X", op);
-    cbs->on_error("invalid op", cb_data);
-    return 0;
-  }
-
-  // dump instruction
-  // D("0x%02X %s", curr.ptr[0], pwasm_op_get_name(op));
-
-  // advance
-  curr = pwasm_buf_step(curr, 1);
-  num_bytes += 1;
 
   // build instruction
   pwasm_inst_t in = {
@@ -2454,7 +2538,6 @@ typedef struct {
   pwasm_slice_t insts;
   bool success;
 } pwasm_parse_code_expr_t;
-
 
 static size_t
 pwasm_parse_code_expr(
@@ -4821,8 +4904,45 @@ pwasm_checker_check_mem_imm(
   return true;
 }
 
+static pwasm_checker_type_t
+pwasm_checker_check_mem_get_type(
+  const pwasm_op_t op
+) {
+  switch (op) {
+  case PWASM_OP_I32_LOAD:
+  case PWASM_OP_I32_LOAD8_S:
+  case PWASM_OP_I32_LOAD8_U:
+  case PWASM_OP_I32_LOAD16_S:
+  case PWASM_OP_I32_LOAD16_U:
+  case PWASM_OP_I32_STORE:
+  case PWASM_OP_I32_STORE8:
+  case PWASM_OP_I32_STORE16:
+    return PWASM_CHECKER_TYPE_I32;
+  case PWASM_OP_I64_LOAD:
+  case PWASM_OP_I64_LOAD8_S:
+  case PWASM_OP_I64_LOAD8_U:
+  case PWASM_OP_I64_LOAD16_S:
+  case PWASM_OP_I64_LOAD16_U:
+  case PWASM_OP_I64_LOAD32_S:
+  case PWASM_OP_I64_LOAD32_U:
+  case PWASM_OP_I64_STORE:
+  case PWASM_OP_I64_STORE8:
+  case PWASM_OP_I64_STORE16:
+  case PWASM_OP_I64_STORE32:
+    return PWASM_CHECKER_TYPE_I64;
+  case PWASM_OP_F32_LOAD:
+  case PWASM_OP_F32_STORE:
+    return PWASM_CHECKER_TYPE_F32;
+  case PWASM_OP_F64_LOAD:
+  case PWASM_OP_F64_STORE:
+    return PWASM_CHECKER_TYPE_F64;
+  default:
+    return PWASM_CHECKER_TYPE_UNKNOWN;
+  }
+}
+
 /**
- * Verify memory load.
+ * Verify memory load op.
  *
  * Returns `true` on success or `false` on error.
  */
@@ -4830,8 +4950,7 @@ static bool
 pwasm_checker_check_load(
   pwasm_checker_t * const checker,
   const pwasm_mod_t * const mod,
-  const pwasm_inst_t in,
-  const pwasm_checker_type_t type
+  const pwasm_inst_t in
 ) {
   // check memory and immediate
   if (!pwasm_checker_check_mem_imm(checker, mod, in)) {
@@ -4844,6 +4963,7 @@ pwasm_checker_check_load(
   }
 
   // push type
+  const pwasm_checker_type_t type = pwasm_checker_check_mem_get_type(in.op);
   if (!pwasm_checker_type_push(checker, type)) {
     return false;
   }
@@ -4853,7 +4973,7 @@ pwasm_checker_check_load(
 }
 
 /**
- * Verify memory store.
+ * Verify memory store op.
  *
  * Returns `true` on success or `false` on error.
  */
@@ -4861,14 +4981,15 @@ static bool
 pwasm_checker_check_store(
   pwasm_checker_t * const checker,
   const pwasm_mod_t * const mod,
-  const pwasm_inst_t in,
-  const pwasm_checker_type_t exp_type
+  const pwasm_inst_t in
 ) {
   // check memory and immediate
   if (!pwasm_checker_check_mem_imm(checker, mod, in)) {
     return false;
   }
 
+  // get expected type
+  const pwasm_checker_type_t exp_type = pwasm_checker_check_mem_get_type(in.op);
 
   // pop value operand
   if (!pwasm_checker_type_pop_expected(checker, exp_type, NULL)) {
@@ -5564,11 +5685,6 @@ pwasm_checker_check(
     case PWASM_OP_I32_LOAD8_U:
     case PWASM_OP_I32_LOAD16_S:
     case PWASM_OP_I32_LOAD16_U:
-      if (!pwasm_checker_check_load(checker, mod, in, PWASM_CHECKER_TYPE_I32)) {
-        return false;
-      }
-
-      break;
     case PWASM_OP_I64_LOAD:
     case PWASM_OP_I64_LOAD8_S:
     case PWASM_OP_I64_LOAD8_U:
@@ -5576,19 +5692,9 @@ pwasm_checker_check(
     case PWASM_OP_I64_LOAD16_U:
     case PWASM_OP_I64_LOAD32_S:
     case PWASM_OP_I64_LOAD32_U:
-      if (!pwasm_checker_check_load(checker, mod, in, PWASM_CHECKER_TYPE_I64)) {
-        return false;
-      }
-
-      break;
     case PWASM_OP_F32_LOAD:
-      if (!pwasm_checker_check_load(checker, mod, in, PWASM_CHECKER_TYPE_F32)) {
-        return false;
-      }
-
-      break;
     case PWASM_OP_F64_LOAD:
-      if (!pwasm_checker_check_load(checker, mod, in, PWASM_CHECKER_TYPE_F64)) {
+      if (!pwasm_checker_check_load(checker, mod, in)) {
         return false;
       }
 
@@ -5596,28 +5702,13 @@ pwasm_checker_check(
     case PWASM_OP_I32_STORE:
     case PWASM_OP_I32_STORE8:
     case PWASM_OP_I32_STORE16:
-      if (!pwasm_checker_check_store(checker, mod, in, PWASM_CHECKER_TYPE_I32)) {
-        return false;
-      }
-
-      break;
     case PWASM_OP_I64_STORE:
     case PWASM_OP_I64_STORE8:
     case PWASM_OP_I64_STORE16:
     case PWASM_OP_I64_STORE32:
-      if (!pwasm_checker_check_store(checker, mod, in, PWASM_CHECKER_TYPE_I64)) {
-        return false;
-      }
-
-      break;
     case PWASM_OP_F32_STORE:
-      if (!pwasm_checker_check_store(checker, mod, in, PWASM_CHECKER_TYPE_F32)) {
-        return false;
-      }
-
-      break;
     case PWASM_OP_F64_STORE:
-      if (!pwasm_checker_check_store(checker, mod, in, PWASM_CHECKER_TYPE_F64)) {
+      if (!pwasm_checker_check_store(checker, mod, in)) {
         return false;
       }
 
