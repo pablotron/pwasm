@@ -16,6 +16,7 @@ tag.
 * [ ] code, ops: add vector op support (`0xFD ...`)
 * [ ] code, jit: add jit (`dynasm`?)
 * [ ] code, jit: add jit modes (lazy, aot, optimize, etc)
+* [ ] doc: add internal documentation
 * [ ] code: add `uint64_t pwasm_platform_get_value()` (e.g. compile-time limits, flags, etc)
 * [ ] code, cleanup: consider calloc() for memory init (zero mem, bounds check)
 * [ ] code, test: check uses of realloc() for overflow (security)

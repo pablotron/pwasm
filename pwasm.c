@@ -3847,7 +3847,7 @@ pwasm_mod_init_unsafe_on_codes(
   // each code entry:
   //
   // * look up the function type from builder->funcs (checking for overlow)
-  // * get parameter count from builder->types (checking for overlow)
+  // * get parameter count from builder->types (checking for overflow)
   // * code.frame_size = type.params.len + code.max_locals
   // * build batch of funcs, then emit them in batches
   //
