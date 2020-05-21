@@ -273,7 +273,7 @@ const char *pwasm_imm_get_name(const pwasm_imm_t type);
   /* 0x08 */ PWASM_OP_RESERVED(_08, "08") \
   /* 0x09 */ PWASM_OP_RESERVED(_09, "09") \
   /* 0x0A */ PWASM_OP_RESERVED(_0A, "0A") \
-  /* 0x0B */ PWASM_OP_CONST(END, "end", NONE) \
+  /* 0x0B */ PWASM_OP(END, "end", NONE) \
   /* 0x0C */ PWASM_OP(BR, "br", INDEX) \
   /* 0x0D */ PWASM_OP(BR_IF, "br_if", INDEX) \
   /* 0x0E */ PWASM_OP(BR_TABLE, "br_table", BR_TABLE) \
@@ -297,7 +297,7 @@ const char *pwasm_imm_get_name(const pwasm_imm_t type);
   /* 0x20 */ PWASM_OP(LOCAL_GET, "local.get", INDEX) \
   /* 0x21 */ PWASM_OP(LOCAL_SET, "local.set", INDEX) \
   /* 0x22 */ PWASM_OP(LOCAL_TEE, "local.tee", INDEX) \
-  /* 0x23 */ PWASM_OP_CONST(GLOBAL_GET, "global.get", INDEX) \
+  /* 0x23 */ PWASM_OP(GLOBAL_GET, "global.get", INDEX) \
   /* 0x24 */ PWASM_OP(GLOBAL_SET, "global.set", INDEX) \
   /* 0x25 */ PWASM_OP_RESERVED(_25, "25") \
   /* 0x26 */ PWASM_OP_RESERVED(_26, "26") \
@@ -327,10 +327,10 @@ const char *pwasm_imm_get_name(const pwasm_imm_t type);
   /* 0x3E */ PWASM_OP(I64_STORE32, "i64.store32", MEM) \
   /* 0x3F */ PWASM_OP(MEMORY_SIZE, "memory.size", NONE) \
   /* 0x40 */ PWASM_OP(MEMORY_GROW, "memory.grow", NONE) \
-  /* 0x41 */ PWASM_OP_CONST(I32_CONST, "i32.const", I32_CONST) \
-  /* 0x42 */ PWASM_OP_CONST(I64_CONST, "i64.const", I64_CONST) \
-  /* 0x43 */ PWASM_OP_CONST(F32_CONST, "f32.const", F32_CONST) \
-  /* 0x44 */ PWASM_OP_CONST(F64_CONST, "f64.const", F64_CONST) \
+  /* 0x41 */ PWASM_OP(I32_CONST, "i32.const", I32_CONST) \
+  /* 0x42 */ PWASM_OP(I64_CONST, "i64.const", I64_CONST) \
+  /* 0x43 */ PWASM_OP(F32_CONST, "f32.const", F32_CONST) \
+  /* 0x44 */ PWASM_OP(F64_CONST, "f64.const", F64_CONST) \
   /* 0x45 */ PWASM_OP(I32_EQZ, "i32.eqz", NONE) \
   /* 0x46 */ PWASM_OP(I32_EQ, "i32.eq", NONE) \
   /* 0x47 */ PWASM_OP(I32_NE, "i32.ne", NONE) \
@@ -525,11 +525,9 @@ const char *pwasm_imm_get_name(const pwasm_imm_t type);
  */
 typedef enum {
 #define PWASM_OP(a, b, c) PWASM_OP_ ## a,
-#define PWASM_OP_CONST(a, b, c) PWASM_OP_ ## a,
 #define PWASM_OP_RESERVED(a, b) PWASM_OP_RESERVED ## a,
 PWASM_OP_DEFS
 #undef PWASM_OP
-#undef PWASM_OP_CONST
 #undef PWASM_OP_RESERVED
 } pwasm_op_t;
 

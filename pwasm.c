@@ -483,13 +483,6 @@ pwasm_is_valid_result_type(
   .imm = PWASM_IMM_##c, \
 },
 
-#define PWASM_OP_CONST(a, b, c) { \
-  .name = (b), \
-  .is_valid = true, \
-  .is_const = true, \
-  .imm = PWASM_IMM_##c, \
-},
-
 #define PWASM_OP_RESERVED(a, b) { \
   .name = ("reserved." b), \
   .imm = PWASM_IMM_LAST, \
@@ -498,13 +491,11 @@ pwasm_is_valid_result_type(
 static const struct {
   const char * name;
   bool is_valid;
-  bool is_const;
   pwasm_imm_t imm;
 } PWASM_OPS[] = {
 PWASM_OP_DEFS
 };
 #undef PWASM_OP
-#undef PWASM_OP_CONST
 #undef PWASM_OP_RESERVED
 
 /**
