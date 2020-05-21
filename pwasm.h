@@ -454,11 +454,11 @@ const char *pwasm_imm_get_name(const pwasm_imm_t type);
   /* 0xBD */ PWASM_OP(I64_REINTERPRET_F64, "i64.reinterpret_f64", NONE) \
   /* 0xBE */ PWASM_OP(F32_REINTERPRET_I32, "f32.reinterpret_i32", NONE) \
   /* 0xBF */ PWASM_OP(F64_REINTERPRET_I64, "f64.reinterpret_i64", NONE) \
-  /* 0xC0 */ PWASM_OP_RESERVED(_C0, "c0") \
-  /* 0xC1 */ PWASM_OP_RESERVED(_C1, "c1") \
-  /* 0xC2 */ PWASM_OP_RESERVED(_C2, "c2") \
-  /* 0xC3 */ PWASM_OP_RESERVED(_C3, "c3") \
-  /* 0xC4 */ PWASM_OP_RESERVED(_C4, "c4") \
+  /* 0xC0 */ PWASM_OP(I32_EXTEND8_S, "i32.extend8_s", NONE) \
+  /* 0xC1 */ PWASM_OP(I32_EXTEND16_S, "i32.extend16_s", NONE) \
+  /* 0xC2 */ PWASM_OP(I64_EXTEND8_S, "i64.extend8_s", NONE) \
+  /* 0xC3 */ PWASM_OP(I64_EXTEND16_S, "i64.extend16_s", NONE) \
+  /* 0xC4 */ PWASM_OP(I64_EXTEND32_S, "i64.extend32_s", NONE) \
   /* 0xC5 */ PWASM_OP_RESERVED(_C5, "c5") \
   /* 0xC6 */ PWASM_OP_RESERVED(_C6, "c6") \
   /* 0xC7 */ PWASM_OP_RESERVED(_C7, "c7") \

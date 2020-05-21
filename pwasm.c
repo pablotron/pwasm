@@ -6039,6 +6039,21 @@ pwasm_checker_check(
       }
 
       break;
+    case PWASM_OP_I32_EXTEND8_S:
+    case PWASM_OP_I32_EXTEND16_S:
+      if (!pwasm_checker_check_cvtop(checker, PWASM_CHECKER_TYPE_I32, PWASM_CHECKER_TYPE_I32)) {
+        return false;
+      }
+
+      break;
+    case PWASM_OP_I64_EXTEND8_S:
+    case PWASM_OP_I64_EXTEND16_S:
+    case PWASM_OP_I64_EXTEND32_S:
+      if (!pwasm_checker_check_cvtop(checker, PWASM_CHECKER_TYPE_I64, PWASM_CHECKER_TYPE_I64)) {
+        return false;
+      }
+
+      break;
     default:
       // ignore
       break;
@@ -10229,6 +10244,41 @@ pwasm_new_interp_eval_expr(
           float f64;
         } v = { .i64 = stack->ptr[stack->pos - 1].i64 };
         stack->ptr[stack->pos - 1].f64 = v.f64;
+      }
+
+      break;
+    case PWASM_OP_I32_EXTEND8_S:
+      {
+        const int32_t val = (int8_t) stack->ptr[stack->pos - 1].i32;
+        stack->ptr[stack->pos - 1].i32 = (uint32_t) val;
+      }
+
+      break;
+    case PWASM_OP_I32_EXTEND16_S:
+      {
+        const int32_t val = (int16_t) stack->ptr[stack->pos - 1].i32;
+        stack->ptr[stack->pos - 1].i32 = (uint32_t) val;
+      }
+
+      break;
+    case PWASM_OP_I64_EXTEND8_S:
+      {
+        const int64_t val = (int8_t) stack->ptr[stack->pos - 1].i64;
+        stack->ptr[stack->pos - 1].i64 = (uint64_t) val;
+      }
+
+      break;
+    case PWASM_OP_I64_EXTEND16_S:
+      {
+        const int64_t val = (int16_t) stack->ptr[stack->pos - 1].i64;
+        stack->ptr[stack->pos - 1].i64 = (uint64_t) val;
+      }
+
+      break;
+    case PWASM_OP_I64_EXTEND32_S:
+      {
+        const int64_t val = (int32_t) stack->ptr[stack->pos - 1].i64;
+        stack->ptr[stack->pos - 1].i64 = (uint64_t) val;
       }
 
       break;
