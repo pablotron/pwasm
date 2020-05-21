@@ -12,8 +12,6 @@ tag.
 * [ ] test: add tests for all module sections
 * [ ] code, test: fix memory leaks on parse/validation/exec errors
 * [ ] code: remove redundant validation checks in interp/env calls
-* [ ] code, ops: add extended opcode support (`0xFC ...`)
-* [ ] code, ops: add vector op support (`0xFD ...`)
 * [ ] code, jit: add jit (`dynasm`?)
 * [ ] code, jit: add jit modes (lazy, aot, optimize, etc)
 * [ ] doc: add internal documentation
@@ -38,6 +36,8 @@ tag.
 ## In Progress
 * [ ] code: add global, table, and mem init, call start func (added,
       but untested)
+* [ ] code, ops: add `trunc_sat` (`0xFC`) ops (added stub parser)
+* [ ] code, ops: add `simd` (`0xFD`) ops (added stub parser)
 
 ## Done
 
