@@ -24,7 +24,7 @@ find_func_export(
     const char * const export_name = (char*) mod->bytes + export.name.ofs;
 
     if (
-      (export.type == PWASM_EXPORT_TYPE_FUNC) &&
+      (export.type == PWASM_IMPORT_TYPE_FUNC) &&
       (name_len == export.name.len) &&
       !memcmp(export_name, name, export.name.len)
     ) {

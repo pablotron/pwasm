@@ -146,7 +146,7 @@ PWASM_RESULT_TYPE_DEFS
 const char *pwasm_result_type_get_name(const pwasm_result_type_t type);
 
 /**
- * Import types.
+ * Import/export types.
  *
  * Macro used to define the `pwasm_import_type_t` enumeration and the
  * internal import type names.
@@ -174,37 +174,6 @@ PWASM_IMPORT_TYPES
  * Get the name of the given import type.
  */
 const char *pwasm_import_type_get_name(const pwasm_import_type_t);
-
-/**
- * Export types
- *
- * Macro used to define the `pwasm_export_type_t` enumeration and the
- * internal export type names.
- *
- * @ingroup type
- */
-#define PWASM_EXPORT_TYPES \
-  PWASM_EXPORT_TYPE(FUNC, "func", func) \
-  PWASM_EXPORT_TYPE(TABLE, "table", table) \
-  PWASM_EXPORT_TYPE(MEM, "memory", mem) \
-  PWASM_EXPORT_TYPE(GLOBAL, "global", global) \
-  PWASM_EXPORT_TYPE(LAST, "unknown export type", invalid)
-
-/**
- * Export types
- * @ingroup type
- */
-typedef enum {
-#define PWASM_EXPORT_TYPE(a, b, c) PWASM_EXPORT_TYPE_##a,
-PWASM_EXPORT_TYPES
-#undef PWASM_EXPORT_TYPE
-} pwasm_export_type_t;
-
-/**
- * Get the name of the given export type.
- * @ingroup type
- */
-const char *pwasm_export_type_get_name(const pwasm_export_type_t);
 
 /**
  * Immediate types.
@@ -1017,7 +986,7 @@ typedef struct {
  */
 typedef struct {
   pwasm_slice_t name; ///< Export name
-  pwasm_export_type_t type; ///< Export type
+  pwasm_import_type_t type; ///< Export type
   uint32_t id; ///< Export index
 } pwasm_export_t;
 
@@ -1352,7 +1321,7 @@ typedef struct {
   size_t num_import_types[PWASM_IMPORT_TYPE_LAST];
 
   /** number of exports by export type */
-  size_t num_export_types[PWASM_EXPORT_TYPE_LAST];
+  size_t num_export_types[PWASM_IMPORT_TYPE_LAST];
 
   /**
    * Vector of bytes.

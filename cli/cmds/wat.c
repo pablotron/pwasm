@@ -522,7 +522,7 @@ wat_write_exports(
 ) {
   for (size_t i = 0; i < mod->num_exports; i++) {
     const pwasm_export_t export = mod->exports[i];
-    const char * const type_name = pwasm_export_type_get_name(export.type);
+    const char * const type_name = pwasm_import_type_get_name(export.type);
 
     // write export prefix
     wat_indent(wat, 1);

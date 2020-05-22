@@ -408,13 +408,33 @@ PWASM_IMPORT_TYPES
 
 DEF_GET_NAMES(import_type, IMPORT_TYPE)
 
-#define PWASM_EXPORT_TYPE(a, b, c) b,
-static const char *PWASM_EXPORT_TYPE_NAMES[] = {
-PWASM_EXPORT_TYPES
-};
-#undef PWASM_EXPORT_TYPE
+/**
+ * Parse import type into `dst` from source buffer `src`.
+ *
+ * Returns number of bytes consumed, or `0` on error.
+ */
+static size_t
+pwasm_parse_import_type(
+  pwasm_import_type_t * const dst,
+  const pwasm_buf_t src
+) {
+  // check length
+  if (!src.len) {
+    // return failure
+    return 0;
+  }
 
-DEF_GET_NAMES(export_type, EXPORT_TYPE)
+  // get value, check for error
+  const uint8_t val = src.ptr[0];
+  if (val >= PWASM_IMPORT_TYPE_LAST) {
+    // return failure
+    return 0;
+  }
+
+  // save to destination, return number of bytes consumed
+  *dst = val;
+  return 1;
+}
 
 static const char *PWASM_IMM_NAMES[] = {
 #define PWASM_IMM(a, b) b,
@@ -423,13 +443,6 @@ PWASM_IMM_DEFS
 };
 
 DEF_GET_NAMES(imm, IMM)
-
-static inline bool
-pwasm_is_valid_export_type(
-  const uint8_t v
-) {
-  return v < PWASM_EXPORT_TYPE_LAST;
-}
 
 /**
  * Is this value a valid value type?
@@ -2221,16 +2234,21 @@ pwasm_parse_export(
     return 0;
   }
 
-  // get export type, check for error
-  const pwasm_export_type_t type = curr.ptr[0];
-  if (!pwasm_is_valid_export_type(type)) {
-    cbs->on_error("bad export type", cb_data);
-  }
-  D("type = %u:%s", type, pwasm_export_type_get_name(type));
+  // get export type
+  pwasm_import_type_t type;
+  {
+    // parse type, check for error
+    const size_t len = pwasm_parse_import_type(&type, curr);
+    if (!len) {
+      D("bad type = %u", curr.ptr[0]);
+      cbs->on_error("bad export type", cb_data);
+      return 0;
+    }
 
-  // advance
-  curr = pwasm_buf_step(curr, 1);
-  num_bytes += 1;
+    // advance
+    curr = pwasm_buf_step(curr, len);
+    num_bytes += len;
+  }
 
   // parse id, check for error
   uint32_t id;
@@ -2245,7 +2263,7 @@ pwasm_parse_export(
     curr = pwasm_buf_step(curr, len);
     num_bytes += len;
   }
-  D("type = %u:%s, id = %u", type, pwasm_export_type_get_name(type), id);
+  D("type = %u:%s, id = %u", type, pwasm_import_type_get_name(type), id);
 
   *dst = (pwasm_export_t) {
     .name = name,
@@ -6583,17 +6601,17 @@ pwasm_mod_check_import(
 static inline bool
 pwasm_mod_check_export_id(
   const pwasm_mod_t * const mod,
-  const pwasm_export_type_t type,
+  const pwasm_import_type_t type,
   const uint32_t id
 ) {
   switch (type) {
-  case PWASM_EXPORT_TYPE_FUNC:
+  case PWASM_IMPORT_TYPE_FUNC:
     return id < (mod->num_funcs + mod->num_import_types[PWASM_IMPORT_TYPE_FUNC]);
-  case PWASM_EXPORT_TYPE_TABLE:
+  case PWASM_IMPORT_TYPE_TABLE:
     return id < (mod->num_tables + mod->num_import_types[PWASM_IMPORT_TYPE_TABLE]);
-  case PWASM_EXPORT_TYPE_MEM:
+  case PWASM_IMPORT_TYPE_MEM:
     return id < (mod->num_mems + mod->num_import_types[PWASM_IMPORT_TYPE_MEM]);
-  case PWASM_EXPORT_TYPE_GLOBAL:
+  case PWASM_IMPORT_TYPE_GLOBAL:
     return id < (mod->num_globals + mod->num_import_types[PWASM_IMPORT_TYPE_GLOBAL]);
   default:
     return false;
@@ -6624,7 +6642,7 @@ pwasm_mod_check_export(
 
   // is the export type valid?
   // (note: redundant, caught in parsing)
-  if (export.type >= PWASM_EXPORT_TYPE_LAST) {
+  if (export.type >= PWASM_IMPORT_TYPE_LAST) {
     check->cbs.on_error("invalid export type", check->cb_data);
     return false;
   }
@@ -8454,7 +8472,7 @@ pwasm_new_interp_find_func(
       const pwasm_export_t row = mod.mod->exports[i];
 
       if (
-        (row.type == PWASM_EXPORT_TYPE_FUNC) &&
+        (row.type == PWASM_IMPORT_TYPE_FUNC) &&
         (row.name.len == name.len) &&
         !memcmp(mod.mod->bytes + row.name.ofs, name.ptr, name.len)
       ) {
@@ -8517,7 +8535,7 @@ pwasm_new_interp_find_mem(
       const pwasm_export_t row = mod->mod->exports[i];
 
       if (
-        (row.type == PWASM_EXPORT_TYPE_MEM) &&
+        (row.type == PWASM_IMPORT_TYPE_MEM) &&
         (row.name.len == name.len) &&
         !memcmp(mod->mod->bytes + row.name.ofs, name.ptr, name.len)
       ) {

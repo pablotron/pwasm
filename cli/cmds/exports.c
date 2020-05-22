@@ -27,7 +27,7 @@ on_mod(
     // get export
     const pwasm_export_t export = mod->exports[i];
 
-    fprintf(io, "%s,\"", pwasm_export_type_get_name(export.type));
+    fprintf(io, "%s,\"", pwasm_import_type_get_name(export.type));
     cli_escape_bytes(mod, export.name, on_mod_data, io);
     fputs("\"\n", io);
   }
