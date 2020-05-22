@@ -8,7 +8,6 @@ See the "Tag Definitions" section below for a brief description of each
 tag.
 
 * [ ] code, ops: add `trunc_sat` interpreter impls
-* [ ] code, ops: add `simd` type checks
 * [ ] code, ops: add `simd` interpreter impls
 * [ ] code, test: add invalid code tests (e.g. checker assertion tests)
 * [ ] test: add tests for all opcodes
@@ -39,6 +38,7 @@ tag.
 ## In Progress
 * [ ] code: add global, table, and mem init, call start func (added,
       but untested)
+* [ ] code, ops: add `simd` type checks
 
 ## Done
 

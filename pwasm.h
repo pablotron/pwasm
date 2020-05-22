@@ -75,6 +75,7 @@ const char *pwasm_section_type_get_name(const pwasm_section_type_t);
   PWASM_VALUE_TYPE(0x7E, I64, "i64") \
   PWASM_VALUE_TYPE(0x7D, F32, "f32") \
   PWASM_VALUE_TYPE(0x7C, F64, "f64") \
+  PWASM_VALUE_TYPE(0x7B, V128, "v128") \
   PWASM_VALUE_TYPE(0x00, LAST, "unknown value type")
 
 /**
@@ -116,6 +117,7 @@ const char *pwasm_value_type_get_name(const pwasm_value_type_t type);
   PWASM_RESULT_TYPE(0x7D, I64, "i64") \
   PWASM_RESULT_TYPE(0x7E, F32, "f32") \
   PWASM_RESULT_TYPE(0x7C, F64, "f64") \
+  PWASM_RESULT_TYPE(0x7B, V128, "v128") \
   PWASM_RESULT_TYPE(0x40, VOID, "void") \
   PWASM_RESULT_TYPE(0x00, LAST, "unknown result type")
 
@@ -695,6 +697,19 @@ typedef struct {
 } pwasm_slice_t;
 
 /**
+ * 128-bit SIMD vector value.
+ * @ingroup type
+ */
+typedef union {
+  uint8_t i8[16];
+  uint16_t i16[8];
+  uint32_t i32[4];
+  uint64_t i64[2];
+  float f32[4];
+  double f64[2];
+} pwasm_v128_t;
+
+/**
  * Representation of WebAssembly limits.
  *
  * Limits always have a lower bound, but not necessarily an upper bound.
@@ -783,24 +798,29 @@ typedef struct {
     pwasm_mem_imm_t v_mem;
 
     /**
-     * Immediate value for `const.i32` instructions.
+     * Immediate value for `i32.const` instructions.
      */
     uint32_t v_i32;
 
     /**
-     * Immediate value for `const.i64` instructions.
+     * Immediate value for `i64.const` instructions.
      */
     uint64_t v_i64;
 
     /**
-     * Immediate value for `const.f32` instructions.
+     * Immediate value for `f32.const` instructions.
      */
     float v_f32;
 
     /**
-     * Immediate for `const.f64` instructions.
+     * Immediate for `f64.const` instructions.
      */
     double v_f64;
+
+    /**
+     * Immediate for `v128.const` and `v8x16` instructions.
+     */
+    pwasm_v128_t v_v128;
   };
 } pwasm_inst_t;
 
@@ -1634,6 +1654,7 @@ typedef union {
   uint64_t i64; ///< 64-bit integer value (sign-agnostic)
   float    f32; ///< 32-bit floating-point value
   double   f64; ///< 64-bit floating-point value
+  pwasm_v128_t v128; ///< 128-bit SIMD vector
 } pwasm_val_t;
 
 /**

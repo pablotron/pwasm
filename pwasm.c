@@ -7631,6 +7631,7 @@ pwasm_mod_get_global_type(
   PWASM_CHECKER_TYPE(I64, "i64", I64) \
   PWASM_CHECKER_TYPE(F32, "f32", F32) \
   PWASM_CHECKER_TYPE(F64, "f64", F64) \
+  PWASM_CHECKER_TYPE(V128, "v128", V128) \
   PWASM_CHECKER_TYPE(UNKNOWN, "unknown", LAST)
 
 /**
@@ -8332,6 +8333,19 @@ pwasm_checker_check_mem_get_type(
   case PWASM_OP_F64_LOAD:
   case PWASM_OP_F64_STORE:
     return PWASM_CHECKER_TYPE_F64;
+  case PWASM_OP_V128_LOAD:
+  case PWASM_OP_V128_STORE:
+  case PWASM_OP_I16X8_LOAD8X8_S:
+  case PWASM_OP_I16X8_LOAD8X8_U:
+  case PWASM_OP_I32X4_LOAD16X4_S:
+  case PWASM_OP_I32X4_LOAD16X4_U:
+  case PWASM_OP_I64X2_LOAD32X2_S:
+  case PWASM_OP_I64X2_LOAD32X2_U:
+  case PWASM_OP_V8X16_LOAD_SPLAT:
+  case PWASM_OP_V16X8_LOAD_SPLAT:
+  case PWASM_OP_V32X4_LOAD_SPLAT:
+  case PWASM_OP_V64X2_LOAD_SPLAT:
+    return PWASM_CHECKER_TYPE_V128;
   default:
     return PWASM_CHECKER_TYPE_UNKNOWN;
   }
@@ -8399,6 +8413,58 @@ pwasm_checker_check_store(
 
   // return success
   return true;
+}
+
+/**
+ * Verify lane index immediate.
+ *
+ * Returns `true` on success or `false` on error.
+ */
+static bool
+pwasm_checker_check_lane(
+  pwasm_checker_t * const checker,
+  const pwasm_inst_t in
+) {
+  switch (in.op) {
+  case PWASM_OP_V8X16_SHUFFLE:
+    // check lanes
+    for (size_t i = 0; i < 16; i++) {
+      if (in.v_v128.i8[i] > 31) {
+        D("lane %zu = %u", i, in.v128.u8[i]);
+        pwasm_checker_fail(checker, "v8x16.shuffle: invalid lane index (>31)");
+        return false;
+      }
+    }
+
+    break;
+  case PWASM_OP_I8X16_EXTRACT_LANE_S:
+  case PWASM_OP_I8X16_EXTRACT_LANE_U:
+  case PWASM_OP_I16X8_EXTRACT_LANE_S:
+  case PWASM_OP_I16X8_EXTRACT_LANE_U:
+  case PWASM_OP_I32X4_EXTRACT_LANE:
+  case PWASM_OP_I64X2_EXTRACT_LANE:
+  case PWASM_OP_F32X4_EXTRACT_LANE:
+  case PWASM_OP_F64X2_EXTRACT_LANE:
+  case PWASM_OP_I8X16_REPLACE_LANE:
+  case PWASM_OP_I16X8_REPLACE_LANE:
+  case PWASM_OP_I32X4_REPLACE_LANE:
+  case PWASM_OP_I64X2_REPLACE_LANE:
+  case PWASM_OP_F32X4_REPLACE_LANE:
+  case PWASM_OP_F64X2_REPLACE_LANE:
+    if (in.v_index >= PWASM_OPS[in.op].num_lanes) {
+      D("lane index = %u", in.v_index);
+      pwasm_checker_fail(checker, "invalid lane index");
+      return false;
+    }
+
+    break;
+  default:
+    D("opcode = %s(%u)", pwasm_opcode_get_name(in.op), in.op);
+    pwasm_checker_fail(checker, "unknown opcode");
+    return false;
+  }
+
+  return false;
 }
 
 /**
@@ -8593,6 +8659,198 @@ pwasm_checker_push_func_block(
   return pwasm_checker_ctrl_push(checker, ctrl);
 }
 #endif /* 0 */
+
+/**
+ * Get source value type for splat op.
+ *
+ * Returns `PWASM_CHECKER_TYPE_LAST` if the opcode not a v128 splat
+ * opcode.
+ */
+static pwasm_checker_type_t
+pwasm_checker_check_splat_get_type(
+  const pwasm_op_t op
+) {
+  switch (op) {
+  case PWASM_OP_I8X16_SPLAT:
+  case PWASM_OP_I16X8_SPLAT:
+  case PWASM_OP_I32X4_SPLAT:
+    return PWASM_CHECKER_TYPE_I32;
+  case PWASM_OP_I64X2_SPLAT:
+    return PWASM_CHECKER_TYPE_I64;
+  case PWASM_OP_F32X4_SPLAT:
+    return PWASM_CHECKER_TYPE_F32;
+  case PWASM_OP_F64X2_SPLAT:
+    return PWASM_CHECKER_TYPE_F64;
+  default:
+    // return failure
+    return PWASM_CHECKER_TYPE_LAST;
+  }
+}
+
+/**
+ * Verify splat operation.
+ *
+ * A splat pops a scalar value and then pushes a v128 with all lanes
+ * populated with the source scalar value.
+ *
+ * Returns `true` on success or `false` on error.
+ */
+static bool
+pwasm_checker_check_splat(
+  pwasm_checker_t * const checker,
+  const pwasm_op_t op
+) {
+  // get value type
+  const pwasm_checker_type_t type = pwasm_checker_check_splat_get_type(op);
+
+  // pop value type, check for error
+  if (!pwasm_checker_type_pop_expected(checker, type, NULL)) {
+    return false;
+  }
+
+  // push v128
+  if (!pwasm_checker_type_push(checker, PWASM_CHECKER_TYPE_V128)) {
+    return false;
+  }
+
+  // return success
+  return true;
+}
+
+/**
+ * Get destination value type for extract op.
+ *
+ * Returns `PWASM_CHECKER_TYPE_LAST` if the opcode not a v128 extract
+ * opcode.
+ */
+static pwasm_checker_type_t
+pwasm_checker_check_extract_get_type(
+  const pwasm_op_t op
+) {
+  switch (op) {
+  case PWASM_OP_I8X16_EXTRACT_LANE_S:
+  case PWASM_OP_I8X16_EXTRACT_LANE_U:
+  case PWASM_OP_I16X8_EXTRACT_LANE_S:
+  case PWASM_OP_I16X8_EXTRACT_LANE_U:
+  case PWASM_OP_I32X4_EXTRACT_LANE:
+    return PWASM_CHECKER_TYPE_I32;
+  case PWASM_OP_I64X2_EXTRACT_LANE:
+    return PWASM_CHECKER_TYPE_I64;
+  case PWASM_OP_F32X4_EXTRACT_LANE:
+    return PWASM_CHECKER_TYPE_F32;
+  case PWASM_OP_F64X2_EXTRACT_LANE:
+    return PWASM_CHECKER_TYPE_F64;
+  default:
+    // return failure
+    return PWASM_CHECKER_TYPE_LAST;
+  }
+}
+
+/**
+ * Verify v128 extract operation.
+ *
+ * An extract pops a vector value, extracts a lane from the vector based
+ * on the lane index immediate, and then pushes the extracted scalar
+ * value to the stack.
+ *
+ * Returns `true` on success or `false` on error.
+ */
+static bool
+pwasm_checker_check_extract(
+  pwasm_checker_t * const checker,
+  const pwasm_inst_t in
+) {
+  // get value type
+  const pwasm_checker_type_t type = pwasm_checker_check_extract_get_type(in.op);
+
+  // check lane
+  if (!pwasm_checker_check_lane(checker, in)) {
+    // return failure
+    return false;
+  }
+
+  // pop v128 type, check for error
+  if (!pwasm_checker_type_pop_expected(checker, PWASM_CHECKER_TYPE_V128, NULL)) {
+    return false;
+  }
+
+  // push value type, check for error
+  if (!pwasm_checker_type_push(checker, type)) {
+    return false;
+  }
+
+  // return success
+  return true;
+}
+
+/**
+ * Get destination value type for replace lane op.
+ *
+ * Returns `PWASM_CHECKER_TYPE_LAST` if the opcode not a v128 replace
+ * lane opcode.
+ */
+static pwasm_checker_type_t
+pwasm_checker_check_replace_get_type(
+  const pwasm_op_t op
+) {
+  switch (op) {
+  case PWASM_OP_I8X16_REPLACE_LANE:
+  case PWASM_OP_I16X8_REPLACE_LANE:
+  case PWASM_OP_I32X4_REPLACE_LANE:
+    return PWASM_CHECKER_TYPE_I32;
+  case PWASM_OP_I64X2_REPLACE_LANE:
+    return PWASM_CHECKER_TYPE_I64;
+  case PWASM_OP_F32X4_REPLACE_LANE:
+    return PWASM_CHECKER_TYPE_F32;
+  case PWASM_OP_F64X2_REPLACE_LANE:
+    return PWASM_CHECKER_TYPE_F64;
+  default:
+    // return failure
+    return PWASM_CHECKER_TYPE_LAST;
+  }
+}
+
+/**
+ * Verify v128 replace operation.
+ *
+ * Pops a vector value and a scalar value, replace a lane in the vector
+ * and then pushes the updated vector.
+ *
+ * Returns `true` on success or `false` on error.
+ */
+static bool
+pwasm_checker_check_replace(
+  pwasm_checker_t * const checker,
+  const pwasm_inst_t in
+) {
+  // get value type
+  const pwasm_checker_type_t type = pwasm_checker_check_replace_get_type(in.op);
+
+  // check lane
+  if (!pwasm_checker_check_lane(checker, in)) {
+    // return failure
+    return false;
+  }
+
+  // pop type, check for error
+  if (!pwasm_checker_type_pop_expected(checker, type, NULL)) {
+    return false;
+  }
+
+  // pop v128 type, check for error
+  if (!pwasm_checker_type_pop_expected(checker, PWASM_CHECKER_TYPE_V128, NULL)) {
+    return false;
+  }
+
+  // push v128 type, check for error
+  if (!pwasm_checker_type_push(checker, PWASM_CHECKER_TYPE_V128)) {
+    return false;
+  }
+
+  // return success
+  return true;
+}
+
 
 /**
  * Check function code.
@@ -9090,6 +9348,18 @@ pwasm_checker_check(
     case PWASM_OP_I64_LOAD32_U:
     case PWASM_OP_F32_LOAD:
     case PWASM_OP_F64_LOAD:
+    case PWASM_OP_V128_LOAD:
+    case PWASM_OP_I16X8_LOAD8X8_S:
+    case PWASM_OP_I16X8_LOAD8X8_U:
+    case PWASM_OP_I32X4_LOAD16X4_S:
+    case PWASM_OP_I32X4_LOAD16X4_U:
+    case PWASM_OP_I64X2_LOAD32X2_S:
+    case PWASM_OP_I64X2_LOAD32X2_U:
+    case PWASM_OP_V8X16_LOAD_SPLAT:
+    case PWASM_OP_V16X8_LOAD_SPLAT:
+    case PWASM_OP_V32X4_LOAD_SPLAT:
+    case PWASM_OP_V64X2_LOAD_SPLAT:
+    return PWASM_CHECKER_TYPE_V128;
       if (!pwasm_checker_check_load(checker, mod, in)) {
         return false;
       }
@@ -9104,6 +9374,7 @@ pwasm_checker_check(
     case PWASM_OP_I64_STORE32:
     case PWASM_OP_F32_STORE:
     case PWASM_OP_F64_STORE:
+    case PWASM_OP_V128_STORE:
       if (!pwasm_checker_check_store(checker, mod, in)) {
         return false;
       }
@@ -9474,6 +9745,68 @@ pwasm_checker_check(
     case PWASM_OP_I64_TRUNC_SAT_F64_S:
     case PWASM_OP_I64_TRUNC_SAT_F64_U:
       if (!pwasm_checker_check_cvtop(checker, PWASM_CHECKER_TYPE_I32, PWASM_CHECKER_TYPE_F64)) {
+        return false;
+      }
+
+      break;
+    case PWASM_OP_V128_CONST:
+      // push type
+      if (!pwasm_checker_type_push(checker, PWASM_CHECKER_TYPE_V128)) {
+        return false;
+      }
+
+      break;
+    case PWASM_OP_V8X16_SHUFFLE:
+      // check lane immediate
+      if (!pwasm_checker_check_lane(checker, in)) {
+        return false;
+      }
+
+      if (!pwasm_checker_check_binop(checker, PWASM_CHECKER_TYPE_V128)) {
+        return false;
+      }
+
+      break;
+    case PWASM_OP_V8X16_SWIZZLE:
+      if (!pwasm_checker_check_binop(checker, PWASM_CHECKER_TYPE_V128)) {
+        return false;
+      }
+
+      break;
+    case PWASM_OP_I8X16_SPLAT:
+    case PWASM_OP_I16X8_SPLAT:
+    case PWASM_OP_I32X4_SPLAT:
+    case PWASM_OP_I64X2_SPLAT:
+    case PWASM_OP_F32X4_SPLAT:
+    case PWASM_OP_F64X2_SPLAT:
+      // check splat
+      if (!pwasm_checker_check_splat(checker, in.op)) {
+        return false;
+      }
+
+      break;
+    case PWASM_OP_I8X16_EXTRACT_LANE_S:
+    case PWASM_OP_I8X16_EXTRACT_LANE_U:
+    case PWASM_OP_I16X8_EXTRACT_LANE_S:
+    case PWASM_OP_I16X8_EXTRACT_LANE_U:
+    case PWASM_OP_I32X4_EXTRACT_LANE:
+    case PWASM_OP_I64X2_EXTRACT_LANE:
+    case PWASM_OP_F32X4_EXTRACT_LANE:
+    case PWASM_OP_F64X2_EXTRACT_LANE:
+      // check extract
+      if (!pwasm_checker_check_extract(checker, in)) {
+        return false;
+      }
+
+      break;
+    case PWASM_OP_I8X16_REPLACE_LANE:
+    case PWASM_OP_I16X8_REPLACE_LANE:
+    case PWASM_OP_I32X4_REPLACE_LANE:
+    case PWASM_OP_I64X2_REPLACE_LANE:
+    case PWASM_OP_F32X4_REPLACE_LANE:
+    case PWASM_OP_F64X2_REPLACE_LANE:
+      // check splat
+      if (!pwasm_checker_check_replace(checker, in)) {
         return false;
       }
 
