@@ -9450,6 +9450,34 @@ pwasm_checker_check(
       }
 
       break;
+    case PWASM_OP_I32_TRUNC_SAT_F32_S:
+    case PWASM_OP_I32_TRUNC_SAT_F32_U:
+      if (!pwasm_checker_check_cvtop(checker, PWASM_CHECKER_TYPE_I32, PWASM_CHECKER_TYPE_F32)) {
+        return false;
+      }
+
+      break;
+    case PWASM_OP_I32_TRUNC_SAT_F64_S:
+    case PWASM_OP_I32_TRUNC_SAT_F64_U:
+      if (!pwasm_checker_check_cvtop(checker, PWASM_CHECKER_TYPE_I32, PWASM_CHECKER_TYPE_F64)) {
+        return false;
+      }
+
+      break;
+    case PWASM_OP_I64_TRUNC_SAT_F32_S:
+    case PWASM_OP_I64_TRUNC_SAT_F32_U:
+      if (!pwasm_checker_check_cvtop(checker, PWASM_CHECKER_TYPE_I64, PWASM_CHECKER_TYPE_F32)) {
+        return false;
+      }
+
+      break;
+    case PWASM_OP_I64_TRUNC_SAT_F64_S:
+    case PWASM_OP_I64_TRUNC_SAT_F64_U:
+      if (!pwasm_checker_check_cvtop(checker, PWASM_CHECKER_TYPE_I32, PWASM_CHECKER_TYPE_F64)) {
+        return false;
+      }
+
+      break;
     default:
       // ignore
       break;
