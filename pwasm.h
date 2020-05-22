@@ -198,6 +198,8 @@ const char *pwasm_import_type_get_name(const pwasm_import_type_t);
   PWASM_IMM(I64_CONST, "i64_const") \
   PWASM_IMM(F32_CONST, "f32_const") \
   PWASM_IMM(F64_CONST, "f64_const") \
+  PWASM_IMM(V128_CONST, "v128_const") \
+  PWASM_IMM(LANE_INDEX, "lane_index") \
   PWASM_IMM(LAST, "invalid")
 
 /**
@@ -249,274 +251,368 @@ typedef enum {
  *
  * @ingroup type
  */
-#define PWASM_OP_DEFS \
-  /* 0x00 */ PWASM_OP(UNREACHABLE, "unreachable", NONE) \
-  /* 0x01 */ PWASM_OP(NOP, "nop", NONE) \
-  /* 0x02 */ PWASM_OP(BLOCK, "block", BLOCK) \
-  /* 0x03 */ PWASM_OP(LOOP, "loop", BLOCK) \
-  /* 0x04 */ PWASM_OP(IF, "if", BLOCK) \
-  /* 0x05 */ PWASM_OP(ELSE, "else", NONE) \
-  /* 0x06 */ PWASM_OP_RESERVED(_06, "06") \
-  /* 0x07 */ PWASM_OP_RESERVED(_07, "07") \
-  /* 0x08 */ PWASM_OP_RESERVED(_08, "08") \
-  /* 0x09 */ PWASM_OP_RESERVED(_09, "09") \
-  /* 0x0A */ PWASM_OP_RESERVED(_0A, "0A") \
-  /* 0x0B */ PWASM_OP(END, "end", NONE) \
-  /* 0x0C */ PWASM_OP(BR, "br", INDEX) \
-  /* 0x0D */ PWASM_OP(BR_IF, "br_if", INDEX) \
-  /* 0x0E */ PWASM_OP(BR_TABLE, "br_table", BR_TABLE) \
-  /* 0x0F */ PWASM_OP(RETURN, "return", NONE) \
-  /* 0x10 */ PWASM_OP(CALL, "call", INDEX) \
-  /* 0x11 */ PWASM_OP(CALL_INDIRECT, "call_indirect", CALL_INDIRECT) \
-  /* 0x12 */ PWASM_OP_RESERVED(_12, "12") \
-  /* 0x13 */ PWASM_OP_RESERVED(_13, "13") \
-  /* 0x14 */ PWASM_OP_RESERVED(_14, "14") \
-  /* 0x15 */ PWASM_OP_RESERVED(_15, "15") \
-  /* 0x16 */ PWASM_OP_RESERVED(_16, "16") \
-  /* 0x17 */ PWASM_OP_RESERVED(_17, "17") \
-  /* 0x18 */ PWASM_OP_RESERVED(_18, "18") \
-  /* 0x19 */ PWASM_OP_RESERVED(_19, "19") \
-  /* 0x1A */ PWASM_OP(DROP, "drop", NONE) \
-  /* 0x1B */ PWASM_OP(SELECT, "select", NONE) \
-  /* 0x1C */ PWASM_OP_RESERVED(_1C, "1c") \
-  /* 0x1D */ PWASM_OP_RESERVED(_1D, "1d") \
-  /* 0x1E */ PWASM_OP_RESERVED(_1E, "1e") \
-  /* 0x1F */ PWASM_OP_RESERVED(_1F, "1f") \
-  /* 0x20 */ PWASM_OP(LOCAL_GET, "local.get", INDEX) \
-  /* 0x21 */ PWASM_OP(LOCAL_SET, "local.set", INDEX) \
-  /* 0x22 */ PWASM_OP(LOCAL_TEE, "local.tee", INDEX) \
-  /* 0x23 */ PWASM_OP(GLOBAL_GET, "global.get", INDEX) \
-  /* 0x24 */ PWASM_OP(GLOBAL_SET, "global.set", INDEX) \
-  /* 0x25 */ PWASM_OP_RESERVED(_25, "25") \
-  /* 0x26 */ PWASM_OP_RESERVED(_26, "26") \
-  /* 0x27 */ PWASM_OP_RESERVED(_27, "27") \
-  /* 0x28 */ PWASM_OP(I32_LOAD, "i32.load", MEM) \
-  /* 0x29 */ PWASM_OP(I64_LOAD, "i64.load", MEM) \
-  /* 0x2A */ PWASM_OP(F32_LOAD, "f32.load", MEM) \
-  /* 0x2B */ PWASM_OP(F64_LOAD, "f64.load", MEM) \
-  /* 0x2C */ PWASM_OP(I32_LOAD8_S, "i32.load8_s", MEM) \
-  /* 0x2D */ PWASM_OP(I32_LOAD8_U, "i32.load8_u", MEM) \
-  /* 0x2E */ PWASM_OP(I32_LOAD16_S, "i32.load16_s", MEM) \
-  /* 0x2F */ PWASM_OP(I32_LOAD16_U, "i32.load16_u", MEM) \
-  /* 0x30 */ PWASM_OP(I64_LOAD8_S, "i64.load8_s", MEM) \
-  /* 0x31 */ PWASM_OP(I64_LOAD8_U, "i64.load8_u", MEM) \
-  /* 0x32 */ PWASM_OP(I64_LOAD16_S, "i64.load16_s", MEM) \
-  /* 0x33 */ PWASM_OP(I64_LOAD16_U, "i64.load16_u", MEM) \
-  /* 0x34 */ PWASM_OP(I64_LOAD32_S, "i64.load32_s", MEM) \
-  /* 0x35 */ PWASM_OP(I64_LOAD32_U, "i64.load32_u", MEM) \
-  /* 0x36 */ PWASM_OP(I32_STORE, "i32.store", MEM) \
-  /* 0x37 */ PWASM_OP(I64_STORE, "i64.store", MEM) \
-  /* 0x38 */ PWASM_OP(F32_STORE, "f32.store", MEM) \
-  /* 0x39 */ PWASM_OP(F64_STORE, "f64.store", MEM) \
-  /* 0x3A */ PWASM_OP(I32_STORE8, "i32.store8", MEM) \
-  /* 0x3B */ PWASM_OP(I32_STORE16, "i32.store16", MEM) \
-  /* 0x3C */ PWASM_OP(I64_STORE8, "i64.store8", MEM) \
-  /* 0x3D */ PWASM_OP(I64_STORE16, "i64.store16", MEM) \
-  /* 0x3E */ PWASM_OP(I64_STORE32, "i64.store32", MEM) \
-  /* 0x3F */ PWASM_OP(MEMORY_SIZE, "memory.size", NONE) \
-  /* 0x40 */ PWASM_OP(MEMORY_GROW, "memory.grow", NONE) \
-  /* 0x41 */ PWASM_OP(I32_CONST, "i32.const", I32_CONST) \
-  /* 0x42 */ PWASM_OP(I64_CONST, "i64.const", I64_CONST) \
-  /* 0x43 */ PWASM_OP(F32_CONST, "f32.const", F32_CONST) \
-  /* 0x44 */ PWASM_OP(F64_CONST, "f64.const", F64_CONST) \
-  /* 0x45 */ PWASM_OP(I32_EQZ, "i32.eqz", NONE) \
-  /* 0x46 */ PWASM_OP(I32_EQ, "i32.eq", NONE) \
-  /* 0x47 */ PWASM_OP(I32_NE, "i32.ne", NONE) \
-  /* 0x48 */ PWASM_OP(I32_LT_S, "i32.lt_s", NONE) \
-  /* 0x49 */ PWASM_OP(I32_LT_U, "i32.lt_u", NONE) \
-  /* 0x4A */ PWASM_OP(I32_GT_S, "i32.gt_s", NONE) \
-  /* 0x4B */ PWASM_OP(I32_GT_U, "i32.gt_u", NONE) \
-  /* 0x4C */ PWASM_OP(I32_LE_S, "i32.le_s", NONE) \
-  /* 0x4D */ PWASM_OP(I32_LE_U, "i32.le_u", NONE) \
-  /* 0x4E */ PWASM_OP(I32_GE_S, "i32.ge_s", NONE) \
-  /* 0x4F */ PWASM_OP(I32_GE_U, "i32.ge_u", NONE) \
-  /* 0x50 */ PWASM_OP(I64_EQZ, "i64.eqz", NONE) \
-  /* 0x51 */ PWASM_OP(I64_EQ, "i64.eq", NONE) \
-  /* 0x52 */ PWASM_OP(I64_NE, "i64.ne", NONE) \
-  /* 0x53 */ PWASM_OP(I64_LT_S, "i64.lt_s", NONE) \
-  /* 0x54 */ PWASM_OP(I64_LT_U, "i64.lt_u", NONE) \
-  /* 0x55 */ PWASM_OP(I64_GT_S, "i64.gt_s", NONE) \
-  /* 0x56 */ PWASM_OP(I64_GT_U, "i64.gt_u", NONE) \
-  /* 0x57 */ PWASM_OP(I64_LE_S, "i64.le_s", NONE) \
-  /* 0x58 */ PWASM_OP(I64_LE_U, "i64.le_u", NONE) \
-  /* 0x59 */ PWASM_OP(I64_GE_S, "i64.ge_s", NONE) \
-  /* 0x5A */ PWASM_OP(I64_GE_U, "i64.ge_u", NONE) \
-  /* 0x5B */ PWASM_OP(F32_EQ, "f32.eq", NONE) \
-  /* 0x5C */ PWASM_OP(F32_NE, "f32.ne", NONE) \
-  /* 0x5D */ PWASM_OP(F32_LT, "f32.lt", NONE) \
-  /* 0x5E */ PWASM_OP(F32_GT, "f32.gt", NONE) \
-  /* 0x5F */ PWASM_OP(F32_LE, "f32.le", NONE) \
-  /* 0x60 */ PWASM_OP(F32_GE, "f32.ge", NONE) \
-  /* 0x61 */ PWASM_OP(F64_EQ, "f64.eq", NONE) \
-  /* 0x62 */ PWASM_OP(F64_NE, "f64.ne", NONE) \
-  /* 0x63 */ PWASM_OP(F64_LT, "f64.lt", NONE) \
-  /* 0x64 */ PWASM_OP(F64_GT, "f64.gt", NONE) \
-  /* 0x65 */ PWASM_OP(F64_LE, "f64.le", NONE) \
-  /* 0x66 */ PWASM_OP(F64_GE, "f64.ge", NONE) \
-  /* 0x67 */ PWASM_OP(I32_CLZ, "i32.clz", NONE) \
-  /* 0x68 */ PWASM_OP(I32_CTZ, "i32.ctz", NONE) \
-  /* 0x69 */ PWASM_OP(I32_POPCNT, "i32.popcnt", NONE) \
-  /* 0x6A */ PWASM_OP(I32_ADD, "i32.add", NONE) \
-  /* 0x6B */ PWASM_OP(I32_SUB, "i32.sub", NONE) \
-  /* 0x6C */ PWASM_OP(I32_MUL, "i32.mul", NONE) \
-  /* 0x6D */ PWASM_OP(I32_DIV_S, "i32.div_s", NONE) \
-  /* 0x6E */ PWASM_OP(I32_DIV_U, "i32.div_u", NONE) \
-  /* 0x6F */ PWASM_OP(I32_REM_S, "i32.rem_s", NONE) \
-  /* 0x70 */ PWASM_OP(I32_REM_U, "i32.rem_u", NONE) \
-  /* 0x71 */ PWASM_OP(I32_AND, "i32.and", NONE) \
-  /* 0x72 */ PWASM_OP(I32_OR, "i32.or", NONE) \
-  /* 0x73 */ PWASM_OP(I32_XOR, "i32.xor", NONE) \
-  /* 0x74 */ PWASM_OP(I32_SHL, "i32.shl", NONE) \
-  /* 0x75 */ PWASM_OP(I32_SHR_S, "i32.shr_s", NONE) \
-  /* 0x76 */ PWASM_OP(I32_SHR_U, "i32.shr_u", NONE) \
-  /* 0x77 */ PWASM_OP(I32_ROTL, "i32.rotl", NONE) \
-  /* 0x78 */ PWASM_OP(I32_ROTR, "i32.rotr", NONE) \
-  /* 0x79 */ PWASM_OP(I64_CLZ, "i64.clz", NONE) \
-  /* 0x7A */ PWASM_OP(I64_CTZ, "i64.ctz", NONE) \
-  /* 0x7B */ PWASM_OP(I64_POPCNT, "i64.popcnt", NONE) \
-  /* 0x7C */ PWASM_OP(I64_ADD, "i64.add", NONE) \
-  /* 0x7D */ PWASM_OP(I64_SUB, "i64.sub", NONE) \
-  /* 0x7E */ PWASM_OP(I64_MUL, "i64.mul", NONE) \
-  /* 0x7F */ PWASM_OP(I64_DIV_S, "i64.div_s", NONE) \
-  /* 0x80 */ PWASM_OP(I64_DIV_U, "i64.div_u", NONE) \
-  /* 0x81 */ PWASM_OP(I64_REM_S, "i64.rem_s", NONE) \
-  /* 0x82 */ PWASM_OP(I64_REM_U, "i64.rem_u", NONE) \
-  /* 0x83 */ PWASM_OP(I64_AND, "i64.and", NONE) \
-  /* 0x84 */ PWASM_OP(I64_OR, "i64.or", NONE) \
-  /* 0x85 */ PWASM_OP(I64_XOR, "i64.xor", NONE) \
-  /* 0x86 */ PWASM_OP(I64_SHL, "i64.shl", NONE) \
-  /* 0x87 */ PWASM_OP(I64_SHR_S, "i64.shr_s", NONE) \
-  /* 0x88 */ PWASM_OP(I64_SHR_U, "i64.shr_u", NONE) \
-  /* 0x89 */ PWASM_OP(I64_ROTL, "i64.rotl", NONE) \
-  /* 0x8A */ PWASM_OP(I64_ROTR, "i64.rotr", NONE) \
-  /* 0x8B */ PWASM_OP(F32_ABS, "f32.abs", NONE) \
-  /* 0x8C */ PWASM_OP(F32_NEG, "f32.neg", NONE) \
-  /* 0x8D */ PWASM_OP(F32_CEIL, "f32.ceil", NONE) \
-  /* 0x8E */ PWASM_OP(F32_FLOOR, "f32.floor", NONE) \
-  /* 0x8F */ PWASM_OP(F32_TRUNC, "f32.trunc", NONE) \
-  /* 0x90 */ PWASM_OP(F32_NEAREST, "f32.nearest", NONE) \
-  /* 0x91 */ PWASM_OP(F32_SQRT, "f32.sqrt", NONE) \
-  /* 0x92 */ PWASM_OP(F32_ADD, "f32.add", NONE) \
-  /* 0x93 */ PWASM_OP(F32_SUB, "f32.sub", NONE) \
-  /* 0x94 */ PWASM_OP(F32_MUL, "f32.mul", NONE) \
-  /* 0x95 */ PWASM_OP(F32_DIV, "f32.div", NONE) \
-  /* 0x96 */ PWASM_OP(F32_MIN, "f32.min", NONE) \
-  /* 0x97 */ PWASM_OP(F32_MAX, "f32.max", NONE) \
-  /* 0x98 */ PWASM_OP(F32_COPYSIGN, "f32.copysign", NONE) \
-  /* 0x99 */ PWASM_OP(F64_ABS, "f64.abs", NONE) \
-  /* 0x9A */ PWASM_OP(F64_NEG, "f64.neg", NONE) \
-  /* 0x9B */ PWASM_OP(F64_CEIL, "f64.ceil", NONE) \
-  /* 0x9C */ PWASM_OP(F64_FLOOR, "f64.floor", NONE) \
-  /* 0x9D */ PWASM_OP(F64_TRUNC, "f64.trunc", NONE) \
-  /* 0x9E */ PWASM_OP(F64_NEAREST, "f64.nearest", NONE) \
-  /* 0x9F */ PWASM_OP(F64_SQRT, "f64.sqrt", NONE) \
-  /* 0xA0 */ PWASM_OP(F64_ADD, "f64.add", NONE) \
-  /* 0xA1 */ PWASM_OP(F64_SUB, "f64.sub", NONE) \
-  /* 0xA2 */ PWASM_OP(F64_MUL, "f64.mul", NONE) \
-  /* 0xA3 */ PWASM_OP(F64_DIV, "f64.div", NONE) \
-  /* 0xA4 */ PWASM_OP(F64_MIN, "f64.min", NONE) \
-  /* 0xA5 */ PWASM_OP(F64_MAX, "f64.max", NONE) \
-  /* 0xA6 */ PWASM_OP(F64_COPYSIGN, "f64.copysign", NONE) \
-  /* 0xA7 */ PWASM_OP(I32_WRAP_I64, "i32.wrap_i64", NONE) \
-  /* 0xA8 */ PWASM_OP(I32_TRUNC_F32_S, "i32.trunc_f32_s", NONE) \
-  /* 0xA9 */ PWASM_OP(I32_TRUNC_F32_U, "i32.trunc_f32_u", NONE) \
-  /* 0xAA */ PWASM_OP(I32_TRUNC_F64_S, "i32.trunc_f64_s", NONE) \
-  /* 0xAB */ PWASM_OP(I32_TRUNC_F64_U, "i32.trunc_f64_u", NONE) \
-  /* 0xAC */ PWASM_OP(I64_EXTEND_I32_S, "i64.extend_i32_s", NONE) \
-  /* 0xAD */ PWASM_OP(I64_EXTEND_I32_U, "i64.extend_i32_u", NONE) \
-  /* 0xAE */ PWASM_OP(I64_TRUNC_F32_S, "i64.trunc_f32_s", NONE) \
-  /* 0xAF */ PWASM_OP(I64_TRUNC_F32_U, "i64.trunc_f32_u", NONE) \
-  /* 0xB0 */ PWASM_OP(I64_TRUNC_F64_S, "i64.trunc_f64_s", NONE) \
-  /* 0xB1 */ PWASM_OP(I64_TRUNC_F64_U, "i64.trunc_f64_u", NONE) \
-  /* 0xB2 */ PWASM_OP(F32_CONVERT_I32_S, "f32.convert_i32_s", NONE) \
-  /* 0xB3 */ PWASM_OP(F32_CONVERT_I32_U, "f32.convert_i32_u", NONE) \
-  /* 0xB4 */ PWASM_OP(F32_CONVERT_I64_S, "f32.convert_i64_s", NONE) \
-  /* 0xB5 */ PWASM_OP(F32_CONVERT_I64_U, "f32.convert_i64_u", NONE) \
-  /* 0xB6 */ PWASM_OP(F32_DEMOTE_F64, "f32.demote_f64", NONE) \
-  /* 0xB7 */ PWASM_OP(F64_CONVERT_I32_S, "f64.convert_i32_s", NONE) \
-  /* 0xB8 */ PWASM_OP(F64_CONVERT_I32_U, "f64.convert_i32_u", NONE) \
-  /* 0xB9 */ PWASM_OP(F64_CONVERT_I64_S, "f64.convert_i64_s", NONE) \
-  /* 0xBA */ PWASM_OP(F64_CONVERT_I64_U, "f64.convert_i64_u", NONE) \
-  /* 0xBB */ PWASM_OP(F64_PROMOTE_F32, "f64.promote_f32", NONE) \
-  /* 0xBC */ PWASM_OP(I32_REINTERPRET_F32, "i32.reinterpret_f32", NONE) \
-  /* 0xBD */ PWASM_OP(I64_REINTERPRET_F64, "i64.reinterpret_f64", NONE) \
-  /* 0xBE */ PWASM_OP(F32_REINTERPRET_I32, "f32.reinterpret_i32", NONE) \
-  /* 0xBF */ PWASM_OP(F64_REINTERPRET_I64, "f64.reinterpret_i64", NONE) \
-  /* 0xC0 */ PWASM_OP(I32_EXTEND8_S, "i32.extend8_s", NONE) \
-  /* 0xC1 */ PWASM_OP(I32_EXTEND16_S, "i32.extend16_s", NONE) \
-  /* 0xC2 */ PWASM_OP(I64_EXTEND8_S, "i64.extend8_s", NONE) \
-  /* 0xC3 */ PWASM_OP(I64_EXTEND16_S, "i64.extend16_s", NONE) \
-  /* 0xC4 */ PWASM_OP(I64_EXTEND32_S, "i64.extend32_s", NONE) \
-  /* 0xC5 */ PWASM_OP_RESERVED(_C5, "c5") \
-  /* 0xC6 */ PWASM_OP_RESERVED(_C6, "c6") \
-  /* 0xC7 */ PWASM_OP_RESERVED(_C7, "c7") \
-  /* 0xC8 */ PWASM_OP_RESERVED(_C8, "c8") \
-  /* 0xC9 */ PWASM_OP_RESERVED(_C9, "c9") \
-  /* 0xCA */ PWASM_OP_RESERVED(_CA, "ca") \
-  /* 0xCB */ PWASM_OP_RESERVED(_CB, "cb") \
-  /* 0xCC */ PWASM_OP_RESERVED(_CC, "cc") \
-  /* 0xCD */ PWASM_OP_RESERVED(_CD, "cd") \
-  /* 0xCE */ PWASM_OP_RESERVED(_CE, "ce") \
-  /* 0xCF */ PWASM_OP_RESERVED(_CF, "cf") \
-  /* 0xD0 */ PWASM_OP_RESERVED(_D0, "d0") \
-  /* 0xD1 */ PWASM_OP_RESERVED(_D1, "d1") \
-  /* 0xD2 */ PWASM_OP_RESERVED(_D2, "d2") \
-  /* 0xD3 */ PWASM_OP_RESERVED(_D3, "d3") \
-  /* 0xD4 */ PWASM_OP_RESERVED(_D4, "d4") \
-  /* 0xD5 */ PWASM_OP_RESERVED(_D5, "d5") \
-  /* 0xD6 */ PWASM_OP_RESERVED(_D6, "d6") \
-  /* 0xD7 */ PWASM_OP_RESERVED(_D7, "d7") \
-  /* 0xD8 */ PWASM_OP_RESERVED(_D8, "d8") \
-  /* 0xD9 */ PWASM_OP_RESERVED(_D9, "d9") \
-  /* 0xDA */ PWASM_OP_RESERVED(_DA, "da") \
-  /* 0xDB */ PWASM_OP_RESERVED(_DB, "db") \
-  /* 0xDC */ PWASM_OP_RESERVED(_DC, "dc") \
-  /* 0xDD */ PWASM_OP_RESERVED(_DD, "dd") \
-  /* 0xDE */ PWASM_OP_RESERVED(_DE, "de") \
-  /* 0xDF */ PWASM_OP_RESERVED(_DF, "df") \
-  /* 0xE0 */ PWASM_OP_RESERVED(_E0, "e0") \
-  /* 0xE1 */ PWASM_OP_RESERVED(_E1, "e1") \
-  /* 0xE2 */ PWASM_OP_RESERVED(_E2, "e2") \
-  /* 0xE3 */ PWASM_OP_RESERVED(_E3, "e3") \
-  /* 0xE4 */ PWASM_OP_RESERVED(_E4, "e4") \
-  /* 0xE5 */ PWASM_OP_RESERVED(_E5, "e5") \
-  /* 0xE6 */ PWASM_OP_RESERVED(_E6, "e6") \
-  /* 0xE7 */ PWASM_OP_RESERVED(_E7, "e7") \
-  /* 0xE8 */ PWASM_OP_RESERVED(_E8, "e8") \
-  /* 0xE9 */ PWASM_OP_RESERVED(_E9, "e9") \
-  /* 0xEA */ PWASM_OP_RESERVED(_EA, "ea") \
-  /* 0xEB */ PWASM_OP_RESERVED(_EB, "eb") \
-  /* 0xEC */ PWASM_OP_RESERVED(_EC, "ec") \
-  /* 0xED */ PWASM_OP_RESERVED(_ED, "ed") \
-  /* 0xEE */ PWASM_OP_RESERVED(_EE, "ee") \
-  /* 0xEF */ PWASM_OP_RESERVED(_EF, "ef") \
-  /* 0xF0 */ PWASM_OP_RESERVED(_F0, "f0") \
-  /* 0xF1 */ PWASM_OP_RESERVED(_F1, "f1") \
-  /* 0xF2 */ PWASM_OP_RESERVED(_F2, "f2") \
-  /* 0xF3 */ PWASM_OP_RESERVED(_F3, "f3") \
-  /* 0xF4 */ PWASM_OP_RESERVED(_F4, "f4") \
-  /* 0xF5 */ PWASM_OP_RESERVED(_F5, "f5") \
-  /* 0xF6 */ PWASM_OP_RESERVED(_F6, "f6") \
-  /* 0xF7 */ PWASM_OP_RESERVED(_F7, "f7") \
-  /* 0xF8 */ PWASM_OP_RESERVED(_F8, "f8") \
-  /* 0xF9 */ PWASM_OP_RESERVED(_F9, "f9") \
-  /* 0xFA */ PWASM_OP_RESERVED(_FA, "fa") \
-  /* 0xFB */ PWASM_OP_RESERVED(_FB, "fb") \
-  /* 0xFC */ PWASM_OP_RESERVED(_FC, "fc") \
-  /* 0xFD */ PWASM_OP_RESERVED(_FD, "fd") \
-  /* 0xFE */ PWASM_OP_RESERVED(_FE, "fe") \
-  /* 0xFF */ PWASM_OP_RESERVED(_FF, "ff")
-
-/**
- * Opcode
- * @ingroup type
- */
 typedef enum {
-#define PWASM_OP(a, b, c) PWASM_OP_ ## a,
-#define PWASM_OP_RESERVED(a, b) PWASM_OP_RESERVED ## a,
-PWASM_OP_DEFS
-#undef PWASM_OP
-#undef PWASM_OP_RESERVED
+  PWASM_OP_UNREACHABLE, /**< unreachable */
+  PWASM_OP_NOP, /**< nop */
+  PWASM_OP_BLOCK, /**< block */
+  PWASM_OP_LOOP, /**< loop */
+  PWASM_OP_IF, /**< if */
+  PWASM_OP_ELSE, /**< else */
+  PWASM_OP_END, /**< end */
+  PWASM_OP_BR, /**< br */
+  PWASM_OP_BR_IF, /**< br_if */
+  PWASM_OP_BR_TABLE, /**< br_table */
+  PWASM_OP_RETURN, /**< return */
+  PWASM_OP_CALL, /**< call */
+  PWASM_OP_CALL_INDIRECT, /**< call_indirect */
+  PWASM_OP_DROP, /**< drop */
+  PWASM_OP_SELECT, /**< select */
+  PWASM_OP_LOCAL_GET, /**< local.get */
+  PWASM_OP_LOCAL_SET, /**< local.set */
+  PWASM_OP_LOCAL_TEE, /**< local.tee */
+  PWASM_OP_GLOBAL_GET, /**< global.get */
+  PWASM_OP_GLOBAL_SET, /**< global.set */
+  PWASM_OP_I32_LOAD, /**< i32.load */
+  PWASM_OP_I64_LOAD, /**< i64.load */
+  PWASM_OP_F32_LOAD, /**< f32.load */
+  PWASM_OP_F64_LOAD, /**< f64.load */
+  PWASM_OP_I32_LOAD8_S, /**< i32.load8_s */
+  PWASM_OP_I32_LOAD8_U, /**< i32.load8_u */
+  PWASM_OP_I32_LOAD16_S, /**< i32.load16_s */
+  PWASM_OP_I32_LOAD16_U, /**< i32.load16_u */
+  PWASM_OP_I64_LOAD8_S, /**< i64.load8_s */
+  PWASM_OP_I64_LOAD8_U, /**< i64.load8_u */
+  PWASM_OP_I64_LOAD16_S, /**< i64.load16_s */
+  PWASM_OP_I64_LOAD16_U, /**< i64.load16_u */
+  PWASM_OP_I64_LOAD32_S, /**< i64.load32_s */
+  PWASM_OP_I64_LOAD32_U, /**< i64.load32_u */
+  PWASM_OP_I32_STORE, /**< i32.store */
+  PWASM_OP_I64_STORE, /**< i64.store */
+  PWASM_OP_F32_STORE, /**< f32.store */
+  PWASM_OP_F64_STORE, /**< f64.store */
+  PWASM_OP_I32_STORE8, /**< i32.store8 */
+  PWASM_OP_I32_STORE16, /**< i32.store16 */
+  PWASM_OP_I64_STORE8, /**< i64.store8 */
+  PWASM_OP_I64_STORE16, /**< i64.store16 */
+  PWASM_OP_I64_STORE32, /**< i64.store32 */
+  PWASM_OP_MEMORY_SIZE, /**< memory.size */
+  PWASM_OP_MEMORY_GROW, /**< memory.grow */
+  PWASM_OP_I32_CONST, /**< i32.const */
+  PWASM_OP_I64_CONST, /**< i64.const */
+  PWASM_OP_F32_CONST, /**< f32.const */
+  PWASM_OP_F64_CONST, /**< f64.const */
+  PWASM_OP_I32_EQZ, /**< i32.eqz */
+  PWASM_OP_I32_EQ, /**< i32.eq */
+  PWASM_OP_I32_NE, /**< i32.ne */
+  PWASM_OP_I32_LT_S, /**< i32.lt_s */
+  PWASM_OP_I32_LT_U, /**< i32.lt_u */
+  PWASM_OP_I32_GT_S, /**< i32.gt_s */
+  PWASM_OP_I32_GT_U, /**< i32.gt_u */
+  PWASM_OP_I32_LE_S, /**< i32.le_s */
+  PWASM_OP_I32_LE_U, /**< i32.le_u */
+  PWASM_OP_I32_GE_S, /**< i32.ge_s */
+  PWASM_OP_I32_GE_U, /**< i32.ge_u */
+  PWASM_OP_I64_EQZ, /**< i64.eqz */
+  PWASM_OP_I64_EQ, /**< i64.eq */
+  PWASM_OP_I64_NE, /**< i64.ne */
+  PWASM_OP_I64_LT_S, /**< i64.lt_s */
+  PWASM_OP_I64_LT_U, /**< i64.lt_u */
+  PWASM_OP_I64_GT_S, /**< i64.gt_s */
+  PWASM_OP_I64_GT_U, /**< i64.gt_u */
+  PWASM_OP_I64_LE_S, /**< i64.le_s */
+  PWASM_OP_I64_LE_U, /**< i64.le_u */
+  PWASM_OP_I64_GE_S, /**< i64.ge_s */
+  PWASM_OP_I64_GE_U, /**< i64.ge_u */
+  PWASM_OP_F32_EQ, /**< f32.eq */
+  PWASM_OP_F32_NE, /**< f32.ne */
+  PWASM_OP_F32_LT, /**< f32.lt */
+  PWASM_OP_F32_GT, /**< f32.gt */
+  PWASM_OP_F32_LE, /**< f32.le */
+  PWASM_OP_F32_GE, /**< f32.ge */
+  PWASM_OP_F64_EQ, /**< f64.eq */
+  PWASM_OP_F64_NE, /**< f64.ne */
+  PWASM_OP_F64_LT, /**< f64.lt */
+  PWASM_OP_F64_GT, /**< f64.gt */
+  PWASM_OP_F64_LE, /**< f64.le */
+  PWASM_OP_F64_GE, /**< f64.ge */
+  PWASM_OP_I32_CLZ, /**< i32.clz */
+  PWASM_OP_I32_CTZ, /**< i32.ctz */
+  PWASM_OP_I32_POPCNT, /**< i32.popcnt */
+  PWASM_OP_I32_ADD, /**< i32.add */
+  PWASM_OP_I32_SUB, /**< i32.sub */
+  PWASM_OP_I32_MUL, /**< i32.mul */
+  PWASM_OP_I32_DIV_S, /**< i32.div_s */
+  PWASM_OP_I32_DIV_U, /**< i32.div_u */
+  PWASM_OP_I32_REM_S, /**< i32.rem_s */
+  PWASM_OP_I32_REM_U, /**< i32.rem_u */
+  PWASM_OP_I32_AND, /**< i32.and */
+  PWASM_OP_I32_OR, /**< i32.or */
+  PWASM_OP_I32_XOR, /**< i32.xor */
+  PWASM_OP_I32_SHL, /**< i32.shl */
+  PWASM_OP_I32_SHR_S, /**< i32.shr_s */
+  PWASM_OP_I32_SHR_U, /**< i32.shr_u */
+  PWASM_OP_I32_ROTL, /**< i32.rotl */
+  PWASM_OP_I32_ROTR, /**< i32.rotr */
+  PWASM_OP_I64_CLZ, /**< i64.clz */
+  PWASM_OP_I64_CTZ, /**< i64.ctz */
+  PWASM_OP_I64_POPCNT, /**< i64.popcnt */
+  PWASM_OP_I64_ADD, /**< i64.add */
+  PWASM_OP_I64_SUB, /**< i64.sub */
+  PWASM_OP_I64_MUL, /**< i64.mul */
+  PWASM_OP_I64_DIV_S, /**< i64.div_s */
+  PWASM_OP_I64_DIV_U, /**< i64.div_u */
+  PWASM_OP_I64_REM_S, /**< i64.rem_s */
+  PWASM_OP_I64_REM_U, /**< i64.rem_u */
+  PWASM_OP_I64_AND, /**< i64.and */
+  PWASM_OP_I64_OR, /**< i64.or */
+  PWASM_OP_I64_XOR, /**< i64.xor */
+  PWASM_OP_I64_SHL, /**< i64.shl */
+  PWASM_OP_I64_SHR_S, /**< i64.shr_s */
+  PWASM_OP_I64_SHR_U, /**< i64.shr_u */
+  PWASM_OP_I64_ROTL, /**< i64.rotl */
+  PWASM_OP_I64_ROTR, /**< i64.rotr */
+  PWASM_OP_F32_ABS, /**< f32.abs */
+  PWASM_OP_F32_NEG, /**< f32.neg */
+  PWASM_OP_F32_CEIL, /**< f32.ceil */
+  PWASM_OP_F32_FLOOR, /**< f32.floor */
+  PWASM_OP_F32_TRUNC, /**< f32.trunc */
+  PWASM_OP_F32_NEAREST, /**< f32.nearest */
+  PWASM_OP_F32_SQRT, /**< f32.sqrt */
+  PWASM_OP_F32_ADD, /**< f32.add */
+  PWASM_OP_F32_SUB, /**< f32.sub */
+  PWASM_OP_F32_MUL, /**< f32.mul */
+  PWASM_OP_F32_DIV, /**< f32.div */
+  PWASM_OP_F32_MIN, /**< f32.min */
+  PWASM_OP_F32_MAX, /**< f32.max */
+  PWASM_OP_F32_COPYSIGN, /**< f32.copysign */
+  PWASM_OP_F64_ABS, /**< f64.abs */
+  PWASM_OP_F64_NEG, /**< f64.neg */
+  PWASM_OP_F64_CEIL, /**< f64.ceil */
+  PWASM_OP_F64_FLOOR, /**< f64.floor */
+  PWASM_OP_F64_TRUNC, /**< f64.trunc */
+  PWASM_OP_F64_NEAREST, /**< f64.nearest */
+  PWASM_OP_F64_SQRT, /**< f64.sqrt */
+  PWASM_OP_F64_ADD, /**< f64.add */
+  PWASM_OP_F64_SUB, /**< f64.sub */
+  PWASM_OP_F64_MUL, /**< f64.mul */
+  PWASM_OP_F64_DIV, /**< f64.div */
+  PWASM_OP_F64_MIN, /**< f64.min */
+  PWASM_OP_F64_MAX, /**< f64.max */
+  PWASM_OP_F64_COPYSIGN, /**< f64.copysign */
+  PWASM_OP_I32_WRAP_I64, /**< i32.wrap_i64 */
+  PWASM_OP_I32_TRUNC_F32_S, /**< i32.trunc_f32_s */
+  PWASM_OP_I32_TRUNC_F32_U, /**< i32.trunc_f32_u */
+  PWASM_OP_I32_TRUNC_F64_S, /**< i32.trunc_f64_s */
+  PWASM_OP_I32_TRUNC_F64_U, /**< i32.trunc_f64_u */
+  PWASM_OP_I64_EXTEND_I32_S, /**< i64.extend_i32_s */
+  PWASM_OP_I64_EXTEND_I32_U, /**< i64.extend_i32_u */
+  PWASM_OP_I64_TRUNC_F32_S, /**< i64.trunc_f32_s */
+  PWASM_OP_I64_TRUNC_F32_U, /**< i64.trunc_f32_u */
+  PWASM_OP_I64_TRUNC_F64_S, /**< i64.trunc_f64_s */
+  PWASM_OP_I64_TRUNC_F64_U, /**< i64.trunc_f64_u */
+  PWASM_OP_F32_CONVERT_I32_S, /**< f32.convert_i32_s */
+  PWASM_OP_F32_CONVERT_I32_U, /**< f32.convert_i32_u */
+  PWASM_OP_F32_CONVERT_I64_S, /**< f32.convert_i64_s */
+  PWASM_OP_F32_CONVERT_I64_U, /**< f32.convert_i64_u */
+  PWASM_OP_F32_DEMOTE_F64, /**< f32.demote_f64 */
+  PWASM_OP_F64_CONVERT_I32_S, /**< f64.convert_i32_s */
+  PWASM_OP_F64_CONVERT_I32_U, /**< f64.convert_i32_u */
+  PWASM_OP_F64_CONVERT_I64_S, /**< f64.convert_i64_s */
+  PWASM_OP_F64_CONVERT_I64_U, /**< f64.convert_i64_u */
+  PWASM_OP_F64_PROMOTE_F32, /**< f64.promote_f32 */
+  PWASM_OP_I32_REINTERPRET_F32, /**< i32.reinterpret_f32 */
+  PWASM_OP_I64_REINTERPRET_F64, /**< i64.reinterpret_f64 */
+  PWASM_OP_F32_REINTERPRET_I32, /**< f32.reinterpret_i32 */
+  PWASM_OP_F64_REINTERPRET_I64, /**< f64.reinterpret_i64 */
+  PWASM_OP_I32_EXTEND8_S, /**< i32.extend8_s */
+  PWASM_OP_I32_EXTEND16_S, /**< i32.extend16_s */
+  PWASM_OP_I64_EXTEND8_S, /**< i64.extend8_s */
+  PWASM_OP_I64_EXTEND16_S, /**< i64.extend16_s */
+  PWASM_OP_I64_EXTEND32_S, /**< i64.extend32_s */
+  PWASM_OP_I32_TRUNC_SAT_F32_S, /**< i32.trunc_sat_f32_s */
+  PWASM_OP_I32_TRUNC_SAT_F32_U, /**< i32.trunc_sat_f32_u */
+  PWASM_OP_I32_TRUNC_SAT_F64_S, /**< i32.trunc_sat_f64_s */
+  PWASM_OP_I32_TRUNC_SAT_F64_U, /**< i32.trunc_sat_f64_u */
+  PWASM_OP_I64_TRUNC_SAT_F32_S, /**< i64.trunc_sat_f32_s */
+  PWASM_OP_I64_TRUNC_SAT_F32_U, /**< i64.trunc_sat_f32_u */
+  PWASM_OP_I64_TRUNC_SAT_F64_S, /**< i64.trunc_sat_f64_s */
+  PWASM_OP_I64_TRUNC_SAT_F64_U, /**< i64.trunc_sat_f64_u */
+  PWASM_OP_V128_LOAD, /**< v128.load */
+  PWASM_OP_V128_STORE, /**< v128.store */
+  PWASM_OP_V128_CONST, /**< v128.const */
+  PWASM_OP_I8X16_SPLAT, /**< i8x16.splat */
+  PWASM_OP_I8X16_EXTRACT_LANE_S, /**< i8x16.extract_lane_s */
+  PWASM_OP_I8X16_EXTRACT_LANE_U, /**< i8x16.extract_lane_u */
+  PWASM_OP_I8X16_REPLACE_LANE, /**< i8x16.replace_lane */
+  PWASM_OP_I16X8_SPLAT, /**< i16x8.splat */
+  PWASM_OP_I16X8_EXTRACT_LANE_S, /**< i16x8.extract_lane_s */
+  PWASM_OP_I16X8_EXTRACT_LANE_U, /**< i16x8.extract_lane_u */
+  PWASM_OP_I16X8_REPLACE_LANE, /**< i16x8.replace_lane */
+  PWASM_OP_I32X4_SPLAT, /**< i32x4.splat */
+  PWASM_OP_I32X4_EXTRACT_LANE, /**< i32x4.extract_lane */
+  PWASM_OP_I32X4_REPLACE_LANE, /**< i32x4.replace_lane */
+  PWASM_OP_I64X2_SPLAT, /**< i64x2.splat */
+  PWASM_OP_I64X2_EXTRACT_LANE, /**< i64x2.extract_lane */
+  PWASM_OP_I64X2_REPLACE_LANE, /**< i64x2.replace_lane */
+  PWASM_OP_F32X4_SPLAT, /**< f32x4.splat */
+  PWASM_OP_F32X4_EXTRACT_LANE, /**< f32x4.extract_lane */
+  PWASM_OP_F32X4_REPLACE_LANE, /**< f32x4.replace_lane */
+  PWASM_OP_F64X2_SPLAT, /**< f64x2.splat */
+  PWASM_OP_F64X2_EXTRACT_LANE, /**< f64x2.extract_lane */
+  PWASM_OP_F64X2_REPLACE_LANE, /**< f64x2.replace_lane */
+  PWASM_OP_I8X16_EQ, /**< i8x16.eq */
+  PWASM_OP_I8X16_NE, /**< i8x16.ne */
+  PWASM_OP_I8X16_LT_S, /**< i8x16.lt_s */
+  PWASM_OP_I8X16_LT_U, /**< i8x16.lt_u */
+  PWASM_OP_I8X16_GT_S, /**< i8x16.gt_s */
+  PWASM_OP_I8X16_GT_U, /**< i8x16.gt_u */
+  PWASM_OP_I8X16_LE_S, /**< i8x16.le_s */
+  PWASM_OP_I8X16_LE_U, /**< i8x16.le_u */
+  PWASM_OP_I8X16_GE_S, /**< i8x16.ge_s */
+  PWASM_OP_I8X16_GE_U, /**< i8x16.ge_u */
+  PWASM_OP_I16X8_EQ, /**< i16x8.eq */
+  PWASM_OP_I16X8_NE, /**< i16x8.ne */
+  PWASM_OP_I16X8_LT_S, /**< i16x8.lt_s */
+  PWASM_OP_I16X8_LT_U, /**< i16x8.lt_u */
+  PWASM_OP_I16X8_GT_S, /**< i16x8.gt_s */
+  PWASM_OP_I16X8_GT_U, /**< i16x8.gt_u */
+  PWASM_OP_I16X8_LE_S, /**< i16x8.le_s */
+  PWASM_OP_I16X8_LE_U, /**< i16x8.le_u */
+  PWASM_OP_I16X8_GE_S, /**< i16x8.ge_s */
+  PWASM_OP_I16X8_GE_U, /**< i16x8.ge_u */
+  PWASM_OP_I32X4_EQ, /**< i32x4.eq */
+  PWASM_OP_I32X4_NE, /**< i32x4.ne */
+  PWASM_OP_I32X4_LT_S, /**< i32x4.lt_s */
+  PWASM_OP_I32X4_LT_U, /**< i32x4.lt_u */
+  PWASM_OP_I32X4_GT_S, /**< i32x4.gt_s */
+  PWASM_OP_I32X4_GT_U, /**< i32x4.gt_u */
+  PWASM_OP_I32X4_LE_S, /**< i32x4.le_s */
+  PWASM_OP_I32X4_LE_U, /**< i32x4.le_u */
+  PWASM_OP_I32X4_GE_S, /**< i32x4.ge_s */
+  PWASM_OP_I32X4_GE_U, /**< i32x4.ge_u */
+  PWASM_OP_F32X4_EQ, /**< f32x4.eq */
+  PWASM_OP_F32X4_NE, /**< f32x4.ne */
+  PWASM_OP_F32X4_LT, /**< f32x4.lt */
+  PWASM_OP_F32X4_GT, /**< f32x4.gt */
+  PWASM_OP_F32X4_LE, /**< f32x4.le */
+  PWASM_OP_F32X4_GE, /**< f32x4.ge */
+  PWASM_OP_F64X2_EQ, /**< f64x2.eq */
+  PWASM_OP_F64X2_NE, /**< f64x2.ne */
+  PWASM_OP_F64X2_LT, /**< f64x2.lt */
+  PWASM_OP_F64X2_GT, /**< f64x2.gt */
+  PWASM_OP_F64X2_LE, /**< f64x2.le */
+  PWASM_OP_F64X2_GE, /**< f64x2.ge */
+  PWASM_OP_V128_NOT, /**< v128.not */
+  PWASM_OP_V128_AND, /**< v128.and */
+  PWASM_OP_V128_OR, /**< v128.or */
+  PWASM_OP_V128_XOR, /**< v128.xor */
+  PWASM_OP_V128_BITSELECT, /**< v128.bitselect */
+  PWASM_OP_I8X16_NEG, /**< i8x16.neg */
+  PWASM_OP_I8X16_ANY_TRUE, /**< i8x16.any_true */
+  PWASM_OP_I8X16_ALL_TRUE, /**< i8x16.all_true */
+  PWASM_OP_I8X16_SHL, /**< i8x16.shl */
+  PWASM_OP_I8X16_SHR_S, /**< i8x16.shr_s */
+  PWASM_OP_I8X16_SHR_U, /**< i8x16.shr_u */
+  PWASM_OP_I8X16_ADD, /**< i8x16.add */
+  PWASM_OP_I8X16_ADD_SATURATE_S, /**< i8x16.add_saturate_s */
+  PWASM_OP_I8X16_ADD_SATURATE_U, /**< i8x16.add_saturate_u */
+  PWASM_OP_I8X16_SUB, /**< i8x16.sub */
+  PWASM_OP_I8X16_SUB_SATURATE_S, /**< i8x16.sub_saturate_s */
+  PWASM_OP_I8X16_SUB_SATURATE_U, /**< i8x16.sub_saturate_u */
+  PWASM_OP_I8X16_MIN_S, /**< i8x16.min_s */
+  PWASM_OP_I8X16_MIN_U, /**< i8x16.min_u */
+  PWASM_OP_I8X16_MAX_S, /**< i8x16.max_s */
+  PWASM_OP_I8X16_MAX_U, /**< i8x16.max_u */
+  PWASM_OP_I16X8_NEG, /**< i16x8.neg */
+  PWASM_OP_I16X8_ANY_TRUE, /**< i16x8.any_true */
+  PWASM_OP_I16X8_ALL_TRUE, /**< i16x8.all_true */
+  PWASM_OP_I16X8_SHL, /**< i16x8.shl */
+  PWASM_OP_I16X8_SHR_S, /**< i16x8.shr_s */
+  PWASM_OP_I16X8_SHR_U, /**< i16x8.shr_u */
+  PWASM_OP_I16X8_ADD, /**< i16x8.add */
+  PWASM_OP_I16X8_ADD_SATURATE_S, /**< i16x8.add_saturate_s */
+  PWASM_OP_I16X8_ADD_SATURATE_U, /**< i16x8.add_saturate_u */
+  PWASM_OP_I16X8_SUB, /**< i16x8.sub */
+  PWASM_OP_I16X8_SUB_SATURATE_S, /**< i16x8.sub_saturate_s */
+  PWASM_OP_I16X8_SUB_SATURATE_U, /**< i16x8.sub_saturate_u */
+  PWASM_OP_I16X8_MUL, /**< i16x8.mul */
+  PWASM_OP_I16X8_MIN_S, /**< i16x8.min_s */
+  PWASM_OP_I16X8_MIN_U, /**< i16x8.min_u */
+  PWASM_OP_I16X8_MAX_S, /**< i16x8.max_s */
+  PWASM_OP_I16X8_MAX_U, /**< i16x8.max_u */
+  PWASM_OP_I32X4_NEG, /**< i32x4.neg */
+  PWASM_OP_I32X4_ANY_TRUE, /**< i32x4.any_true */
+  PWASM_OP_I32X4_ALL_TRUE, /**< i32x4.all_true */
+  PWASM_OP_I32X4_SHL, /**< i32x4.shl */
+  PWASM_OP_I32X4_SHR_S, /**< i32x4.shr_s */
+  PWASM_OP_I32X4_SHR_U, /**< i32x4.shr_u */
+  PWASM_OP_I32X4_ADD, /**< i32x4.add */
+  PWASM_OP_I32X4_SUB, /**< i32x4.sub */
+  PWASM_OP_I32X4_MUL, /**< i32x4.mul */
+  PWASM_OP_I32X4_MIN_S, /**< i32x4.min_s */
+  PWASM_OP_I32X4_MIN_U, /**< i32x4.min_u */
+  PWASM_OP_I32X4_MAX_S, /**< i32x4.max_s */
+  PWASM_OP_I32X4_MAX_U, /**< i32x4.max_u */
+  PWASM_OP_I64X2_NEG, /**< i64x2.neg */
+  PWASM_OP_I64X2_SHL, /**< i64x2.shl */
+  PWASM_OP_I64X2_SHR_S, /**< i64x2.shr_s */
+  PWASM_OP_I64X2_SHR_U, /**< i64x2.shr_u */
+  PWASM_OP_I64X2_ADD, /**< i64x2.add */
+  PWASM_OP_I64X2_SUB, /**< i64x2.sub */
+  PWASM_OP_I64X2_MUL, /**< i64x2.mul */
+  PWASM_OP_F32X4_ABS, /**< f32x4.abs */
+  PWASM_OP_F32X4_NEG, /**< f32x4.neg */
+  PWASM_OP_F32X4_SQRT, /**< f32x4.sqrt */
+  PWASM_OP_F32X4_ADD, /**< f32x4.add */
+  PWASM_OP_F32X4_SUB, /**< f32x4.sub */
+  PWASM_OP_F32X4_MUL, /**< f32x4.mul */
+  PWASM_OP_F32X4_DIV, /**< f32x4.div */
+  PWASM_OP_F32X4_MIN, /**< f32x4.min */
+  PWASM_OP_F32X4_MAX, /**< f32x4.max */
+  PWASM_OP_F64X2_ABS, /**< f64x2.abs */
+  PWASM_OP_F64X2_NEG, /**< f64x2.neg */
+  PWASM_OP_F64X2_SQRT, /**< f64x2.sqrt */
+  PWASM_OP_F64X2_ADD, /**< f64x2.add */
+  PWASM_OP_F64X2_SUB, /**< f64x2.sub */
+  PWASM_OP_F64X2_MUL, /**< f64x2.mul */
+  PWASM_OP_F64X2_DIV, /**< f64x2.div */
+  PWASM_OP_F64X2_MIN, /**< f64x2.min */
+  PWASM_OP_F64X2_MAX, /**< f64x2.max */
+  PWASM_OP_I32X4_TRUNC_SAT_F32X4_S, /**< i32x4.trunc_sat_f32x4_s */
+  PWASM_OP_I32X4_TRUNC_SAT_F32X4_U, /**< i32x4.trunc_sat_f32x4_u */
+  PWASM_OP_F32X4_CONVERT_I32X4_S, /**< f32x4.convert_i32x4_s */
+  PWASM_OP_F32X4_CONVERT_I32X4_U, /**< f32x4.convert_i32x4_u */
+  PWASM_OP_V8X16_SWIZZLE, /**< v8x16.swizzle */
+  PWASM_OP_V8X16_SHUFFLE, /**< v8x16.shuffle */
+  PWASM_OP_V8X16_LOAD_SPLAT, /**< v8x16.load_splat */
+  PWASM_OP_V16X8_LOAD_SPLAT, /**< v16x8.load_splat */
+  PWASM_OP_V32X4_LOAD_SPLAT, /**< v32x4.load_splat */
+  PWASM_OP_V64X2_LOAD_SPLAT, /**< v64x2.load_splat */
+  PWASM_OP_I8X16_NARROW_I16X8_S, /**< i8x16.narrow_i16x8_s */
+  PWASM_OP_I8X16_NARROW_I16X8_U, /**< i8x16.narrow_i16x8_u */
+  PWASM_OP_I16X8_NARROW_I32X4_S, /**< i16x8.narrow_i32x4_s */
+  PWASM_OP_I16X8_NARROW_I32X4_U, /**< i16x8.narrow_i32x4_u */
+  PWASM_OP_I16X8_WIDEN_LOW_I8X16_S, /**< i16x8.widen_low_i8x16_s */
+  PWASM_OP_I16X8_WIDEN_HIGH_I8X16_S, /**< i16x8.widen_high_i8x16_s */
+  PWASM_OP_I16X8_WIDEN_LOW_I8X16_U, /**< i16x8.widen_low_i8x16_u */
+  PWASM_OP_I16X8_WIDEN_HIGH_I8X16_U, /**< i16x8.widen_high_i8x16_u */
+  PWASM_OP_I32X4_WIDEN_LOW_I16X8_S, /**< i32x4.widen_low_i16x8_s */
+  PWASM_OP_I32X4_WIDEN_HIGH_I16X8_S, /**< i32x4.widen_high_i16x8_s */
+  PWASM_OP_I32X4_WIDEN_LOW_I16X8_U, /**< i32x4.widen_low_i16x8_u */
+  PWASM_OP_I32X4_WIDEN_HIGH_I16X8_U, /**< i32x4.widen_high_i16x8_u */
+  PWASM_OP_I16X8_LOAD8X8_S, /**< i16x8.load8x8_s */
+  PWASM_OP_I16X8_LOAD8X8_U, /**< i16x8.load8x8_u */
+  PWASM_OP_I32X4_LOAD16X4_S, /**< i32x4.load16x4_s */
+  PWASM_OP_I32X4_LOAD16X4_U, /**< i32x4.load16x4_u */
+  PWASM_OP_I64X2_LOAD32X2_S, /**< i64x2.load32x2_s */
+  PWASM_OP_I64X2_LOAD32X2_U, /**< i64x2.load32x2_u */
+  PWASM_OP_V128_ANDNOT, /**< v128.andnot */
+  PWASM_OP_I8X16_AVGR_U, /**< i8x16.avgr_u */
+  PWASM_OP_I16X8_AVGR_U, /**< i16x8.avgr_u */
+  PWASM_OP_I8X16_ABS, /**< i8x16.abs */
+  PWASM_OP_I16X8_ABS, /**< i16x8.abs */
+  PWASM_OP_I32X4_ABS, /**< i32x4.abs */
+  PWASM_OP_LAST, /**< sentinel */
 } pwasm_op_t;
 
 /**
@@ -531,7 +627,7 @@ typedef struct {
   const size_t num_bytes;
   const pwasm_imm_t imm;
   const size_t num_lanes;
-  const size_t mem_bytes;
+  const size_t mem_size;
 } pwasm_op_data_t;
 
 /**
