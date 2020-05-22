@@ -555,16 +555,9 @@ pwasm_op_is_valid(
 ) {
   switch (set) {
   case PWASM_OPS_MAIN:
-    if (val < 0x100) {
-      const size_t ofs = val / 64;
-      const size_t mask = ((uint64_t) 1 << (val & 0x3F));
-      return PWASM_VALID_OPS_MASK[ofs] & mask;
-    }
-
-    break;
   case PWASM_OPS_TRUNC_SAT:
-    if (val <= 0x100) {
-      const size_t ofs = 4 + val / 64;
+    if (val < 0x100) {
+      const size_t ofs = 4 * set + val / 64;
       const size_t mask = ((uint64_t) 1 << (val & 0x3F));
       return PWASM_VALID_OPS_MASK[ofs] & mask;
     }

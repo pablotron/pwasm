@@ -375,7 +375,7 @@ static const pwasm_op_data_t
       }.freeze
 
       # output name
-      NAME = 'PWASM_OP_DATA'
+      NAME = 'PWASM_OPS'
 
       def run
         TEMPLATES[:wrap] % {
@@ -418,7 +418,7 @@ static const struct {
       }.freeze
 
       # output name
-      NAME = 'PWASM_OPS_DATA'
+      NAME = 'PWASM_OP_SETS'
 
       def run
         TEMPLATES[:wrap] % {
