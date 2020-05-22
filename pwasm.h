@@ -154,9 +154,9 @@ const char *pwasm_result_type_get_name(const pwasm_result_type_t type);
  * @ingroup type
  */
 #define PWASM_IMPORT_TYPES \
-  PWASM_IMPORT_TYPE(FUNC, "func", function) \
+  PWASM_IMPORT_TYPE(FUNC, "func", func) \
   PWASM_IMPORT_TYPE(TABLE, "table", table) \
-  PWASM_IMPORT_TYPE(MEM, "memory", memory) \
+  PWASM_IMPORT_TYPE(MEM, "memory", mem) \
   PWASM_IMPORT_TYPE(GLOBAL, "global", global) \
   PWASM_IMPORT_TYPE(LAST, "unknown import type", invalid)
 

@@ -2029,7 +2029,7 @@ typedef struct {
 } pwasm_parse_import_cbs_t;
 
 static inline size_t
-pwasm_parse_import_function( // FIXME: rename to "func"
+pwasm_parse_import_func(
   pwasm_import_t * const dst,
   const pwasm_buf_t src,
   const pwasm_parse_import_cbs_t * const cbs,
@@ -2051,7 +2051,7 @@ pwasm_parse_import_table(
 }
 
 static inline size_t
-pwasm_parse_import_memory( // FIXME: rename to "mem"
+pwasm_parse_import_mem(
   pwasm_import_t * const dst,
   const pwasm_buf_t src,
   const pwasm_parse_import_cbs_t * const cbs,
