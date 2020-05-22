@@ -8584,6 +8584,43 @@ pwasm_checker_check_binop(
 }
 
 /**
+ * Verify trinary operation (`triop`).
+ *
+ * A `triop` takes three values of the given type and returns a value of
+ * the given type.
+ *
+ * Returns `true` on success or `false` on error.
+ */
+static bool
+pwasm_checker_check_triop(
+  pwasm_checker_t * const checker,
+  const pwasm_checker_type_t exp_type
+) {
+  // pop operand type
+  if (!pwasm_checker_type_pop_expected(checker, exp_type, NULL)) {
+    return false;
+  }
+
+  // pop operand type
+  if (!pwasm_checker_type_pop_expected(checker, exp_type, NULL)) {
+    return false;
+  }
+
+  // pop operand type
+  if (!pwasm_checker_type_pop_expected(checker, exp_type, NULL)) {
+    return false;
+  }
+
+  // push result
+  if (!pwasm_checker_type_push(checker, exp_type)) {
+    return false;
+  }
+
+  // return success
+  return true;
+}
+
+/**
  * Verify convert operation (`cvtop`).
  *
  * A `cvtop` takes two types, it pops the source type and then pushes
@@ -8851,6 +8888,36 @@ pwasm_checker_check_replace(
   return true;
 }
 
+/**
+ * Verify v128 shift operation.
+ *
+ * Pops a vector value and an i32 scalar value, shift each lane in the
+ * vector value by the scalar value, then pushes the updated vector.
+ *
+ * Returns `true` on success or `false` on error.
+ */
+static bool
+pwasm_checker_check_shift(
+  pwasm_checker_t * const checker
+) {
+  // pop v128 type, check for error
+  if (!pwasm_checker_type_pop_expected(checker, PWASM_CHECKER_TYPE_V128, NULL)) {
+    return false;
+  }
+
+  // pop i32 type, check for error
+  if (!pwasm_checker_type_pop_expected(checker, PWASM_CHECKER_TYPE_I32, NULL)) {
+    return false;
+  }
+
+  // push v128 type, check for error
+  if (!pwasm_checker_type_push(checker, PWASM_CHECKER_TYPE_V128)) {
+    return false;
+  }
+
+  // return success
+  return true;
+}
 
 /**
  * Check function code.
@@ -9767,8 +9834,151 @@ pwasm_checker_check(
       }
 
       break;
+    case PWASM_OP_I8X16_ANY_TRUE:
+    case PWASM_OP_I8X16_ALL_TRUE:
+    case PWASM_OP_I16X8_ANY_TRUE:
+    case PWASM_OP_I16X8_ALL_TRUE:
+    case PWASM_OP_I32X4_ANY_TRUE:
+    case PWASM_OP_I32X4_ALL_TRUE:
+      if (!pwasm_checker_check_testop(checker, PWASM_CHECKER_TYPE_V128)) {
+        return false;
+      }
+
+      break;
+    case PWASM_OP_I8X16_NEG:
+    case PWASM_OP_I16X8_NEG:
+    case PWASM_OP_I32X4_NEG:
+    case PWASM_OP_I64X2_NEG:
+    case PWASM_OP_F32X4_ABS:
+    case PWASM_OP_F32X4_NEG:
+    case PWASM_OP_F32X4_SQRT:
+    case PWASM_OP_F64X2_ABS:
+    case PWASM_OP_F64X2_NEG:
+    case PWASM_OP_F64X2_SQRT:
+    case PWASM_OP_I32X4_TRUNC_SAT_F32X4_S:
+    case PWASM_OP_I32X4_TRUNC_SAT_F32X4_U:
+    case PWASM_OP_F32X4_CONVERT_I32X4_S:
+    case PWASM_OP_F32X4_CONVERT_I32X4_U:
+    case PWASM_OP_I16X8_WIDEN_LOW_I8X16_S:
+    case PWASM_OP_I16X8_WIDEN_HIGH_I8X16_S:
+    case PWASM_OP_I16X8_WIDEN_LOW_I8X16_U:
+    case PWASM_OP_I16X8_WIDEN_HIGH_I8X16_U:
+    case PWASM_OP_I32X4_WIDEN_LOW_I16X8_S:
+    case PWASM_OP_I32X4_WIDEN_HIGH_I16X8_S:
+    case PWASM_OP_I32X4_WIDEN_LOW_I16X8_U:
+    case PWASM_OP_I32X4_WIDEN_HIGH_I16X8_U:
+    case PWASM_OP_I8X16_ABS:
+    case PWASM_OP_I16X8_ABS:
+    case PWASM_OP_I32X4_ABS:
+      if (!pwasm_checker_check_unop(checker, PWASM_CHECKER_TYPE_V128)) {
+        return false;
+      }
+
+      break;
     case PWASM_OP_V8X16_SWIZZLE:
+    case PWASM_OP_I8X16_EQ:
+    case PWASM_OP_I8X16_NE:
+    case PWASM_OP_I8X16_LT_S:
+    case PWASM_OP_I8X16_LT_U:
+    case PWASM_OP_I8X16_GT_S:
+    case PWASM_OP_I8X16_GT_U:
+    case PWASM_OP_I8X16_LE_S:
+    case PWASM_OP_I8X16_LE_U:
+    case PWASM_OP_I8X16_GE_S:
+    case PWASM_OP_I8X16_GE_U:
+    case PWASM_OP_I16X8_EQ:
+    case PWASM_OP_I16X8_NE:
+    case PWASM_OP_I16X8_LT_S:
+    case PWASM_OP_I16X8_LT_U:
+    case PWASM_OP_I16X8_GT_S:
+    case PWASM_OP_I16X8_GT_U:
+    case PWASM_OP_I16X8_LE_S:
+    case PWASM_OP_I16X8_LE_U:
+    case PWASM_OP_I16X8_GE_S:
+    case PWASM_OP_I16X8_GE_U:
+    case PWASM_OP_I32X4_EQ:
+    case PWASM_OP_I32X4_NE:
+    case PWASM_OP_I32X4_LT_S:
+    case PWASM_OP_I32X4_LT_U:
+    case PWASM_OP_I32X4_GT_S:
+    case PWASM_OP_I32X4_GT_U:
+    case PWASM_OP_I32X4_LE_S:
+    case PWASM_OP_I32X4_LE_U:
+    case PWASM_OP_I32X4_GE_S:
+    case PWASM_OP_I32X4_GE_U:
+    case PWASM_OP_F32X4_EQ:
+    case PWASM_OP_F32X4_NE:
+    case PWASM_OP_F32X4_LT:
+    case PWASM_OP_F32X4_GT:
+    case PWASM_OP_F32X4_LE:
+    case PWASM_OP_F32X4_GE:
+    case PWASM_OP_F64X2_EQ:
+    case PWASM_OP_F64X2_NE:
+    case PWASM_OP_F64X2_LT:
+    case PWASM_OP_F64X2_GT:
+    case PWASM_OP_F64X2_LE:
+    case PWASM_OP_F64X2_GE:
+    case PWASM_OP_V128_NOT:
+    case PWASM_OP_V128_AND:
+    case PWASM_OP_V128_OR:
+    case PWASM_OP_V128_XOR:
+    case PWASM_OP_I8X16_ADD:
+    case PWASM_OP_I8X16_ADD_SATURATE_S:
+    case PWASM_OP_I8X16_ADD_SATURATE_U:
+    case PWASM_OP_I8X16_SUB:
+    case PWASM_OP_I8X16_SUB_SATURATE_S:
+    case PWASM_OP_I8X16_SUB_SATURATE_U:
+    case PWASM_OP_I8X16_MIN_S:
+    case PWASM_OP_I8X16_MIN_U:
+    case PWASM_OP_I8X16_MAX_S:
+    case PWASM_OP_I8X16_MAX_U:
+    case PWASM_OP_I16X8_ADD:
+    case PWASM_OP_I16X8_ADD_SATURATE_S:
+    case PWASM_OP_I16X8_ADD_SATURATE_U:
+    case PWASM_OP_I16X8_SUB:
+    case PWASM_OP_I16X8_SUB_SATURATE_S:
+    case PWASM_OP_I16X8_SUB_SATURATE_U:
+    case PWASM_OP_I16X8_MUL:
+    case PWASM_OP_I16X8_MIN_S:
+    case PWASM_OP_I16X8_MIN_U:
+    case PWASM_OP_I16X8_MAX_S:
+    case PWASM_OP_I16X8_MAX_U:
+    case PWASM_OP_I32X4_ADD:
+    case PWASM_OP_I32X4_SUB:
+    case PWASM_OP_I32X4_MUL:
+    case PWASM_OP_I32X4_MIN_S:
+    case PWASM_OP_I32X4_MIN_U:
+    case PWASM_OP_I32X4_MAX_S:
+    case PWASM_OP_I32X4_MAX_U:
+    case PWASM_OP_I64X2_ADD:
+    case PWASM_OP_I64X2_SUB:
+    case PWASM_OP_I64X2_MUL:
+    case PWASM_OP_F32X4_ADD:
+    case PWASM_OP_F32X4_SUB:
+    case PWASM_OP_F32X4_MUL:
+    case PWASM_OP_F32X4_DIV:
+    case PWASM_OP_F32X4_MIN:
+    case PWASM_OP_F32X4_MAX:
+    case PWASM_OP_F64X2_ADD:
+    case PWASM_OP_F64X2_SUB:
+    case PWASM_OP_F64X2_MUL:
+    case PWASM_OP_F64X2_DIV:
+    case PWASM_OP_F64X2_MIN:
+    case PWASM_OP_F64X2_MAX:
+    case PWASM_OP_I8X16_NARROW_I16X8_S:
+    case PWASM_OP_I8X16_NARROW_I16X8_U:
+    case PWASM_OP_I16X8_NARROW_I32X4_S:
+    case PWASM_OP_I16X8_NARROW_I32X4_U:
+    case PWASM_OP_V128_ANDNOT:
+    case PWASM_OP_I8X16_AVGR_U:
+    case PWASM_OP_I16X8_AVGR_U:
       if (!pwasm_checker_check_binop(checker, PWASM_CHECKER_TYPE_V128)) {
+        return false;
+      }
+
+      break;
+    case PWASM_OP_V128_BITSELECT:
+      if (!pwasm_checker_check_triop(checker, PWASM_CHECKER_TYPE_V128)) {
         return false;
       }
 
@@ -9805,8 +10015,26 @@ pwasm_checker_check(
     case PWASM_OP_I64X2_REPLACE_LANE:
     case PWASM_OP_F32X4_REPLACE_LANE:
     case PWASM_OP_F64X2_REPLACE_LANE:
-      // check splat
+      // check replace
       if (!pwasm_checker_check_replace(checker, in)) {
+        return false;
+      }
+
+      break;
+    case PWASM_OP_I8X16_SHL:
+    case PWASM_OP_I8X16_SHR_S:
+    case PWASM_OP_I8X16_SHR_U:
+    case PWASM_OP_I16X8_SHL:
+    case PWASM_OP_I16X8_SHR_S:
+    case PWASM_OP_I16X8_SHR_U:
+    case PWASM_OP_I32X4_SHL:
+    case PWASM_OP_I32X4_SHR_S:
+    case PWASM_OP_I32X4_SHR_U:
+    case PWASM_OP_I64X2_SHL:
+    case PWASM_OP_I64X2_SHR_S:
+    case PWASM_OP_I64X2_SHR_U:
+      // check shift
+      if (!pwasm_checker_check_shift(checker)) {
         return false;
       }
 
