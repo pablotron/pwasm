@@ -423,8 +423,8 @@ sets:
     name: "i64.extend32_s"
 - name: "trunc_sat"
   text: "Truncate/saturate opcodes."
-  encoding: "byte"
   prefix: "0xFC"
+  encoding: "byte"
   ops:
   - code: "0x00"
     name: "i32.trunc_sat_f32_s"
