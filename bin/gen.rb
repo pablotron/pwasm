@@ -76,6 +76,7 @@ module PWASM
     attr :bytes
     attr :num_lanes
     attr :mem_size
+    attr :val
 
     #
     # Create opcode instance from parent set and row from ops.yaml.
@@ -92,13 +93,17 @@ module PWASM
       @mem_size = @row.fetch('mem_size', 0)
       @num_lanes = @row.fetch('num_lanes', 0)
 
+      # get code value
+      @val = @code.to_i(16)
+
       # build constant name
       @const = Util.const(@row['name'])
-      @bytes = get_bytes(@set, @code)
+      @bytes = get_bytes(@set, @val)
 
       # build hash
       @hash = {
         code: @code,
+        val: @val,
         name: @name,
         const: @const,
         imm: @imm,
@@ -127,9 +132,7 @@ module PWASM
     #
     # Get opcode bytes.
     #
-    def get_bytes(set, code)
-      val = code.to_i(16)
-
+    def get_bytes(set, val)
       set.bytes + (case set.encoding
       when :byte
         [val]
@@ -150,6 +153,7 @@ module PWASM
     attr :ops
     attr :bytes
     attr :const
+    attr :prefix
 
     #
     # Create new opcode set from row in ops.yaml.
@@ -172,9 +176,14 @@ module PWASM
       # parse ops
       @ops = set['ops'].map { |row| Op.new(self, row) }
 
+      # calculate maximum value
+      @max_val = @ops.reduce(0) { |r, op| (op.val > r) ? op.val : r }
+
       @hash = {
         name: @name,
+        max_val: @max_val,
         const: @const,
+        prefix: @prefix,
         encoding: @encoding,
       }.freeze
     end
@@ -255,7 +264,7 @@ module PWASM
 
       TEMPLATES = {
         wrap: %{typedef enum {\n%<rows>s\n} pwasm_ops_t;},
-        row:  %{  PWASM_OPS_%<const>s, /*** %<name>s */},
+        row:  %{  PWASM_OPS_%<const>s, /**< %<name>s */},
       }.freeze
 
       def run
@@ -279,7 +288,7 @@ module PWASM
 
       TEMPLATES = {
         wrap: %{typedef enum {\n%<rows>s\n} pwasm_op_t;},
-        row:  %{  PWASM_OP_%<const>s, /*** %<name>s */},
+        row:  %{  PWASM_OP_%<const>s, /**< %<name>s */},
       }.freeze
 
       def run
@@ -349,26 +358,19 @@ module PWASM
 
       TEMPLATES = {
         wrap: %(
-static const struct {
-  const pwasm_ops_t set;
-  const char * const name;
-  const uint8_t bytes[4];
-  const size_t num_bytes;
-  const pwasm_imm_t imm;
-  const size_t num_lanes;
-  const size_t mem_bytes;
-} %<name>s[] = {%<rows>s};
+static const pwasm_op_data_t
+%<name>s[] = {%<rows>s};
         ).strip,
         row: %(
-  {
-    .set        = PWASM_OPS_%<set>s,
-    .name       = "%<name>s",
-    .bytes      = { %<bytes>s },
-    .num_bytes  = %<num_bytes>d,
-    .imm        = PWASM_IMM_%<imm>s,
-    .mem_size   = %<mem_size>d,
-    .num_lanes  = %<num_lanes>d,
-  }
+{
+  .set        = PWASM_OPS_%<set>s,
+  .name       = "%<name>s",
+  .bytes      = { %<bytes>s },
+  .num_bytes  = %<num_bytes>d,
+  .imm        = PWASM_IMM_%<imm>s,
+  .mem_size   = %<mem_size>d,
+  .num_lanes  = %<num_lanes>d,
+}
         ).strip,
       }.freeze
 
@@ -384,6 +386,46 @@ static const struct {
               set:        op.set.const,
               bytes:      bytes.join(', '),
               num_bytes:  bytes.size,
+            })
+          }.join(DELIM),
+        }
+      end
+    end
+
+    #
+    # Generate op set data array.
+    #
+    class OpSetData < View
+      DELIM = ", "
+
+      TEMPLATES = {
+        wrap: %(
+static const struct {
+  const char * const name; /**< set name */
+  const size_t max_val; /**< maximum opcode value */
+  const bool prefix; /**< prefix byte, or 0x00 for no prefix */
+  const bool is_byte; /**< 1: opcodes are bytes, 0: opcodes are leb128s */
+} %<name>s[] = {%<rows>s};
+        ).strip,
+        row: %(
+{
+  .name     = "%<name>s",
+  .max_val  = %<max_val>d,
+  .prefix   = %<prefix>s,
+  .is_byte  = %<is_byte>s,
+}
+        ).strip,
+      }.freeze
+
+      # output name
+      NAME = 'PWASM_OPS_DATA'
+
+      def run
+        TEMPLATES[:wrap] % {
+          name: NAME,
+          rows: @model.sets.map { |set|
+            TEMPLATES[:row] % set.to_hash.merge({
+              is_byte: (set.encoding == :byte) ? 'true' : 'false',
             })
           }.join(DELIM),
         }
@@ -406,6 +448,11 @@ static const struct {
         func: proc { |model| Views::OpSetEnum.run(model) },
       },
 
+      'set-data' => {
+        text: 'Print source PWASM_OPS_DATA for source.',
+        func: proc { |model| Views::OpSetData.run(model) },
+      },
+
       'op-enum' => {
         text: 'Print header pwasm_op_t enumeration.',
         func: proc { |model| Views::OpEnum.run(model) },
@@ -416,8 +463,8 @@ static const struct {
         func: proc { |model| Views::OpDefs.run(model) },
       },
 
-      'mask' => {
-        text: 'Print valid ops mask for source file.',
+      'op-mask' => {
+        text: 'Print valid ops bitmask for source file.',
         func: proc { |model| Views::ValidOpMask.run(model) },
       },
 
@@ -474,7 +521,7 @@ static const struct {
       # check for invalid commands
       bad = args.select { |arg| !COMMANDS.key?(arg) }
       if bad.size > 0
-        warn "Invalid commands (see 'help'): #{bad_cmds}"
+        warn "Invalid commands (see 'help'): #{bad}"
         exit -1
       end
     end
