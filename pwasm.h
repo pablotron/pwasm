@@ -149,7 +149,7 @@ const char *pwasm_result_type_get_name(const pwasm_result_type_t type);
  * Import/export types.
  *
  * Macro used to define the `pwasm_import_type_t` enumeration and the
- * internal import type names.
+ * names for import types and export types.
  *
  * @ingroup type
  */
@@ -161,7 +161,11 @@ const char *pwasm_result_type_get_name(const pwasm_result_type_t type);
   PWASM_IMPORT_TYPE(LAST, "unknown import type", invalid)
 
 /**
- * Import types
+ * Import/export types.
+ *
+ * The values in this enumeration are used to specify the type of module
+ * imports and exports.
+ *
  * @ingroup type
  */
 typedef enum {
@@ -221,6 +225,21 @@ PWASM_IMM_DEFS
  * @note This function never returns a `NULL` pointer.
  */
 const char *pwasm_imm_get_name(const pwasm_imm_t type);
+
+/**
+ * Opcode Set.
+ *
+ * The values in this enumeration are used to specify the set that a
+ * given opcode belongs to.
+ *
+ * @ingroup type
+ */
+typedef enum {
+  PWASM_OPS_MAIN, /**< main */
+  PWASM_OPS_TRUNC_SAT, /**< trunc_sat */
+  PWASM_OPS_SIMD, /**< simd */
+  PWASM_OPS_LAST, /**< sentinel */
+} pwasm_ops_t;
 
 /**
  * Opcodes
@@ -501,6 +520,33 @@ PWASM_OP_DEFS
 } pwasm_op_t;
 
 /**
+ * Structure containing opcode properties.
+ *
+ * @ingroup type
+ */
+typedef struct {
+  const pwasm_ops_t set;
+  const char * const name;
+  const uint8_t bytes[4];
+  const size_t num_bytes;
+  const pwasm_imm_t imm;
+  const size_t num_lanes;
+  const size_t mem_bytes;
+} pwasm_op_data_t;
+
+/**
+ * Get opcode data.
+ *
+ * @ingroup type
+ *
+ * @param op Opcode
+ *
+ * @return Constant pointer to opcode data, or `NULL` if the opcode is
+ * invalid.
+ */
+const pwasm_op_data_t *pwasm_op_get_data(pwasm_op_t);
+
+/**
  * Get opcode name.
  *
  * @ingroup type
@@ -520,11 +566,12 @@ const char *pwasm_op_get_name(const pwasm_op_t);
  *
  * @ingroup type
  *
- * @param op Opocode
+ * @param op Opcode
  *
  * @return Immediate type of opcode.
  */
 pwasm_imm_t pwasm_op_get_imm(const pwasm_op_t);
+
 
 /**
  * @defgroup util Utilities
