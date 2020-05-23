@@ -8406,6 +8406,39 @@ pwasm_checker_check_store(
 }
 
 /**
+ * Check branch instruction.
+ *
+ * Returns `true` on success or `false` on error.
+ */
+static bool
+pwasm_checker_check_branch(
+  pwasm_checker_t * const checker,
+  const uint32_t id
+) {
+  // check branch target
+  if (id >= pwasm_checker_ctrl_get_size(checker)) {
+    pwasm_checker_fail(checker, "label out of bounds");
+    return false;
+  }
+
+  // get target control frame, check for error
+  const pwasm_checker_ctrl_t *ctrl = pwasm_checker_ctrl_peek(checker, id);
+  if (!ctrl) {
+    return false;
+  }
+
+  if ((ctrl->type != PWASM_RESULT_TYPE_VOID) && (ctrl->op != PWASM_OP_LOOP)) {
+    // pop expected type from type stack, check for error
+    if (!pwasm_checker_type_pop_expected(checker, ctrl->type, NULL)) {
+      return false;
+    }
+  }
+
+  // return success
+  return true;
+}
+
+/**
  * Check call.
  *
  * Returns `true` on success or `false` on error.
@@ -9047,69 +9080,27 @@ pwasm_checker_check(
 
       break;
     case PWASM_OP_BR:
-      {
-        // check branch target
-        if (id >= pwasm_checker_ctrl_get_size(checker)) {
-          pwasm_checker_fail(checker, "br: label out of bounds");
-          return false;
-        }
+      // check branch
+      if (!pwasm_checker_check_branch(checker, id)) {
+        return false;
+      }
 
-        // get target control frame, check for error
-        const pwasm_checker_ctrl_t *ctrl = pwasm_checker_ctrl_peek(checker, id);
-        if (!ctrl) {
-          D("%s: null ctrl", pwasm_op_get_name(in.op));
-          return false;
-        }
-
-        if ((ctrl->type != PWASM_RESULT_TYPE_VOID) && (ctrl->op != PWASM_OP_LOOP)) {
-          // pop expected type from type stack, check for error
-          if (!pwasm_checker_type_pop_expected(checker, ctrl->type, NULL)) {
-            D("%s: type_pop_expected failed", pwasm_op_get_name(in.op));
-            return false;
-          }
-        }
-
-        // mark control frame as unreachable
-        if (!pwasm_checker_ctrl_mark_unreachable(checker)) {
-          D("%s: mark_unreachable failed", pwasm_op_get_name(in.op));
-          return false;
-        }
+      // mark control frame as unreachable
+      if (!pwasm_checker_ctrl_mark_unreachable(checker)) {
+        D("%s: mark_unreachable failed", pwasm_op_get_name(in.op));
+        return false;
       }
 
       break;
     case PWASM_OP_BR_IF:
-      {
-        // check branch target
-        if (id >= pwasm_checker_ctrl_get_size(checker)) {
-          pwasm_checker_fail(checker, "br: label out of bounds");
-          return false;
-        }
+      // pop i32 from type stack, check for error
+      if (!pwasm_checker_type_pop_expected(checker, PWASM_CHECKER_TYPE_I32, NULL)) {
+        return false;
+      }
 
-        // get target control frame, check for error
-        const pwasm_checker_ctrl_t *ctrl = pwasm_checker_ctrl_peek(checker, id);
-        if (!ctrl) {
-          D("%s: null ctrl frame", pwasm_op_get_name(in.op));
-          return false;
-        }
-
-        // pop i32 from type stack, check for error
-        if (!pwasm_checker_type_pop_expected(checker, PWASM_CHECKER_TYPE_I32, NULL)) {
-          return false;
-        }
-
-        if ((ctrl->type != PWASM_RESULT_TYPE_VOID) && (ctrl->op != PWASM_OP_LOOP)) {
-          const pwasm_checker_type_t type = pwasm_result_type_to_checker_type(ctrl->type);
-
-          // pop expected type from type stack, check for error
-          if (!pwasm_checker_type_pop_expected(checker, type, NULL)) {
-            return false;
-          }
-
-          // push type to stack, check for error
-          if (!pwasm_checker_type_push(checker, type)) {
-            return false;
-          }
-        }
+      // check branch
+      if (!pwasm_checker_check_branch(checker, id)) {
+        return false;
       }
 
       break;
@@ -9120,6 +9111,12 @@ pwasm_checker_check(
         const uint32_t * const labels = mod->u32s + slice.ofs;
         const uint32_t num_labels = slice.len;
         const uint32_t last_label = labels[num_labels - 1];
+
+        // pop i32 from type stack, check for error
+        if (!pwasm_checker_type_pop_expected(checker, PWASM_CHECKER_TYPE_I32, NULL)) {
+          D("%s: type_pop_expected failed (i32)", pwasm_op_get_name(in.op));
+          return false;
+        }
 
         // check default branch target
         if (last_label >= max_label) {
@@ -9160,12 +9157,6 @@ pwasm_checker_check(
             pwasm_checker_fail(checker, "br_table: invalid label result type");
             return false;
           }
-        }
-
-        // pop i32 from type stack, check for error
-        if (!pwasm_checker_type_pop_expected(checker, PWASM_CHECKER_TYPE_I32, NULL)) {
-          D("%s: type_pop_expected failed (i32)", pwasm_op_get_name(in.op));
-          return false;
         }
 
         if (last_type != PWASM_RESULT_TYPE_VOID) {
