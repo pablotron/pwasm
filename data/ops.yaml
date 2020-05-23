@@ -6,421 +6,774 @@ sets:
   ops:
   - code: '0x00'
     name: "unreachable"
+    text: "Unconditional trap."
+
   - code: '0x01'
     name: "nop"
+    text: "Do nothing."
+
   - code: '0x02'
     name: "block"
+    text: "Begin a structured block."
     imm: "BLOCK"
+
   - code: '0x03'
     name: "loop"
+    text: "Begin a structured loop."
     imm: "BLOCK"
+
   - code: '0x04'
     name: "if"
+    text: "Begin a conditional block."
     imm: "BLOCK"
+
   - code: '0x05'
     name: "else"
+    text: "Begin else block."
+
   - code: '0x0B'
     name: "end"
+    text: "End structured block."
+
   - code: '0x0C'
     name: "br"
+    text: "Unconditional branch to immediate target."
     imm: "INDEX"
+
   - code: '0x0D'
     name: "br_if"
+    text: "Conditional branch to immediate target."
     imm: "INDEX"
+
   - code: '0x0E'
     name: "br_table"
+    text: "Unconditional indirect branch through operand indexing into vector immediate."
     imm: "BR_TABLE"
+
   - code: '0x0F'
     name: "return"
+    text: "Unconditional branch to the outermost block."
+
   - code: '0x10'
     name: "call"
+    text: "Invoke function."
     imm: "INDEX"
+
   - code: '0x11'
     name: "call_indirect"
+    text: "Invoke function indirectly through operand indexing into a table."
     imm: "CALL_INDIRECT"
+
   - code: '0x1A'
     name: "drop"
+    text: "Drop operand from stack."
+
   - code: '0x1B'
     name: "select"
+    text: "Select one of two operands based on third operand."
+
   - code: '0x20'
     name: "local.get"
+    text: "Get value of local variable."
     imm: "INDEX"
+
   - code: '0x21'
     name: "local.set"
+    text: "Set value of local variable."
     imm: "INDEX"
+
   - code: '0x22'
     name: "local.tee"
+    text: "Set value of local variable, but retain value on stack."
     imm: "INDEX"
+
   - code: '0x23'
     name: "global.get"
+    text: "Get value of global variable."
     imm: "INDEX"
+
   - code: '0x24'
     name: "global.set"
+    text: "Set value of global variable."
     imm: "INDEX"
+
   - code: '0x28'
     name: "i32.load"
+    text: "Load i32 value from memory."
     imm: "MEM"
     mem_size: 4
+
   - code: '0x29'
     name: "i64.load"
+    text: "Load i64 value from memory."
     imm: "MEM"
     mem_size: 8
+
   - code: '0x2A'
     name: "f32.load"
+    text: "Load f32 value from memory."
     imm: "MEM"
     mem_size: 4
+
   - code: '0x2B'
     name: "f64.load"
+    text: "Load f64 value from memory."
     imm: "MEM"
     mem_size: 8
+
   - code: '0x2C'
     name: "i32.load8_s"
+    text: "Load signed i8 from memory and sign-extend it to an i32 value."
     imm: "MEM"
     mem_size: 1
+
   - code: '0x2D'
     name: "i32.load8_u"
+    text: "Load unsigned i8 from memory and zero-extend it to an i32 value."
     imm: "MEM"
     mem_size: 1
+
   - code: '0x2E'
     name: "i32.load16_s"
+    text: "Load signed i16 from memory and sign-extend it to an i32 value."
     imm: "MEM"
     mem_size: 2
+
   - code: '0x2F'
     name: "i32.load16_u"
+    text: "Load unsigned i16 from memory and zero-extend it to an i32 value."
     imm: "MEM"
     mem_size: 2
+
   - code: '0x30'
     name: "i64.load8_s"
+    text: "Load signed i8 from memory and sign-extend it to an i64 value."
     imm: "MEM"
     mem_size: 1
+
   - code: '0x31'
     name: "i64.load8_u"
+    text: "Load unsigned i8 from memory and zero-extend it to an i64 value."
     imm: "MEM"
     mem_size: 1
+
   - code: '0x32'
     name: "i64.load16_s"
+    text: "Load signed i16 from memory and sign-extend it to an i64 value."
     imm: "MEM"
     mem_size: 2
+
   - code: '0x33'
     name: "i64.load16_u"
+    text: "Load unsigned i16 from memory and zero-extend it to an i64 value."
     imm: "MEM"
     mem_size: 2
+
   - code: '0x34'
     name: "i64.load32_s"
+    text: "Load signed i32 from memory and sign-extend it to an i64 value."
     imm: "MEM"
     mem_size: 4
+
   - code: '0x35'
     name: "i64.load32_u"
+    text: "Load unsigned i32 from memory and zero-extend it to an i64 value."
     imm: "MEM"
     mem_size: 4
+
   - code: '0x36'
     name: "i32.store"
+    text: "Store i32 value to memory."
     imm: "MEM"
     mem_size: 4
+
   - code: '0x37'
     name: "i64.store"
+    text: "Store i64 value to memory."
     imm: "MEM"
     mem_size: 8
+
   - code: '0x38'
     name: "f32.store"
-    mem_size: 4
+    text: "Store f32 value to memory."
     imm: "MEM"
+    mem_size: 4
+
   - code: '0x39'
     name: "f64.store"
+    text: "Store f64 value to memory."
     imm: "MEM"
     mem_size: 8
+
   - code: '0x3A'
     name: "i32.store8"
+    text: "Store low byte of i32 value to memory."
     imm: "MEM"
     mem_size: 1
+
   - code: '0x3B'
     name: "i32.store16"
+    text: "Store low 2 bytes of i32 value to memory."
     imm: "MEM"
     mem_size: 2
+
   - code: '0x3C'
     name: "i64.store8"
+    text: "Store low byte of i64 value to memory."
     imm: "MEM"
     mem_size: 1
+
   - code: '0x3D'
     name: "i64.store16"
+    text: "Store low two bytes of i64 value to memory."
     imm: "MEM"
     mem_size: 2
+
   - code: '0x3E'
     name: "i64.store32"
-    mem_size: 4
+    text: "Store low four bytes of i64 value to memory."
     imm: "MEM"
+    mem_size: 4
+
   - code: '0x3F'
     name: "memory.size"
+    text: "Get size of memory in pages."
+
   - code: '0x40'
     name: "memory.grow"
+    text: "Grow memory by given number of pages, and return the previous size."
+
   - code: '0x41'
     name: "i32.const"
+    text: "Push a constant i32 value to the stack."
     imm: "I32_CONST"
+
   - code: '0x42'
     name: "i64.const"
+    text: "Push a constant i64 value to the stack."
     imm: "I64_CONST"
+
   - code: '0x43'
     name: "f32.const"
+    text: "Push a constant f32 value to the stack."
     imm: "F32_CONST"
+
   - code: '0x44'
     name: "f64.const"
+    text: "Push a constant f64 value to the stack."
     imm: "F64_CONST"
+
   - code: '0x45'
     name: "i32.eqz"
+    text: "Compare i32 to zero."
+
   - code: '0x46'
     name: "i32.eq"
+    text: "Compare two i32 values for equality."
+
   - code: '0x47'
     name: "i32.ne"
+    text: "Compare two i32 values for inequality."
+
   - code: '0x48'
     name: "i32.lt_s"
+    text: "i32 less than (signed)"
+
   - code: '0x49'
     name: "i32.lt_u"
+    text: "i32 less than (unsigned)"
+
   - code: '0x4A'
     name: "i32.gt_s"
+    text: "i32 greater than (signed)"
+
   - code: '0x4B'
     name: "i32.gt_u"
+    text: "i32 greater than (unsigned)"
+
   - code: '0x4C'
     name: "i32.le_s"
+    text: "i32 less than or equal to (signed)"
+
   - code: '0x4D'
     name: "i32.le_u"
+    text: "i32 less than or equal to (unsigned)"
+
   - code: '0x4E'
     name: "i32.ge_s"
+    text: "i32 greater than or equal to (signed)"
+
   - code: '0x4F'
     name: "i32.ge_u"
+    text: "i32 greater than or equal to (unsigned)"
+
   - code: '0x50'
     name: "i64.eqz"
+    text: "Compare i64 to zero."
+
   - code: '0x51'
     name: "i64.eq"
+    text: "Compare two i64 values for equality."
+
   - code: '0x52'
     name: "i64.ne"
+    text: "Compare two i64 values for inequality."
+
   - code: '0x53'
     name: "i64.lt_s"
+    text: "i64 less than (signed)"
+
   - code: '0x54'
     name: "i64.lt_u"
+    text: "i64 less than (unsigned)"
+
   - code: '0x55'
     name: "i64.gt_s"
+    text: "i64 greater than (signed)"
+
   - code: '0x56'
     name: "i64.gt_u"
+    text: "i64 greater than (unsigned)"
+
   - code: '0x57'
     name: "i64.le_s"
+    text: "i64 less than or equal to (signed)"
+
   - code: '0x58'
     name: "i64.le_u"
+    text: "i64 less than or equal to (unsigned)"
+
   - code: '0x59'
     name: "i64.ge_s"
+    text: "i64 greater than or equal to (signed)"
+
   - code: '0x5A'
     name: "i64.ge_u"
+    text: "i64 greater than or equal to (unsigned)"
+
   - code: '0x5B'
     name: "f32.eq"
+    text: "Compare two f32 values for equality."
+
   - code: '0x5C'
     name: "f32.ne"
+    text: "Compare two f32 values for inequality."
+
   - code: '0x5D'
     name: "f32.lt"
+    text: "f32 less than"
+
   - code: '0x5E'
     name: "f32.gt"
+    text: "f32 greater than"
+
   - code: '0x5F'
     name: "f32.le"
+    text: "f32 less than or equal to"
+
   - code: '0x60'
     name: "f32.ge"
+    text: "f32 greater than or equal to"
+
   - code: '0x61'
     name: "f64.eq"
+    text: "Compare two f64 values for equality."
+
   - code: '0x62'
     name: "f64.ne"
+    text: "Compare two f64 values for inequality"
+
   - code: '0x63'
     name: "f64.lt"
+    text: "f64 less than"
+
   - code: '0x64'
     name: "f64.gt"
+    text: "f64 greater than"
+
   - code: '0x65'
     name: "f64.le"
+    text: "f64 less than or equal to"
+
   - code: '0x66'
     name: "f64.ge"
+    text: "f64 greater than or equal to"
+
   - code: '0x67'
     name: "i32.clz"
+    text: "i32 count leading zero bits"
+
   - code: '0x68'
     name: "i32.ctz"
+    text: "i32 count trailing zero bits"
+
   - code: '0x69'
     name: "i32.popcnt"
+    text: "i32 count set bits"
+
   - code: '0x6A'
     name: "i32.add"
+    text: "i32 add"
+
   - code: '0x6B'
     name: "i32.sub"
+    text: "i32 subtract"
+
   - code: '0x6C'
     name: "i32.mul"
+    text: "i32 multiply"
+
   - code: '0x6D'
     name: "i32.div_s"
+    text: "i32 divide (signed)"
+
   - code: '0x6E'
     name: "i32.div_u"
+    text: "i32 divide (unsigned)"
+
   - code: '0x6F'
     name: "i32.rem_s"
+    text: "i32 remainder (signed)"
+
   - code: '0x70'
     name: "i32.rem_u"
+    text: "i32 remainder (unsigned)"
+
   - code: '0x71'
     name: "i32.and"
+    text: "i32 bitwise and"
+
   - code: '0x72'
     name: "i32.or"
+    text: "i32 bitwise or"
+
   - code: '0x73'
     name: "i32.xor"
+    text: "i32 bitwise exclusive or"
+
   - code: '0x74'
     name: "i32.shl"
+    text: "i32 shift left"
+
   - code: '0x75'
     name: "i32.shr_s"
+    text: "i32 shift right (signed)"
+
   - code: '0x76'
     name: "i32.shr_u"
+    text: "i32 shift right (unsigned)"
+
   - code: '0x77'
     name: "i32.rotl"
+    text: "i32 rotate left"
+
   - code: '0x78'
     name: "i32.rotr"
+    text: "i32 rotate right"
+
   - code: '0x79'
     name: "i64.clz"
+    text: "i64 count leading zero bits"
+
   - code: '0x7A'
     name: "i64.ctz"
+    text: "i64 count trailing zero bits"
+
   - code: '0x7B'
     name: "i64.popcnt"
+    text: "i64 count set bits"
+
   - code: '0x7C'
     name: "i64.add"
+    text: "i64 add"
+
   - code: '0x7D'
     name: "i64.sub"
+    text: "i64 subtract"
+
   - code: '0x7E'
     name: "i64.mul"
+    text: "i64 multiply"
+
   - code: '0x7F'
     name: "i64.div_s"
+    text: "i64 divide (signed)"
+
   - code: '0x80'
     name: "i64.div_u"
+    text: "i64 divide (unsigned)"
+
   - code: '0x81'
     name: "i64.rem_s"
+    text: "i64 remainder (signed)"
+
   - code: '0x82'
     name: "i64.rem_u"
+    text: "i64 remainder (unsigned)"
+
   - code: '0x83'
     name: "i64.and"
+    text: "i64 bitwise and"
+
   - code: '0x84'
     name: "i64.or"
+    text: "i64 bitwise or"
+
   - code: '0x85'
     name: "i64.xor"
+    text: "i64 bitwise exclusive or"
+
   - code: '0x86'
     name: "i64.shl"
+    text: "i64 shift left"
+
   - code: '0x87'
     name: "i64.shr_s"
+    text: "i64 shift right (signed)"
+
   - code: '0x88'
     name: "i64.shr_u"
+    text: "i64 shift right (unsigned)"
+
   - code: '0x89'
     name: "i64.rotl"
+    text: "i64 rotate left"
+
   - code: '0x8A'
     name: "i64.rotr"
+    text: "i64 rotate right"
+
   - code: '0x8B'
     name: "f32.abs"
+    text: "f32 absolute value"
+
   - code: '0x8C'
     name: "f32.neg"
+    text: "f32 negate"
+
   - code: '0x8D'
     name: "f32.ceil"
+    text: "f32 ceiling"
+
   - code: '0x8E'
     name: "f32.floor"
+    text: "f32 floor"
+
   - code: '0x8F'
     name: "f32.trunc"
+    text: "f32 truncate"
+
   - code: '0x90'
     name: "f32.nearest"
+    text: "f32 nearest"
+
   - code: '0x91'
     name: "f32.sqrt"
+    text: "f32 square root"
+
   - code: '0x92'
     name: "f32.add"
+    text: "f32 add"
+
   - code: '0x93'
     name: "f32.sub"
+    text: "f32 subtract"
+
   - code: '0x94'
     name: "f32.mul"
+    text: "f32 multiply"
+
   - code: '0x95'
     name: "f32.div"
+    text: "f32 divide"
+
   - code: '0x96'
     name: "f32.min"
+    text: "f32 minimum"
+
   - code: '0x97'
     name: "f32.max"
+    text: "f32 maximum"
+
   - code: '0x98'
     name: "f32.copysign"
+    text: "f32 copy sign"
+
   - code: '0x99'
     name: "f64.abs"
+    text: "f64 absolute value"
+
   - code: '0x9A'
     name: "f64.neg"
+    text: "f64 negate"
+
   - code: '0x9B'
     name: "f64.ceil"
+    text: "f64 ceiling"
+
   - code: '0x9C'
     name: "f64.floor"
+    text: "f64 floor"
+
   - code: '0x9D'
     name: "f64.trunc"
+    text: "f64 truncate"
+
   - code: '0x9E'
     name: "f64.nearest"
+    text: "f64 nearest"
+
   - code: '0x9F'
     name: "f64.sqrt"
+    text: "f64 square root"
+
   - code: '0xA0'
     name: "f64.add"
+    text: "f64 add"
+
   - code: '0xA1'
     name: "f64.sub"
+    text: "f64 subtract"
+
   - code: '0xA2'
     name: "f64.mul"
+    text: "f64 multiply"
+
   - code: '0xA3'
     name: "f64.div"
+    text: "f64 divide"
+
   - code: '0xA4'
     name: "f64.min"
+    text: "f64 minimum"
+
   - code: '0xA5'
     name: "f64.max"
+    text: "f64 maximum"
+
   - code: '0xA6'
     name: "f64.copysign"
+    text: "f64 copy sign"
+
   - code: '0xA7'
     name: "i32.wrap_i64"
+    text: "convert i64 to i32"
+
   - code: '0xA8'
     name: "i32.trunc_f32_s"
+    text: "convert f32 to signed i32"
+
   - code: '0xA9'
     name: "i32.trunc_f32_u"
+    text: "convert f32 to unsigned i32"
+
   - code: '0xAA'
     name: "i32.trunc_f64_s"
+    text: "convert f64 to signed i32"
+
   - code: '0xAB'
     name: "i32.trunc_f64_u"
+    text: "convert f64 to unsigned i32"
+
   - code: '0xAC'
     name: "i64.extend_i32_s"
+    text: "Sign-extend signed i32 to i64"
+
   - code: '0xAD'
     name: "i64.extend_i32_u"
+    text: "Zero-extend i32 to i64"
+
   - code: '0xAE'
     name: "i64.trunc_f32_s"
+    text: "convert f32 to signed i64"
+
   - code: '0xAF'
     name: "i64.trunc_f32_u"
+    text: "convert f32 to unsigned i64"
+
   - code: '0xB0'
     name: "i64.trunc_f64_s"
+    text: "convert f64 to signed i64"
+
   - code: '0xB1'
     name: "i64.trunc_f64_u"
+    text: "convert f64 to unsigned i64"
+
   - code: '0xB2'
     name: "f32.convert_i32_s"
+    text: "convert signed i32 to f32"
+
   - code: '0xB3'
     name: "f32.convert_i32_u"
+    text: "convert unsigned i32 to f32"
+
   - code: '0xB4'
     name: "f32.convert_i64_s"
+    text: "convert signed i64 to f32"
+
   - code: '0xB5'
     name: "f32.convert_i64_u"
+    text: "convert unsigned i64 to f32"
+
   - code: '0xB6'
     name: "f32.demote_f64"
+    text: "convert f64 to f32"
+
   - code: '0xB7'
     name: "f64.convert_i32_s"
+    text: "convert signed i32 to f64"
+
   - code: '0xB8'
     name: "f64.convert_i32_u"
+    text: "convert unsigned i32 to f64"
   - code: '0xB9'
     name: "f64.convert_i64_s"
+    text: "convert signed i64 to f64"
+
   - code: '0xBA'
     name: "f64.convert_i64_u"
+    text: "convert unsigned i64 to f64"
+
   - code: '0xBB'
     name: "f64.promote_f32"
+    text: "convert f32 to f64"
+
   - code: '0xBC'
     name: "i32.reinterpret_f32"
+    text: "Cast (reinterpret) f32 as an i32"
+
   - code: '0xBD'
     name: "i64.reinterpret_f64"
+    text: "Cast (reinterpret) f64 as an i64"
+
   - code: '0xBE'
     name: "f32.reinterpret_i32"
+    text: "Cast (reinterpret) i32 as an f32"
+
   - code: '0xBF'
     name: "f64.reinterpret_i64"
+    text: "Cast (reinterpret) i64 as an f64"
+
   - code: "0xC0"
     name: "i32.extend8_s"
+    text: "Sign-extend signed i8 as an i32"
+
   - code: "0xC1"
     name: "i32.extend16_s"
+    text: "Sign-extend signed i16 as an i32"
+
   - code: "0xC2"
     name: "i64.extend8_s"
+    text: "Sign-extend signed i8 as an i64"
+
   - code: "0xC3"
     name: "i64.extend16_s"
+    text: "Sign-extend signed i16 as an i64"
+
   - code: "0xC4"
     name: "i64.extend32_s"
+    text: "Sign-extend signed i32 as an i64"
+
 - name: "trunc_sat"
   text: "Truncate/saturate opcodes."
   prefix: "0xFC"
@@ -428,20 +781,36 @@ sets:
   ops:
   - code: "0x00"
     name: "i32.trunc_sat_f32_s"
+    text: "convert f32 to signed i32 (saturated)"
+
   - code: "0x01"
     name: "i32.trunc_sat_f32_u"
+    text: "convert f32 to unsigned i32 (saturated)"
+
   - code: "0x02"
     name: "i32.trunc_sat_f64_s"
+    text: "convert f64 to signed i32 (saturated)"
+
   - code: "0x03"
     name: "i32.trunc_sat_f64_u"
+    text: "convert f64 to unsigned i32 (saturated)"
+
   - code: "0x04"
     name: "i64.trunc_sat_f32_s"
+    text: "convert f32 to signed i64 (saturated)"
+
   - code: "0x05"
     name: "i64.trunc_sat_f32_u"
+    text: "convert f32 to unsigned i64 (saturated)"
+
   - code: "0x06"
     name: "i64.trunc_sat_f64_s"
+    text: "convert f64 to signed i64 (saturated)"
+
   - code: "0x07"
     name: "i64.trunc_sat_f64_u"
+    text: "convert f64 to unsigned i64 (saturated)"
+
 - name: "simd"
   text: "SIMD opcodes."
   prefix: "0xFD"
@@ -449,41 +818,49 @@ sets:
   ops:
   - code: "0x00"
     name: "v128.load"
+    text: "Load v128 from memory."
     imm: "MEM"
     mem_size: 16
 
   - code: "0x01"
     name: "i16x8.load8x8_s"
+    text: "Load and sign-extend 8 signed i8s to i16s."
     imm: "MEM"
     mem_size: 8
 
   - code: "0x02"
     name: "i16x8.load8x8_u"
+    text: "Load and zero-extend 8 unsigned i8s them to i16s."
     imm: "MEM"
     mem_size: 8
 
   - code: "0x03"
     name: "i32x4.load16x4_s"
+    text: "Load and sign-extend 4 signed i16s them to i32s."
     imm: "MEM"
     mem_size: 8
 
   - code: "0x04"
     name: "i32x4.load16x4_u"
+    text: "Load and zero-extend 4 unsigned i16s to i32s."
     imm: "MEM"
     mem_size: 8
 
   - code: "0x05"
     name: "i64x2.load32x2_s"
+    text: "Load and zero-extend 2 signed i32s to i64s."
     imm: "MEM"
     mem_size: 8
 
   - code: "0x06"
     name: "i64x2.load32x2_u"
+    text: "Load and zero-extend 2 unsigned i32s to i64s."
     imm: "MEM"
     mem_size: 8
 
   - code: "0x07"
     name: "v8x16.load_splat"
+    text: "Load an i8 from memory and splat it to an i8x16 v128."
     mem_size: 1
 
   - code: "0x08"
