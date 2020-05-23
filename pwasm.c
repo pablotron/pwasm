@@ -8244,6 +8244,35 @@ pwasm_checker_get_global_type(
   return true;
 }
 
+static pwasm_checker_type_t
+pwasm_checker_check_const_get_type(
+  const pwasm_op_t op
+) {
+  switch (op) {
+  case PWASM_OP_I32_CONST:
+    return PWASM_CHECKER_TYPE_I32;
+  case PWASM_OP_I64_CONST:
+    return PWASM_CHECKER_TYPE_I64;
+  case PWASM_OP_F32_CONST:
+    return PWASM_CHECKER_TYPE_F32;
+  case PWASM_OP_F64_CONST:
+    return PWASM_CHECKER_TYPE_F64;
+  case PWASM_OP_V128_CONST:
+    return PWASM_CHECKER_TYPE_V128;
+  default:
+    return PWASM_CHECKER_TYPE_LAST;
+  }
+}
+
+static bool
+pwasm_checker_check_const(
+  pwasm_checker_t * const checker,
+  const pwasm_op_t op
+) {
+  const pwasm_checker_type_t type = pwasm_checker_check_const_get_type(op);
+  return pwasm_checker_type_push(checker, type);
+}
+
 /**
  * Verify that at least one memory is attached to this module.
  *
@@ -8430,13 +8459,15 @@ pwasm_checker_check_lane(
     // check lanes
     for (size_t i = 0; i < 16; i++) {
       if (in.v_v128.i8[i] > 31) {
+        // log error, return failure
         D("lane %zu = %u", i, in.v128.u8[i]);
         pwasm_checker_fail(checker, "v8x16.shuffle: invalid lane index (>31)");
         return false;
       }
     }
 
-    break;
+    // return success
+    return true;
   case PWASM_OP_I8X16_EXTRACT_LANE_S:
   case PWASM_OP_I8X16_EXTRACT_LANE_U:
   case PWASM_OP_I16X8_EXTRACT_LANE_S:
@@ -8452,19 +8483,20 @@ pwasm_checker_check_lane(
   case PWASM_OP_F32X4_REPLACE_LANE:
   case PWASM_OP_F64X2_REPLACE_LANE:
     if (in.v_index >= PWASM_OPS[in.op].num_lanes) {
+      // log error, return failure
       D("lane index = %u", in.v_index);
       pwasm_checker_fail(checker, "invalid lane index");
       return false;
     }
 
-    break;
+    // return success
+    return true;
   default:
+    // log error, return failure
     D("opcode = %s(%u)", pwasm_opcode_get_name(in.op), in.op);
     pwasm_checker_fail(checker, "unknown opcode");
     return false;
   }
-
-  return false;
 }
 
 /**
@@ -9481,29 +9513,11 @@ pwasm_checker_check(
 
       break;
     case PWASM_OP_I32_CONST:
-      // push type
-      if (!pwasm_checker_type_push(checker, PWASM_CHECKER_TYPE_I32)) {
-        return false;
-      }
-
-      break;
     case PWASM_OP_I64_CONST:
-      // push type
-      if (!pwasm_checker_type_push(checker, PWASM_CHECKER_TYPE_I64)) {
-        return false;
-      }
-
-      break;
     case PWASM_OP_F32_CONST:
-      // push type
-      if (!pwasm_checker_type_push(checker, PWASM_CHECKER_TYPE_F32)) {
-        return false;
-      }
-
-      break;
     case PWASM_OP_F64_CONST:
-      // push type
-      if (!pwasm_checker_type_push(checker, PWASM_CHECKER_TYPE_F64)) {
+    case PWASM_OP_V128_CONST:
+      if (!pwasm_checker_check_const(checker, in.op)) {
         return false;
       }
 
@@ -9812,13 +9826,6 @@ pwasm_checker_check(
     case PWASM_OP_I64_TRUNC_SAT_F64_S:
     case PWASM_OP_I64_TRUNC_SAT_F64_U:
       if (!pwasm_checker_check_cvtop(checker, PWASM_CHECKER_TYPE_I32, PWASM_CHECKER_TYPE_F64)) {
-        return false;
-      }
-
-      break;
-    case PWASM_OP_V128_CONST:
-      // push type
-      if (!pwasm_checker_type_push(checker, PWASM_CHECKER_TYPE_V128)) {
         return false;
       }
 
