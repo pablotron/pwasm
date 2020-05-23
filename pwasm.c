@@ -15117,7 +15117,7 @@ pwasm_new_interp_eval_expr(
 
         pwasm_v128_t c;
         for (size_t j = 0; j < 16; j++) {
-          c.i8[j] = a.i8[j] << b;
+          c.i8[j] = (a.i8[j] << b);
         }
 
         stack->ptr[stack->pos - 2].v128 = c;
@@ -15148,7 +15148,7 @@ pwasm_new_interp_eval_expr(
 
         pwasm_v128_t c;
         for (size_t j = 0; j < 16; j++) {
-          int8_t av = a.i8[j];
+          uint8_t av = a.i8[j];
           c.i8[j] = (av >> b);
         }
 
