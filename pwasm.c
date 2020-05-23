@@ -14264,7 +14264,7 @@ pwasm_new_interp_eval_expr(
     case PWASM_OP_I64X2_EXTRACT_LANE:
       {
         const pwasm_v128_t a = stack->ptr[stack->pos - 1].v128;
-        stack->ptr[stack->pos - 1].i32 = a.i32[in.v_index];
+        stack->ptr[stack->pos - 1].i64 = a.i64[in.v_index];
       }
 
       break;
