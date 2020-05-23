@@ -15002,6 +15002,74 @@ pwasm_new_interp_eval_expr(
       }
 
       break;
+    case PWASM_OP_V128_NOT:
+      {
+        const pwasm_v128_t a = stack->ptr[stack->pos - 1].v128;
+
+        pwasm_v128_t b;
+        b.i64[0] = ~a.i64[0];
+        b.i64[1] = ~a.i64[1];
+        stack->ptr[stack->pos - 1].v128 = b;
+      }
+
+      break;
+    case PWASM_OP_V128_AND:
+      {
+        const pwasm_v128_t a = stack->ptr[stack->pos - 2].v128;
+        const pwasm_v128_t b = stack->ptr[stack->pos - 1].v128;
+
+        pwasm_v128_t c;
+        c.i64[0] = a.i64[0] & b.i64[0];
+        c.i64[1] = a.i64[1] & b.i64[1];
+
+        stack->ptr[stack->pos - 2].v128 = c;
+        stack->pos--;
+      }
+
+      break;
+    case PWASM_OP_V128_OR:
+      {
+        const pwasm_v128_t a = stack->ptr[stack->pos - 2].v128;
+        const pwasm_v128_t b = stack->ptr[stack->pos - 1].v128;
+
+        pwasm_v128_t c;
+        c.i64[0] = a.i64[0] | b.i64[0];
+        c.i64[1] = a.i64[1] | b.i64[1];
+
+        stack->ptr[stack->pos - 2].v128 = c;
+        stack->pos--;
+      }
+
+      break;
+    case PWASM_OP_V128_XOR:
+      {
+        const pwasm_v128_t a = stack->ptr[stack->pos - 2].v128;
+        const pwasm_v128_t b = stack->ptr[stack->pos - 1].v128;
+
+        pwasm_v128_t c;
+        c.i64[0] = a.i64[0] ^ b.i64[0];
+        c.i64[1] = a.i64[1] ^ b.i64[1];
+
+        stack->ptr[stack->pos - 2].v128 = c;
+        stack->pos--;
+      }
+
+      break;
+    case PWASM_OP_V128_BITSELECT:
+      {
+        const pwasm_v128_t m = stack->ptr[stack->pos - 3].v128;
+        const pwasm_v128_t a = stack->ptr[stack->pos - 2].v128;
+        const pwasm_v128_t b = stack->ptr[stack->pos - 1].v128;
+
+        pwasm_v128_t c;
+        c.i64[0] = (a.i64[0] & m.i64[0]) | (b.i64[0] & ~m.i64[0]);
+        c.i64[1] = (a.i64[1] & m.i64[1]) | (b.i64[1] & ~m.i64[1]);
+
+        stack->ptr[stack->pos - 3].v128 = c;
+        stack->pos -= 2;
+      }
+
+      break;
     default:
       // log error, return failure
       pwasm_env_fail(frame.env, "unknown instruction");
