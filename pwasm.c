@@ -14236,6 +14236,33 @@ pwasm_new_interp_eval_expr(
       }
 
       break;
+    case PWASM_OP_I32X4_SPLAT:
+      {
+        const uint32_t a = stack->ptr[stack->pos - 1].i32;
+        stack->ptr[stack->pos - 1].v128.i32[0] = a;
+        stack->ptr[stack->pos - 1].v128.i32[1] = a;
+        stack->ptr[stack->pos - 1].v128.i32[2] = a;
+        stack->ptr[stack->pos - 1].v128.i32[3] = a;
+      }
+
+      break;
+    case PWASM_OP_I32X4_EXTRACT_LANE:
+      {
+        const pwasm_v128_t a = stack->ptr[stack-> pos - 2].v128;
+        const uint32_t b = stack->ptr[stack->pos - 1].i32;
+        stack->ptr[stack->pos - 2].i32 = a.i32[b];
+        stack->pos--;
+      }
+
+      break;
+    case PWASM_OP_I32X4_REPLACE_LANE:
+      {
+        const uint32_t a = stack->ptr[stack->pos - 1].i32;
+        stack->ptr[stack->pos - 2].v128.i32[in.v_index] = a;
+        stack->pos--;
+      }
+
+      break;
     default:
       // log error, return failure
       pwasm_env_fail(frame.env, "unknown instruction");
