@@ -15892,6 +15892,135 @@ pwasm_new_interp_eval_expr(
       }
 
       break;
+    case PWASM_OP_F32X4_ABS:
+      {
+        const pwasm_v128_t a = stack->ptr[stack->pos - 1].v128;
+
+        pwasm_v128_t b;
+        for (size_t j = 0; j < 4; j++) {
+          b.f32[j] = fabsf(a.f32[j]);
+        }
+
+        stack->ptr[stack->pos - 1].v128 = b;
+      }
+
+      break;
+    case PWASM_OP_F32X4_NEG:
+      {
+        const pwasm_v128_t a = stack->ptr[stack->pos - 1].v128;
+
+        pwasm_v128_t b;
+        for (size_t j = 0; j < 4; j++) {
+          b.f32[j] = -a.f32[j];
+        }
+
+        stack->ptr[stack->pos - 1].v128 = b;
+      }
+
+      break;
+    case PWASM_OP_F32X4_SQRT:
+      {
+        const pwasm_v128_t a = stack->ptr[stack->pos - 1].v128;
+
+        pwasm_v128_t b;
+        for (size_t j = 0; j < 4; j++) {
+          b.f32[j] = sqrtf(a.f32[j]);
+        }
+
+        stack->ptr[stack->pos - 1].v128 = b;
+      }
+
+      break;
+    case PWASM_OP_F32X4_ADD:
+      {
+        const pwasm_v128_t a = stack->ptr[stack->pos - 2].v128;
+        const pwasm_v128_t b = stack->ptr[stack->pos - 1].v128;
+
+        pwasm_v128_t c;
+        for (size_t j = 0; j < 4; j++) {
+          c.f32[j] = a.f32[j] + b.f32[j];
+        }
+
+        stack->ptr[stack->pos - 1].v128 = c;
+        stack->pos--;
+      }
+
+      break;
+    case PWASM_OP_F32X4_SUB:
+      {
+        const pwasm_v128_t a = stack->ptr[stack->pos - 2].v128;
+        const pwasm_v128_t b = stack->ptr[stack->pos - 1].v128;
+
+        pwasm_v128_t c;
+        for (size_t j = 0; j < 4; j++) {
+          c.f32[j] = a.f32[j] - b.f32[j];
+        }
+
+        stack->ptr[stack->pos - 1].v128 = c;
+        stack->pos--;
+      }
+
+      break;
+    case PWASM_OP_F32X4_MUL:
+      {
+        const pwasm_v128_t a = stack->ptr[stack->pos - 2].v128;
+        const pwasm_v128_t b = stack->ptr[stack->pos - 1].v128;
+
+        pwasm_v128_t c;
+        for (size_t j = 0; j < 4; j++) {
+          c.f32[j] = a.f32[j] * b.f32[j];
+        }
+
+        stack->ptr[stack->pos - 1].v128 = c;
+        stack->pos--;
+      }
+
+      break;
+    case PWASM_OP_F32X4_DIV:
+      {
+        const pwasm_v128_t a = stack->ptr[stack->pos - 2].v128;
+        const pwasm_v128_t b = stack->ptr[stack->pos - 1].v128;
+
+        pwasm_v128_t c;
+        for (size_t j = 0; j < 4; j++) {
+          c.f32[j] = a.f32[j] / b.f32[j];
+        }
+
+        stack->ptr[stack->pos - 1].v128 = c;
+        stack->pos--;
+      }
+
+      break;
+    case PWASM_OP_F32X4_MIN:
+      {
+        const pwasm_v128_t a = stack->ptr[stack->pos - 2].v128;
+        const pwasm_v128_t b = stack->ptr[stack->pos - 1].v128;
+
+        pwasm_v128_t c;
+        for (size_t j = 0; j < 4; j++) {
+          c.f32[j] = fminf(a.f32[j], b.f32[j]);
+        }
+
+        stack->ptr[stack->pos - 1].v128 = c;
+        stack->pos--;
+      }
+
+      break;
+    case PWASM_OP_F32X4_MAX:
+      {
+        const pwasm_v128_t a = stack->ptr[stack->pos - 2].v128;
+        const pwasm_v128_t b = stack->ptr[stack->pos - 1].v128;
+
+        pwasm_v128_t c;
+        for (size_t j = 0; j < 4; j++) {
+          c.f32[j] = fmaxf(a.f32[j], b.f32[j]);
+        }
+
+        stack->ptr[stack->pos - 1].v128 = c;
+        stack->pos--;
+      }
+
+      break;
     default:
       // log error, return failure
       pwasm_env_fail(frame.env, "unknown instruction");
