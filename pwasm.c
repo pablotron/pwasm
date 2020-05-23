@@ -3162,7 +3162,7 @@ PWASM_OPS[] = {{
   .bytes      = { 0xfd, 0xc2, 0x01 },
   .num_bytes  = 3,
   .imm        = PWASM_IMM_NONE,
-  .mem_size   = 0,
+  .mem_size   = 1,
   .num_lanes  = 0,
 }, {
   .set        = PWASM_OPS_SIMD,
@@ -3170,7 +3170,7 @@ PWASM_OPS[] = {{
   .bytes      = { 0xfd, 0xc3, 0x01 },
   .num_bytes  = 3,
   .imm        = PWASM_IMM_NONE,
-  .mem_size   = 0,
+  .mem_size   = 2,
   .num_lanes  = 0,
 }, {
   .set        = PWASM_OPS_SIMD,
@@ -3178,7 +3178,7 @@ PWASM_OPS[] = {{
   .bytes      = { 0xfd, 0xc4, 0x01 },
   .num_bytes  = 3,
   .imm        = PWASM_IMM_NONE,
-  .mem_size   = 0,
+  .mem_size   = 4,
   .num_lanes  = 0,
 }, {
   .set        = PWASM_OPS_SIMD,
@@ -3186,7 +3186,7 @@ PWASM_OPS[] = {{
   .bytes      = { 0xfd, 0xc5, 0x01 },
   .num_bytes  = 3,
   .imm        = PWASM_IMM_NONE,
-  .mem_size   = 0,
+  .mem_size   = 8,
   .num_lanes  = 0,
 }, {
   .set        = PWASM_OPS_SIMD,

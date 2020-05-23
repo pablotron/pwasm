@@ -777,12 +777,16 @@ sets:
     imm: "V128_CONST"
   - code: "0xc2"
     name: "v8x16.load_splat"
+    mem_size: 1
   - code: "0xc3"
     name: "v16x8.load_splat"
+    mem_size: 2
   - code: "0xc4"
     name: "v32x4.load_splat"
+    mem_size: 4
   - code: "0xc5"
     name: "v64x2.load_splat"
+    mem_size: 8
   - code: "0xc6"
     name: "i8x16.narrow_i16x8_s"
   - code: "0xc7"
