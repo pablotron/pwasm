@@ -452,6 +452,52 @@ sets:
     imm: "MEM"
     mem_size: 16
 
+  - code: "0x01"
+    name: "i16x8.load8x8_s"
+    imm: "MEM"
+    mem_size: 8
+
+  - code: "0x02"
+    name: "i16x8.load8x8_u"
+    imm: "MEM"
+    mem_size: 8
+
+  - code: "0x03"
+    name: "i32x4.load16x4_s"
+    imm: "MEM"
+    mem_size: 8
+
+  - code: "0x04"
+    name: "i32x4.load16x4_u"
+    imm: "MEM"
+    mem_size: 8
+
+  - code: "0x05"
+    name: "i64x2.load32x2_s"
+    imm: "MEM"
+    mem_size: 8
+
+  - code: "0x06"
+    name: "i64x2.load32x2_u"
+    imm: "MEM"
+    mem_size: 8
+
+  - code: "0x07"
+    name: "v8x16.load_splat"
+    mem_size: 1
+
+  - code: "0x08"
+    name: "v16x8.load_splat"
+    mem_size: 2
+
+  - code: "0x09"
+    name: "v32x4.load_splat"
+    mem_size: 4
+
+  - code: "0x0a"
+    name: "v64x2.load_splat"
+    mem_size: 8
+
   - code: "0x0b"
     name: "v128.store"
     imm: "MEM"
@@ -461,8 +507,30 @@ sets:
     name: "v128.const"
     imm: "V128_CONST"
 
+  - code: "0x0d"
+    name: "v8x16.shuffle"
+    imm: "V128_CONST"
+
+  - code: "0x0e"
+    name: "v8x16.swizzle"
+
   - code: "0x0f"
     name: "i8x16.splat"
+
+  - code: "0x10"
+    name: "i16x8.splat"
+
+  - code: "0x11"
+    name: "i32x4.splat"
+
+  - code: "0x12"
+    name: "i64x2.splat"
+
+  - code: "0x13"
+    name: "f32x4.splat"
+
+  - code: "0x14"
+    name: "f64x2.splat"
 
   - code: "0x15"
     name: "i8x16.extract_lane_s"
@@ -479,9 +547,6 @@ sets:
     imm: "LANE_INDEX"
     num_lanes: 16
 
-  - code: "0x10"
-    name: "i16x8.splat"
-
   - code: "0x18"
     name: "i16x8.extract_lane_s"
     imm: "LANE_INDEX"
@@ -497,9 +562,6 @@ sets:
     imm: "LANE_INDEX"
     num_lanes: 8
 
-  - code: "0x11"
-    name: "i32x4.splat"
-
   - code: "0x1b"
     name: "i32x4.extract_lane"
     imm: "LANE_INDEX"
@@ -509,9 +571,6 @@ sets:
     name: "i32x4.replace_lane"
     imm: "LANE_INDEX"
     num_lanes: 4
-
-  - code: "0x12"
-    name: "i64x2.splat"
 
   - code: "0x1d"
     name: "i64x2.extract_lane"
@@ -523,9 +582,6 @@ sets:
     imm: "LANE_INDEX"
     num_lanes: 2
 
-  - code: "0x13"
-    name: "f32x4.splat"
-
   - code: "0x1f"
     name: "f32x4.extract_lane"
     imm: "LANE_INDEX"
@@ -535,9 +591,6 @@ sets:
     name: "f32x4.replace_lane"
     imm: "LANE_INDEX"
     num_lanes: 4
-
-  - code: "0x14"
-    name: "f64x2.splat"
 
   - code: "0x21"
     name: "f64x2.extract_lane"
@@ -681,6 +734,9 @@ sets:
   - code: "0x4e"
     name: "v128.and"
 
+  - code: "0x4f"
+    name: "v128.andnot"
+
   - code: "0x50"
     name: "v128.or"
 
@@ -690,6 +746,9 @@ sets:
   - code: "0x52"
     name: "v128.bitselect"
 
+  - code: "0x60"
+    name: "i8x16.abs"
+
   - code: "0x61"
     name: "i8x16.neg"
 
@@ -698,6 +757,12 @@ sets:
 
   - code: "0x63"
     name: "i8x16.all_true"
+
+  - code: "0x65"
+    name: "i8x16.narrow_i16x8_s"
+
+  - code: "0x66"
+    name: "i8x16.narrow_i16x8_u"
 
   - code: "0x6b"
     name: "i8x16.shl"
@@ -738,6 +803,12 @@ sets:
   - code: "0x79"
     name: "i8x16.max_u"
 
+  - code: "0x7b"
+    name: "i8x16.avgr_u"
+
+  - code: "0x80"
+    name: "i16x8.abs"
+
   - code: "0x81"
     name: "i16x8.neg"
 
@@ -746,6 +817,24 @@ sets:
 
   - code: "0x83"
     name: "i16x8.all_true"
+
+  - code: "0x85"
+    name: "i16x8.narrow_i32x4_s"
+
+  - code: "0x86"
+    name: "i16x8.narrow_i32x4_u"
+
+  - code: "0x87"
+    name: "i16x8.widen_low_i8x16_s"
+
+  - code: "0x88"
+    name: "i16x8.widen_high_i8x16_s"
+
+  - code: "0x89"
+    name: "i16x8.widen_low_i8x16_u"
+
+  - code: "0x8a"
+    name: "i16x8.widen_high_i8x16_u"
 
   - code: "0x8b"
     name: "i16x8.shl"
@@ -789,6 +878,12 @@ sets:
   - code: "0x99"
     name: "i16x8.max_u"
 
+  - code: "0x9b"
+    name: "i16x8.avgr_u"
+
+  - code: "0xa0"
+    name: "i32x4.abs"
+
   - code: "0xa1"
     name: "i32x4.neg"
 
@@ -797,6 +892,18 @@ sets:
 
   - code: "0xa3"
     name: "i32x4.all_true"
+
+  - code: "0xa7"
+    name: "i32x4.widen_low_i16x8_s"
+
+  - code: "0xa8"
+    name: "i32x4.widen_high_i16x8_s"
+
+  - code: "0xa9"
+    name: "i32x4.widen_low_i16x8_u"
+
+  - code: "0xaa"
+    name: "i32x4.widen_high_i16x8_u"
 
   - code: "0xab"
     name: "i32x4.shl"
@@ -914,110 +1021,3 @@ sets:
 
   - code: "0xfb"
     name: "f32x4.convert_i32x4_u"
-
-  - code: "0x0e"
-    name: "v8x16.swizzle"
-
-  - code: "0x0d"
-    name: "v8x16.shuffle"
-    imm: "V128_CONST"
-
-  - code: "0x07"
-    name: "v8x16.load_splat"
-    mem_size: 1
-
-  - code: "0x08"
-    name: "v16x8.load_splat"
-    mem_size: 2
-
-  - code: "0x09"
-    name: "v32x4.load_splat"
-    mem_size: 4
-
-  - code: "0x0a"
-    name: "v64x2.load_splat"
-    mem_size: 8
-
-  - code: "0x65"
-    name: "i8x16.narrow_i16x8_s"
-
-  - code: "0x66"
-    name: "i8x16.narrow_i16x8_u"
-
-  - code: "0x85"
-    name: "i16x8.narrow_i32x4_s"
-
-  - code: "0x86"
-    name: "i16x8.narrow_i32x4_u"
-
-  - code: "0x87"
-    name: "i16x8.widen_low_i8x16_s"
-
-  - code: "0x88"
-    name: "i16x8.widen_high_i8x16_s"
-
-  - code: "0x89"
-    name: "i16x8.widen_low_i8x16_u"
-
-  - code: "0x8a"
-    name: "i16x8.widen_high_i8x16_u"
-
-  - code: "0xa7"
-    name: "i32x4.widen_low_i16x8_s"
-
-  - code: "0xa8"
-    name: "i32x4.widen_high_i16x8_s"
-
-  - code: "0xa9"
-    name: "i32x4.widen_low_i16x8_u"
-
-  - code: "0xaa"
-    name: "i32x4.widen_high_i16x8_u"
-
-  - code: "0x02"
-    name: "i16x8.load8x8_s"
-    imm: "MEM"
-    mem_size: 8
-
-  - code: "0x03"
-    name: "i16x8.load8x8_u"
-    imm: "MEM"
-    mem_size: 8
-
-  - code: "0x04"
-    name: "i32x4.load16x4_s"
-    imm: "MEM"
-    mem_size: 8
-
-  - code: "0x05"
-    name: "i32x4.load16x4_u"
-    imm: "MEM"
-    mem_size: 8
-
-  - code: "0x06"
-    name: "i64x2.load32x2_s"
-    imm: "MEM"
-    mem_size: 8
-
-  - code: "0x07"
-    name: "i64x2.load32x2_u"
-    imm: "MEM"
-    mem_size: 8
-
-  - code: "0x4f"
-    name: "v128.andnot"
-
-  - code: "0x7b"
-    name: "i8x16.avgr_u"
-
-  - code: "0x9b"
-    name: "i16x8.avgr_u"
-
-  - code: "0x60"
-    name: "i8x16.abs"
-
-  - code: "0x80"
-    name: "i16x8.abs"
-
-  - code: "0xa0"
-    name: "i32x4.abs"
