@@ -8406,6 +8406,46 @@ pwasm_checker_check_store(
 }
 
 /**
+ * Check call.
+ *
+ * Returns `true` on success or `false` on error.
+ */
+static bool
+pwasm_checker_check_call(
+  pwasm_checker_t * const checker,
+  const pwasm_mod_t * const mod,
+  const uint32_t type_id
+) {
+  // get function type, params, and results
+  const pwasm_type_t func_type = mod->types[type_id];
+  const uint32_t * const params = mod->u32s + func_type.params.ofs;
+  const uint32_t * const results = mod->u32s + func_type.results.ofs;
+
+  // pop/check function parameter types in reverse order
+  for (size_t i = 0; i < func_type.params.len; i++) {
+    const pwasm_value_type_t tmp = params[func_type.params.len - 1 - i];
+    const pwasm_checker_type_t type = pwasm_value_type_to_checker_type(tmp);
+
+    if (!pwasm_checker_type_pop_expected(checker, type, NULL)) {
+      return false;
+    }
+  }
+
+  // push function results to type stack
+  for (size_t i = 0; i < func_type.results.len; i++) {
+    const pwasm_value_type_t tmp = results[i];
+    const pwasm_checker_type_t type = pwasm_value_type_to_checker_type(tmp);
+
+    if (!pwasm_checker_type_push(checker, type)) {
+      return false;
+    }
+  }
+
+  // return success
+  return true;
+}
+
+/**
  * Verify lane index immediate.
  *
  * Returns `true` on success or `false` on error.
@@ -9173,57 +9213,21 @@ pwasm_checker_check(
 
       break;
     case PWASM_OP_CALL:
-      {
-        // map function to function type, get params and results
-        const pwasm_type_t func_type = mod->types[mod->funcs[id]];
-        const uint32_t * const params = mod->u32s + func_type.params.ofs;
-        const uint32_t * const results = mod->u32s + func_type.results.ofs;
-
-        // pop/check function parameter types in reverse order
-        for (size_t i = 0; i < func_type.params.len; i++) {
-          const pwasm_checker_type_t type = pwasm_value_type_to_checker_type(params[func_type.params.len - 1 - i]);
-          if (!pwasm_checker_type_pop_expected(checker, type, NULL)) {
-            return false;
-          }
-        }
-
-        // push function results to type stack
-        for (size_t i = 0; i < func_type.results.len; i++) {
-          const pwasm_checker_type_t type = pwasm_value_type_to_checker_type(results[func_type.results.len - 1 - i]);
-          if (!pwasm_checker_type_push(checker, type)) {
-            return false;
-          }
-        }
+      // check call
+      if (!pwasm_checker_check_call(checker, mod, mod->funcs[id])) {
+        return false;
       }
 
       break;
     case PWASM_OP_CALL_INDIRECT:
-      {
-        // get function type, params, and results
-        const pwasm_type_t func_type = mod->types[id];
-        const uint32_t * const params = mod->u32s + func_type.params.ofs;
-        const uint32_t * const results = mod->u32s + func_type.results.ofs;
+      // pop indirect operand
+      if (!pwasm_checker_type_pop_expected(checker, PWASM_CHECKER_TYPE_I32, NULL)) {
+        return false;
+      }
 
-        // pop indirect operand
-        if (!pwasm_checker_type_pop_expected(checker, PWASM_CHECKER_TYPE_I32, NULL)) {
-          return false;
-        }
-
-        // pop/check function parameter types in reverse order
-        for (size_t i = 0; i < func_type.params.len; i++) {
-          const pwasm_checker_type_t type = pwasm_value_type_to_checker_type(params[func_type.params.len - 1 - i]);
-          if (!pwasm_checker_type_pop_expected(checker, type, NULL)) {
-            return false;
-          }
-        }
-
-        // push function results to type stack
-        for (size_t i = 0; i < func_type.results.len; i++) {
-          const pwasm_checker_type_t type = pwasm_value_type_to_checker_type(results[func_type.results.len - 1 - i]);
-          if (!pwasm_checker_type_push(checker, type)) {
-            return false;
-          }
-        }
+      // check call
+      if (!pwasm_checker_check_call(checker, mod, id)) {
+        return false;
       }
 
       break;
