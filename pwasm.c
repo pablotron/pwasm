@@ -14196,6 +14196,46 @@ pwasm_new_interp_eval_expr(
       }
 
       break;
+    case PWASM_OP_I16X8_SPLAT:
+      {
+        const uint16_t a = stack->ptr[stack->pos - 1].i32;
+        stack->ptr[stack->pos - 1].v128.i16[0] = a;
+        stack->ptr[stack->pos - 1].v128.i16[1] = a;
+        stack->ptr[stack->pos - 1].v128.i16[2] = a;
+        stack->ptr[stack->pos - 1].v128.i16[3] = a;
+        stack->ptr[stack->pos - 1].v128.i16[4] = a;
+        stack->ptr[stack->pos - 1].v128.i16[5] = a;
+        stack->ptr[stack->pos - 1].v128.i16[6] = a;
+        stack->ptr[stack->pos - 1].v128.i16[7] = a;
+      }
+
+      break;
+    case PWASM_OP_I16X8_EXTRACT_LANE_S:
+      {
+        const pwasm_v128_t a = stack->ptr[stack-> pos - 2].v128;
+        const uint32_t b = stack->ptr[stack->pos - 1].i32;
+        stack->ptr[stack->pos - 2].i32 = (int16_t) a.i16[b];
+        stack->pos--;
+      }
+
+      break;
+    case PWASM_OP_I16X8_EXTRACT_LANE_U:
+      {
+        const pwasm_v128_t a = stack->ptr[stack-> pos - 2].v128;
+        const uint32_t b = stack->ptr[stack->pos - 1].i32;
+        stack->ptr[stack->pos - 2].i32 = a.i16[b];
+        stack->pos--;
+      }
+
+      break;
+    case PWASM_OP_I16X8_REPLACE_LANE:
+      {
+        const uint16_t a = stack->ptr[stack->pos - 1].i32;
+        stack->ptr[stack->pos - 2].v128.i16[in.v_index] = a;
+        stack->pos--;
+      }
+
+      break;
     default:
       // log error, return failure
       pwasm_env_fail(frame.env, "unknown instruction");
