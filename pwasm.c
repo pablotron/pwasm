@@ -15326,6 +15326,274 @@ pwasm_new_interp_eval_expr(
       }
 
       break;
+    case PWASM_OP_I16X8_NEG:
+      {
+        const pwasm_v128_t a = stack->ptr[stack->pos - 1].v128;
+
+        pwasm_v128_t b;
+        for (size_t j = 0; j < 8; j++) {
+          b.i16[j] = -a.i16[j];
+        }
+
+        stack->ptr[stack->pos - 1].v128 = b;
+      }
+
+      break;
+    case PWASM_OP_I16X8_ANY_TRUE:
+      {
+        const pwasm_v128_t a = stack->ptr[stack->pos - 1].v128;
+
+        stack->ptr[stack->pos - 1].i32 = (
+          a.i16[0] || a.i16[1] || a.i16[2] || a.i16[3] ||
+          a.i16[4] || a.i16[5] || a.i16[6] || a.i16[7]
+        ) ? 1 : 0;
+      }
+
+      break;
+    case PWASM_OP_I16X8_ALL_TRUE:
+      {
+        const pwasm_v128_t a = stack->ptr[stack->pos - 1].v128;
+
+        stack->ptr[stack->pos - 1].i32 = (
+          a.i16[0] && a.i16[1] && a.i16[2] && a.i16[3] &&
+          a.i16[4] && a.i16[5] && a.i16[6] && a.i16[7]
+        ) ? 1 : 0;
+      }
+
+      break;
+    case PWASM_OP_I16X8_SHL:
+      {
+        const pwasm_v128_t a = stack->ptr[stack->pos - 2].v128;
+        const uint32_t b = stack->ptr[stack->pos - 1].i32 & 0xF;
+
+        pwasm_v128_t c;
+        for (size_t j = 0; j < 8; j++) {
+          c.i16[j] = (a.i16[j] << b);
+        }
+
+        stack->ptr[stack->pos - 2].v128 = c;
+        stack->pos--;
+      }
+
+      break;
+    case PWASM_OP_I16X8_SHR_S:
+      {
+        const pwasm_v128_t a = stack->ptr[stack->pos - 2].v128;
+        const uint32_t b = stack->ptr[stack->pos - 1].i32 & 0xF;
+
+        pwasm_v128_t c;
+        for (size_t j = 0; j < 8; j++) {
+          int16_t av = a.i16[j];
+          c.i16[j] = (av >> b);
+        }
+
+        stack->ptr[stack->pos - 2].v128 = c;
+        stack->pos--;
+      }
+
+      break;
+    case PWASM_OP_I16X8_SHR_U:
+      {
+        const pwasm_v128_t a = stack->ptr[stack->pos - 2].v128;
+        const uint32_t b = stack->ptr[stack->pos - 1].i32 & 0xF;
+
+        pwasm_v128_t c;
+        for (size_t j = 0; j < 8; j++) {
+          uint16_t av = a.i16[j];
+          c.i16[j] = (av >> b);
+        }
+
+        stack->ptr[stack->pos - 2].v128 = c;
+        stack->pos--;
+      }
+
+      break;
+    case PWASM_OP_I16X8_ADD:
+      {
+        const pwasm_v128_t a = stack->ptr[stack->pos - 2].v128;
+        const pwasm_v128_t b = stack->ptr[stack->pos - 1].v128;
+
+        pwasm_v128_t c;
+        for (size_t j = 0; j < 8; j++) {
+          c.i16[j] = a.i16[j] + b.i16[j];
+        }
+
+        stack->ptr[stack->pos - 2].v128 = c;
+        stack->pos--;
+      }
+
+      break;
+    case PWASM_OP_I16X8_ADD_SATURATE_S:
+      {
+        const pwasm_v128_t a = stack->ptr[stack->pos - 2].v128;
+        const pwasm_v128_t b = stack->ptr[stack->pos - 1].v128;
+
+        pwasm_v128_t c;
+        for (size_t j = 0; j < 8; j++) {
+          const int16_t av = a.i16[j];
+          const int16_t bv = b.i16[j];
+          const int32_t v = av + bv;
+          c.i16[j] = CLAMP(v, INT16_MIN, INT16_MAX);
+        }
+
+        stack->ptr[stack->pos - 2].v128 = c;
+        stack->pos--;
+      }
+
+      break;
+    case PWASM_OP_I16X8_ADD_SATURATE_U:
+      {
+        const pwasm_v128_t a = stack->ptr[stack->pos - 2].v128;
+        const pwasm_v128_t b = stack->ptr[stack->pos - 1].v128;
+
+        pwasm_v128_t c;
+        for (size_t j = 0; j < 8; j++) {
+          const uint16_t av = a.i16[j];
+          const uint16_t bv = b.i16[j];
+          const uint32_t v = av + bv;
+          c.i16[j] = MIN(v, UINT16_MAX);
+        }
+
+        stack->ptr[stack->pos - 2].v128 = c;
+        stack->pos--;
+      }
+
+      break;
+    case PWASM_OP_I16X8_SUB:
+      {
+        const pwasm_v128_t a = stack->ptr[stack->pos - 2].v128;
+        const pwasm_v128_t b = stack->ptr[stack->pos - 1].v128;
+
+        pwasm_v128_t c;
+        for (size_t j = 0; j < 8; j++) {
+          c.i16[j] = a.i16[j] - b.i16[j];
+        }
+
+        stack->ptr[stack->pos - 2].v128 = c;
+        stack->pos--;
+      }
+
+      break;
+    case PWASM_OP_I16X8_SUB_SATURATE_S:
+      {
+        const pwasm_v128_t a = stack->ptr[stack->pos - 2].v128;
+        const pwasm_v128_t b = stack->ptr[stack->pos - 1].v128;
+
+        pwasm_v128_t c;
+        for (size_t j = 0; j < 8; j++) {
+          const int16_t av = a.i16[j];
+          const int16_t bv = b.i16[j];
+          const int32_t v = av - bv;
+          c.i16[j] = CLAMP(v, INT16_MIN, INT16_MAX);
+        }
+
+        stack->ptr[stack->pos - 2].v128 = c;
+        stack->pos--;
+      }
+
+      break;
+    case PWASM_OP_I16X8_SUB_SATURATE_U:
+      {
+        const pwasm_v128_t a = stack->ptr[stack->pos - 2].v128;
+        const pwasm_v128_t b = stack->ptr[stack->pos - 1].v128;
+
+        pwasm_v128_t c;
+        for (size_t j = 0; j < 8; j++) {
+          const uint16_t av = a.i16[j];
+          const uint16_t bv = b.i16[j];
+          c.i16[j] = (av > bv) ? (av - bv) : 0;
+        }
+
+        stack->ptr[stack->pos - 2].v128 = c;
+        stack->pos--;
+      }
+
+      break;
+    case PWASM_OP_I16X8_MUL:
+      {
+        const pwasm_v128_t a = stack->ptr[stack->pos - 2].v128;
+        const pwasm_v128_t b = stack->ptr[stack->pos - 1].v128;
+
+        pwasm_v128_t c;
+        for (size_t j = 0; j < 8; j++) {
+          const uint16_t av = a.i16[j];
+          const uint16_t bv = b.i16[j];
+          c.i16[j] = av * bv;
+        }
+
+        stack->ptr[stack->pos - 2].v128 = c;
+        stack->pos--;
+      }
+
+      break;
+    case PWASM_OP_I16X8_MIN_S:
+      {
+        const pwasm_v128_t a = stack->ptr[stack->pos - 2].v128;
+        const pwasm_v128_t b = stack->ptr[stack->pos - 1].v128;
+
+        pwasm_v128_t c;
+        for (size_t j = 0; j < 8; j++) {
+          const int16_t av = a.i16[j];
+          const int16_t bv = b.i16[j];
+          c.i16[j] = MIN(av, bv);
+        }
+
+        stack->ptr[stack->pos - 2].v128 = c;
+        stack->pos--;
+      }
+
+      break;
+    case PWASM_OP_I16X8_MIN_U:
+      {
+        const pwasm_v128_t a = stack->ptr[stack->pos - 2].v128;
+        const pwasm_v128_t b = stack->ptr[stack->pos - 1].v128;
+
+        pwasm_v128_t c;
+        for (size_t j = 0; j < 8; j++) {
+          const uint16_t av = a.i16[j];
+          const uint16_t bv = b.i16[j];
+          c.i16[j] = MIN(av, bv);
+        }
+
+        stack->ptr[stack->pos - 2].v128 = c;
+        stack->pos--;
+      }
+
+      break;
+    case PWASM_OP_I16X8_MAX_S:
+      {
+        const pwasm_v128_t a = stack->ptr[stack->pos - 2].v128;
+        const pwasm_v128_t b = stack->ptr[stack->pos - 1].v128;
+
+        pwasm_v128_t c;
+        for (size_t j = 0; j < 8; j++) {
+          const int16_t av = a.i16[j];
+          const int16_t bv = b.i16[j];
+          c.i16[j] = MAX(av, bv);
+        }
+
+        stack->ptr[stack->pos - 2].v128 = c;
+        stack->pos--;
+      }
+
+      break;
+    case PWASM_OP_I16X8_MAX_U:
+      {
+        const pwasm_v128_t a = stack->ptr[stack->pos - 2].v128;
+        const pwasm_v128_t b = stack->ptr[stack->pos - 1].v128;
+
+        pwasm_v128_t c;
+        for (size_t j = 0; j < 8; j++) {
+          const uint16_t av = a.i16[j];
+          const uint16_t bv = b.i16[j];
+          c.i16[j] = MAX(av, bv);
+        }
+
+        stack->ptr[stack->pos - 2].v128 = c;
+        stack->pos--;
+      }
+
+      break;
     default:
       // log error, return failure
       pwasm_env_fail(frame.env, "unknown instruction");
