@@ -213,9 +213,7 @@ module PWASM
       end.freeze
 
       # build full list of mask values
-      @masks = @sets.select { |set|
-        set.encoding == :byte
-      }.each.with_object([]) do |set, r|
+      @masks = @sets.each.with_object([]) do |set, r|
         # build lut
         lut = set.ops.each.with_object({}) { |op, r| r[op.code] = true }
 
@@ -232,9 +230,7 @@ module PWASM
         end)
       end
 
-      @byte_map = @sets.select { |set|
-        set.encoding == :byte
-      }.each.with_object([]) do |set, r|
+      @byte_map = @sets.each.with_object([]) do |set, r|
         r.concat(BYTES.map { |byte|
           { byte: byte, op: set.ops.find { |op| op.val == byte.val } }
         })
