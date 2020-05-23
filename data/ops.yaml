@@ -814,6 +814,7 @@ sets:
   - code: "0xd2"
     name: "i16x8.load8x8_s"
     imm: "MEM"
+    mem_size: 8
   - code: "0xd3"
     mem_size: 8
     name: "i16x8.load8x8_u"
