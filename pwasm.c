@@ -15941,7 +15941,7 @@ pwasm_new_interp_eval_expr(
           c.f32[j] = a.f32[j] + b.f32[j];
         }
 
-        stack->ptr[stack->pos - 1].v128 = c;
+        stack->ptr[stack->pos - 2].v128 = c;
         stack->pos--;
       }
 
@@ -15956,7 +15956,7 @@ pwasm_new_interp_eval_expr(
           c.f32[j] = a.f32[j] - b.f32[j];
         }
 
-        stack->ptr[stack->pos - 1].v128 = c;
+        stack->ptr[stack->pos - 2].v128 = c;
         stack->pos--;
       }
 
@@ -15971,7 +15971,7 @@ pwasm_new_interp_eval_expr(
           c.f32[j] = a.f32[j] * b.f32[j];
         }
 
-        stack->ptr[stack->pos - 1].v128 = c;
+        stack->ptr[stack->pos - 2].v128 = c;
         stack->pos--;
       }
 
@@ -15986,7 +15986,7 @@ pwasm_new_interp_eval_expr(
           c.f32[j] = a.f32[j] / b.f32[j];
         }
 
-        stack->ptr[stack->pos - 1].v128 = c;
+        stack->ptr[stack->pos - 2].v128 = c;
         stack->pos--;
       }
 
@@ -16001,7 +16001,7 @@ pwasm_new_interp_eval_expr(
           c.f32[j] = fminf(a.f32[j], b.f32[j]);
         }
 
-        stack->ptr[stack->pos - 1].v128 = c;
+        stack->ptr[stack->pos - 2].v128 = c;
         stack->pos--;
       }
 
@@ -16016,7 +16016,7 @@ pwasm_new_interp_eval_expr(
           c.f32[j] = fmaxf(a.f32[j], b.f32[j]);
         }
 
-        stack->ptr[stack->pos - 1].v128 = c;
+        stack->ptr[stack->pos - 2].v128 = c;
         stack->pos--;
       }
 
@@ -16070,7 +16070,7 @@ pwasm_new_interp_eval_expr(
           c.f64[j] = a.f64[j] + b.f64[j];
         }
 
-        stack->ptr[stack->pos - 1].v128 = c;
+        stack->ptr[stack->pos - 2].v128 = c;
         stack->pos--;
       }
 
@@ -16085,7 +16085,7 @@ pwasm_new_interp_eval_expr(
           c.f64[j] = a.f64[j] - b.f64[j];
         }
 
-        stack->ptr[stack->pos - 1].v128 = c;
+        stack->ptr[stack->pos - 2].v128 = c;
         stack->pos--;
       }
 
@@ -16100,7 +16100,7 @@ pwasm_new_interp_eval_expr(
           c.f64[j] = a.f64[j] * b.f64[j];
         }
 
-        stack->ptr[stack->pos - 1].v128 = c;
+        stack->ptr[stack->pos - 2].v128 = c;
         stack->pos--;
       }
 
@@ -16115,7 +16115,7 @@ pwasm_new_interp_eval_expr(
           c.f64[j] = a.f64[j] / b.f64[j];
         }
 
-        stack->ptr[stack->pos - 1].v128 = c;
+        stack->ptr[stack->pos - 2].v128 = c;
         stack->pos--;
       }
 
@@ -16130,7 +16130,7 @@ pwasm_new_interp_eval_expr(
           c.f64[j] = fmin(a.f64[j], b.f64[j]);
         }
 
-        stack->ptr[stack->pos - 1].v128 = c;
+        stack->ptr[stack->pos - 2].v128 = c;
         stack->pos--;
       }
 
@@ -16145,7 +16145,7 @@ pwasm_new_interp_eval_expr(
           c.f64[j] = fmax(a.f64[j], b.f64[j]);
         }
 
-        stack->ptr[stack->pos - 1].v128 = c;
+        stack->ptr[stack->pos - 2].v128 = c;
         stack->pos--;
       }
 
@@ -16216,7 +16216,7 @@ pwasm_new_interp_eval_expr(
           c.i8[j] = a.i8[ofs];
         }
 
-        stack->ptr[stack->pos - 1].v128 = c;
+        stack->ptr[stack->pos - 2].v128 = c;
         stack->pos--;
       }
 
@@ -16232,7 +16232,7 @@ pwasm_new_interp_eval_expr(
           c.i8[j] = (ofs < 16) ? a.i8[ofs] : b.i8[ofs - 16];
         }
 
-        stack->ptr[stack->pos - 1].v128 = c;
+        stack->ptr[stack->pos - 2].v128 = c;
         stack->pos--;
       }
 
@@ -16329,7 +16329,7 @@ pwasm_new_interp_eval_expr(
           c.i8[j + 8] = CLAMP(v, INT8_MIN, INT8_MAX);
         }
 
-        stack->ptr[stack->pos - 1].v128 = c;
+        stack->ptr[stack->pos - 2].v128 = c;
         stack->pos--;
       }
 
@@ -16350,7 +16350,7 @@ pwasm_new_interp_eval_expr(
           c.i8[j + 8] = CLAMP(v, 0, UINT8_MAX);
         }
 
-        stack->ptr[stack->pos - 1].v128 = c;
+        stack->ptr[stack->pos - 2].v128 = c;
         stack->pos--;
       }
 
@@ -16371,7 +16371,7 @@ pwasm_new_interp_eval_expr(
           c.i16[j + 4] = CLAMP(v, INT16_MIN, INT16_MAX);
         }
 
-        stack->ptr[stack->pos - 1].v128 = c;
+        stack->ptr[stack->pos - 2].v128 = c;
         stack->pos--;
       }
 
@@ -16392,7 +16392,7 @@ pwasm_new_interp_eval_expr(
           c.i16[j + 4] = CLAMP(v, 0, UINT16_MAX);
         }
 
-        stack->ptr[stack->pos - 1].v128 = c;
+        stack->ptr[stack->pos - 2].v128 = c;
         stack->pos--;
       }
 
