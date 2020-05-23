@@ -16150,6 +16150,61 @@ pwasm_new_interp_eval_expr(
       }
 
       break;
+    case PWASM_OP_I32X4_TRUNC_SAT_F32X4_S:
+      {
+        const pwasm_v128_t a = stack->ptr[stack->pos - 1].v128;
+
+        pwasm_v128_t b;
+        for (size_t j = 0; j < 4; j++) {
+          int32_t v = CLAMP(a.f32[j], INT32_MIN, INT32_MAX);
+          b.i32[j] = v;
+        }
+
+        stack->ptr[stack->pos - 1].v128 = b;
+      }
+
+      break;
+    case PWASM_OP_I32X4_TRUNC_SAT_F32X4_U:
+      {
+        const pwasm_v128_t a = stack->ptr[stack->pos - 1].v128;
+
+        pwasm_v128_t b;
+        for (size_t j = 0; j < 4; j++) {
+          b.i32[j] = MIN(a.f32[j], UINT32_MAX);
+        }
+
+        stack->ptr[stack->pos - 1].v128 = b;
+      }
+
+      break;
+    case PWASM_OP_F32X4_CONVERT_I32X4_S:
+      {
+        const pwasm_v128_t a = stack->ptr[stack->pos - 1].v128;
+
+        pwasm_v128_t b;
+        for (size_t j = 0; j < 4; j++) {
+          int32_t v = a.i32[j];
+          b.f32[j] = v;
+        }
+
+        stack->ptr[stack->pos - 1].v128 = b;
+      }
+
+      break;
+    case PWASM_OP_F32X4_CONVERT_I32X4_U:
+      {
+        const pwasm_v128_t a = stack->ptr[stack->pos - 1].v128;
+
+        pwasm_v128_t b;
+        for (size_t j = 0; j < 4; j++) {
+          uint32_t v = a.i32[j];
+          b.f32[j] = v;
+        }
+
+        stack->ptr[stack->pos - 1].v128 = b;
+      }
+
+      break;
     default:
       // log error, return failure
       pwasm_env_fail(frame.env, "unknown instruction");
