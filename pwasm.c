@@ -14912,6 +14912,96 @@ pwasm_new_interp_eval_expr(
       }
 
       break;
+    case PWASM_OP_F64X2_EQ:
+      {
+        const pwasm_v128_t a = stack->ptr[stack->pos - 2].v128;
+        const pwasm_v128_t b = stack->ptr[stack->pos - 1].v128;
+
+        pwasm_v128_t c;
+        for (size_t j = 0; j < 2; j++) {
+          c.i64[j] = (a.f64[j] == b.f64[j]) ? 0xFFFFFFFFFFFFFFFF : 0;
+        }
+
+        stack->ptr[stack->pos - 2].v128 = c;
+        stack->pos--;
+      }
+
+      break;
+    case PWASM_OP_F64X2_NE:
+      {
+        const pwasm_v128_t a = stack->ptr[stack->pos - 2].v128;
+        const pwasm_v128_t b = stack->ptr[stack->pos - 1].v128;
+
+        pwasm_v128_t c;
+        for (size_t j = 0; j < 2; j++) {
+          c.i64[j] = (a.f64[j] != b.f64[j]) ? 0xFFFFFFFFFFFFFFFF : 0;
+        }
+
+        stack->ptr[stack->pos - 2].v128 = c;
+        stack->pos--;
+      }
+
+      break;
+    case PWASM_OP_F64X2_LT:
+      {
+        const pwasm_v128_t a = stack->ptr[stack->pos - 2].v128;
+        const pwasm_v128_t b = stack->ptr[stack->pos - 1].v128;
+
+        pwasm_v128_t c;
+        for (size_t j = 0; j < 2; j++) {
+          c.i64[j] = (a.f64[j] < b.f64[j]) ? 0xFFFFFFFFFFFFFFFF : 0;
+        }
+
+        stack->ptr[stack->pos - 2].v128 = c;
+        stack->pos--;
+      }
+
+      break;
+    case PWASM_OP_F64X2_GT:
+      {
+        const pwasm_v128_t a = stack->ptr[stack->pos - 2].v128;
+        const pwasm_v128_t b = stack->ptr[stack->pos - 1].v128;
+
+        pwasm_v128_t c;
+        for (size_t j = 0; j < 2; j++) {
+          c.i64[j] = (a.f64[j] > b.f64[j]) ? 0xFFFFFFFFFFFFFFFF : 0;
+        }
+
+        stack->ptr[stack->pos - 2].v128 = c;
+        stack->pos--;
+      }
+
+      break;
+    case PWASM_OP_F64X2_LE:
+      {
+        const pwasm_v128_t a = stack->ptr[stack->pos - 2].v128;
+        const pwasm_v128_t b = stack->ptr[stack->pos - 1].v128;
+
+        pwasm_v128_t c;
+        for (size_t j = 0; j < 2; j++) {
+          c.i64[j] = (a.f64[j] <= b.f64[j]) ? 0xFFFFFFFFFFFFFFFF : 0;
+        }
+
+        stack->ptr[stack->pos - 2].v128 = c;
+        stack->pos--;
+      }
+
+      break;
+    case PWASM_OP_F64X2_GE:
+      {
+        const pwasm_v128_t a = stack->ptr[stack->pos - 2].v128;
+        const pwasm_v128_t b = stack->ptr[stack->pos - 1].v128;
+
+        pwasm_v128_t c;
+        for (size_t j = 0; j < 2; j++) {
+          c.i64[j] = (a.f64[j] >= b.f64[j]) ? 0xFFFFFFFFFFFFFFFF : 0;
+        }
+
+        stack->ptr[stack->pos - 2].v128 = c;
+        stack->pos--;
+      }
+
+      break;
     default:
       // log error, return failure
       pwasm_env_fail(frame.env, "unknown instruction");
