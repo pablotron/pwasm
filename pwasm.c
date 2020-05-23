@@ -16205,6 +16205,38 @@ pwasm_new_interp_eval_expr(
       }
 
       break;
+    case PWASM_OP_V8X16_SWIZZLE:
+      {
+        const pwasm_v128_t a = stack->ptr[stack->pos - 2].v128;
+        const pwasm_v128_t b = stack->ptr[stack->pos - 1].v128;
+
+        pwasm_v128_t c;
+        for (size_t j = 0; j < 16; j++) {
+          const uint32_t ofs = (b.i8[j] < 16) ? b.i8[j] : 0;
+          c.i8[j] = a.i8[ofs];
+        }
+
+        stack->ptr[stack->pos - 1].v128 = c;
+        stack->pos--;
+      }
+
+      break;
+    case PWASM_OP_V8X16_SHUFFLE:
+      {
+        const pwasm_v128_t a = stack->ptr[stack->pos - 2].v128;
+        const pwasm_v128_t b = stack->ptr[stack->pos - 1].v128;
+
+        pwasm_v128_t c;
+        for (size_t j = 0; j < 16; j++) {
+          const uint8_t ofs = in.v_v128.i8[j] & 0x1F;
+          c.i8[j] = (ofs < 16) ? a.i8[ofs] : b.i8[ofs - 16];
+        }
+
+        stack->ptr[stack->pos - 1].v128 = c;
+        stack->pos--;
+      }
+
+      break;
     default:
       // log error, return failure
       pwasm_env_fail(frame.env, "unknown instruction");
