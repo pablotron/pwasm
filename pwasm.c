@@ -12969,6 +12969,7 @@ pwasm_new_interp_eval_expr(
     case PWASM_OP_I64_LOAD16_U:
     case PWASM_OP_I64_LOAD32_S:
     case PWASM_OP_I64_LOAD32_U:
+    case PWASM_OP_V128_LOAD:
       {
         // get offset operand
         const uint32_t ofs = stack->ptr[stack->pos - 1].i32;
@@ -12993,6 +12994,7 @@ pwasm_new_interp_eval_expr(
     case PWASM_OP_I64_STORE8:
     case PWASM_OP_I64_STORE16:
     case PWASM_OP_I64_STORE32:
+    case PWASM_OP_V128_STORE:
       {
         // get offset operand and value
         const uint32_t ofs = stack->ptr[stack->pos - 2].i32;
@@ -14154,6 +14156,43 @@ pwasm_new_interp_eval_expr(
       {
         const double a = stack->ptr[stack->pos - 1].f64;
         stack->ptr[stack->pos - 1].i64 = (uint64_t) CLAMP(a, 0, UINT64_MAX);
+      }
+
+      break;
+    case PWASM_OP_V128_CONST:
+      stack->ptr[stack->pos++].v128 = in.v_v128;
+
+      break;
+    case PWASM_OP_I8X16_SPLAT:
+      {
+        const uint8_t a = stack->ptr[stack->pos - 1].i32;
+        memset(stack->ptr[stack->pos - 1].v128.i8, a, 16);
+      }
+
+      break;
+    case PWASM_OP_I8X16_EXTRACT_LANE_S:
+      {
+        const pwasm_v128_t a = stack->ptr[stack-> pos - 2].v128;
+        const uint32_t b = stack->ptr[stack->pos - 1].i32;
+        stack->ptr[stack->pos - 2].i32 = (int8_t) a.i8[b];
+        stack->pos--;
+      }
+
+      break;
+    case PWASM_OP_I8X16_EXTRACT_LANE_U:
+      {
+        const pwasm_v128_t a = stack->ptr[stack-> pos - 2].v128;
+        const uint32_t b = stack->ptr[stack->pos - 1].i32;
+        stack->ptr[stack->pos - 2].i32 = a.i8[b];
+        stack->pos--;
+      }
+
+      break;
+    case PWASM_OP_I8X16_REPLACE_LANE:
+      {
+        const uint8_t a = stack->ptr[stack->pos - 1].i32;
+        stack->ptr[stack->pos - 2].v128.i8[in.v_index] = a;
+        stack->pos--;
       }
 
       break;
