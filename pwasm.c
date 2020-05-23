@@ -16237,6 +16237,82 @@ pwasm_new_interp_eval_expr(
       }
 
       break;
+    case PWASM_OP_V8X16_LOAD_SPLAT:
+      {
+        // load value, check for error
+        pwasm_val_t a;
+        if (!pwasm_env_mem_load(frame.env, frame.mem_id, in, 0, &a)) {
+          return false;
+        }
+
+        // splat
+        pwasm_v128_t b;
+        for (size_t j = 0; j < 16; j++) {
+          b.i8[j] = a.v128.i8[0];
+        }
+
+        // push val
+        stack->ptr[stack->pos++].v128 = b;
+      }
+
+      break;
+    case PWASM_OP_V16X8_LOAD_SPLAT:
+      {
+        // load value, check for error
+        pwasm_val_t a;
+        if (!pwasm_env_mem_load(frame.env, frame.mem_id, in, 0, &a)) {
+          return false;
+        }
+
+        // splat
+        pwasm_v128_t b;
+        for (size_t j = 0; j < 8; j++) {
+          b.i16[j] = a.v128.i16[0];
+        }
+
+        // push val
+        stack->ptr[stack->pos++].v128 = b;
+      }
+
+      break;
+    case PWASM_OP_V32X4_LOAD_SPLAT:
+      {
+        // load value, check for error
+        pwasm_val_t a;
+        if (!pwasm_env_mem_load(frame.env, frame.mem_id, in, 0, &a)) {
+          return false;
+        }
+
+        // splat
+        pwasm_v128_t b;
+        for (size_t j = 0; j < 4; j++) {
+          b.i32[j] = a.v128.i32[0];
+        }
+
+        // push val
+        stack->ptr[stack->pos++].v128 = b;
+      }
+
+      break;
+    case PWASM_OP_V64X2_LOAD_SPLAT:
+      {
+        // load value, check for error
+        pwasm_val_t a;
+        if (!pwasm_env_mem_load(frame.env, frame.mem_id, in, 0, &a)) {
+          return false;
+        }
+
+        // splat
+        pwasm_v128_t b;
+        for (size_t j = 0; j < 2; j++) {
+          b.i64[j] = a.v128.i64[0];
+        }
+
+        // push val
+        stack->ptr[stack->pos++].v128 = b;
+      }
+
+      break;
     default:
       // log error, return failure
       pwasm_env_fail(frame.env, "unknown instruction");
