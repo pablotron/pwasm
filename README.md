@@ -111,12 +111,13 @@ The [PWASM][] library has the following features:
   module.
 * Written in modern [C11][].
 * [MIT-licensed][mit].
+* [SIMD][] and `trunc_sat` extended opcode support.
 
 **Coming Soon**
 
 * [JIT][] and [AOT][] compiler.
+* Multi-value blocks.
 * Threaded parser.
-* Vector instruction extension.
 
 ### Usage
 
@@ -422,3 +423,5 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
   "Doxygen API documentation generator"
 [api]: https://en.wikipedia.org/wiki/Application_programming_interface
   "Application Programming Interface (API)"
+[simd]: https://en.wikipedia.org/wiki/SIMD
+  "Single Instruction, Multiple Data"
