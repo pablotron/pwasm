@@ -14301,6 +14301,29 @@ pwasm_new_interp_eval_expr(
       }
 
       break;
+    case PWASM_OP_F64X2_SPLAT:
+      {
+        const double a = stack->ptr[stack->pos - 1].f64;
+        stack->ptr[stack->pos - 1].v128.f64[0] = a;
+        stack->ptr[stack->pos - 1].v128.f64[1] = a;
+      }
+
+      break;
+    case PWASM_OP_F64X2_EXTRACT_LANE:
+      {
+        const pwasm_v128_t a = stack->ptr[stack->pos - 1].v128;
+        stack->ptr[stack->pos - 1].f64 = a.f64[in.v_index];
+      }
+
+      break;
+    case PWASM_OP_F64X2_REPLACE_LANE:
+      {
+        const double a = stack->ptr[stack->pos - 1].f64;
+        stack->ptr[stack->pos - 2].v128.f64[in.v_index] = a;
+        stack->pos--;
+      }
+
+      break;
     default:
       // log error, return failure
       pwasm_env_fail(frame.env, "unknown instruction");
