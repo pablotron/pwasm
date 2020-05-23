@@ -16622,6 +16622,96 @@ pwasm_new_interp_eval_expr(
       }
 
       break;
+    case PWASM_OP_V128_ANDNOT:
+      {
+        const pwasm_v128_t a = stack->ptr[stack->pos - 2].v128;
+        const pwasm_v128_t b = stack->ptr[stack->pos - 1].v128;
+
+        pwasm_v128_t c;
+        c.i64[0] = a.i64[0] & ~b.i64[0];
+        c.i64[1] = a.i64[1] & ~b.i64[1];
+
+        stack->ptr[stack->pos - 2].v128 = c;
+        stack->pos--;
+      }
+
+      break;
+    case PWASM_OP_I8X16_AVGR_U:
+      {
+        const pwasm_v128_t a = stack->ptr[stack->pos - 2].v128;
+        const pwasm_v128_t b = stack->ptr[stack->pos - 1].v128;
+
+        pwasm_v128_t c;
+        for (size_t j = 0; j < 16; j++) {
+          const uint8_t av = a.i8[j];
+          const uint8_t bv = b.i8[j];
+          c.i8[j] = (av + bv + 1) / 2;
+        }
+
+        stack->ptr[stack->pos - 2].v128 = c;
+        stack->pos--;
+      }
+
+      break;
+    case PWASM_OP_I16X8_AVGR_U:
+      {
+        const pwasm_v128_t a = stack->ptr[stack->pos - 2].v128;
+        const pwasm_v128_t b = stack->ptr[stack->pos - 1].v128;
+
+        pwasm_v128_t c;
+        for (size_t j = 0; j < 8; j++) {
+          const uint16_t av = a.i16[j];
+          const uint16_t bv = b.i16[j];
+          c.i16[j] = (av + bv + 1) / 2;
+        }
+
+        stack->ptr[stack->pos - 2].v128 = c;
+        stack->pos--;
+      }
+
+      break;
+    case PWASM_OP_I8X16_ABS:
+      {
+        const pwasm_v128_t a = stack->ptr[stack->pos - 1].v128;
+
+        pwasm_v128_t b;
+        for (size_t j = 0; j < 16; j++) {
+          const int8_t v = a.i8[j];
+          b.i8[j] = (v < 0) ? -v : v;
+        }
+
+        stack->ptr[stack->pos - 1].v128 = b;
+      }
+
+      break;
+    case PWASM_OP_I16X8_ABS:
+      {
+        const pwasm_v128_t a = stack->ptr[stack->pos - 1].v128;
+
+        pwasm_v128_t b;
+        for (size_t j = 0; j < 8; j++) {
+          const int16_t v = a.i16[j];
+          b.i16[j] = (v < 0) ? -v : v;
+        }
+
+        stack->ptr[stack->pos - 1].v128 = b;
+      }
+
+      break;
+    case PWASM_OP_I32X4_ABS:
+      {
+        const pwasm_v128_t a = stack->ptr[stack->pos - 1].v128;
+
+        pwasm_v128_t b;
+        for (size_t j = 0; j < 4; j++) {
+          const int32_t v = a.i32[j];
+          b.i32[j] = (v < 0) ? -v : v;
+        }
+
+        stack->ptr[stack->pos - 1].v128 = b;
+      }
+
+      break;
     default:
       // log error, return failure
       pwasm_env_fail(frame.env, "unknown instruction");
