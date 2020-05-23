@@ -440,26 +440,38 @@ typedef enum {
   PWASM_OP_I64_TRUNC_SAT_F64_S, /**< i64.trunc_sat_f64_s */
   PWASM_OP_I64_TRUNC_SAT_F64_U, /**< i64.trunc_sat_f64_u */
   PWASM_OP_V128_LOAD, /**< v128.load */
+  PWASM_OP_I16X8_LOAD8X8_S, /**< i16x8.load8x8_s */
+  PWASM_OP_I16X8_LOAD8X8_U, /**< i16x8.load8x8_u */
+  PWASM_OP_I32X4_LOAD16X4_S, /**< i32x4.load16x4_s */
+  PWASM_OP_I32X4_LOAD16X4_U, /**< i32x4.load16x4_u */
+  PWASM_OP_I64X2_LOAD32X2_S, /**< i64x2.load32x2_s */
+  PWASM_OP_I64X2_LOAD32X2_U, /**< i64x2.load32x2_u */
+  PWASM_OP_V8X16_LOAD_SPLAT, /**< v8x16.load_splat */
+  PWASM_OP_V16X8_LOAD_SPLAT, /**< v16x8.load_splat */
+  PWASM_OP_V32X4_LOAD_SPLAT, /**< v32x4.load_splat */
+  PWASM_OP_V64X2_LOAD_SPLAT, /**< v64x2.load_splat */
   PWASM_OP_V128_STORE, /**< v128.store */
   PWASM_OP_V128_CONST, /**< v128.const */
+  PWASM_OP_V8X16_SHUFFLE, /**< v8x16.shuffle */
+  PWASM_OP_V8X16_SWIZZLE, /**< v8x16.swizzle */
   PWASM_OP_I8X16_SPLAT, /**< i8x16.splat */
+  PWASM_OP_I16X8_SPLAT, /**< i16x8.splat */
+  PWASM_OP_I32X4_SPLAT, /**< i32x4.splat */
+  PWASM_OP_I64X2_SPLAT, /**< i64x2.splat */
+  PWASM_OP_F32X4_SPLAT, /**< f32x4.splat */
+  PWASM_OP_F64X2_SPLAT, /**< f64x2.splat */
   PWASM_OP_I8X16_EXTRACT_LANE_S, /**< i8x16.extract_lane_s */
   PWASM_OP_I8X16_EXTRACT_LANE_U, /**< i8x16.extract_lane_u */
   PWASM_OP_I8X16_REPLACE_LANE, /**< i8x16.replace_lane */
-  PWASM_OP_I16X8_SPLAT, /**< i16x8.splat */
   PWASM_OP_I16X8_EXTRACT_LANE_S, /**< i16x8.extract_lane_s */
   PWASM_OP_I16X8_EXTRACT_LANE_U, /**< i16x8.extract_lane_u */
   PWASM_OP_I16X8_REPLACE_LANE, /**< i16x8.replace_lane */
-  PWASM_OP_I32X4_SPLAT, /**< i32x4.splat */
   PWASM_OP_I32X4_EXTRACT_LANE, /**< i32x4.extract_lane */
   PWASM_OP_I32X4_REPLACE_LANE, /**< i32x4.replace_lane */
-  PWASM_OP_I64X2_SPLAT, /**< i64x2.splat */
   PWASM_OP_I64X2_EXTRACT_LANE, /**< i64x2.extract_lane */
   PWASM_OP_I64X2_REPLACE_LANE, /**< i64x2.replace_lane */
-  PWASM_OP_F32X4_SPLAT, /**< f32x4.splat */
   PWASM_OP_F32X4_EXTRACT_LANE, /**< f32x4.extract_lane */
   PWASM_OP_F32X4_REPLACE_LANE, /**< f32x4.replace_lane */
-  PWASM_OP_F64X2_SPLAT, /**< f64x2.splat */
   PWASM_OP_F64X2_EXTRACT_LANE, /**< f64x2.extract_lane */
   PWASM_OP_F64X2_REPLACE_LANE, /**< f64x2.replace_lane */
   PWASM_OP_I8X16_EQ, /**< i8x16.eq */
@@ -506,12 +518,16 @@ typedef enum {
   PWASM_OP_F64X2_GE, /**< f64x2.ge */
   PWASM_OP_V128_NOT, /**< v128.not */
   PWASM_OP_V128_AND, /**< v128.and */
+  PWASM_OP_V128_ANDNOT, /**< v128.andnot */
   PWASM_OP_V128_OR, /**< v128.or */
   PWASM_OP_V128_XOR, /**< v128.xor */
   PWASM_OP_V128_BITSELECT, /**< v128.bitselect */
+  PWASM_OP_I8X16_ABS, /**< i8x16.abs */
   PWASM_OP_I8X16_NEG, /**< i8x16.neg */
   PWASM_OP_I8X16_ANY_TRUE, /**< i8x16.any_true */
   PWASM_OP_I8X16_ALL_TRUE, /**< i8x16.all_true */
+  PWASM_OP_I8X16_NARROW_I16X8_S, /**< i8x16.narrow_i16x8_s */
+  PWASM_OP_I8X16_NARROW_I16X8_U, /**< i8x16.narrow_i16x8_u */
   PWASM_OP_I8X16_SHL, /**< i8x16.shl */
   PWASM_OP_I8X16_SHR_S, /**< i8x16.shr_s */
   PWASM_OP_I8X16_SHR_U, /**< i8x16.shr_u */
@@ -525,9 +541,17 @@ typedef enum {
   PWASM_OP_I8X16_MIN_U, /**< i8x16.min_u */
   PWASM_OP_I8X16_MAX_S, /**< i8x16.max_s */
   PWASM_OP_I8X16_MAX_U, /**< i8x16.max_u */
+  PWASM_OP_I8X16_AVGR_U, /**< i8x16.avgr_u */
+  PWASM_OP_I16X8_ABS, /**< i16x8.abs */
   PWASM_OP_I16X8_NEG, /**< i16x8.neg */
   PWASM_OP_I16X8_ANY_TRUE, /**< i16x8.any_true */
   PWASM_OP_I16X8_ALL_TRUE, /**< i16x8.all_true */
+  PWASM_OP_I16X8_NARROW_I32X4_S, /**< i16x8.narrow_i32x4_s */
+  PWASM_OP_I16X8_NARROW_I32X4_U, /**< i16x8.narrow_i32x4_u */
+  PWASM_OP_I16X8_WIDEN_LOW_I8X16_S, /**< i16x8.widen_low_i8x16_s */
+  PWASM_OP_I16X8_WIDEN_HIGH_I8X16_S, /**< i16x8.widen_high_i8x16_s */
+  PWASM_OP_I16X8_WIDEN_LOW_I8X16_U, /**< i16x8.widen_low_i8x16_u */
+  PWASM_OP_I16X8_WIDEN_HIGH_I8X16_U, /**< i16x8.widen_high_i8x16_u */
   PWASM_OP_I16X8_SHL, /**< i16x8.shl */
   PWASM_OP_I16X8_SHR_S, /**< i16x8.shr_s */
   PWASM_OP_I16X8_SHR_U, /**< i16x8.shr_u */
@@ -542,9 +566,15 @@ typedef enum {
   PWASM_OP_I16X8_MIN_U, /**< i16x8.min_u */
   PWASM_OP_I16X8_MAX_S, /**< i16x8.max_s */
   PWASM_OP_I16X8_MAX_U, /**< i16x8.max_u */
+  PWASM_OP_I16X8_AVGR_U, /**< i16x8.avgr_u */
+  PWASM_OP_I32X4_ABS, /**< i32x4.abs */
   PWASM_OP_I32X4_NEG, /**< i32x4.neg */
   PWASM_OP_I32X4_ANY_TRUE, /**< i32x4.any_true */
   PWASM_OP_I32X4_ALL_TRUE, /**< i32x4.all_true */
+  PWASM_OP_I32X4_WIDEN_LOW_I16X8_S, /**< i32x4.widen_low_i16x8_s */
+  PWASM_OP_I32X4_WIDEN_HIGH_I16X8_S, /**< i32x4.widen_high_i16x8_s */
+  PWASM_OP_I32X4_WIDEN_LOW_I16X8_U, /**< i32x4.widen_low_i16x8_u */
+  PWASM_OP_I32X4_WIDEN_HIGH_I16X8_U, /**< i32x4.widen_high_i16x8_u */
   PWASM_OP_I32X4_SHL, /**< i32x4.shl */
   PWASM_OP_I32X4_SHR_S, /**< i32x4.shr_s */
   PWASM_OP_I32X4_SHR_U, /**< i32x4.shr_u */
@@ -584,36 +614,6 @@ typedef enum {
   PWASM_OP_I32X4_TRUNC_SAT_F32X4_U, /**< i32x4.trunc_sat_f32x4_u */
   PWASM_OP_F32X4_CONVERT_I32X4_S, /**< f32x4.convert_i32x4_s */
   PWASM_OP_F32X4_CONVERT_I32X4_U, /**< f32x4.convert_i32x4_u */
-  PWASM_OP_V8X16_SWIZZLE, /**< v8x16.swizzle */
-  PWASM_OP_V8X16_SHUFFLE, /**< v8x16.shuffle */
-  PWASM_OP_V8X16_LOAD_SPLAT, /**< v8x16.load_splat */
-  PWASM_OP_V16X8_LOAD_SPLAT, /**< v16x8.load_splat */
-  PWASM_OP_V32X4_LOAD_SPLAT, /**< v32x4.load_splat */
-  PWASM_OP_V64X2_LOAD_SPLAT, /**< v64x2.load_splat */
-  PWASM_OP_I8X16_NARROW_I16X8_S, /**< i8x16.narrow_i16x8_s */
-  PWASM_OP_I8X16_NARROW_I16X8_U, /**< i8x16.narrow_i16x8_u */
-  PWASM_OP_I16X8_NARROW_I32X4_S, /**< i16x8.narrow_i32x4_s */
-  PWASM_OP_I16X8_NARROW_I32X4_U, /**< i16x8.narrow_i32x4_u */
-  PWASM_OP_I16X8_WIDEN_LOW_I8X16_S, /**< i16x8.widen_low_i8x16_s */
-  PWASM_OP_I16X8_WIDEN_HIGH_I8X16_S, /**< i16x8.widen_high_i8x16_s */
-  PWASM_OP_I16X8_WIDEN_LOW_I8X16_U, /**< i16x8.widen_low_i8x16_u */
-  PWASM_OP_I16X8_WIDEN_HIGH_I8X16_U, /**< i16x8.widen_high_i8x16_u */
-  PWASM_OP_I32X4_WIDEN_LOW_I16X8_S, /**< i32x4.widen_low_i16x8_s */
-  PWASM_OP_I32X4_WIDEN_HIGH_I16X8_S, /**< i32x4.widen_high_i16x8_s */
-  PWASM_OP_I32X4_WIDEN_LOW_I16X8_U, /**< i32x4.widen_low_i16x8_u */
-  PWASM_OP_I32X4_WIDEN_HIGH_I16X8_U, /**< i32x4.widen_high_i16x8_u */
-  PWASM_OP_I16X8_LOAD8X8_S, /**< i16x8.load8x8_s */
-  PWASM_OP_I16X8_LOAD8X8_U, /**< i16x8.load8x8_u */
-  PWASM_OP_I32X4_LOAD16X4_S, /**< i32x4.load16x4_s */
-  PWASM_OP_I32X4_LOAD16X4_U, /**< i32x4.load16x4_u */
-  PWASM_OP_I64X2_LOAD32X2_S, /**< i64x2.load32x2_s */
-  PWASM_OP_I64X2_LOAD32X2_U, /**< i64x2.load32x2_u */
-  PWASM_OP_V128_ANDNOT, /**< v128.andnot */
-  PWASM_OP_I8X16_AVGR_U, /**< i8x16.avgr_u */
-  PWASM_OP_I16X8_AVGR_U, /**< i16x8.avgr_u */
-  PWASM_OP_I8X16_ABS, /**< i8x16.abs */
-  PWASM_OP_I16X8_ABS, /**< i16x8.abs */
-  PWASM_OP_I32X4_ABS, /**< i32x4.abs */
   PWASM_OP_LAST, /**< sentinel */
 } pwasm_op_t;
 

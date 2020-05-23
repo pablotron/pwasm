@@ -1990,8 +1990,88 @@ PWASM_OPS[] = {{
   .num_lanes  = 0,
 }, {
   .set        = PWASM_OPS_SIMD,
-  .name       = "v128.store",
+  .name       = "i16x8.load8x8_s",
   .bytes      = { 0xfd, 0x01 },
+  .num_bytes  = 2,
+  .imm        = PWASM_IMM_MEM,
+  .mem_size   = 8,
+  .num_lanes  = 0,
+}, {
+  .set        = PWASM_OPS_SIMD,
+  .name       = "i16x8.load8x8_u",
+  .bytes      = { 0xfd, 0x02 },
+  .num_bytes  = 2,
+  .imm        = PWASM_IMM_MEM,
+  .mem_size   = 8,
+  .num_lanes  = 0,
+}, {
+  .set        = PWASM_OPS_SIMD,
+  .name       = "i32x4.load16x4_s",
+  .bytes      = { 0xfd, 0x03 },
+  .num_bytes  = 2,
+  .imm        = PWASM_IMM_MEM,
+  .mem_size   = 8,
+  .num_lanes  = 0,
+}, {
+  .set        = PWASM_OPS_SIMD,
+  .name       = "i32x4.load16x4_u",
+  .bytes      = { 0xfd, 0x04 },
+  .num_bytes  = 2,
+  .imm        = PWASM_IMM_MEM,
+  .mem_size   = 8,
+  .num_lanes  = 0,
+}, {
+  .set        = PWASM_OPS_SIMD,
+  .name       = "i64x2.load32x2_s",
+  .bytes      = { 0xfd, 0x05 },
+  .num_bytes  = 2,
+  .imm        = PWASM_IMM_MEM,
+  .mem_size   = 8,
+  .num_lanes  = 0,
+}, {
+  .set        = PWASM_OPS_SIMD,
+  .name       = "i64x2.load32x2_u",
+  .bytes      = { 0xfd, 0x06 },
+  .num_bytes  = 2,
+  .imm        = PWASM_IMM_MEM,
+  .mem_size   = 8,
+  .num_lanes  = 0,
+}, {
+  .set        = PWASM_OPS_SIMD,
+  .name       = "v8x16.load_splat",
+  .bytes      = { 0xfd, 0x07 },
+  .num_bytes  = 2,
+  .imm        = PWASM_IMM_NONE,
+  .mem_size   = 1,
+  .num_lanes  = 0,
+}, {
+  .set        = PWASM_OPS_SIMD,
+  .name       = "v16x8.load_splat",
+  .bytes      = { 0xfd, 0x08 },
+  .num_bytes  = 2,
+  .imm        = PWASM_IMM_NONE,
+  .mem_size   = 2,
+  .num_lanes  = 0,
+}, {
+  .set        = PWASM_OPS_SIMD,
+  .name       = "v32x4.load_splat",
+  .bytes      = { 0xfd, 0x09 },
+  .num_bytes  = 2,
+  .imm        = PWASM_IMM_NONE,
+  .mem_size   = 4,
+  .num_lanes  = 0,
+}, {
+  .set        = PWASM_OPS_SIMD,
+  .name       = "v64x2.load_splat",
+  .bytes      = { 0xfd, 0x0a },
+  .num_bytes  = 2,
+  .imm        = PWASM_IMM_NONE,
+  .mem_size   = 8,
+  .num_lanes  = 0,
+}, {
+  .set        = PWASM_OPS_SIMD,
+  .name       = "v128.store",
+  .bytes      = { 0xfd, 0x0b },
   .num_bytes  = 2,
   .imm        = PWASM_IMM_MEM,
   .mem_size   = 16,
@@ -1999,102 +2079,30 @@ PWASM_OPS[] = {{
 }, {
   .set        = PWASM_OPS_SIMD,
   .name       = "v128.const",
-  .bytes      = { 0xfd, 0x02 },
+  .bytes      = { 0xfd, 0x0c },
   .num_bytes  = 2,
   .imm        = PWASM_IMM_V128_CONST,
   .mem_size   = 0,
   .num_lanes  = 0,
 }, {
   .set        = PWASM_OPS_SIMD,
-  .name       = "i8x16.splat",
-  .bytes      = { 0xfd, 0x04 },
-  .num_bytes  = 2,
-  .imm        = PWASM_IMM_NONE,
-  .mem_size   = 0,
-  .num_lanes  = 0,
-}, {
-  .set        = PWASM_OPS_SIMD,
-  .name       = "i8x16.extract_lane_s",
-  .bytes      = { 0xfd, 0x05 },
-  .num_bytes  = 2,
-  .imm        = PWASM_IMM_LANE_INDEX,
-  .mem_size   = 0,
-  .num_lanes  = 16,
-}, {
-  .set        = PWASM_OPS_SIMD,
-  .name       = "i8x16.extract_lane_u",
-  .bytes      = { 0xfd, 0x06 },
-  .num_bytes  = 2,
-  .imm        = PWASM_IMM_LANE_INDEX,
-  .mem_size   = 0,
-  .num_lanes  = 16,
-}, {
-  .set        = PWASM_OPS_SIMD,
-  .name       = "i8x16.replace_lane",
-  .bytes      = { 0xfd, 0x07 },
-  .num_bytes  = 2,
-  .imm        = PWASM_IMM_LANE_INDEX,
-  .mem_size   = 0,
-  .num_lanes  = 16,
-}, {
-  .set        = PWASM_OPS_SIMD,
-  .name       = "i16x8.splat",
-  .bytes      = { 0xfd, 0x08 },
-  .num_bytes  = 2,
-  .imm        = PWASM_IMM_NONE,
-  .mem_size   = 0,
-  .num_lanes  = 0,
-}, {
-  .set        = PWASM_OPS_SIMD,
-  .name       = "i16x8.extract_lane_s",
-  .bytes      = { 0xfd, 0x09 },
-  .num_bytes  = 2,
-  .imm        = PWASM_IMM_LANE_INDEX,
-  .mem_size   = 0,
-  .num_lanes  = 8,
-}, {
-  .set        = PWASM_OPS_SIMD,
-  .name       = "i16x8.extract_lane_u",
-  .bytes      = { 0xfd, 0x0a },
-  .num_bytes  = 2,
-  .imm        = PWASM_IMM_LANE_INDEX,
-  .mem_size   = 0,
-  .num_lanes  = 8,
-}, {
-  .set        = PWASM_OPS_SIMD,
-  .name       = "i16x8.replace_lane",
-  .bytes      = { 0xfd, 0x0b },
-  .num_bytes  = 2,
-  .imm        = PWASM_IMM_LANE_INDEX,
-  .mem_size   = 0,
-  .num_lanes  = 8,
-}, {
-  .set        = PWASM_OPS_SIMD,
-  .name       = "i32x4.splat",
-  .bytes      = { 0xfd, 0x0c },
-  .num_bytes  = 2,
-  .imm        = PWASM_IMM_NONE,
-  .mem_size   = 0,
-  .num_lanes  = 0,
-}, {
-  .set        = PWASM_OPS_SIMD,
-  .name       = "i32x4.extract_lane",
+  .name       = "v8x16.shuffle",
   .bytes      = { 0xfd, 0x0d },
   .num_bytes  = 2,
-  .imm        = PWASM_IMM_LANE_INDEX,
+  .imm        = PWASM_IMM_V128_CONST,
   .mem_size   = 0,
-  .num_lanes  = 4,
+  .num_lanes  = 0,
 }, {
   .set        = PWASM_OPS_SIMD,
-  .name       = "i32x4.replace_lane",
+  .name       = "v8x16.swizzle",
   .bytes      = { 0xfd, 0x0e },
   .num_bytes  = 2,
-  .imm        = PWASM_IMM_LANE_INDEX,
+  .imm        = PWASM_IMM_NONE,
   .mem_size   = 0,
-  .num_lanes  = 4,
+  .num_lanes  = 0,
 }, {
   .set        = PWASM_OPS_SIMD,
-  .name       = "i64x2.splat",
+  .name       = "i8x16.splat",
   .bytes      = { 0xfd, 0x0f },
   .num_bytes  = 2,
   .imm        = PWASM_IMM_NONE,
@@ -2102,23 +2110,23 @@ PWASM_OPS[] = {{
   .num_lanes  = 0,
 }, {
   .set        = PWASM_OPS_SIMD,
-  .name       = "i64x2.extract_lane",
+  .name       = "i16x8.splat",
   .bytes      = { 0xfd, 0x10 },
   .num_bytes  = 2,
-  .imm        = PWASM_IMM_LANE_INDEX,
+  .imm        = PWASM_IMM_NONE,
   .mem_size   = 0,
-  .num_lanes  = 2,
+  .num_lanes  = 0,
 }, {
   .set        = PWASM_OPS_SIMD,
-  .name       = "i64x2.replace_lane",
+  .name       = "i32x4.splat",
   .bytes      = { 0xfd, 0x11 },
   .num_bytes  = 2,
-  .imm        = PWASM_IMM_LANE_INDEX,
+  .imm        = PWASM_IMM_NONE,
   .mem_size   = 0,
-  .num_lanes  = 2,
+  .num_lanes  = 0,
 }, {
   .set        = PWASM_OPS_SIMD,
-  .name       = "f32x4.splat",
+  .name       = "i64x2.splat",
   .bytes      = { 0xfd, 0x12 },
   .num_bytes  = 2,
   .imm        = PWASM_IMM_NONE,
@@ -2126,8 +2134,104 @@ PWASM_OPS[] = {{
   .num_lanes  = 0,
 }, {
   .set        = PWASM_OPS_SIMD,
-  .name       = "f32x4.extract_lane",
+  .name       = "f32x4.splat",
   .bytes      = { 0xfd, 0x13 },
+  .num_bytes  = 2,
+  .imm        = PWASM_IMM_NONE,
+  .mem_size   = 0,
+  .num_lanes  = 0,
+}, {
+  .set        = PWASM_OPS_SIMD,
+  .name       = "f64x2.splat",
+  .bytes      = { 0xfd, 0x14 },
+  .num_bytes  = 2,
+  .imm        = PWASM_IMM_NONE,
+  .mem_size   = 0,
+  .num_lanes  = 0,
+}, {
+  .set        = PWASM_OPS_SIMD,
+  .name       = "i8x16.extract_lane_s",
+  .bytes      = { 0xfd, 0x15 },
+  .num_bytes  = 2,
+  .imm        = PWASM_IMM_LANE_INDEX,
+  .mem_size   = 0,
+  .num_lanes  = 16,
+}, {
+  .set        = PWASM_OPS_SIMD,
+  .name       = "i8x16.extract_lane_u",
+  .bytes      = { 0xfd, 0x16 },
+  .num_bytes  = 2,
+  .imm        = PWASM_IMM_LANE_INDEX,
+  .mem_size   = 0,
+  .num_lanes  = 16,
+}, {
+  .set        = PWASM_OPS_SIMD,
+  .name       = "i8x16.replace_lane",
+  .bytes      = { 0xfd, 0x17 },
+  .num_bytes  = 2,
+  .imm        = PWASM_IMM_LANE_INDEX,
+  .mem_size   = 0,
+  .num_lanes  = 16,
+}, {
+  .set        = PWASM_OPS_SIMD,
+  .name       = "i16x8.extract_lane_s",
+  .bytes      = { 0xfd, 0x18 },
+  .num_bytes  = 2,
+  .imm        = PWASM_IMM_LANE_INDEX,
+  .mem_size   = 0,
+  .num_lanes  = 8,
+}, {
+  .set        = PWASM_OPS_SIMD,
+  .name       = "i16x8.extract_lane_u",
+  .bytes      = { 0xfd, 0x19 },
+  .num_bytes  = 2,
+  .imm        = PWASM_IMM_LANE_INDEX,
+  .mem_size   = 0,
+  .num_lanes  = 8,
+}, {
+  .set        = PWASM_OPS_SIMD,
+  .name       = "i16x8.replace_lane",
+  .bytes      = { 0xfd, 0x1a },
+  .num_bytes  = 2,
+  .imm        = PWASM_IMM_LANE_INDEX,
+  .mem_size   = 0,
+  .num_lanes  = 8,
+}, {
+  .set        = PWASM_OPS_SIMD,
+  .name       = "i32x4.extract_lane",
+  .bytes      = { 0xfd, 0x1b },
+  .num_bytes  = 2,
+  .imm        = PWASM_IMM_LANE_INDEX,
+  .mem_size   = 0,
+  .num_lanes  = 4,
+}, {
+  .set        = PWASM_OPS_SIMD,
+  .name       = "i32x4.replace_lane",
+  .bytes      = { 0xfd, 0x1c },
+  .num_bytes  = 2,
+  .imm        = PWASM_IMM_LANE_INDEX,
+  .mem_size   = 0,
+  .num_lanes  = 4,
+}, {
+  .set        = PWASM_OPS_SIMD,
+  .name       = "i64x2.extract_lane",
+  .bytes      = { 0xfd, 0x1d },
+  .num_bytes  = 2,
+  .imm        = PWASM_IMM_LANE_INDEX,
+  .mem_size   = 0,
+  .num_lanes  = 2,
+}, {
+  .set        = PWASM_OPS_SIMD,
+  .name       = "i64x2.replace_lane",
+  .bytes      = { 0xfd, 0x1e },
+  .num_bytes  = 2,
+  .imm        = PWASM_IMM_LANE_INDEX,
+  .mem_size   = 0,
+  .num_lanes  = 2,
+}, {
+  .set        = PWASM_OPS_SIMD,
+  .name       = "f32x4.extract_lane",
+  .bytes      = { 0xfd, 0x1f },
   .num_bytes  = 2,
   .imm        = PWASM_IMM_LANE_INDEX,
   .mem_size   = 0,
@@ -2135,23 +2239,15 @@ PWASM_OPS[] = {{
 }, {
   .set        = PWASM_OPS_SIMD,
   .name       = "f32x4.replace_lane",
-  .bytes      = { 0xfd, 0x14 },
+  .bytes      = { 0xfd, 0x20 },
   .num_bytes  = 2,
   .imm        = PWASM_IMM_LANE_INDEX,
   .mem_size   = 0,
   .num_lanes  = 4,
 }, {
   .set        = PWASM_OPS_SIMD,
-  .name       = "f64x2.splat",
-  .bytes      = { 0xfd, 0x15 },
-  .num_bytes  = 2,
-  .imm        = PWASM_IMM_NONE,
-  .mem_size   = 0,
-  .num_lanes  = 0,
-}, {
-  .set        = PWASM_OPS_SIMD,
   .name       = "f64x2.extract_lane",
-  .bytes      = { 0xfd, 0x16 },
+  .bytes      = { 0xfd, 0x21 },
   .num_bytes  = 2,
   .imm        = PWASM_IMM_LANE_INDEX,
   .mem_size   = 0,
@@ -2159,7 +2255,7 @@ PWASM_OPS[] = {{
 }, {
   .set        = PWASM_OPS_SIMD,
   .name       = "f64x2.replace_lane",
-  .bytes      = { 0xfd, 0x17 },
+  .bytes      = { 0xfd, 0x22 },
   .num_bytes  = 2,
   .imm        = PWASM_IMM_LANE_INDEX,
   .mem_size   = 0,
@@ -2167,94 +2263,6 @@ PWASM_OPS[] = {{
 }, {
   .set        = PWASM_OPS_SIMD,
   .name       = "i8x16.eq",
-  .bytes      = { 0xfd, 0x18 },
-  .num_bytes  = 2,
-  .imm        = PWASM_IMM_NONE,
-  .mem_size   = 0,
-  .num_lanes  = 0,
-}, {
-  .set        = PWASM_OPS_SIMD,
-  .name       = "i8x16.ne",
-  .bytes      = { 0xfd, 0x19 },
-  .num_bytes  = 2,
-  .imm        = PWASM_IMM_NONE,
-  .mem_size   = 0,
-  .num_lanes  = 0,
-}, {
-  .set        = PWASM_OPS_SIMD,
-  .name       = "i8x16.lt_s",
-  .bytes      = { 0xfd, 0x1a },
-  .num_bytes  = 2,
-  .imm        = PWASM_IMM_NONE,
-  .mem_size   = 0,
-  .num_lanes  = 0,
-}, {
-  .set        = PWASM_OPS_SIMD,
-  .name       = "i8x16.lt_u",
-  .bytes      = { 0xfd, 0x1b },
-  .num_bytes  = 2,
-  .imm        = PWASM_IMM_NONE,
-  .mem_size   = 0,
-  .num_lanes  = 0,
-}, {
-  .set        = PWASM_OPS_SIMD,
-  .name       = "i8x16.gt_s",
-  .bytes      = { 0xfd, 0x1c },
-  .num_bytes  = 2,
-  .imm        = PWASM_IMM_NONE,
-  .mem_size   = 0,
-  .num_lanes  = 0,
-}, {
-  .set        = PWASM_OPS_SIMD,
-  .name       = "i8x16.gt_u",
-  .bytes      = { 0xfd, 0x1d },
-  .num_bytes  = 2,
-  .imm        = PWASM_IMM_NONE,
-  .mem_size   = 0,
-  .num_lanes  = 0,
-}, {
-  .set        = PWASM_OPS_SIMD,
-  .name       = "i8x16.le_s",
-  .bytes      = { 0xfd, 0x1e },
-  .num_bytes  = 2,
-  .imm        = PWASM_IMM_NONE,
-  .mem_size   = 0,
-  .num_lanes  = 0,
-}, {
-  .set        = PWASM_OPS_SIMD,
-  .name       = "i8x16.le_u",
-  .bytes      = { 0xfd, 0x1f },
-  .num_bytes  = 2,
-  .imm        = PWASM_IMM_NONE,
-  .mem_size   = 0,
-  .num_lanes  = 0,
-}, {
-  .set        = PWASM_OPS_SIMD,
-  .name       = "i8x16.ge_s",
-  .bytes      = { 0xfd, 0x20 },
-  .num_bytes  = 2,
-  .imm        = PWASM_IMM_NONE,
-  .mem_size   = 0,
-  .num_lanes  = 0,
-}, {
-  .set        = PWASM_OPS_SIMD,
-  .name       = "i8x16.ge_u",
-  .bytes      = { 0xfd, 0x21 },
-  .num_bytes  = 2,
-  .imm        = PWASM_IMM_NONE,
-  .mem_size   = 0,
-  .num_lanes  = 0,
-}, {
-  .set        = PWASM_OPS_SIMD,
-  .name       = "i16x8.eq",
-  .bytes      = { 0xfd, 0x22 },
-  .num_bytes  = 2,
-  .imm        = PWASM_IMM_NONE,
-  .mem_size   = 0,
-  .num_lanes  = 0,
-}, {
-  .set        = PWASM_OPS_SIMD,
-  .name       = "i16x8.ne",
   .bytes      = { 0xfd, 0x23 },
   .num_bytes  = 2,
   .imm        = PWASM_IMM_NONE,
@@ -2262,7 +2270,7 @@ PWASM_OPS[] = {{
   .num_lanes  = 0,
 }, {
   .set        = PWASM_OPS_SIMD,
-  .name       = "i16x8.lt_s",
+  .name       = "i8x16.ne",
   .bytes      = { 0xfd, 0x24 },
   .num_bytes  = 2,
   .imm        = PWASM_IMM_NONE,
@@ -2270,7 +2278,7 @@ PWASM_OPS[] = {{
   .num_lanes  = 0,
 }, {
   .set        = PWASM_OPS_SIMD,
-  .name       = "i16x8.lt_u",
+  .name       = "i8x16.lt_s",
   .bytes      = { 0xfd, 0x25 },
   .num_bytes  = 2,
   .imm        = PWASM_IMM_NONE,
@@ -2278,7 +2286,7 @@ PWASM_OPS[] = {{
   .num_lanes  = 0,
 }, {
   .set        = PWASM_OPS_SIMD,
-  .name       = "i16x8.gt_s",
+  .name       = "i8x16.lt_u",
   .bytes      = { 0xfd, 0x26 },
   .num_bytes  = 2,
   .imm        = PWASM_IMM_NONE,
@@ -2286,7 +2294,7 @@ PWASM_OPS[] = {{
   .num_lanes  = 0,
 }, {
   .set        = PWASM_OPS_SIMD,
-  .name       = "i16x8.gt_u",
+  .name       = "i8x16.gt_s",
   .bytes      = { 0xfd, 0x27 },
   .num_bytes  = 2,
   .imm        = PWASM_IMM_NONE,
@@ -2294,7 +2302,7 @@ PWASM_OPS[] = {{
   .num_lanes  = 0,
 }, {
   .set        = PWASM_OPS_SIMD,
-  .name       = "i16x8.le_s",
+  .name       = "i8x16.gt_u",
   .bytes      = { 0xfd, 0x28 },
   .num_bytes  = 2,
   .imm        = PWASM_IMM_NONE,
@@ -2302,7 +2310,7 @@ PWASM_OPS[] = {{
   .num_lanes  = 0,
 }, {
   .set        = PWASM_OPS_SIMD,
-  .name       = "i16x8.le_u",
+  .name       = "i8x16.le_s",
   .bytes      = { 0xfd, 0x29 },
   .num_bytes  = 2,
   .imm        = PWASM_IMM_NONE,
@@ -2310,7 +2318,7 @@ PWASM_OPS[] = {{
   .num_lanes  = 0,
 }, {
   .set        = PWASM_OPS_SIMD,
-  .name       = "i16x8.ge_s",
+  .name       = "i8x16.le_u",
   .bytes      = { 0xfd, 0x2a },
   .num_bytes  = 2,
   .imm        = PWASM_IMM_NONE,
@@ -2318,7 +2326,7 @@ PWASM_OPS[] = {{
   .num_lanes  = 0,
 }, {
   .set        = PWASM_OPS_SIMD,
-  .name       = "i16x8.ge_u",
+  .name       = "i8x16.ge_s",
   .bytes      = { 0xfd, 0x2b },
   .num_bytes  = 2,
   .imm        = PWASM_IMM_NONE,
@@ -2326,7 +2334,7 @@ PWASM_OPS[] = {{
   .num_lanes  = 0,
 }, {
   .set        = PWASM_OPS_SIMD,
-  .name       = "i32x4.eq",
+  .name       = "i8x16.ge_u",
   .bytes      = { 0xfd, 0x2c },
   .num_bytes  = 2,
   .imm        = PWASM_IMM_NONE,
@@ -2334,7 +2342,7 @@ PWASM_OPS[] = {{
   .num_lanes  = 0,
 }, {
   .set        = PWASM_OPS_SIMD,
-  .name       = "i32x4.ne",
+  .name       = "i16x8.eq",
   .bytes      = { 0xfd, 0x2d },
   .num_bytes  = 2,
   .imm        = PWASM_IMM_NONE,
@@ -2342,7 +2350,7 @@ PWASM_OPS[] = {{
   .num_lanes  = 0,
 }, {
   .set        = PWASM_OPS_SIMD,
-  .name       = "i32x4.lt_s",
+  .name       = "i16x8.ne",
   .bytes      = { 0xfd, 0x2e },
   .num_bytes  = 2,
   .imm        = PWASM_IMM_NONE,
@@ -2350,7 +2358,7 @@ PWASM_OPS[] = {{
   .num_lanes  = 0,
 }, {
   .set        = PWASM_OPS_SIMD,
-  .name       = "i32x4.lt_u",
+  .name       = "i16x8.lt_s",
   .bytes      = { 0xfd, 0x2f },
   .num_bytes  = 2,
   .imm        = PWASM_IMM_NONE,
@@ -2358,7 +2366,7 @@ PWASM_OPS[] = {{
   .num_lanes  = 0,
 }, {
   .set        = PWASM_OPS_SIMD,
-  .name       = "i32x4.gt_s",
+  .name       = "i16x8.lt_u",
   .bytes      = { 0xfd, 0x30 },
   .num_bytes  = 2,
   .imm        = PWASM_IMM_NONE,
@@ -2366,7 +2374,7 @@ PWASM_OPS[] = {{
   .num_lanes  = 0,
 }, {
   .set        = PWASM_OPS_SIMD,
-  .name       = "i32x4.gt_u",
+  .name       = "i16x8.gt_s",
   .bytes      = { 0xfd, 0x31 },
   .num_bytes  = 2,
   .imm        = PWASM_IMM_NONE,
@@ -2374,7 +2382,7 @@ PWASM_OPS[] = {{
   .num_lanes  = 0,
 }, {
   .set        = PWASM_OPS_SIMD,
-  .name       = "i32x4.le_s",
+  .name       = "i16x8.gt_u",
   .bytes      = { 0xfd, 0x32 },
   .num_bytes  = 2,
   .imm        = PWASM_IMM_NONE,
@@ -2382,7 +2390,7 @@ PWASM_OPS[] = {{
   .num_lanes  = 0,
 }, {
   .set        = PWASM_OPS_SIMD,
-  .name       = "i32x4.le_u",
+  .name       = "i16x8.le_s",
   .bytes      = { 0xfd, 0x33 },
   .num_bytes  = 2,
   .imm        = PWASM_IMM_NONE,
@@ -2390,7 +2398,7 @@ PWASM_OPS[] = {{
   .num_lanes  = 0,
 }, {
   .set        = PWASM_OPS_SIMD,
-  .name       = "i32x4.ge_s",
+  .name       = "i16x8.le_u",
   .bytes      = { 0xfd, 0x34 },
   .num_bytes  = 2,
   .imm        = PWASM_IMM_NONE,
@@ -2398,7 +2406,7 @@ PWASM_OPS[] = {{
   .num_lanes  = 0,
 }, {
   .set        = PWASM_OPS_SIMD,
-  .name       = "i32x4.ge_u",
+  .name       = "i16x8.ge_s",
   .bytes      = { 0xfd, 0x35 },
   .num_bytes  = 2,
   .imm        = PWASM_IMM_NONE,
@@ -2406,7 +2414,87 @@ PWASM_OPS[] = {{
   .num_lanes  = 0,
 }, {
   .set        = PWASM_OPS_SIMD,
-  .name       = "f32x4.eq",
+  .name       = "i16x8.ge_u",
+  .bytes      = { 0xfd, 0x36 },
+  .num_bytes  = 2,
+  .imm        = PWASM_IMM_NONE,
+  .mem_size   = 0,
+  .num_lanes  = 0,
+}, {
+  .set        = PWASM_OPS_SIMD,
+  .name       = "i32x4.eq",
+  .bytes      = { 0xfd, 0x37 },
+  .num_bytes  = 2,
+  .imm        = PWASM_IMM_NONE,
+  .mem_size   = 0,
+  .num_lanes  = 0,
+}, {
+  .set        = PWASM_OPS_SIMD,
+  .name       = "i32x4.ne",
+  .bytes      = { 0xfd, 0x38 },
+  .num_bytes  = 2,
+  .imm        = PWASM_IMM_NONE,
+  .mem_size   = 0,
+  .num_lanes  = 0,
+}, {
+  .set        = PWASM_OPS_SIMD,
+  .name       = "i32x4.lt_s",
+  .bytes      = { 0xfd, 0x39 },
+  .num_bytes  = 2,
+  .imm        = PWASM_IMM_NONE,
+  .mem_size   = 0,
+  .num_lanes  = 0,
+}, {
+  .set        = PWASM_OPS_SIMD,
+  .name       = "i32x4.lt_u",
+  .bytes      = { 0xfd, 0x3a },
+  .num_bytes  = 2,
+  .imm        = PWASM_IMM_NONE,
+  .mem_size   = 0,
+  .num_lanes  = 0,
+}, {
+  .set        = PWASM_OPS_SIMD,
+  .name       = "i32x4.gt_s",
+  .bytes      = { 0xfd, 0x3b },
+  .num_bytes  = 2,
+  .imm        = PWASM_IMM_NONE,
+  .mem_size   = 0,
+  .num_lanes  = 0,
+}, {
+  .set        = PWASM_OPS_SIMD,
+  .name       = "i32x4.gt_u",
+  .bytes      = { 0xfd, 0x3c },
+  .num_bytes  = 2,
+  .imm        = PWASM_IMM_NONE,
+  .mem_size   = 0,
+  .num_lanes  = 0,
+}, {
+  .set        = PWASM_OPS_SIMD,
+  .name       = "i32x4.le_s",
+  .bytes      = { 0xfd, 0x3d },
+  .num_bytes  = 2,
+  .imm        = PWASM_IMM_NONE,
+  .mem_size   = 0,
+  .num_lanes  = 0,
+}, {
+  .set        = PWASM_OPS_SIMD,
+  .name       = "i32x4.le_u",
+  .bytes      = { 0xfd, 0x3e },
+  .num_bytes  = 2,
+  .imm        = PWASM_IMM_NONE,
+  .mem_size   = 0,
+  .num_lanes  = 0,
+}, {
+  .set        = PWASM_OPS_SIMD,
+  .name       = "i32x4.ge_s",
+  .bytes      = { 0xfd, 0x3f },
+  .num_bytes  = 2,
+  .imm        = PWASM_IMM_NONE,
+  .mem_size   = 0,
+  .num_lanes  = 0,
+}, {
+  .set        = PWASM_OPS_SIMD,
+  .name       = "i32x4.ge_u",
   .bytes      = { 0xfd, 0x40 },
   .num_bytes  = 2,
   .imm        = PWASM_IMM_NONE,
@@ -2414,7 +2502,7 @@ PWASM_OPS[] = {{
   .num_lanes  = 0,
 }, {
   .set        = PWASM_OPS_SIMD,
-  .name       = "f32x4.ne",
+  .name       = "f32x4.eq",
   .bytes      = { 0xfd, 0x41 },
   .num_bytes  = 2,
   .imm        = PWASM_IMM_NONE,
@@ -2422,7 +2510,7 @@ PWASM_OPS[] = {{
   .num_lanes  = 0,
 }, {
   .set        = PWASM_OPS_SIMD,
-  .name       = "f32x4.lt",
+  .name       = "f32x4.ne",
   .bytes      = { 0xfd, 0x42 },
   .num_bytes  = 2,
   .imm        = PWASM_IMM_NONE,
@@ -2430,7 +2518,7 @@ PWASM_OPS[] = {{
   .num_lanes  = 0,
 }, {
   .set        = PWASM_OPS_SIMD,
-  .name       = "f32x4.gt",
+  .name       = "f32x4.lt",
   .bytes      = { 0xfd, 0x43 },
   .num_bytes  = 2,
   .imm        = PWASM_IMM_NONE,
@@ -2438,7 +2526,7 @@ PWASM_OPS[] = {{
   .num_lanes  = 0,
 }, {
   .set        = PWASM_OPS_SIMD,
-  .name       = "f32x4.le",
+  .name       = "f32x4.gt",
   .bytes      = { 0xfd, 0x44 },
   .num_bytes  = 2,
   .imm        = PWASM_IMM_NONE,
@@ -2446,7 +2534,7 @@ PWASM_OPS[] = {{
   .num_lanes  = 0,
 }, {
   .set        = PWASM_OPS_SIMD,
-  .name       = "f32x4.ge",
+  .name       = "f32x4.le",
   .bytes      = { 0xfd, 0x45 },
   .num_bytes  = 2,
   .imm        = PWASM_IMM_NONE,
@@ -2454,7 +2542,7 @@ PWASM_OPS[] = {{
   .num_lanes  = 0,
 }, {
   .set        = PWASM_OPS_SIMD,
-  .name       = "f64x2.eq",
+  .name       = "f32x4.ge",
   .bytes      = { 0xfd, 0x46 },
   .num_bytes  = 2,
   .imm        = PWASM_IMM_NONE,
@@ -2462,7 +2550,7 @@ PWASM_OPS[] = {{
   .num_lanes  = 0,
 }, {
   .set        = PWASM_OPS_SIMD,
-  .name       = "f64x2.ne",
+  .name       = "f64x2.eq",
   .bytes      = { 0xfd, 0x47 },
   .num_bytes  = 2,
   .imm        = PWASM_IMM_NONE,
@@ -2470,7 +2558,7 @@ PWASM_OPS[] = {{
   .num_lanes  = 0,
 }, {
   .set        = PWASM_OPS_SIMD,
-  .name       = "f64x2.lt",
+  .name       = "f64x2.ne",
   .bytes      = { 0xfd, 0x48 },
   .num_bytes  = 2,
   .imm        = PWASM_IMM_NONE,
@@ -2478,7 +2566,7 @@ PWASM_OPS[] = {{
   .num_lanes  = 0,
 }, {
   .set        = PWASM_OPS_SIMD,
-  .name       = "f64x2.gt",
+  .name       = "f64x2.lt",
   .bytes      = { 0xfd, 0x49 },
   .num_bytes  = 2,
   .imm        = PWASM_IMM_NONE,
@@ -2486,7 +2574,7 @@ PWASM_OPS[] = {{
   .num_lanes  = 0,
 }, {
   .set        = PWASM_OPS_SIMD,
-  .name       = "f64x2.le",
+  .name       = "f64x2.gt",
   .bytes      = { 0xfd, 0x4a },
   .num_bytes  = 2,
   .imm        = PWASM_IMM_NONE,
@@ -2494,7 +2582,7 @@ PWASM_OPS[] = {{
   .num_lanes  = 0,
 }, {
   .set        = PWASM_OPS_SIMD,
-  .name       = "f64x2.ge",
+  .name       = "f64x2.le",
   .bytes      = { 0xfd, 0x4b },
   .num_bytes  = 2,
   .imm        = PWASM_IMM_NONE,
@@ -2502,7 +2590,7 @@ PWASM_OPS[] = {{
   .num_lanes  = 0,
 }, {
   .set        = PWASM_OPS_SIMD,
-  .name       = "v128.not",
+  .name       = "f64x2.ge",
   .bytes      = { 0xfd, 0x4c },
   .num_bytes  = 2,
   .imm        = PWASM_IMM_NONE,
@@ -2510,7 +2598,7 @@ PWASM_OPS[] = {{
   .num_lanes  = 0,
 }, {
   .set        = PWASM_OPS_SIMD,
-  .name       = "v128.and",
+  .name       = "v128.not",
   .bytes      = { 0xfd, 0x4d },
   .num_bytes  = 2,
   .imm        = PWASM_IMM_NONE,
@@ -2518,7 +2606,7 @@ PWASM_OPS[] = {{
   .num_lanes  = 0,
 }, {
   .set        = PWASM_OPS_SIMD,
-  .name       = "v128.or",
+  .name       = "v128.and",
   .bytes      = { 0xfd, 0x4e },
   .num_bytes  = 2,
   .imm        = PWASM_IMM_NONE,
@@ -2526,7 +2614,7 @@ PWASM_OPS[] = {{
   .num_lanes  = 0,
 }, {
   .set        = PWASM_OPS_SIMD,
-  .name       = "v128.xor",
+  .name       = "v128.andnot",
   .bytes      = { 0xfd, 0x4f },
   .num_bytes  = 2,
   .imm        = PWASM_IMM_NONE,
@@ -2534,7 +2622,7 @@ PWASM_OPS[] = {{
   .num_lanes  = 0,
 }, {
   .set        = PWASM_OPS_SIMD,
-  .name       = "v128.bitselect",
+  .name       = "v128.or",
   .bytes      = { 0xfd, 0x50 },
   .num_bytes  = 2,
   .imm        = PWASM_IMM_NONE,
@@ -2542,7 +2630,7 @@ PWASM_OPS[] = {{
   .num_lanes  = 0,
 }, {
   .set        = PWASM_OPS_SIMD,
-  .name       = "i8x16.neg",
+  .name       = "v128.xor",
   .bytes      = { 0xfd, 0x51 },
   .num_bytes  = 2,
   .imm        = PWASM_IMM_NONE,
@@ -2550,7 +2638,7 @@ PWASM_OPS[] = {{
   .num_lanes  = 0,
 }, {
   .set        = PWASM_OPS_SIMD,
-  .name       = "i8x16.any_true",
+  .name       = "v128.bitselect",
   .bytes      = { 0xfd, 0x52 },
   .num_bytes  = 2,
   .imm        = PWASM_IMM_NONE,
@@ -2558,103 +2646,7 @@ PWASM_OPS[] = {{
   .num_lanes  = 0,
 }, {
   .set        = PWASM_OPS_SIMD,
-  .name       = "i8x16.all_true",
-  .bytes      = { 0xfd, 0x53 },
-  .num_bytes  = 2,
-  .imm        = PWASM_IMM_NONE,
-  .mem_size   = 0,
-  .num_lanes  = 0,
-}, {
-  .set        = PWASM_OPS_SIMD,
-  .name       = "i8x16.shl",
-  .bytes      = { 0xfd, 0x54 },
-  .num_bytes  = 2,
-  .imm        = PWASM_IMM_NONE,
-  .mem_size   = 0,
-  .num_lanes  = 0,
-}, {
-  .set        = PWASM_OPS_SIMD,
-  .name       = "i8x16.shr_s",
-  .bytes      = { 0xfd, 0x55 },
-  .num_bytes  = 2,
-  .imm        = PWASM_IMM_NONE,
-  .mem_size   = 0,
-  .num_lanes  = 0,
-}, {
-  .set        = PWASM_OPS_SIMD,
-  .name       = "i8x16.shr_u",
-  .bytes      = { 0xfd, 0x56 },
-  .num_bytes  = 2,
-  .imm        = PWASM_IMM_NONE,
-  .mem_size   = 0,
-  .num_lanes  = 0,
-}, {
-  .set        = PWASM_OPS_SIMD,
-  .name       = "i8x16.add",
-  .bytes      = { 0xfd, 0x57 },
-  .num_bytes  = 2,
-  .imm        = PWASM_IMM_NONE,
-  .mem_size   = 0,
-  .num_lanes  = 0,
-}, {
-  .set        = PWASM_OPS_SIMD,
-  .name       = "i8x16.add_saturate_s",
-  .bytes      = { 0xfd, 0x58 },
-  .num_bytes  = 2,
-  .imm        = PWASM_IMM_NONE,
-  .mem_size   = 0,
-  .num_lanes  = 0,
-}, {
-  .set        = PWASM_OPS_SIMD,
-  .name       = "i8x16.add_saturate_u",
-  .bytes      = { 0xfd, 0x59 },
-  .num_bytes  = 2,
-  .imm        = PWASM_IMM_NONE,
-  .mem_size   = 0,
-  .num_lanes  = 0,
-}, {
-  .set        = PWASM_OPS_SIMD,
-  .name       = "i8x16.sub",
-  .bytes      = { 0xfd, 0x5a },
-  .num_bytes  = 2,
-  .imm        = PWASM_IMM_NONE,
-  .mem_size   = 0,
-  .num_lanes  = 0,
-}, {
-  .set        = PWASM_OPS_SIMD,
-  .name       = "i8x16.sub_saturate_s",
-  .bytes      = { 0xfd, 0x5b },
-  .num_bytes  = 2,
-  .imm        = PWASM_IMM_NONE,
-  .mem_size   = 0,
-  .num_lanes  = 0,
-}, {
-  .set        = PWASM_OPS_SIMD,
-  .name       = "i8x16.sub_saturate_u",
-  .bytes      = { 0xfd, 0x5c },
-  .num_bytes  = 2,
-  .imm        = PWASM_IMM_NONE,
-  .mem_size   = 0,
-  .num_lanes  = 0,
-}, {
-  .set        = PWASM_OPS_SIMD,
-  .name       = "i8x16.min_s",
-  .bytes      = { 0xfd, 0x5e },
-  .num_bytes  = 2,
-  .imm        = PWASM_IMM_NONE,
-  .mem_size   = 0,
-  .num_lanes  = 0,
-}, {
-  .set        = PWASM_OPS_SIMD,
-  .name       = "i8x16.min_u",
-  .bytes      = { 0xfd, 0x5f },
-  .num_bytes  = 2,
-  .imm        = PWASM_IMM_NONE,
-  .mem_size   = 0,
-  .num_lanes  = 0,
-}, {
-  .set        = PWASM_OPS_SIMD,
-  .name       = "i8x16.max_s",
+  .name       = "i8x16.abs",
   .bytes      = { 0xfd, 0x60 },
   .num_bytes  = 2,
   .imm        = PWASM_IMM_NONE,
@@ -2662,7 +2654,7 @@ PWASM_OPS[] = {{
   .num_lanes  = 0,
 }, {
   .set        = PWASM_OPS_SIMD,
-  .name       = "i8x16.max_u",
+  .name       = "i8x16.neg",
   .bytes      = { 0xfd, 0x61 },
   .num_bytes  = 2,
   .imm        = PWASM_IMM_NONE,
@@ -2670,7 +2662,7 @@ PWASM_OPS[] = {{
   .num_lanes  = 0,
 }, {
   .set        = PWASM_OPS_SIMD,
-  .name       = "i16x8.neg",
+  .name       = "i8x16.any_true",
   .bytes      = { 0xfd, 0x62 },
   .num_bytes  = 2,
   .imm        = PWASM_IMM_NONE,
@@ -2678,7 +2670,7 @@ PWASM_OPS[] = {{
   .num_lanes  = 0,
 }, {
   .set        = PWASM_OPS_SIMD,
-  .name       = "i16x8.any_true",
+  .name       = "i8x16.all_true",
   .bytes      = { 0xfd, 0x63 },
   .num_bytes  = 2,
   .imm        = PWASM_IMM_NONE,
@@ -2686,15 +2678,7 @@ PWASM_OPS[] = {{
   .num_lanes  = 0,
 }, {
   .set        = PWASM_OPS_SIMD,
-  .name       = "i16x8.all_true",
-  .bytes      = { 0xfd, 0x64 },
-  .num_bytes  = 2,
-  .imm        = PWASM_IMM_NONE,
-  .mem_size   = 0,
-  .num_lanes  = 0,
-}, {
-  .set        = PWASM_OPS_SIMD,
-  .name       = "i16x8.shl",
+  .name       = "i8x16.narrow_i16x8_s",
   .bytes      = { 0xfd, 0x65 },
   .num_bytes  = 2,
   .imm        = PWASM_IMM_NONE,
@@ -2702,7 +2686,7 @@ PWASM_OPS[] = {{
   .num_lanes  = 0,
 }, {
   .set        = PWASM_OPS_SIMD,
-  .name       = "i16x8.shr_s",
+  .name       = "i8x16.narrow_i16x8_u",
   .bytes      = { 0xfd, 0x66 },
   .num_bytes  = 2,
   .imm        = PWASM_IMM_NONE,
@@ -2710,39 +2694,7 @@ PWASM_OPS[] = {{
   .num_lanes  = 0,
 }, {
   .set        = PWASM_OPS_SIMD,
-  .name       = "i16x8.shr_u",
-  .bytes      = { 0xfd, 0x67 },
-  .num_bytes  = 2,
-  .imm        = PWASM_IMM_NONE,
-  .mem_size   = 0,
-  .num_lanes  = 0,
-}, {
-  .set        = PWASM_OPS_SIMD,
-  .name       = "i16x8.add",
-  .bytes      = { 0xfd, 0x68 },
-  .num_bytes  = 2,
-  .imm        = PWASM_IMM_NONE,
-  .mem_size   = 0,
-  .num_lanes  = 0,
-}, {
-  .set        = PWASM_OPS_SIMD,
-  .name       = "i16x8.add_saturate_s",
-  .bytes      = { 0xfd, 0x69 },
-  .num_bytes  = 2,
-  .imm        = PWASM_IMM_NONE,
-  .mem_size   = 0,
-  .num_lanes  = 0,
-}, {
-  .set        = PWASM_OPS_SIMD,
-  .name       = "i16x8.add_saturate_u",
-  .bytes      = { 0xfd, 0x6a },
-  .num_bytes  = 2,
-  .imm        = PWASM_IMM_NONE,
-  .mem_size   = 0,
-  .num_lanes  = 0,
-}, {
-  .set        = PWASM_OPS_SIMD,
-  .name       = "i16x8.sub",
+  .name       = "i8x16.shl",
   .bytes      = { 0xfd, 0x6b },
   .num_bytes  = 2,
   .imm        = PWASM_IMM_NONE,
@@ -2750,7 +2702,7 @@ PWASM_OPS[] = {{
   .num_lanes  = 0,
 }, {
   .set        = PWASM_OPS_SIMD,
-  .name       = "i16x8.sub_saturate_s",
+  .name       = "i8x16.shr_s",
   .bytes      = { 0xfd, 0x6c },
   .num_bytes  = 2,
   .imm        = PWASM_IMM_NONE,
@@ -2758,7 +2710,7 @@ PWASM_OPS[] = {{
   .num_lanes  = 0,
 }, {
   .set        = PWASM_OPS_SIMD,
-  .name       = "i16x8.sub_saturate_u",
+  .name       = "i8x16.shr_u",
   .bytes      = { 0xfd, 0x6d },
   .num_bytes  = 2,
   .imm        = PWASM_IMM_NONE,
@@ -2766,7 +2718,7 @@ PWASM_OPS[] = {{
   .num_lanes  = 0,
 }, {
   .set        = PWASM_OPS_SIMD,
-  .name       = "i16x8.mul",
+  .name       = "i8x16.add",
   .bytes      = { 0xfd, 0x6e },
   .num_bytes  = 2,
   .imm        = PWASM_IMM_NONE,
@@ -2774,7 +2726,7 @@ PWASM_OPS[] = {{
   .num_lanes  = 0,
 }, {
   .set        = PWASM_OPS_SIMD,
-  .name       = "i16x8.min_s",
+  .name       = "i8x16.add_saturate_s",
   .bytes      = { 0xfd, 0x6f },
   .num_bytes  = 2,
   .imm        = PWASM_IMM_NONE,
@@ -2782,7 +2734,7 @@ PWASM_OPS[] = {{
   .num_lanes  = 0,
 }, {
   .set        = PWASM_OPS_SIMD,
-  .name       = "i16x8.min_u",
+  .name       = "i8x16.add_saturate_u",
   .bytes      = { 0xfd, 0x70 },
   .num_bytes  = 2,
   .imm        = PWASM_IMM_NONE,
@@ -2790,7 +2742,7 @@ PWASM_OPS[] = {{
   .num_lanes  = 0,
 }, {
   .set        = PWASM_OPS_SIMD,
-  .name       = "i16x8.max_s",
+  .name       = "i8x16.sub",
   .bytes      = { 0xfd, 0x71 },
   .num_bytes  = 2,
   .imm        = PWASM_IMM_NONE,
@@ -2798,7 +2750,7 @@ PWASM_OPS[] = {{
   .num_lanes  = 0,
 }, {
   .set        = PWASM_OPS_SIMD,
-  .name       = "i16x8.max_u",
+  .name       = "i8x16.sub_saturate_s",
   .bytes      = { 0xfd, 0x72 },
   .num_bytes  = 2,
   .imm        = PWASM_IMM_NONE,
@@ -2806,7 +2758,7 @@ PWASM_OPS[] = {{
   .num_lanes  = 0,
 }, {
   .set        = PWASM_OPS_SIMD,
-  .name       = "i32x4.neg",
+  .name       = "i8x16.sub_saturate_u",
   .bytes      = { 0xfd, 0x73 },
   .num_bytes  = 2,
   .imm        = PWASM_IMM_NONE,
@@ -2814,23 +2766,7 @@ PWASM_OPS[] = {{
   .num_lanes  = 0,
 }, {
   .set        = PWASM_OPS_SIMD,
-  .name       = "i32x4.any_true",
-  .bytes      = { 0xfd, 0x74 },
-  .num_bytes  = 2,
-  .imm        = PWASM_IMM_NONE,
-  .mem_size   = 0,
-  .num_lanes  = 0,
-}, {
-  .set        = PWASM_OPS_SIMD,
-  .name       = "i32x4.all_true",
-  .bytes      = { 0xfd, 0x75 },
-  .num_bytes  = 2,
-  .imm        = PWASM_IMM_NONE,
-  .mem_size   = 0,
-  .num_lanes  = 0,
-}, {
-  .set        = PWASM_OPS_SIMD,
-  .name       = "i32x4.shl",
+  .name       = "i8x16.min_s",
   .bytes      = { 0xfd, 0x76 },
   .num_bytes  = 2,
   .imm        = PWASM_IMM_NONE,
@@ -2838,7 +2774,7 @@ PWASM_OPS[] = {{
   .num_lanes  = 0,
 }, {
   .set        = PWASM_OPS_SIMD,
-  .name       = "i32x4.shr_s",
+  .name       = "i8x16.min_u",
   .bytes      = { 0xfd, 0x77 },
   .num_bytes  = 2,
   .imm        = PWASM_IMM_NONE,
@@ -2846,7 +2782,7 @@ PWASM_OPS[] = {{
   .num_lanes  = 0,
 }, {
   .set        = PWASM_OPS_SIMD,
-  .name       = "i32x4.shr_u",
+  .name       = "i8x16.max_s",
   .bytes      = { 0xfd, 0x78 },
   .num_bytes  = 2,
   .imm        = PWASM_IMM_NONE,
@@ -2854,7 +2790,7 @@ PWASM_OPS[] = {{
   .num_lanes  = 0,
 }, {
   .set        = PWASM_OPS_SIMD,
-  .name       = "i32x4.add",
+  .name       = "i8x16.max_u",
   .bytes      = { 0xfd, 0x79 },
   .num_bytes  = 2,
   .imm        = PWASM_IMM_NONE,
@@ -2862,23 +2798,15 @@ PWASM_OPS[] = {{
   .num_lanes  = 0,
 }, {
   .set        = PWASM_OPS_SIMD,
-  .name       = "i32x4.sub",
-  .bytes      = { 0xfd, 0x7c },
+  .name       = "i8x16.avgr_u",
+  .bytes      = { 0xfd, 0x7b },
   .num_bytes  = 2,
   .imm        = PWASM_IMM_NONE,
   .mem_size   = 0,
   .num_lanes  = 0,
 }, {
   .set        = PWASM_OPS_SIMD,
-  .name       = "i32x4.mul",
-  .bytes      = { 0xfd, 0x7f },
-  .num_bytes  = 2,
-  .imm        = PWASM_IMM_NONE,
-  .mem_size   = 0,
-  .num_lanes  = 0,
-}, {
-  .set        = PWASM_OPS_SIMD,
-  .name       = "i32x4.min_s",
+  .name       = "i16x8.abs",
   .bytes      = { 0xfd, 0x80, 0x01 },
   .num_bytes  = 3,
   .imm        = PWASM_IMM_NONE,
@@ -2886,7 +2814,7 @@ PWASM_OPS[] = {{
   .num_lanes  = 0,
 }, {
   .set        = PWASM_OPS_SIMD,
-  .name       = "i32x4.min_u",
+  .name       = "i16x8.neg",
   .bytes      = { 0xfd, 0x81, 0x01 },
   .num_bytes  = 3,
   .imm        = PWASM_IMM_NONE,
@@ -2894,7 +2822,7 @@ PWASM_OPS[] = {{
   .num_lanes  = 0,
 }, {
   .set        = PWASM_OPS_SIMD,
-  .name       = "i32x4.max_s",
+  .name       = "i16x8.any_true",
   .bytes      = { 0xfd, 0x82, 0x01 },
   .num_bytes  = 3,
   .imm        = PWASM_IMM_NONE,
@@ -2902,7 +2830,7 @@ PWASM_OPS[] = {{
   .num_lanes  = 0,
 }, {
   .set        = PWASM_OPS_SIMD,
-  .name       = "i32x4.max_u",
+  .name       = "i16x8.all_true",
   .bytes      = { 0xfd, 0x83, 0x01 },
   .num_bytes  = 3,
   .imm        = PWASM_IMM_NONE,
@@ -2910,304 +2838,8 @@ PWASM_OPS[] = {{
   .num_lanes  = 0,
 }, {
   .set        = PWASM_OPS_SIMD,
-  .name       = "i64x2.neg",
-  .bytes      = { 0xfd, 0x84, 0x01 },
-  .num_bytes  = 3,
-  .imm        = PWASM_IMM_NONE,
-  .mem_size   = 0,
-  .num_lanes  = 0,
-}, {
-  .set        = PWASM_OPS_SIMD,
-  .name       = "i64x2.shl",
-  .bytes      = { 0xfd, 0x87, 0x01 },
-  .num_bytes  = 3,
-  .imm        = PWASM_IMM_NONE,
-  .mem_size   = 0,
-  .num_lanes  = 0,
-}, {
-  .set        = PWASM_OPS_SIMD,
-  .name       = "i64x2.shr_s",
-  .bytes      = { 0xfd, 0x88, 0x01 },
-  .num_bytes  = 3,
-  .imm        = PWASM_IMM_NONE,
-  .mem_size   = 0,
-  .num_lanes  = 0,
-}, {
-  .set        = PWASM_OPS_SIMD,
-  .name       = "i64x2.shr_u",
-  .bytes      = { 0xfd, 0x89, 0x01 },
-  .num_bytes  = 3,
-  .imm        = PWASM_IMM_NONE,
-  .mem_size   = 0,
-  .num_lanes  = 0,
-}, {
-  .set        = PWASM_OPS_SIMD,
-  .name       = "i64x2.add",
-  .bytes      = { 0xfd, 0x8a, 0x01 },
-  .num_bytes  = 3,
-  .imm        = PWASM_IMM_NONE,
-  .mem_size   = 0,
-  .num_lanes  = 0,
-}, {
-  .set        = PWASM_OPS_SIMD,
-  .name       = "i64x2.sub",
-  .bytes      = { 0xfd, 0x8d, 0x01 },
-  .num_bytes  = 3,
-  .imm        = PWASM_IMM_NONE,
-  .mem_size   = 0,
-  .num_lanes  = 0,
-}, {
-  .set        = PWASM_OPS_SIMD,
-  .name       = "i64x2.mul",
-  .bytes      = { 0xfd, 0x90, 0x01 },
-  .num_bytes  = 3,
-  .imm        = PWASM_IMM_NONE,
-  .mem_size   = 0,
-  .num_lanes  = 0,
-}, {
-  .set        = PWASM_OPS_SIMD,
-  .name       = "f32x4.abs",
-  .bytes      = { 0xfd, 0x95, 0x01 },
-  .num_bytes  = 3,
-  .imm        = PWASM_IMM_NONE,
-  .mem_size   = 0,
-  .num_lanes  = 0,
-}, {
-  .set        = PWASM_OPS_SIMD,
-  .name       = "f32x4.neg",
-  .bytes      = { 0xfd, 0x96, 0x01 },
-  .num_bytes  = 3,
-  .imm        = PWASM_IMM_NONE,
-  .mem_size   = 0,
-  .num_lanes  = 0,
-}, {
-  .set        = PWASM_OPS_SIMD,
-  .name       = "f32x4.sqrt",
-  .bytes      = { 0xfd, 0x97, 0x01 },
-  .num_bytes  = 3,
-  .imm        = PWASM_IMM_NONE,
-  .mem_size   = 0,
-  .num_lanes  = 0,
-}, {
-  .set        = PWASM_OPS_SIMD,
-  .name       = "f32x4.add",
-  .bytes      = { 0xfd, 0x9a, 0x01 },
-  .num_bytes  = 3,
-  .imm        = PWASM_IMM_NONE,
-  .mem_size   = 0,
-  .num_lanes  = 0,
-}, {
-  .set        = PWASM_OPS_SIMD,
-  .name       = "f32x4.sub",
-  .bytes      = { 0xfd, 0x9b, 0x01 },
-  .num_bytes  = 3,
-  .imm        = PWASM_IMM_NONE,
-  .mem_size   = 0,
-  .num_lanes  = 0,
-}, {
-  .set        = PWASM_OPS_SIMD,
-  .name       = "f32x4.mul",
-  .bytes      = { 0xfd, 0x9c, 0x01 },
-  .num_bytes  = 3,
-  .imm        = PWASM_IMM_NONE,
-  .mem_size   = 0,
-  .num_lanes  = 0,
-}, {
-  .set        = PWASM_OPS_SIMD,
-  .name       = "f32x4.div",
-  .bytes      = { 0xfd, 0x9d, 0x01 },
-  .num_bytes  = 3,
-  .imm        = PWASM_IMM_NONE,
-  .mem_size   = 0,
-  .num_lanes  = 0,
-}, {
-  .set        = PWASM_OPS_SIMD,
-  .name       = "f32x4.min",
-  .bytes      = { 0xfd, 0x9e, 0x01 },
-  .num_bytes  = 3,
-  .imm        = PWASM_IMM_NONE,
-  .mem_size   = 0,
-  .num_lanes  = 0,
-}, {
-  .set        = PWASM_OPS_SIMD,
-  .name       = "f32x4.max",
-  .bytes      = { 0xfd, 0x9f, 0x01 },
-  .num_bytes  = 3,
-  .imm        = PWASM_IMM_NONE,
-  .mem_size   = 0,
-  .num_lanes  = 0,
-}, {
-  .set        = PWASM_OPS_SIMD,
-  .name       = "f64x2.abs",
-  .bytes      = { 0xfd, 0xa0, 0x01 },
-  .num_bytes  = 3,
-  .imm        = PWASM_IMM_NONE,
-  .mem_size   = 0,
-  .num_lanes  = 0,
-}, {
-  .set        = PWASM_OPS_SIMD,
-  .name       = "f64x2.neg",
-  .bytes      = { 0xfd, 0xa1, 0x01 },
-  .num_bytes  = 3,
-  .imm        = PWASM_IMM_NONE,
-  .mem_size   = 0,
-  .num_lanes  = 0,
-}, {
-  .set        = PWASM_OPS_SIMD,
-  .name       = "f64x2.sqrt",
-  .bytes      = { 0xfd, 0xa2, 0x01 },
-  .num_bytes  = 3,
-  .imm        = PWASM_IMM_NONE,
-  .mem_size   = 0,
-  .num_lanes  = 0,
-}, {
-  .set        = PWASM_OPS_SIMD,
-  .name       = "f64x2.add",
-  .bytes      = { 0xfd, 0xa5, 0x01 },
-  .num_bytes  = 3,
-  .imm        = PWASM_IMM_NONE,
-  .mem_size   = 0,
-  .num_lanes  = 0,
-}, {
-  .set        = PWASM_OPS_SIMD,
-  .name       = "f64x2.sub",
-  .bytes      = { 0xfd, 0xa6, 0x01 },
-  .num_bytes  = 3,
-  .imm        = PWASM_IMM_NONE,
-  .mem_size   = 0,
-  .num_lanes  = 0,
-}, {
-  .set        = PWASM_OPS_SIMD,
-  .name       = "f64x2.mul",
-  .bytes      = { 0xfd, 0xa7, 0x01 },
-  .num_bytes  = 3,
-  .imm        = PWASM_IMM_NONE,
-  .mem_size   = 0,
-  .num_lanes  = 0,
-}, {
-  .set        = PWASM_OPS_SIMD,
-  .name       = "f64x2.div",
-  .bytes      = { 0xfd, 0xa8, 0x01 },
-  .num_bytes  = 3,
-  .imm        = PWASM_IMM_NONE,
-  .mem_size   = 0,
-  .num_lanes  = 0,
-}, {
-  .set        = PWASM_OPS_SIMD,
-  .name       = "f64x2.min",
-  .bytes      = { 0xfd, 0xa9, 0x01 },
-  .num_bytes  = 3,
-  .imm        = PWASM_IMM_NONE,
-  .mem_size   = 0,
-  .num_lanes  = 0,
-}, {
-  .set        = PWASM_OPS_SIMD,
-  .name       = "f64x2.max",
-  .bytes      = { 0xfd, 0xaa, 0x01 },
-  .num_bytes  = 3,
-  .imm        = PWASM_IMM_NONE,
-  .mem_size   = 0,
-  .num_lanes  = 0,
-}, {
-  .set        = PWASM_OPS_SIMD,
-  .name       = "i32x4.trunc_sat_f32x4_s",
-  .bytes      = { 0xfd, 0xab, 0x01 },
-  .num_bytes  = 3,
-  .imm        = PWASM_IMM_NONE,
-  .mem_size   = 0,
-  .num_lanes  = 0,
-}, {
-  .set        = PWASM_OPS_SIMD,
-  .name       = "i32x4.trunc_sat_f32x4_u",
-  .bytes      = { 0xfd, 0xac, 0x01 },
-  .num_bytes  = 3,
-  .imm        = PWASM_IMM_NONE,
-  .mem_size   = 0,
-  .num_lanes  = 0,
-}, {
-  .set        = PWASM_OPS_SIMD,
-  .name       = "f32x4.convert_i32x4_s",
-  .bytes      = { 0xfd, 0xaf, 0x01 },
-  .num_bytes  = 3,
-  .imm        = PWASM_IMM_NONE,
-  .mem_size   = 0,
-  .num_lanes  = 0,
-}, {
-  .set        = PWASM_OPS_SIMD,
-  .name       = "f32x4.convert_i32x4_u",
-  .bytes      = { 0xfd, 0xb0, 0x01 },
-  .num_bytes  = 3,
-  .imm        = PWASM_IMM_NONE,
-  .mem_size   = 0,
-  .num_lanes  = 0,
-}, {
-  .set        = PWASM_OPS_SIMD,
-  .name       = "v8x16.swizzle",
-  .bytes      = { 0xfd, 0xc0, 0x01 },
-  .num_bytes  = 3,
-  .imm        = PWASM_IMM_NONE,
-  .mem_size   = 0,
-  .num_lanes  = 0,
-}, {
-  .set        = PWASM_OPS_SIMD,
-  .name       = "v8x16.shuffle",
-  .bytes      = { 0xfd, 0xc1, 0x01 },
-  .num_bytes  = 3,
-  .imm        = PWASM_IMM_V128_CONST,
-  .mem_size   = 0,
-  .num_lanes  = 0,
-}, {
-  .set        = PWASM_OPS_SIMD,
-  .name       = "v8x16.load_splat",
-  .bytes      = { 0xfd, 0xc2, 0x01 },
-  .num_bytes  = 3,
-  .imm        = PWASM_IMM_NONE,
-  .mem_size   = 1,
-  .num_lanes  = 0,
-}, {
-  .set        = PWASM_OPS_SIMD,
-  .name       = "v16x8.load_splat",
-  .bytes      = { 0xfd, 0xc3, 0x01 },
-  .num_bytes  = 3,
-  .imm        = PWASM_IMM_NONE,
-  .mem_size   = 2,
-  .num_lanes  = 0,
-}, {
-  .set        = PWASM_OPS_SIMD,
-  .name       = "v32x4.load_splat",
-  .bytes      = { 0xfd, 0xc4, 0x01 },
-  .num_bytes  = 3,
-  .imm        = PWASM_IMM_NONE,
-  .mem_size   = 4,
-  .num_lanes  = 0,
-}, {
-  .set        = PWASM_OPS_SIMD,
-  .name       = "v64x2.load_splat",
-  .bytes      = { 0xfd, 0xc5, 0x01 },
-  .num_bytes  = 3,
-  .imm        = PWASM_IMM_NONE,
-  .mem_size   = 8,
-  .num_lanes  = 0,
-}, {
-  .set        = PWASM_OPS_SIMD,
-  .name       = "i8x16.narrow_i16x8_s",
-  .bytes      = { 0xfd, 0xc6, 0x01 },
-  .num_bytes  = 3,
-  .imm        = PWASM_IMM_NONE,
-  .mem_size   = 0,
-  .num_lanes  = 0,
-}, {
-  .set        = PWASM_OPS_SIMD,
-  .name       = "i8x16.narrow_i16x8_u",
-  .bytes      = { 0xfd, 0xc7, 0x01 },
-  .num_bytes  = 3,
-  .imm        = PWASM_IMM_NONE,
-  .mem_size   = 0,
-  .num_lanes  = 0,
-}, {
-  .set        = PWASM_OPS_SIMD,
   .name       = "i16x8.narrow_i32x4_s",
-  .bytes      = { 0xfd, 0xc8, 0x01 },
+  .bytes      = { 0xfd, 0x85, 0x01 },
   .num_bytes  = 3,
   .imm        = PWASM_IMM_NONE,
   .mem_size   = 0,
@@ -3215,7 +2847,7 @@ PWASM_OPS[] = {{
 }, {
   .set        = PWASM_OPS_SIMD,
   .name       = "i16x8.narrow_i32x4_u",
-  .bytes      = { 0xfd, 0xc9, 0x01 },
+  .bytes      = { 0xfd, 0x86, 0x01 },
   .num_bytes  = 3,
   .imm        = PWASM_IMM_NONE,
   .mem_size   = 0,
@@ -3223,7 +2855,7 @@ PWASM_OPS[] = {{
 }, {
   .set        = PWASM_OPS_SIMD,
   .name       = "i16x8.widen_low_i8x16_s",
-  .bytes      = { 0xfd, 0xca, 0x01 },
+  .bytes      = { 0xfd, 0x87, 0x01 },
   .num_bytes  = 3,
   .imm        = PWASM_IMM_NONE,
   .mem_size   = 0,
@@ -3231,7 +2863,7 @@ PWASM_OPS[] = {{
 }, {
   .set        = PWASM_OPS_SIMD,
   .name       = "i16x8.widen_high_i8x16_s",
-  .bytes      = { 0xfd, 0xcb, 0x01 },
+  .bytes      = { 0xfd, 0x88, 0x01 },
   .num_bytes  = 3,
   .imm        = PWASM_IMM_NONE,
   .mem_size   = 0,
@@ -3239,7 +2871,7 @@ PWASM_OPS[] = {{
 }, {
   .set        = PWASM_OPS_SIMD,
   .name       = "i16x8.widen_low_i8x16_u",
-  .bytes      = { 0xfd, 0xcc, 0x01 },
+  .bytes      = { 0xfd, 0x89, 0x01 },
   .num_bytes  = 3,
   .imm        = PWASM_IMM_NONE,
   .mem_size   = 0,
@@ -3247,103 +2879,119 @@ PWASM_OPS[] = {{
 }, {
   .set        = PWASM_OPS_SIMD,
   .name       = "i16x8.widen_high_i8x16_u",
-  .bytes      = { 0xfd, 0xcd, 0x01 },
+  .bytes      = { 0xfd, 0x8a, 0x01 },
   .num_bytes  = 3,
   .imm        = PWASM_IMM_NONE,
   .mem_size   = 0,
   .num_lanes  = 0,
 }, {
   .set        = PWASM_OPS_SIMD,
-  .name       = "i32x4.widen_low_i16x8_s",
-  .bytes      = { 0xfd, 0xce, 0x01 },
+  .name       = "i16x8.shl",
+  .bytes      = { 0xfd, 0x8b, 0x01 },
   .num_bytes  = 3,
   .imm        = PWASM_IMM_NONE,
   .mem_size   = 0,
   .num_lanes  = 0,
 }, {
   .set        = PWASM_OPS_SIMD,
-  .name       = "i32x4.widen_high_i16x8_s",
-  .bytes      = { 0xfd, 0xcf, 0x01 },
+  .name       = "i16x8.shr_s",
+  .bytes      = { 0xfd, 0x8c, 0x01 },
   .num_bytes  = 3,
   .imm        = PWASM_IMM_NONE,
   .mem_size   = 0,
   .num_lanes  = 0,
 }, {
   .set        = PWASM_OPS_SIMD,
-  .name       = "i32x4.widen_low_i16x8_u",
-  .bytes      = { 0xfd, 0xd0, 0x01 },
+  .name       = "i16x8.shr_u",
+  .bytes      = { 0xfd, 0x8d, 0x01 },
   .num_bytes  = 3,
   .imm        = PWASM_IMM_NONE,
   .mem_size   = 0,
   .num_lanes  = 0,
 }, {
   .set        = PWASM_OPS_SIMD,
-  .name       = "i32x4.widen_high_i16x8_u",
-  .bytes      = { 0xfd, 0xd1, 0x01 },
+  .name       = "i16x8.add",
+  .bytes      = { 0xfd, 0x8e, 0x01 },
   .num_bytes  = 3,
   .imm        = PWASM_IMM_NONE,
   .mem_size   = 0,
   .num_lanes  = 0,
 }, {
   .set        = PWASM_OPS_SIMD,
-  .name       = "i16x8.load8x8_s",
-  .bytes      = { 0xfd, 0xd2, 0x01 },
-  .num_bytes  = 3,
-  .imm        = PWASM_IMM_MEM,
-  .mem_size   = 0,
-  .num_lanes  = 0,
-}, {
-  .set        = PWASM_OPS_SIMD,
-  .name       = "i16x8.load8x8_u",
-  .bytes      = { 0xfd, 0xd3, 0x01 },
-  .num_bytes  = 3,
-  .imm        = PWASM_IMM_MEM,
-  .mem_size   = 8,
-  .num_lanes  = 0,
-}, {
-  .set        = PWASM_OPS_SIMD,
-  .name       = "i32x4.load16x4_s",
-  .bytes      = { 0xfd, 0xd4, 0x01 },
-  .num_bytes  = 3,
-  .imm        = PWASM_IMM_MEM,
-  .mem_size   = 8,
-  .num_lanes  = 0,
-}, {
-  .set        = PWASM_OPS_SIMD,
-  .name       = "i32x4.load16x4_u",
-  .bytes      = { 0xfd, 0xd5, 0x01 },
-  .num_bytes  = 3,
-  .imm        = PWASM_IMM_MEM,
-  .mem_size   = 8,
-  .num_lanes  = 0,
-}, {
-  .set        = PWASM_OPS_SIMD,
-  .name       = "i64x2.load32x2_s",
-  .bytes      = { 0xfd, 0xd6, 0x01 },
-  .num_bytes  = 3,
-  .imm        = PWASM_IMM_MEM,
-  .mem_size   = 8,
-  .num_lanes  = 0,
-}, {
-  .set        = PWASM_OPS_SIMD,
-  .name       = "i64x2.load32x2_u",
-  .bytes      = { 0xfd, 0xd7, 0x01 },
-  .num_bytes  = 3,
-  .imm        = PWASM_IMM_MEM,
-  .mem_size   = 8,
-  .num_lanes  = 0,
-}, {
-  .set        = PWASM_OPS_SIMD,
-  .name       = "v128.andnot",
-  .bytes      = { 0xfd, 0xd8, 0x01 },
+  .name       = "i16x8.add_saturate_s",
+  .bytes      = { 0xfd, 0x8f, 0x01 },
   .num_bytes  = 3,
   .imm        = PWASM_IMM_NONE,
   .mem_size   = 0,
   .num_lanes  = 0,
 }, {
   .set        = PWASM_OPS_SIMD,
-  .name       = "i8x16.avgr_u",
-  .bytes      = { 0xfd, 0xd9, 0x01 },
+  .name       = "i16x8.add_saturate_u",
+  .bytes      = { 0xfd, 0x90, 0x01 },
+  .num_bytes  = 3,
+  .imm        = PWASM_IMM_NONE,
+  .mem_size   = 0,
+  .num_lanes  = 0,
+}, {
+  .set        = PWASM_OPS_SIMD,
+  .name       = "i16x8.sub",
+  .bytes      = { 0xfd, 0x91, 0x01 },
+  .num_bytes  = 3,
+  .imm        = PWASM_IMM_NONE,
+  .mem_size   = 0,
+  .num_lanes  = 0,
+}, {
+  .set        = PWASM_OPS_SIMD,
+  .name       = "i16x8.sub_saturate_s",
+  .bytes      = { 0xfd, 0x92, 0x01 },
+  .num_bytes  = 3,
+  .imm        = PWASM_IMM_NONE,
+  .mem_size   = 0,
+  .num_lanes  = 0,
+}, {
+  .set        = PWASM_OPS_SIMD,
+  .name       = "i16x8.sub_saturate_u",
+  .bytes      = { 0xfd, 0x93, 0x01 },
+  .num_bytes  = 3,
+  .imm        = PWASM_IMM_NONE,
+  .mem_size   = 0,
+  .num_lanes  = 0,
+}, {
+  .set        = PWASM_OPS_SIMD,
+  .name       = "i16x8.mul",
+  .bytes      = { 0xfd, 0x95, 0x01 },
+  .num_bytes  = 3,
+  .imm        = PWASM_IMM_NONE,
+  .mem_size   = 0,
+  .num_lanes  = 0,
+}, {
+  .set        = PWASM_OPS_SIMD,
+  .name       = "i16x8.min_s",
+  .bytes      = { 0xfd, 0x96, 0x01 },
+  .num_bytes  = 3,
+  .imm        = PWASM_IMM_NONE,
+  .mem_size   = 0,
+  .num_lanes  = 0,
+}, {
+  .set        = PWASM_OPS_SIMD,
+  .name       = "i16x8.min_u",
+  .bytes      = { 0xfd, 0x97, 0x01 },
+  .num_bytes  = 3,
+  .imm        = PWASM_IMM_NONE,
+  .mem_size   = 0,
+  .num_lanes  = 0,
+}, {
+  .set        = PWASM_OPS_SIMD,
+  .name       = "i16x8.max_s",
+  .bytes      = { 0xfd, 0x98, 0x01 },
+  .num_bytes  = 3,
+  .imm        = PWASM_IMM_NONE,
+  .mem_size   = 0,
+  .num_lanes  = 0,
+}, {
+  .set        = PWASM_OPS_SIMD,
+  .name       = "i16x8.max_u",
+  .bytes      = { 0xfd, 0x99, 0x01 },
   .num_bytes  = 3,
   .imm        = PWASM_IMM_NONE,
   .mem_size   = 0,
@@ -3351,23 +2999,7 @@ PWASM_OPS[] = {{
 }, {
   .set        = PWASM_OPS_SIMD,
   .name       = "i16x8.avgr_u",
-  .bytes      = { 0xfd, 0xda, 0x01 },
-  .num_bytes  = 3,
-  .imm        = PWASM_IMM_NONE,
-  .mem_size   = 0,
-  .num_lanes  = 0,
-}, {
-  .set        = PWASM_OPS_SIMD,
-  .name       = "i8x16.abs",
-  .bytes      = { 0xfd, 0xe1, 0x01 },
-  .num_bytes  = 3,
-  .imm        = PWASM_IMM_NONE,
-  .mem_size   = 0,
-  .num_lanes  = 0,
-}, {
-  .set        = PWASM_OPS_SIMD,
-  .name       = "i16x8.abs",
-  .bytes      = { 0xfd, 0xe2, 0x01 },
+  .bytes      = { 0xfd, 0x9b, 0x01 },
   .num_bytes  = 3,
   .imm        = PWASM_IMM_NONE,
   .mem_size   = 0,
@@ -3375,7 +3007,375 @@ PWASM_OPS[] = {{
 }, {
   .set        = PWASM_OPS_SIMD,
   .name       = "i32x4.abs",
+  .bytes      = { 0xfd, 0xa0, 0x01 },
+  .num_bytes  = 3,
+  .imm        = PWASM_IMM_NONE,
+  .mem_size   = 0,
+  .num_lanes  = 0,
+}, {
+  .set        = PWASM_OPS_SIMD,
+  .name       = "i32x4.neg",
+  .bytes      = { 0xfd, 0xa1, 0x01 },
+  .num_bytes  = 3,
+  .imm        = PWASM_IMM_NONE,
+  .mem_size   = 0,
+  .num_lanes  = 0,
+}, {
+  .set        = PWASM_OPS_SIMD,
+  .name       = "i32x4.any_true",
+  .bytes      = { 0xfd, 0xa2, 0x01 },
+  .num_bytes  = 3,
+  .imm        = PWASM_IMM_NONE,
+  .mem_size   = 0,
+  .num_lanes  = 0,
+}, {
+  .set        = PWASM_OPS_SIMD,
+  .name       = "i32x4.all_true",
+  .bytes      = { 0xfd, 0xa3, 0x01 },
+  .num_bytes  = 3,
+  .imm        = PWASM_IMM_NONE,
+  .mem_size   = 0,
+  .num_lanes  = 0,
+}, {
+  .set        = PWASM_OPS_SIMD,
+  .name       = "i32x4.widen_low_i16x8_s",
+  .bytes      = { 0xfd, 0xa7, 0x01 },
+  .num_bytes  = 3,
+  .imm        = PWASM_IMM_NONE,
+  .mem_size   = 0,
+  .num_lanes  = 0,
+}, {
+  .set        = PWASM_OPS_SIMD,
+  .name       = "i32x4.widen_high_i16x8_s",
+  .bytes      = { 0xfd, 0xa8, 0x01 },
+  .num_bytes  = 3,
+  .imm        = PWASM_IMM_NONE,
+  .mem_size   = 0,
+  .num_lanes  = 0,
+}, {
+  .set        = PWASM_OPS_SIMD,
+  .name       = "i32x4.widen_low_i16x8_u",
+  .bytes      = { 0xfd, 0xa9, 0x01 },
+  .num_bytes  = 3,
+  .imm        = PWASM_IMM_NONE,
+  .mem_size   = 0,
+  .num_lanes  = 0,
+}, {
+  .set        = PWASM_OPS_SIMD,
+  .name       = "i32x4.widen_high_i16x8_u",
+  .bytes      = { 0xfd, 0xaa, 0x01 },
+  .num_bytes  = 3,
+  .imm        = PWASM_IMM_NONE,
+  .mem_size   = 0,
+  .num_lanes  = 0,
+}, {
+  .set        = PWASM_OPS_SIMD,
+  .name       = "i32x4.shl",
+  .bytes      = { 0xfd, 0xab, 0x01 },
+  .num_bytes  = 3,
+  .imm        = PWASM_IMM_NONE,
+  .mem_size   = 0,
+  .num_lanes  = 0,
+}, {
+  .set        = PWASM_OPS_SIMD,
+  .name       = "i32x4.shr_s",
+  .bytes      = { 0xfd, 0xac, 0x01 },
+  .num_bytes  = 3,
+  .imm        = PWASM_IMM_NONE,
+  .mem_size   = 0,
+  .num_lanes  = 0,
+}, {
+  .set        = PWASM_OPS_SIMD,
+  .name       = "i32x4.shr_u",
+  .bytes      = { 0xfd, 0xad, 0x01 },
+  .num_bytes  = 3,
+  .imm        = PWASM_IMM_NONE,
+  .mem_size   = 0,
+  .num_lanes  = 0,
+}, {
+  .set        = PWASM_OPS_SIMD,
+  .name       = "i32x4.add",
+  .bytes      = { 0xfd, 0xae, 0x01 },
+  .num_bytes  = 3,
+  .imm        = PWASM_IMM_NONE,
+  .mem_size   = 0,
+  .num_lanes  = 0,
+}, {
+  .set        = PWASM_OPS_SIMD,
+  .name       = "i32x4.sub",
+  .bytes      = { 0xfd, 0xb1, 0x01 },
+  .num_bytes  = 3,
+  .imm        = PWASM_IMM_NONE,
+  .mem_size   = 0,
+  .num_lanes  = 0,
+}, {
+  .set        = PWASM_OPS_SIMD,
+  .name       = "i32x4.mul",
+  .bytes      = { 0xfd, 0xb5, 0x01 },
+  .num_bytes  = 3,
+  .imm        = PWASM_IMM_NONE,
+  .mem_size   = 0,
+  .num_lanes  = 0,
+}, {
+  .set        = PWASM_OPS_SIMD,
+  .name       = "i32x4.min_s",
+  .bytes      = { 0xfd, 0xb6, 0x01 },
+  .num_bytes  = 3,
+  .imm        = PWASM_IMM_NONE,
+  .mem_size   = 0,
+  .num_lanes  = 0,
+}, {
+  .set        = PWASM_OPS_SIMD,
+  .name       = "i32x4.min_u",
+  .bytes      = { 0xfd, 0xb7, 0x01 },
+  .num_bytes  = 3,
+  .imm        = PWASM_IMM_NONE,
+  .mem_size   = 0,
+  .num_lanes  = 0,
+}, {
+  .set        = PWASM_OPS_SIMD,
+  .name       = "i32x4.max_s",
+  .bytes      = { 0xfd, 0xb8, 0x01 },
+  .num_bytes  = 3,
+  .imm        = PWASM_IMM_NONE,
+  .mem_size   = 0,
+  .num_lanes  = 0,
+}, {
+  .set        = PWASM_OPS_SIMD,
+  .name       = "i32x4.max_u",
+  .bytes      = { 0xfd, 0xb9, 0x01 },
+  .num_bytes  = 3,
+  .imm        = PWASM_IMM_NONE,
+  .mem_size   = 0,
+  .num_lanes  = 0,
+}, {
+  .set        = PWASM_OPS_SIMD,
+  .name       = "i64x2.neg",
+  .bytes      = { 0xfd, 0xc1, 0x01 },
+  .num_bytes  = 3,
+  .imm        = PWASM_IMM_NONE,
+  .mem_size   = 0,
+  .num_lanes  = 0,
+}, {
+  .set        = PWASM_OPS_SIMD,
+  .name       = "i64x2.shl",
+  .bytes      = { 0xfd, 0xcb, 0x01 },
+  .num_bytes  = 3,
+  .imm        = PWASM_IMM_NONE,
+  .mem_size   = 0,
+  .num_lanes  = 0,
+}, {
+  .set        = PWASM_OPS_SIMD,
+  .name       = "i64x2.shr_s",
+  .bytes      = { 0xfd, 0xcc, 0x01 },
+  .num_bytes  = 3,
+  .imm        = PWASM_IMM_NONE,
+  .mem_size   = 0,
+  .num_lanes  = 0,
+}, {
+  .set        = PWASM_OPS_SIMD,
+  .name       = "i64x2.shr_u",
+  .bytes      = { 0xfd, 0xcd, 0x01 },
+  .num_bytes  = 3,
+  .imm        = PWASM_IMM_NONE,
+  .mem_size   = 0,
+  .num_lanes  = 0,
+}, {
+  .set        = PWASM_OPS_SIMD,
+  .name       = "i64x2.add",
+  .bytes      = { 0xfd, 0xce, 0x01 },
+  .num_bytes  = 3,
+  .imm        = PWASM_IMM_NONE,
+  .mem_size   = 0,
+  .num_lanes  = 0,
+}, {
+  .set        = PWASM_OPS_SIMD,
+  .name       = "i64x2.sub",
+  .bytes      = { 0xfd, 0xd1, 0x01 },
+  .num_bytes  = 3,
+  .imm        = PWASM_IMM_NONE,
+  .mem_size   = 0,
+  .num_lanes  = 0,
+}, {
+  .set        = PWASM_OPS_SIMD,
+  .name       = "i64x2.mul",
+  .bytes      = { 0xfd, 0xd5, 0x01 },
+  .num_bytes  = 3,
+  .imm        = PWASM_IMM_NONE,
+  .mem_size   = 0,
+  .num_lanes  = 0,
+}, {
+  .set        = PWASM_OPS_SIMD,
+  .name       = "f32x4.abs",
+  .bytes      = { 0xfd, 0xe0, 0x01 },
+  .num_bytes  = 3,
+  .imm        = PWASM_IMM_NONE,
+  .mem_size   = 0,
+  .num_lanes  = 0,
+}, {
+  .set        = PWASM_OPS_SIMD,
+  .name       = "f32x4.neg",
+  .bytes      = { 0xfd, 0xe1, 0x01 },
+  .num_bytes  = 3,
+  .imm        = PWASM_IMM_NONE,
+  .mem_size   = 0,
+  .num_lanes  = 0,
+}, {
+  .set        = PWASM_OPS_SIMD,
+  .name       = "f32x4.sqrt",
   .bytes      = { 0xfd, 0xe3, 0x01 },
+  .num_bytes  = 3,
+  .imm        = PWASM_IMM_NONE,
+  .mem_size   = 0,
+  .num_lanes  = 0,
+}, {
+  .set        = PWASM_OPS_SIMD,
+  .name       = "f32x4.add",
+  .bytes      = { 0xfd, 0xe4, 0x01 },
+  .num_bytes  = 3,
+  .imm        = PWASM_IMM_NONE,
+  .mem_size   = 0,
+  .num_lanes  = 0,
+}, {
+  .set        = PWASM_OPS_SIMD,
+  .name       = "f32x4.sub",
+  .bytes      = { 0xfd, 0xe5, 0x01 },
+  .num_bytes  = 3,
+  .imm        = PWASM_IMM_NONE,
+  .mem_size   = 0,
+  .num_lanes  = 0,
+}, {
+  .set        = PWASM_OPS_SIMD,
+  .name       = "f32x4.mul",
+  .bytes      = { 0xfd, 0xe6, 0x01 },
+  .num_bytes  = 3,
+  .imm        = PWASM_IMM_NONE,
+  .mem_size   = 0,
+  .num_lanes  = 0,
+}, {
+  .set        = PWASM_OPS_SIMD,
+  .name       = "f32x4.div",
+  .bytes      = { 0xfd, 0xe7, 0x01 },
+  .num_bytes  = 3,
+  .imm        = PWASM_IMM_NONE,
+  .mem_size   = 0,
+  .num_lanes  = 0,
+}, {
+  .set        = PWASM_OPS_SIMD,
+  .name       = "f32x4.min",
+  .bytes      = { 0xfd, 0xe8, 0x01 },
+  .num_bytes  = 3,
+  .imm        = PWASM_IMM_NONE,
+  .mem_size   = 0,
+  .num_lanes  = 0,
+}, {
+  .set        = PWASM_OPS_SIMD,
+  .name       = "f32x4.max",
+  .bytes      = { 0xfd, 0xe9, 0x01 },
+  .num_bytes  = 3,
+  .imm        = PWASM_IMM_NONE,
+  .mem_size   = 0,
+  .num_lanes  = 0,
+}, {
+  .set        = PWASM_OPS_SIMD,
+  .name       = "f64x2.abs",
+  .bytes      = { 0xfd, 0xec, 0x01 },
+  .num_bytes  = 3,
+  .imm        = PWASM_IMM_NONE,
+  .mem_size   = 0,
+  .num_lanes  = 0,
+}, {
+  .set        = PWASM_OPS_SIMD,
+  .name       = "f64x2.neg",
+  .bytes      = { 0xfd, 0xed, 0x01 },
+  .num_bytes  = 3,
+  .imm        = PWASM_IMM_NONE,
+  .mem_size   = 0,
+  .num_lanes  = 0,
+}, {
+  .set        = PWASM_OPS_SIMD,
+  .name       = "f64x2.sqrt",
+  .bytes      = { 0xfd, 0xef, 0x01 },
+  .num_bytes  = 3,
+  .imm        = PWASM_IMM_NONE,
+  .mem_size   = 0,
+  .num_lanes  = 0,
+}, {
+  .set        = PWASM_OPS_SIMD,
+  .name       = "f64x2.add",
+  .bytes      = { 0xfd, 0xf0, 0x01 },
+  .num_bytes  = 3,
+  .imm        = PWASM_IMM_NONE,
+  .mem_size   = 0,
+  .num_lanes  = 0,
+}, {
+  .set        = PWASM_OPS_SIMD,
+  .name       = "f64x2.sub",
+  .bytes      = { 0xfd, 0xf1, 0x01 },
+  .num_bytes  = 3,
+  .imm        = PWASM_IMM_NONE,
+  .mem_size   = 0,
+  .num_lanes  = 0,
+}, {
+  .set        = PWASM_OPS_SIMD,
+  .name       = "f64x2.mul",
+  .bytes      = { 0xfd, 0xf2, 0x01 },
+  .num_bytes  = 3,
+  .imm        = PWASM_IMM_NONE,
+  .mem_size   = 0,
+  .num_lanes  = 0,
+}, {
+  .set        = PWASM_OPS_SIMD,
+  .name       = "f64x2.div",
+  .bytes      = { 0xfd, 0xf3, 0x01 },
+  .num_bytes  = 3,
+  .imm        = PWASM_IMM_NONE,
+  .mem_size   = 0,
+  .num_lanes  = 0,
+}, {
+  .set        = PWASM_OPS_SIMD,
+  .name       = "f64x2.min",
+  .bytes      = { 0xfd, 0xf4, 0x01 },
+  .num_bytes  = 3,
+  .imm        = PWASM_IMM_NONE,
+  .mem_size   = 0,
+  .num_lanes  = 0,
+}, {
+  .set        = PWASM_OPS_SIMD,
+  .name       = "f64x2.max",
+  .bytes      = { 0xfd, 0xf5, 0x01 },
+  .num_bytes  = 3,
+  .imm        = PWASM_IMM_NONE,
+  .mem_size   = 0,
+  .num_lanes  = 0,
+}, {
+  .set        = PWASM_OPS_SIMD,
+  .name       = "i32x4.trunc_sat_f32x4_s",
+  .bytes      = { 0xfd, 0xf8, 0x01 },
+  .num_bytes  = 3,
+  .imm        = PWASM_IMM_NONE,
+  .mem_size   = 0,
+  .num_lanes  = 0,
+}, {
+  .set        = PWASM_OPS_SIMD,
+  .name       = "i32x4.trunc_sat_f32x4_u",
+  .bytes      = { 0xfd, 0xf9, 0x01 },
+  .num_bytes  = 3,
+  .imm        = PWASM_IMM_NONE,
+  .mem_size   = 0,
+  .num_lanes  = 0,
+}, {
+  .set        = PWASM_OPS_SIMD,
+  .name       = "f32x4.convert_i32x4_s",
+  .bytes      = { 0xfd, 0xfa, 0x01 },
+  .num_bytes  = 3,
+  .imm        = PWASM_IMM_NONE,
+  .mem_size   = 0,
+  .num_lanes  = 0,
+}, {
+  .set        = PWASM_OPS_SIMD,
+  .name       = "f32x4.convert_i32x4_u",
+  .bytes      = { 0xfd, 0xfb, 0x01 },
   .num_bytes  = 3,
   .imm        = PWASM_IMM_NONE,
   .mem_size   = 0,
@@ -3413,6 +3413,10 @@ PWASM_VALID_OPS_MASK[] = {
   0x0000000000000000, // trunc_sat[1]
   0x0000000000000000, // trunc_sat[2]
   0x0000000000000000, // trunc_sat[3]
+  0xffffffffffffffff, // simd[0]
+  0x0bcff86f0007ffff, // simd[1]
+  0x03e27f8f0befffef, // simd[2]
+  0x0f3fb3fb00227802, // simd[3]
 };
 
 static inline bool
@@ -3420,25 +3424,10 @@ pwasm_op_is_valid(
   const pwasm_ops_t set,
   const uint32_t val
 ) {
-  switch (set) {
-  case PWASM_OPS_MAIN:
-  case PWASM_OPS_TRUNC_SAT:
-    if (val < 0x100) {
-      const size_t ofs = (4 * set) + val / 64;
-      const size_t mask = ((uint64_t) 1 << (val & 0x3F));
-      return PWASM_VALID_OPS_MASK[ofs] & mask;
-    }
-
-    break;
-  case PWASM_OPS_SIMD:
-    // TODO
-    break;
-  default:
-    break;
-  }
-
-  // return failure
-  return false;
+  const bool ok = (set < PWASM_OPS_LAST) && (val < 0x100);
+  const size_t ofs = (4 * set) + val / 64;
+  const size_t mask = ((uint64_t) 1 << (val & 0x3F));
+  return ok && (PWASM_VALID_OPS_MASK[ofs] & mask);
 }
 
 static inline bool
@@ -4206,7 +4195,7 @@ typedef struct {
 
 // generated by bin/gen.rb op-map
 static const pwasm_op_t
-PWASM_OPS_BYTE_MAP[] = {
+PWASM_OP_MAP[] = {
   PWASM_OP_UNREACHABLE, // 0x00
   PWASM_OP_NOP, // 0x01
   PWASM_OP_BLOCK, // 0x02
@@ -4719,6 +4708,262 @@ PWASM_OPS_BYTE_MAP[] = {
   PWASM_OP_LAST, // 0xFD
   PWASM_OP_LAST, // 0xFE
   PWASM_OP_LAST, // 0xFF
+  PWASM_OP_V128_LOAD, // 0x00
+  PWASM_OP_I16X8_LOAD8X8_S, // 0x01
+  PWASM_OP_I16X8_LOAD8X8_U, // 0x02
+  PWASM_OP_I32X4_LOAD16X4_S, // 0x03
+  PWASM_OP_I32X4_LOAD16X4_U, // 0x04
+  PWASM_OP_I64X2_LOAD32X2_S, // 0x05
+  PWASM_OP_I64X2_LOAD32X2_U, // 0x06
+  PWASM_OP_V8X16_LOAD_SPLAT, // 0x07
+  PWASM_OP_V16X8_LOAD_SPLAT, // 0x08
+  PWASM_OP_V32X4_LOAD_SPLAT, // 0x09
+  PWASM_OP_V64X2_LOAD_SPLAT, // 0x0A
+  PWASM_OP_V128_STORE, // 0x0B
+  PWASM_OP_V128_CONST, // 0x0C
+  PWASM_OP_V8X16_SHUFFLE, // 0x0D
+  PWASM_OP_V8X16_SWIZZLE, // 0x0E
+  PWASM_OP_I8X16_SPLAT, // 0x0F
+  PWASM_OP_I16X8_SPLAT, // 0x10
+  PWASM_OP_I32X4_SPLAT, // 0x11
+  PWASM_OP_I64X2_SPLAT, // 0x12
+  PWASM_OP_F32X4_SPLAT, // 0x13
+  PWASM_OP_F64X2_SPLAT, // 0x14
+  PWASM_OP_I8X16_EXTRACT_LANE_S, // 0x15
+  PWASM_OP_I8X16_EXTRACT_LANE_U, // 0x16
+  PWASM_OP_I8X16_REPLACE_LANE, // 0x17
+  PWASM_OP_I16X8_EXTRACT_LANE_S, // 0x18
+  PWASM_OP_I16X8_EXTRACT_LANE_U, // 0x19
+  PWASM_OP_I16X8_REPLACE_LANE, // 0x1A
+  PWASM_OP_I32X4_EXTRACT_LANE, // 0x1B
+  PWASM_OP_I32X4_REPLACE_LANE, // 0x1C
+  PWASM_OP_I64X2_EXTRACT_LANE, // 0x1D
+  PWASM_OP_I64X2_REPLACE_LANE, // 0x1E
+  PWASM_OP_F32X4_EXTRACT_LANE, // 0x1F
+  PWASM_OP_F32X4_REPLACE_LANE, // 0x20
+  PWASM_OP_F64X2_EXTRACT_LANE, // 0x21
+  PWASM_OP_F64X2_REPLACE_LANE, // 0x22
+  PWASM_OP_I8X16_EQ, // 0x23
+  PWASM_OP_I8X16_NE, // 0x24
+  PWASM_OP_I8X16_LT_S, // 0x25
+  PWASM_OP_I8X16_LT_U, // 0x26
+  PWASM_OP_I8X16_GT_S, // 0x27
+  PWASM_OP_I8X16_GT_U, // 0x28
+  PWASM_OP_I8X16_LE_S, // 0x29
+  PWASM_OP_I8X16_LE_U, // 0x2A
+  PWASM_OP_I8X16_GE_S, // 0x2B
+  PWASM_OP_I8X16_GE_U, // 0x2C
+  PWASM_OP_I16X8_EQ, // 0x2D
+  PWASM_OP_I16X8_NE, // 0x2E
+  PWASM_OP_I16X8_LT_S, // 0x2F
+  PWASM_OP_I16X8_LT_U, // 0x30
+  PWASM_OP_I16X8_GT_S, // 0x31
+  PWASM_OP_I16X8_GT_U, // 0x32
+  PWASM_OP_I16X8_LE_S, // 0x33
+  PWASM_OP_I16X8_LE_U, // 0x34
+  PWASM_OP_I16X8_GE_S, // 0x35
+  PWASM_OP_I16X8_GE_U, // 0x36
+  PWASM_OP_I32X4_EQ, // 0x37
+  PWASM_OP_I32X4_NE, // 0x38
+  PWASM_OP_I32X4_LT_S, // 0x39
+  PWASM_OP_I32X4_LT_U, // 0x3A
+  PWASM_OP_I32X4_GT_S, // 0x3B
+  PWASM_OP_I32X4_GT_U, // 0x3C
+  PWASM_OP_I32X4_LE_S, // 0x3D
+  PWASM_OP_I32X4_LE_U, // 0x3E
+  PWASM_OP_I32X4_GE_S, // 0x3F
+  PWASM_OP_I32X4_GE_U, // 0x40
+  PWASM_OP_F32X4_EQ, // 0x41
+  PWASM_OP_F32X4_NE, // 0x42
+  PWASM_OP_F32X4_LT, // 0x43
+  PWASM_OP_F32X4_GT, // 0x44
+  PWASM_OP_F32X4_LE, // 0x45
+  PWASM_OP_F32X4_GE, // 0x46
+  PWASM_OP_F64X2_EQ, // 0x47
+  PWASM_OP_F64X2_NE, // 0x48
+  PWASM_OP_F64X2_LT, // 0x49
+  PWASM_OP_F64X2_GT, // 0x4A
+  PWASM_OP_F64X2_LE, // 0x4B
+  PWASM_OP_F64X2_GE, // 0x4C
+  PWASM_OP_V128_NOT, // 0x4D
+  PWASM_OP_V128_AND, // 0x4E
+  PWASM_OP_V128_ANDNOT, // 0x4F
+  PWASM_OP_V128_OR, // 0x50
+  PWASM_OP_V128_XOR, // 0x51
+  PWASM_OP_V128_BITSELECT, // 0x52
+  PWASM_OP_LAST, // 0x53
+  PWASM_OP_LAST, // 0x54
+  PWASM_OP_LAST, // 0x55
+  PWASM_OP_LAST, // 0x56
+  PWASM_OP_LAST, // 0x57
+  PWASM_OP_LAST, // 0x58
+  PWASM_OP_LAST, // 0x59
+  PWASM_OP_LAST, // 0x5A
+  PWASM_OP_LAST, // 0x5B
+  PWASM_OP_LAST, // 0x5C
+  PWASM_OP_LAST, // 0x5D
+  PWASM_OP_LAST, // 0x5E
+  PWASM_OP_LAST, // 0x5F
+  PWASM_OP_I8X16_ABS, // 0x60
+  PWASM_OP_I8X16_NEG, // 0x61
+  PWASM_OP_I8X16_ANY_TRUE, // 0x62
+  PWASM_OP_I8X16_ALL_TRUE, // 0x63
+  PWASM_OP_LAST, // 0x64
+  PWASM_OP_I8X16_NARROW_I16X8_S, // 0x65
+  PWASM_OP_I8X16_NARROW_I16X8_U, // 0x66
+  PWASM_OP_LAST, // 0x67
+  PWASM_OP_LAST, // 0x68
+  PWASM_OP_LAST, // 0x69
+  PWASM_OP_LAST, // 0x6A
+  PWASM_OP_I8X16_SHL, // 0x6B
+  PWASM_OP_I8X16_SHR_S, // 0x6C
+  PWASM_OP_I8X16_SHR_U, // 0x6D
+  PWASM_OP_I8X16_ADD, // 0x6E
+  PWASM_OP_I8X16_ADD_SATURATE_S, // 0x6F
+  PWASM_OP_I8X16_ADD_SATURATE_U, // 0x70
+  PWASM_OP_I8X16_SUB, // 0x71
+  PWASM_OP_I8X16_SUB_SATURATE_S, // 0x72
+  PWASM_OP_I8X16_SUB_SATURATE_U, // 0x73
+  PWASM_OP_LAST, // 0x74
+  PWASM_OP_LAST, // 0x75
+  PWASM_OP_I8X16_MIN_S, // 0x76
+  PWASM_OP_I8X16_MIN_U, // 0x77
+  PWASM_OP_I8X16_MAX_S, // 0x78
+  PWASM_OP_I8X16_MAX_U, // 0x79
+  PWASM_OP_LAST, // 0x7A
+  PWASM_OP_I8X16_AVGR_U, // 0x7B
+  PWASM_OP_LAST, // 0x7C
+  PWASM_OP_LAST, // 0x7D
+  PWASM_OP_LAST, // 0x7E
+  PWASM_OP_LAST, // 0x7F
+  PWASM_OP_I16X8_ABS, // 0x80
+  PWASM_OP_I16X8_NEG, // 0x81
+  PWASM_OP_I16X8_ANY_TRUE, // 0x82
+  PWASM_OP_I16X8_ALL_TRUE, // 0x83
+  PWASM_OP_LAST, // 0x84
+  PWASM_OP_I16X8_NARROW_I32X4_S, // 0x85
+  PWASM_OP_I16X8_NARROW_I32X4_U, // 0x86
+  PWASM_OP_I16X8_WIDEN_LOW_I8X16_S, // 0x87
+  PWASM_OP_I16X8_WIDEN_HIGH_I8X16_S, // 0x88
+  PWASM_OP_I16X8_WIDEN_LOW_I8X16_U, // 0x89
+  PWASM_OP_I16X8_WIDEN_HIGH_I8X16_U, // 0x8A
+  PWASM_OP_I16X8_SHL, // 0x8B
+  PWASM_OP_I16X8_SHR_S, // 0x8C
+  PWASM_OP_I16X8_SHR_U, // 0x8D
+  PWASM_OP_I16X8_ADD, // 0x8E
+  PWASM_OP_I16X8_ADD_SATURATE_S, // 0x8F
+  PWASM_OP_I16X8_ADD_SATURATE_U, // 0x90
+  PWASM_OP_I16X8_SUB, // 0x91
+  PWASM_OP_I16X8_SUB_SATURATE_S, // 0x92
+  PWASM_OP_I16X8_SUB_SATURATE_U, // 0x93
+  PWASM_OP_LAST, // 0x94
+  PWASM_OP_I16X8_MUL, // 0x95
+  PWASM_OP_I16X8_MIN_S, // 0x96
+  PWASM_OP_I16X8_MIN_U, // 0x97
+  PWASM_OP_I16X8_MAX_S, // 0x98
+  PWASM_OP_I16X8_MAX_U, // 0x99
+  PWASM_OP_LAST, // 0x9A
+  PWASM_OP_I16X8_AVGR_U, // 0x9B
+  PWASM_OP_LAST, // 0x9C
+  PWASM_OP_LAST, // 0x9D
+  PWASM_OP_LAST, // 0x9E
+  PWASM_OP_LAST, // 0x9F
+  PWASM_OP_I32X4_ABS, // 0xA0
+  PWASM_OP_I32X4_NEG, // 0xA1
+  PWASM_OP_I32X4_ANY_TRUE, // 0xA2
+  PWASM_OP_I32X4_ALL_TRUE, // 0xA3
+  PWASM_OP_LAST, // 0xA4
+  PWASM_OP_LAST, // 0xA5
+  PWASM_OP_LAST, // 0xA6
+  PWASM_OP_I32X4_WIDEN_LOW_I16X8_S, // 0xA7
+  PWASM_OP_I32X4_WIDEN_HIGH_I16X8_S, // 0xA8
+  PWASM_OP_I32X4_WIDEN_LOW_I16X8_U, // 0xA9
+  PWASM_OP_I32X4_WIDEN_HIGH_I16X8_U, // 0xAA
+  PWASM_OP_I32X4_SHL, // 0xAB
+  PWASM_OP_I32X4_SHR_S, // 0xAC
+  PWASM_OP_I32X4_SHR_U, // 0xAD
+  PWASM_OP_I32X4_ADD, // 0xAE
+  PWASM_OP_LAST, // 0xAF
+  PWASM_OP_LAST, // 0xB0
+  PWASM_OP_I32X4_SUB, // 0xB1
+  PWASM_OP_LAST, // 0xB2
+  PWASM_OP_LAST, // 0xB3
+  PWASM_OP_LAST, // 0xB4
+  PWASM_OP_I32X4_MUL, // 0xB5
+  PWASM_OP_I32X4_MIN_S, // 0xB6
+  PWASM_OP_I32X4_MIN_U, // 0xB7
+  PWASM_OP_I32X4_MAX_S, // 0xB8
+  PWASM_OP_I32X4_MAX_U, // 0xB9
+  PWASM_OP_LAST, // 0xBA
+  PWASM_OP_LAST, // 0xBB
+  PWASM_OP_LAST, // 0xBC
+  PWASM_OP_LAST, // 0xBD
+  PWASM_OP_LAST, // 0xBE
+  PWASM_OP_LAST, // 0xBF
+  PWASM_OP_LAST, // 0xC0
+  PWASM_OP_I64X2_NEG, // 0xC1
+  PWASM_OP_LAST, // 0xC2
+  PWASM_OP_LAST, // 0xC3
+  PWASM_OP_LAST, // 0xC4
+  PWASM_OP_LAST, // 0xC5
+  PWASM_OP_LAST, // 0xC6
+  PWASM_OP_LAST, // 0xC7
+  PWASM_OP_LAST, // 0xC8
+  PWASM_OP_LAST, // 0xC9
+  PWASM_OP_LAST, // 0xCA
+  PWASM_OP_I64X2_SHL, // 0xCB
+  PWASM_OP_I64X2_SHR_S, // 0xCC
+  PWASM_OP_I64X2_SHR_U, // 0xCD
+  PWASM_OP_I64X2_ADD, // 0xCE
+  PWASM_OP_LAST, // 0xCF
+  PWASM_OP_LAST, // 0xD0
+  PWASM_OP_I64X2_SUB, // 0xD1
+  PWASM_OP_LAST, // 0xD2
+  PWASM_OP_LAST, // 0xD3
+  PWASM_OP_LAST, // 0xD4
+  PWASM_OP_I64X2_MUL, // 0xD5
+  PWASM_OP_LAST, // 0xD6
+  PWASM_OP_LAST, // 0xD7
+  PWASM_OP_LAST, // 0xD8
+  PWASM_OP_LAST, // 0xD9
+  PWASM_OP_LAST, // 0xDA
+  PWASM_OP_LAST, // 0xDB
+  PWASM_OP_LAST, // 0xDC
+  PWASM_OP_LAST, // 0xDD
+  PWASM_OP_LAST, // 0xDE
+  PWASM_OP_LAST, // 0xDF
+  PWASM_OP_F32X4_ABS, // 0xE0
+  PWASM_OP_F32X4_NEG, // 0xE1
+  PWASM_OP_LAST, // 0xE2
+  PWASM_OP_F32X4_SQRT, // 0xE3
+  PWASM_OP_F32X4_ADD, // 0xE4
+  PWASM_OP_F32X4_SUB, // 0xE5
+  PWASM_OP_F32X4_MUL, // 0xE6
+  PWASM_OP_F32X4_DIV, // 0xE7
+  PWASM_OP_F32X4_MIN, // 0xE8
+  PWASM_OP_F32X4_MAX, // 0xE9
+  PWASM_OP_LAST, // 0xEA
+  PWASM_OP_LAST, // 0xEB
+  PWASM_OP_F64X2_ABS, // 0xEC
+  PWASM_OP_F64X2_NEG, // 0xED
+  PWASM_OP_LAST, // 0xEE
+  PWASM_OP_F64X2_SQRT, // 0xEF
+  PWASM_OP_F64X2_ADD, // 0xF0
+  PWASM_OP_F64X2_SUB, // 0xF1
+  PWASM_OP_F64X2_MUL, // 0xF2
+  PWASM_OP_F64X2_DIV, // 0xF3
+  PWASM_OP_F64X2_MIN, // 0xF4
+  PWASM_OP_F64X2_MAX, // 0xF5
+  PWASM_OP_LAST, // 0xF6
+  PWASM_OP_LAST, // 0xF7
+  PWASM_OP_I32X4_TRUNC_SAT_F32X4_S, // 0xF8
+  PWASM_OP_I32X4_TRUNC_SAT_F32X4_U, // 0xF9
+  PWASM_OP_F32X4_CONVERT_I32X4_S, // 0xFA
+  PWASM_OP_F32X4_CONVERT_I32X4_U, // 0xFB
+  PWASM_OP_LAST, // 0xFC
+  PWASM_OP_LAST, // 0xFD
+  PWASM_OP_LAST, // 0xFE
+  PWASM_OP_LAST, // 0xFF
 };
 
 /**
@@ -4731,26 +4976,9 @@ pwasm_op_from_u32(
   const pwasm_ops_t set,
   const uint32_t val
 ) {
-  switch (set) {
-  case PWASM_OPS_MAIN:
-  case PWASM_OPS_TRUNC_SAT:
-    if (val < 0x100) {
-      return PWASM_OPS_BYTE_MAP[set * 256 + val];
-    }
-
-    break;
-  case PWASM_OPS_SIMD:
-    if (val < 0xFF) { // FIXME: pull from OPSETS
-      return PWASM_OP_V128_LOAD + val;
-    }
-
-    break;
-  default:
-    break;
-  }
-
-  // return failure
-  return PWASM_OP_LAST;
+  const bool ok = (set < PWASM_OPS_LAST) && (val < 0x100);
+  const size_t ofs = (ok) ? set * 256 + val : 255;
+  return PWASM_OP_MAP[ofs];
 }
 
 /**
