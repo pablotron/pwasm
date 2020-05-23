@@ -27,6 +27,9 @@
 // return minimum of two values
 #define MIN(a, b) (((a) < (b)) ? (a) : (b))
 
+// clamp value to range
+#define CLAMP(v, lo, hi) (((v) < (lo)) ? (lo) : (((v) > (hi)) ? (hi) : (v)))
+
 // get the number of elements in a static array
 #define LEN(ary) (sizeof(ary) / sizeof((ary)[0]))
 
@@ -14095,6 +14098,62 @@ pwasm_new_interp_eval_expr(
       {
         const int64_t val = (int32_t) stack->ptr[stack->pos - 1].i64;
         stack->ptr[stack->pos - 1].i64 = (uint64_t) val;
+      }
+
+      break;
+    case PWASM_OP_I32_TRUNC_SAT_F32_S:
+      {
+        const float a = stack->ptr[stack->pos - 1].f32;
+        stack->ptr[stack->pos - 1].i32 = (int32_t) CLAMP(a, INT32_MIN, INT32_MAX);
+      }
+
+      break;
+    case PWASM_OP_I32_TRUNC_SAT_F32_U:
+      {
+        const float a = stack->ptr[stack->pos - 1].f32;
+        stack->ptr[stack->pos - 1].i32 = (uint32_t) CLAMP(a, 0, UINT32_MAX);
+      }
+
+      break;
+    case PWASM_OP_I32_TRUNC_SAT_F64_S:
+      {
+        const double a = stack->ptr[stack->pos - 1].f64;
+        stack->ptr[stack->pos - 1].i32 = (int32_t) CLAMP(a, INT32_MIN, INT32_MAX);
+      }
+
+      break;
+    case PWASM_OP_I32_TRUNC_SAT_F64_U:
+      {
+        const double a = stack->ptr[stack->pos - 1].f64;
+        stack->ptr[stack->pos - 1].i32 = (uint32_t) CLAMP(a, 0, UINT32_MAX);
+      }
+
+      break;
+    case PWASM_OP_I64_TRUNC_SAT_F32_S:
+      {
+        const float a = stack->ptr[stack->pos - 1].f32;
+        stack->ptr[stack->pos - 1].i64 = (int64_t) CLAMP(a, INT64_MIN, INT64_MAX);
+      }
+
+      break;
+    case PWASM_OP_I64_TRUNC_SAT_F32_U:
+      {
+        const float a = stack->ptr[stack->pos - 1].f32;
+        stack->ptr[stack->pos - 1].i64 = (uint64_t) CLAMP(a, 0, UINT64_MAX);
+      }
+
+      break;
+    case PWASM_OP_I64_TRUNC_SAT_F64_S:
+      {
+        const double a = stack->ptr[stack->pos - 1].f64;
+        stack->ptr[stack->pos - 1].i64 = (int64_t) CLAMP(a, INT64_MIN, INT64_MAX);
+      }
+
+      break;
+    case PWASM_OP_I64_TRUNC_SAT_F64_U:
+      {
+        const double a = stack->ptr[stack->pos - 1].f64;
+        stack->ptr[stack->pos - 1].i64 = (uint64_t) CLAMP(a, 0, UINT64_MAX);
       }
 
       break;

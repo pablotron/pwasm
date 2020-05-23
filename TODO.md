@@ -36,7 +36,6 @@ tag.
 ## In Progress
 * [ ] code: add global, table, and mem init, call start func (added,
       but untested)
-* [ ] code, ops: add `trunc_sat` interpreter impls
 * [ ] code, ops: add `simd` interpreter impls
 
 ## Done
@@ -91,6 +90,7 @@ Items in this section have been completed.
 * [x] code, ops: add `simd` (`0xFD`) ops (added stub parser)
 * [x] code, ops: add `trunc_sat` type checks
 * [x] code, ops: add `simd` type checks
+* [x] code, ops: add `trunc_sat` interpreter impls
 
 ## Tag Definitions
 
