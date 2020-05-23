@@ -7582,45 +7582,6 @@ pwasm_mod_get_func_type(
   }
 }
 
-#if 0
-/**
- * Get a pointer to the global type for the given global index.
- *
- * Returns NULL when given an invalid global index.
- */
-static const pwasm_global_type_t *
-pwasm_mod_get_global_type(
-  const pwasm_mod_t * const mod,
-  const uint32_t id
-) {
-  const size_t num_imports = mod->num_import_types[PWASM_IMPORT_TYPE_GLOBAL];
-
-  if (!pwasm_mod_is_valid_index(mod, PWASM_IMPORT_TYPE_GLOBAL, id)) {
-    return NULL;
-  }
-
-  if (id < num_imports) {
-    for (size_t i = 0, j = 0; i < mod->num_imports; i++) {
-      const pwasm_import_t import = mod->imports[i];
-
-      if (import.type == PWASM_IMPORT_TYPE_GLOBAL) {
-        if (id == j) {
-          return &(mod->imports[i].global);
-        }
-
-        j++;
-      }
-    }
-
-    // return failure (shouldn't happen)
-    return NULL;
-  } else {
-    // this is safe because of the is_valid_func_id() call above
-    return &(mod->globals[id - num_imports].type);
-  }
-}
-#endif /* 0 */
-
 /**
  * Map of code checker type to string name and result type.
  *
@@ -8679,55 +8640,6 @@ pwasm_checker_check_cvtop(
   // return success
   return true;
 }
-
-#if 0
-static pwasm_result_type_t
-pwasm_value_type_to_result_type(
-  const pwasm_value_type_t type
-) {
-  switch (type) {
-  case PWASM_VALUE_TYPE_I32: return PWASM_RESULT_TYPE_I32;
-  case PWASM_VALUE_TYPE_I64: return PWASM_RESULT_TYPE_I64;
-  case PWASM_VALUE_TYPE_F32: return PWASM_RESULT_TYPE_F32;
-  case PWASM_VALUE_TYPE_F64: return PWASM_RESULT_TYPE_F64;
-  default:
-    return PWASM_RESULT_TYPE_LAST;
-  }
-}
-
-static pwasm_result_type_t
-pwasm_checker_get_func_result_type(
-  pwasm_checker_t * const checker,
-  const pwasm_mod_t * const mod,
-  const pwasm_func_t func
-) {
-  (void) checker;
-  const pwasm_slice_t slice = mod->types[func.type_id].results;
-  // TODO: redo this for multi-value funcs
-  if (slice.len) {
-    return pwasm_value_type_to_result_type(mod->u32s[slice.ofs]);
-  } else {
-    return PWASM_RESULT_TYPE_VOID;
-  }
-}
-
-static bool
-pwasm_checker_push_func_block(
-  pwasm_checker_t * const checker,
-  const pwasm_mod_t * const mod,
-  const pwasm_func_t func
-) {
-  // build control frame
-  const pwasm_checker_ctrl_t ctrl = {
-    .op   = PWASM_OP_BLOCK,
-    .type = pwasm_checker_get_func_result_type(checker, mod, func),
-    .size = 0,
-  };
-
-  // push control frame, return result
-  return pwasm_checker_ctrl_push(checker, ctrl);
-}
-#endif /* 0 */
 
 /**
  * Get source value type for splat op.
