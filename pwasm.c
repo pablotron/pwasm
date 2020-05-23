@@ -14172,19 +14172,15 @@ pwasm_new_interp_eval_expr(
       break;
     case PWASM_OP_I8X16_EXTRACT_LANE_S:
       {
-        const pwasm_v128_t a = stack->ptr[stack-> pos - 2].v128;
-        const uint32_t b = stack->ptr[stack->pos - 1].i32;
-        stack->ptr[stack->pos - 2].i32 = (int8_t) a.i8[b];
-        stack->pos--;
+        const pwasm_v128_t a = stack->ptr[stack->pos - 1].v128;
+        stack->ptr[stack->pos - 1].i32 = (int8_t) a.i8[in.v_index];
       }
 
       break;
     case PWASM_OP_I8X16_EXTRACT_LANE_U:
       {
-        const pwasm_v128_t a = stack->ptr[stack-> pos - 2].v128;
-        const uint32_t b = stack->ptr[stack->pos - 1].i32;
-        stack->ptr[stack->pos - 2].i32 = a.i8[b];
-        stack->pos--;
+        const pwasm_v128_t a = stack->ptr[stack->pos - 1].v128;
+        stack->ptr[stack->pos - 1].i32 = a.i8[in.v_index];
       }
 
       break;
@@ -14212,19 +14208,15 @@ pwasm_new_interp_eval_expr(
       break;
     case PWASM_OP_I16X8_EXTRACT_LANE_S:
       {
-        const pwasm_v128_t a = stack->ptr[stack-> pos - 2].v128;
-        const uint32_t b = stack->ptr[stack->pos - 1].i32;
-        stack->ptr[stack->pos - 2].i32 = (int16_t) a.i16[b];
-        stack->pos--;
+        const pwasm_v128_t a = stack->ptr[stack->pos - 1].v128;
+        stack->ptr[stack->pos - 1].i32 = (int16_t) a.i16[in.v_index];
       }
 
       break;
     case PWASM_OP_I16X8_EXTRACT_LANE_U:
       {
-        const pwasm_v128_t a = stack->ptr[stack-> pos - 2].v128;
-        const uint32_t b = stack->ptr[stack->pos - 1].i32;
-        stack->ptr[stack->pos - 2].i32 = a.i16[b];
-        stack->pos--;
+        const pwasm_v128_t a = stack->ptr[stack->pos - 1].v128;
+        stack->ptr[stack->pos - 1].i32 = a.i16[in.v_index];
       }
 
       break;
@@ -14248,10 +14240,8 @@ pwasm_new_interp_eval_expr(
       break;
     case PWASM_OP_I32X4_EXTRACT_LANE:
       {
-        const pwasm_v128_t a = stack->ptr[stack-> pos - 2].v128;
-        const uint32_t b = stack->ptr[stack->pos - 1].i32;
-        stack->ptr[stack->pos - 2].i32 = a.i32[b];
-        stack->pos--;
+        const pwasm_v128_t a = stack->ptr[stack->pos - 1].v128;
+        stack->ptr[stack->pos - 1].i32 = a.i32[in.v_index];
       }
 
       break;
