@@ -245,6 +245,7 @@ wat_write_inst_imm(
     }
     break;
   case PWASM_IMM_INDEX:
+  case PWASM_IMM_LANE_INDEX:
     // write index
     fprintf(wat->io, " %s%u", wat_get_inst_index_prefix(in), in.v_index);
     break;
@@ -271,6 +272,13 @@ wat_write_inst_imm(
     break;
   case PWASM_IMM_F64_CONST:
     fprintf(wat->io, " %f", in.v_f64);
+    break;
+  case PWASM_IMM_V128_CONST:
+    fprintf(wat->io, " i32x4");
+    for (size_t i = 0; i < 4; i++) {
+      fprintf(wat->io, " 0x%08x", in.v_v128.i32[i]);
+    }
+
     break;
   case PWASM_IMM_BR_TABLE:
     for (size_t i = 0; i < in.v_br_table.len; i++) {

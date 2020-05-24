@@ -5184,6 +5184,7 @@ pwasm_parse_inst(
 
     break;
   case PWASM_IMM_INDEX:
+  case PWASM_IMM_LANE_INDEX:
     {
       // get index, check for error
       uint32_t id = 0;
@@ -5363,6 +5364,26 @@ pwasm_parse_inst(
 
       // save value, increment length
       in.v_f64 = u.f64;
+
+      // advance
+      curr = pwasm_buf_step(curr, len);
+      num_bytes += len;
+    }
+
+    break;
+  case PWASM_IMM_V128_CONST:
+    {
+      // immediate size, in bytes
+      const size_t len = sizeof(pwasm_v128_t);
+
+      // check length
+      if (curr.len < len) {
+        cbs->on_error("incomplete v128", cb_data);
+        return 0;
+      }
+
+      // copy immediate value, increment length
+      memcpy(in.v_v128.i8, curr.ptr, len);
 
       // advance
       curr = pwasm_buf_step(curr, len);
@@ -8752,7 +8773,7 @@ pwasm_checker_check_lane(
     for (size_t i = 0; i < 16; i++) {
       if (in.v_v128.i8[i] > 31) {
         // log error, return failure
-        D("lane %zu = %u", i, in.v128.u8[i]);
+        D("lane %zu = %u", i, in.v_v128.i8[i]);
         pwasm_checker_fail(checker, "v8x16.shuffle: invalid lane index (>31)");
         return false;
       }
@@ -8785,7 +8806,7 @@ pwasm_checker_check_lane(
     return true;
   default:
     // log error, return failure
-    D("opcode = %s(%u)", pwasm_opcode_get_name(in.op), in.op);
+    D("opcode = %s(%u)", pwasm_op_get_name(in.op), in.op);
     pwasm_checker_fail(checker, "unknown opcode");
     return false;
   }

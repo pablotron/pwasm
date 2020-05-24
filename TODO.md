@@ -36,6 +36,7 @@ tag.
 ## In Progress
 * [ ] code: add global, table, and mem init, call start func (added,
       but untested)
+* [ ] code, test: add v128 tests
 
 ## Done
 
