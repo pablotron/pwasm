@@ -308,6 +308,26 @@ static const uint8_t CALL_INDIRECT_WASM[] = {
   0x00, 0x20, 0x01, 0x11, 0x01, 0x00, 0x0b
 };
 
+// v128-const.wasm: one function used to test a couple of simd
+// functions:
+//
+// * i8x16_add(i32) -> i32
+//
+// (source: data/wat/12-v128-const.wat)
+static const uint8_t V128_CONST_WASM[] = {
+  0x00, 0x61, 0x73, 0x6d, 0x01, 0x00, 0x00, 0x00,
+  0x01, 0x06, 0x01, 0x60, 0x01, 0x7f, 0x01, 0x7f,
+  0x03, 0x02, 0x01, 0x00, 0x07, 0x0d, 0x01, 0x09,
+  0x69, 0x38, 0x78, 0x31, 0x36, 0x5f, 0x61, 0x64,
+  0x64, 0x00, 0x00, 0x0a, 0x32, 0x01, 0x30, 0x00,
+  0xfd, 0x0c, 0x00, 0x01, 0x02, 0x03, 0x04, 0x05,
+  0x06, 0x07, 0x08, 0x09, 0x0a, 0x0b, 0x0c, 0x0d,
+  0x0e, 0x0f, 0x20, 0x00, 0xfd, 0x17, 0x03, 0xfd,
+  0x0c, 0x00, 0x01, 0x02, 0x03, 0x04, 0x05, 0x06,
+  0x07, 0x08, 0x09, 0x0a, 0x0b, 0x0c, 0x0d, 0x0e,
+  0x0f, 0xfd, 0x6e, 0xfd, 0x16, 0x03, 0x0b
+};
+
 static const struct {
   const char * const name;
   const pwasm_buf_t data;
@@ -335,6 +355,9 @@ static const struct {
 }, {
   .name = "call_indirect",
   .data = { CALL_INDIRECT_WASM, sizeof(CALL_INDIRECT_WASM) },
+}, {
+  .name = "v128-const",
+  .data = { V128_CONST_WASM, sizeof(V128_CONST_WASM) },
 }};
 
 static const pwasm_val_t
@@ -514,6 +537,12 @@ TEST_VALS[] = {
 
   // mod: "call_indirect", func: "f32_map", test: 3, type: "result", num: 1
   { .f32 = 343 },
+
+  // mod: "v128-const", func: "i8x16_add", test: 0, type: "params", num: 1
+  { .i32 = 17 },
+
+  // mod: "v128-const", func: "i8x16_add", test: 0, type: "result", num: 1
+  { .i32 = 20 },
 };
 
 typedef struct {
@@ -721,6 +750,13 @@ TEST_CALLS[] = {{
   .params = { 65, 2 },
   .result = { 67, 1 },
   .type   = PWASM_RESULT_TYPE_F32,
+}, {
+  .text   = "v128-const.i8x16_add(7, 3)",
+  .mod    = "v128-const",
+  .func   = "i8x16_add",
+  .params = { 68, 1 },
+  .result = { 69, 1 },
+  .type   = PWASM_RESULT_TYPE_I32,
 }};
 
 static bool is_valid_result_type(
