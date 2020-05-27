@@ -11678,7 +11678,7 @@ pwasm_new_interp_get_table(
   // check that table_id is in bounds
   if (!table_id || table_id > num_rows) {
     // log error, return failure
-    D("bad table_id: %u", table_id);
+    D("bad table_id: %u, num_rows = %zu", table_id, num_rows);
     pwasm_env_fail(env, "interpreter table index out of bounds");
     return NULL;
   }
