@@ -8707,8 +8707,11 @@ pwasm_checker_check_branch(
   }
 
   if ((ctrl->type != PWASM_RESULT_TYPE_VOID) && (ctrl->op != PWASM_OP_LOOP)) {
+    // convert result type to checker type
+    const pwasm_checker_type_t type = pwasm_result_type_to_checker_type(ctrl->type);
+
     // pop expected type from type stack, check for error
-    if (!pwasm_checker_type_pop_expected(checker, ctrl->type, NULL)) {
+    if (!pwasm_checker_type_pop_expected(checker, type, NULL)) {
       return false;
     }
   }
