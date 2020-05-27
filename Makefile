@@ -3,9 +3,23 @@
 # use -std=gnu11 for MAP_ANONYMOUS
 # CFLAGS=... -std=gnu11 -I$(LUAJIT_DIR)
 
-CFLAGS=-W -Wall -Wextra -Werror -std=c11 -pedantic -g -pg -DPWASM_DEBUG
+# release
 # CFLAGS=-W -Wall -Wextra -Werror -std=c11 -pedantic -O3
+# LIBS=-lm
+
+# debug
+CFLAGS=-W -Wall -Wextra -Werror -std=c11 -pedantic -g -pg -DPWASM_DEBUG
 LIBS=-lm
+
+# asan
+# CFLAGS=-W -Wall -Wextra -Werror -std=c11 -pedantic -g -pg -fsanitize=address -DPWASM_DEBUG
+# LIBS=-lm -lasan
+
+# ubsan
+# https://clang.llvm.org/docs/UndefinedBehaviorSanitizer.html
+# CFLAGS=-W -Wall -Wextra -Werror -std=c11 -pedantic -g -pg -fsanitize=undefined -DPWASM_DEBUG
+# LIBS=-lm -lubsan
+
 APP=pwasm
 OBJS=pwasm.o cli/main.o cli/cmds.o cli/tests.o cli/utils.o \
      cli/cmds/help.o cli/cmds/test.o cli/cmds/wat.o \
