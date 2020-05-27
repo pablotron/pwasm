@@ -12805,6 +12805,9 @@ pwasm_new_interp_get_elem(
   uint32_t * const ret_val
 ) {
   pwasm_new_interp_table_t * const table = pwasm_new_interp_get_table(env, table_id);
+  if (!table) {
+    return false;
+  }
   return pwasm_new_interp_table_get_elem(env, table, elem_ofs, ret_val);
 }
 
