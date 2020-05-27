@@ -17443,6 +17443,17 @@ pwasm_new_interp_on_find_mem(
   return pwasm_new_interp_find_mem(env, mod_id, name);
 }
 
+/* 
+ * static uint32_t
+ * pwasm_new_interp_on_find_table(
+ *   pwasm_env_t * const env,
+ *   const uint32_t mod_id,
+ *   const pwasm_buf_t name
+ * ) {
+ *   return pwasm_new_interp_find_table(env, mod_id, name);
+ * }
+ */ 
+
 static pwasm_env_mem_t *
 pwasm_new_interp_on_get_mem(
   pwasm_env_t * const env,
@@ -17550,6 +17561,7 @@ NEW_PWASM_INTERP_CBS = {
   .find_mod     = pwasm_new_interp_on_find_mod,
   .find_func    = pwasm_new_interp_on_find_func,
   .find_mem     = pwasm_new_interp_on_find_mem,
+  // .find_table   = pwasm_new_interp_on_find_table,
   .get_mem      = pwasm_new_interp_on_get_mem,
   .mem_load     = pwasm_new_interp_on_mem_load,
   .mem_store    = pwasm_new_interp_on_mem_store,
