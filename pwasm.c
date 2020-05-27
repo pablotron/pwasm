@@ -3837,6 +3837,9 @@ pwasm_parse_labels(
 
   *dst = data.slice;
 
+  // silence scanner
+  (void) curr;
+
   // return total number of bytes consumed
   return num_bytes;
 }
@@ -4083,6 +4086,9 @@ pwasm_parse_custom_section(
   // emit custom section
   cbs->on_custom_section(&section, cb_data);
 
+  // silence scanner
+  (void) curr;
+
   // return result
   return data.success ? num_bytes : 0;
 }
@@ -4101,6 +4107,9 @@ pwasm_parse_limits(
 ) {
   pwasm_buf_t curr = src;
   size_t num_bytes = 0;
+
+  // check for NULL callback
+  on_error = on_error ? on_error : pwasm_null_on_error;
 
   // check length
   if (src.len < 2) {
@@ -4159,6 +4168,9 @@ pwasm_parse_table(
   pwasm_buf_t curr = src;
   size_t num_bytes = 0;
 
+  // check for NULL callback
+  on_error = on_error ? on_error : pwasm_null_on_error;
+
   if (src.len < 3) {
     on_error("incomplete table type", cb_data);
     return 0;
@@ -4192,6 +4204,9 @@ pwasm_parse_table(
     .elem_type  = elem_type,
     .limits     = limits,
   };
+
+  // silence scanner
+  (void) curr;
 
   // return number of bytes consumed
   return num_bytes;
@@ -5400,6 +5415,9 @@ pwasm_parse_inst(
   // save to result
   *dst = in;
 
+  // silence scanner
+  (void) curr;
+
   // return number of bytes consumed
   return num_bytes;
 }
@@ -5575,6 +5593,8 @@ pwasm_parse_global_type(
   pwasm_buf_t curr = src;
   size_t num_bytes = 0;
 
+  on_error = on_error ? on_error : pwasm_null_on_error;
+
   // check source length
   if (src.len < 2) {
     on_error("incomplete global type", cb_data);
@@ -5622,6 +5642,9 @@ pwasm_parse_global_type(
     .type = type,
     .mutable = (mut == 1),
   };
+
+  // silence scanner
+  (void) curr;
 
   // return number of bytes consumed
   return num_bytes;
@@ -5684,6 +5707,9 @@ pwasm_parse_global(
     .expr = expr,
   };
 
+  // silence scanner
+  (void) curr;
+
   // return total number of bytes consumed
   return num_bytes;
 }
@@ -5717,7 +5743,8 @@ pwasm_parse_import_table(
   const pwasm_parse_import_cbs_t * const cbs,
   void *cb_data
 ) {
-  return pwasm_parse_table(&(dst->table), src, cbs->on_error, cb_data);
+  void (*on_error)(const char *, void *) = (cbs && cbs->on_error) ? cbs->on_error : pwasm_null_on_error;
+  return pwasm_parse_table(&(dst->table), src, on_error, cb_data);
 }
 
 static inline size_t
@@ -5727,7 +5754,8 @@ pwasm_parse_import_mem(
   const pwasm_parse_import_cbs_t * const cbs,
   void *cb_data
 ) {
-  return pwasm_parse_limits(&(dst->mem), src, cbs->on_error, cb_data);
+  void (*on_error)(const char *, void *) = (cbs && cbs->on_error) ? cbs->on_error : pwasm_null_on_error;
+  return pwasm_parse_limits(&(dst->mem), src, on_error, cb_data);
 }
 
 static inline size_t
@@ -5737,7 +5765,8 @@ pwasm_parse_import_global(
   const pwasm_parse_import_cbs_t * const cbs,
   void *cb_data
 ) {
-  return pwasm_parse_global_type(&(dst->global), src, cbs->on_error, cb_data);
+  void (*on_error)(const char *, void *) = (cbs && cbs->on_error) ? cbs->on_error : pwasm_null_on_error;
+  return pwasm_parse_global_type(&(dst->global), src, on_error, cb_data);
 }
 
 static inline size_t
@@ -5749,9 +5778,11 @@ pwasm_parse_import_invalid(
 ) {
   (void) dst;
   (void) src;
-  if (cbs->on_error) {
+
+  if (cbs && cbs->on_error) {
     cbs->on_error("bad import type", cb_data);
   }
+
   return 0;
 }
 
@@ -5789,6 +5820,9 @@ pwasm_parse_import(
     .on_error = (cbs && cbs->on_error) ? cbs->on_error : pwasm_null_on_error,
   };
 
+  // get on_bytes callback
+  pwasm_slice_t (*on_bytes)(const uint8_t *, size_t, void *) = (cbs && cbs->on_bytes) ? cbs->on_bytes : NULL;
+
   // parse module name, check for error
   // FIXME: handle on_error here
   pwasm_slice_t names[2] = { 0 };
@@ -5799,9 +5833,9 @@ pwasm_parse_import(
       return 0;
     }
 
-    if (buf.len > 0) {
+    if ((buf.len > 0) && on_bytes) {
       // add bytes, check for error
-      names[i] = cbs->on_bytes(buf.ptr, buf.len, cb_data);
+      names[i] = on_bytes(buf.ptr, buf.len, cb_data);
       if (!names[i].len) {
         return 0;
       }
@@ -5815,7 +5849,7 @@ pwasm_parse_import(
   }
 
   if (curr.len < 2) {
-    cbs->on_error("missing import type", cb_data);
+    buf_cbs.on_error("missing import type", cb_data);
     return 0;
   }
 
@@ -5835,7 +5869,7 @@ pwasm_parse_import(
 
   const size_t len = pwasm_parse_import_data(type, &tmp, curr, cbs, cb_data);
   if (!len) {
-    cbs->on_error("invalid import data", cb_data);
+    buf_cbs.on_error("invalid import data", cb_data);
     return 0;
   }
 
@@ -5849,6 +5883,9 @@ pwasm_parse_import(
   *dst = tmp;
 
   D("dst = %p, num_bytes = %zu (tmp written)", (void*) dst, num_bytes);
+
+  // silence scanner
+  (void) curr;
 
   // return number of bytes consumed
   return num_bytes;
@@ -5927,6 +5964,9 @@ pwasm_parse_export(
     .type = type,
     .id   = id,
   };
+
+  // silence scanner
+  (void) curr;
 
   // return number of bytes consumed
   return num_bytes;
@@ -6056,6 +6096,9 @@ pwasm_parse_elem(
     .funcs    = data.funcs,
   };
 
+  // silence scanner
+  (void) curr;
+
   // return number of bytes consumed
   return num_bytes;
 }
@@ -6117,6 +6160,9 @@ pwasm_parse_code_locals_local(
     .num  = num,
     .type = type,
   };
+
+  // silence scanner
+  (void) curr;
 
   // return number of bytes consumed
   return num_bytes;
@@ -6301,6 +6347,9 @@ pwasm_parse_code(
     .expr = expr,
   };
 
+  // silence scanner
+  (void) curr;
+
   // return number of bytes consumed
   return num_bytes;
 }
@@ -6407,6 +6456,9 @@ pwasm_parse_segment(
     .expr   = expr,
     .data   = data,
   };
+
+  // silence scanner
+  (void) curr;
 
   // return number of bytes consumed
   return num_bytes;
@@ -12568,6 +12620,7 @@ pwasm_new_interp_find_func(
       const pwasm_buf_t row_buf = pwasm_buf_str(row.name);
 
       if (
+        row_buf.ptr &&
         (row_buf.len == name.len) &&
         !memcmp(row_buf.ptr, name.ptr, name.len)
       ) {
@@ -12631,6 +12684,7 @@ pwasm_new_interp_find_mem(
       const pwasm_buf_t row_buf = pwasm_buf_str(row.name);
 
       if (
+        row_buf.ptr &&
         (row_buf.len == name.len) &&
         !memcmp(row_buf.ptr, name.ptr, name.len)
       ) {
@@ -13679,6 +13733,13 @@ pwasm_new_interp_eval_expr(
       {
         const int32_t a = (int32_t) stack->ptr[stack->pos - 2].i32;
         const int32_t b = (int32_t) stack->ptr[stack->pos - 1].i32;
+
+        if (!b) {
+          // log error, return failure
+          pwasm_env_fail(frame.env, "i32.div_s: division by zero");
+          return false;
+        }
+
         stack->ptr[stack->pos - 2].i32 = a / b;
         stack->pos--;
       }
@@ -13688,6 +13749,13 @@ pwasm_new_interp_eval_expr(
       {
         const uint32_t a = stack->ptr[stack->pos - 2].i32;
         const uint32_t b = stack->ptr[stack->pos - 1].i32;
+
+        if (!b) {
+          // log error, return failure
+          pwasm_env_fail(frame.env, "i32.div_u: division by zero");
+          return false;
+        }
+
         stack->ptr[stack->pos - 2].i32 = a / b;
         stack->pos--;
       }
@@ -13697,6 +13765,13 @@ pwasm_new_interp_eval_expr(
       {
         const int32_t a = (int32_t) stack->ptr[stack->pos - 2].i32;
         const int32_t b = (int32_t) stack->ptr[stack->pos - 1].i32;
+
+        if (!b) {
+          // log error, return failure
+          pwasm_env_fail(frame.env, "i32.rem_s: division by zero");
+          return false;
+        }
+
         stack->ptr[stack->pos - 2].i32 = a % b;
         stack->pos--;
       }
@@ -13706,6 +13781,13 @@ pwasm_new_interp_eval_expr(
       {
         const uint32_t a = stack->ptr[stack->pos - 2].i32;
         const uint32_t b = stack->ptr[stack->pos - 1].i32;
+
+        if (!b) {
+          // log error, return failure
+          pwasm_env_fail(frame.env, "i32.rem_u: division by zero");
+          return false;
+        }
+
         stack->ptr[stack->pos - 2].i32 = a % b;
         stack->pos--;
       }
@@ -13835,6 +13917,13 @@ pwasm_new_interp_eval_expr(
       {
         const int64_t a = (int64_t) stack->ptr[stack->pos - 2].i64;
         const int64_t b = (int64_t) stack->ptr[stack->pos - 1].i64;
+
+        if (!b) {
+          // log error, return failure
+          pwasm_env_fail(frame.env, "i64.div_s: division by zero");
+          return false;
+        }
+
         stack->ptr[stack->pos - 2].i64 = a / b;
         stack->pos--;
       }
@@ -13844,6 +13933,13 @@ pwasm_new_interp_eval_expr(
       {
         const uint64_t a = stack->ptr[stack->pos - 2].i64;
         const uint64_t b = stack->ptr[stack->pos - 1].i64;
+
+        if (!b) {
+          // log error, return failure
+          pwasm_env_fail(frame.env, "i64.div_u: division by zero");
+          return false;
+        }
+
         stack->ptr[stack->pos - 2].i64 = a / b;
         stack->pos--;
       }
@@ -13853,6 +13949,13 @@ pwasm_new_interp_eval_expr(
       {
         const int64_t a = (int64_t) stack->ptr[stack->pos - 2].i64;
         const int64_t b = (int64_t) stack->ptr[stack->pos - 1].i64;
+
+        if (!b) {
+          // log error, return failure
+          pwasm_env_fail(frame.env, "i64.rem_s: division by zero");
+          return false;
+        }
+
         stack->ptr[stack->pos - 2].i64 = a % b;
         stack->pos--;
       }
@@ -13862,6 +13965,13 @@ pwasm_new_interp_eval_expr(
       {
         const uint64_t a = stack->ptr[stack->pos - 2].i64;
         const uint64_t b = stack->ptr[stack->pos - 1].i64;
+
+        if (!b) {
+          // log error, return failure
+          pwasm_env_fail(frame.env, "i64.rem_u: division by zero");
+          return false;
+        }
+
         stack->ptr[stack->pos - 2].i64 = a % b;
         stack->pos--;
       }
