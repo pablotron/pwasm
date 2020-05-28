@@ -7,6 +7,9 @@ Each entry in this list is prefixed with category tags.
 See the "Tag Definitions" section below for a brief description of each
 tag.
 
+* [ ] code, test: fix `get_table`
+* [ ] code, test: fix start
+* [ ] code, test: test `br` to outermost block (according to `return` documentation this should work)
 * [ ] code, test: add invalid code tests (e.g. checker assertion tests)
 * [ ] test: add tests for all opcodes
 * [ ] test: add tests for all module sections
@@ -15,7 +18,6 @@ tag.
 * [ ] code, jit: add jit (`dynasm`?)
 * [ ] code, jit: add jit modes (lazy, aot, optimize, etc)
 * [ ] doc: add internal documentation
-* [ ] code: add `uint64_t pwasm_platform_get_value()` (e.g. compile-time limits, flags, etc)
 * [ ] code, cleanup: consider calloc() for memory init (zero mem, bounds check)
 * [ ] code, test: check uses of realloc() for overflow (security)
 * [ ] cli, cleanup: properly escape values in CSV columns
@@ -32,6 +34,7 @@ tag.
 * [ ] code, cli: add `java` and `c` commands?
 * [ ] code, cli: `wat`: fix alignment
 * [ ] test: add wat2wasm round-trip tests
+* [ ] code: add `uint64_t pwasm_platform_get_value()` (e.g. compile-time limits, flags, etc)
 
 ## In Progress
 * [ ] code: add global, table, and mem init, call start func (added,
