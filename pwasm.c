@@ -6089,6 +6089,7 @@ pwasm_parse_elem(
     num_bytes += len;
   }
 
+  D("table_id = %u", table_id);
   // save result
   *dst = (pwasm_elem_t) {
     .table_id = table_id,
@@ -11402,6 +11403,12 @@ typedef struct {
  */
 
 typedef struct {
+  // mod offset in parent interpreter
+  uint32_t mod_ofs;
+
+  // table offset in parent mod
+  uint32_t table_ofs;
+
   // limits from initial mod
   const pwasm_limits_t limits;
 
@@ -11418,14 +11425,18 @@ typedef struct {
 static pwasm_new_interp_table_t
 pwasm_new_interp_table_init(
   pwasm_env_t * const env,
+  const uint32_t mod_ofs,
+  const uint32_t table_ofs,
   pwasm_limits_t limits
 ) {
   (void) env;
   return (pwasm_new_interp_table_t) {
-    .limits   = limits,
-    .vals     = NULL,
-    .masks    = NULL,
-    .max_vals = 0,
+    .mod_ofs    = mod_ofs,
+    .table_ofs  = table_ofs,
+    .limits     = limits,
+    .vals       = NULL,
+    .masks      = NULL,
+    .max_vals   = 0,
   };
 }
 
@@ -11438,12 +11449,14 @@ pwasm_new_interp_table_fini(
     return;
   }
 
-  // free memory and masks
-  pwasm_realloc(env->mem_ctx, table->vals, 0);
-  pwasm_realloc(env->mem_ctx, table->masks, 0);
-  table->vals = NULL;
-  table->masks = NULL;
-  table->max_vals = 0;
+  if (table->max_vals > 0) {
+    // free memory and masks
+    pwasm_realloc(env->mem_ctx, table->vals, 0);
+    pwasm_realloc(env->mem_ctx, table->masks, 0);
+    table->vals = NULL;
+    table->masks = NULL;
+    table->max_vals = 0;
+  }
 }
 
 static bool
@@ -11943,7 +11956,7 @@ pwasm_new_interp_add_native(
     .globals  = globals,
     .mems     = mems,
     // FIXME: i don't think we need tables for now
-    // .tables   = tables,
+    .tables   = { 0, 0 },
   };
 
   // append native mod, check for error
@@ -12257,47 +12270,56 @@ pwasm_new_interp_add_mod_tables(
 ) {
   pwasm_new_interp_t * const interp = env->env_data;
   pwasm_vec_t * const dst = &(interp->tables);
-  (void) mod_ofs;
+  pwasm_vec_t * const u32s = &(interp->u32s);
 
   // add imported tables, check for error
-  pwasm_slice_t imports;
+  pwasm_slice_t imports = { 0, 0 };
   if (!pwasm_new_interp_add_mod_imports(env, mod, PWASM_IMPORT_TYPE_TABLE, &imports)) {
     return false;
   }
 
-  pwasm_new_interp_table_t tmp[PWASM_BATCH_SIZE];
+  uint32_t tmp[PWASM_BATCH_SIZE];
   size_t tmp_ofs = 0;
 
   for (size_t i = 0; i < mod->num_tables; i++) {
     // init table
-    const pwasm_limits_t limits = mod->tables[i].limits;
-    pwasm_new_interp_table_t table = pwasm_new_interp_table_init(env, limits);
-    memcpy(tmp + tmp_ofs, &table, sizeof(pwasm_new_interp_table_t));
+    pwasm_new_interp_table_t table = pwasm_new_interp_table_init(env, mod_ofs, i, mod->tables[i].limits);
 
-    // increment offset
+    // append initialized table to interpreter, check for error
+    size_t tmp_pos;
+    if (!pwasm_vec_push(dst, 1, &table, &tmp_pos)) {
+      // log error, return failure
+      pwasm_env_fail(env, "append tables failed");
+      return false;
+    }
+
+    // append to table offsets, increment count
+    tmp[tmp_ofs] = tmp_pos;
     tmp_ofs++;
 
     if (tmp_ofs == LEN(tmp)) {
       // clear count
       tmp_ofs = 0;
 
-      // append results, check for error
-      if (!pwasm_vec_push(dst, LEN(tmp), tmp, NULL)) {
+      // append IDs, check for error
+      if (!pwasm_vec_push(u32s, LEN(tmp), tmp, NULL)) {
         // log error, return failure
-        pwasm_env_fail(env, "append tables failed");
+        pwasm_env_fail(env, "append table ids failed");
         return false;
       }
     }
   }
 
   if (tmp_ofs > 0) {
-    // append remaining results
-    if (!pwasm_vec_push(dst, tmp_ofs, tmp, NULL)) {
+    // flush IDs, check for error
+    if (!pwasm_vec_push(u32s, tmp_ofs, tmp, NULL)) {
       // log error, return failure
-      pwasm_env_fail(env, "append remaining tables failed");
+      pwasm_env_fail(env, "append remaining table IDs failed");
       return false;
     }
   }
+
+  D("added tables: { ofs = %zu, len = %zu }", imports.ofs, imports.len + mod->num_tables);
 
   // populate result
   *ret = (pwasm_slice_t) {
@@ -12356,8 +12378,12 @@ pwasm_new_interp_init_elem_funcs(
   pwasm_new_interp_t * const interp = frame.env->env_data;
   const uint32_t *u32s = pwasm_vec_get_data(&(interp->u32s));
   const uint32_t table_ofs = u32s[frame.mod->tables.ofs + elem.table_id];
-  pwasm_new_interp_table_t * const table = pwasm_new_interp_get_table(frame.env, table_ofs + 1);
+  D("frame.mod->tables.ofs = %zu, elem.table_id = %u, table_ofs = %u", frame.mod->tables.ofs, elem.table_id, table_ofs);
   const uint32_t * const funcs = u32s + frame.mod->funcs.ofs;
+  pwasm_new_interp_table_t * const table = pwasm_new_interp_get_table(frame.env, table_ofs + 1);
+  if (!table) {
+    return false;
+  }
 
   uint32_t tmp[PWASM_BATCH_SIZE];
   size_t tmp_ofs = 0;
@@ -12497,6 +12523,7 @@ pwasm_new_interp_add_mod(
     // return failure
     return 0;
   }
+  D("tables = { .ofs = %zu, .len = %zu }", tables.ofs, tables.len);
 
   // build mod instance
   pwasm_new_interp_mod_t interp_mod = {
@@ -17252,6 +17279,19 @@ pwasm_new_interp_call(
   }
 }
 
+static void
+pwasm_new_interp_dump_u32s(
+  const pwasm_new_interp_t * const interp
+) {
+  const size_t num_u32s = pwasm_vec_get_size(&(interp->u32s));
+  const uint32_t * const u32s = pwasm_vec_get_data(&(interp->u32s));
+
+  D("num_u32s = %zu", num_u32s);
+  for (size_t i = 0; i < num_u32s; i++) {
+    D("u32s[%zu] = %u", i, u32s[i]);
+  }
+}
+
 /**
  * Given a frame and a table ID, get the offset of the table instance in
  * the interpreter.
@@ -17261,7 +17301,7 @@ pwasm_new_interp_call(
 static bool
 pwasm_new_interp_get_mod_table_ofs(
   const pwasm_new_interp_frame_t frame,
-  const uint32_t table_id,
+  const uint32_t mod_table_id,
   uint32_t * const ret_ofs
 ) {
   pwasm_new_interp_t * const interp = frame.env->env_data;
@@ -17269,14 +17309,17 @@ pwasm_new_interp_get_mod_table_ofs(
   const size_t num_tables = frame.mod->tables.len;
 
   // bounds check table index
-  if (table_id >= num_tables) {
-    D("table_id (%u) >= num_tables (%zu)", table_id, num_tables);
+  if (mod_table_id >= num_tables) {
+    D("mod_table_id (%u) >= num_tables (%zu)", mod_table_id, num_tables);
     pwasm_env_fail(frame.env, "table index out of bounds");
     return false;
   }
 
+  pwasm_new_interp_dump_u32s(interp);
+  D("frame.mod->tables.ofs = %zu, mod_table_id = %u", frame.mod->tables.ofs, mod_table_id);
+
   // map local index to table interpreter offset
-  *ret_ofs = u32s[frame.mod->tables.ofs + table_id];
+  *ret_ofs = u32s[frame.mod->tables.ofs + mod_table_id];
 
   // return success
   return true;
@@ -17365,6 +17408,7 @@ pwasm_new_interp_call_indirect(
 
   // convert table offset to ID
   const uint32_t table_id = table_ofs + 1;
+  D("mod_table_id = %u, table_id (interp) = %u", mod_table_id, table_id);
 
   // get interpreter function offset, check for error
   uint32_t func_ofs;

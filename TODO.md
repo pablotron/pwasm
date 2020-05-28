@@ -7,7 +7,6 @@ Each entry in this list is prefixed with category tags.
 See the "Tag Definitions" section below for a brief description of each
 tag.
 
-* [ ] code, test: fix `get_table`
 * [ ] code, test: fix start
 * [ ] code, test: test `br` to outermost block (according to `return` documentation this should work)
 * [ ] code, test: add invalid code tests (e.g. checker assertion tests)
@@ -40,6 +39,7 @@ tag.
 * [ ] code: add global, table, and mem init, call start func (added,
       but untested)
 * [ ] code, test: add v128 tests
+* [ ] code, test: fix `get_table`
 
 ## Done
 
