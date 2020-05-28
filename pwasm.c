@@ -6089,7 +6089,6 @@ pwasm_parse_elem(
     num_bytes += len;
   }
 
-  D("table_id = %u", table_id);
   // save result
   *dst = (pwasm_elem_t) {
     .table_id = table_id,
@@ -12319,8 +12318,6 @@ pwasm_new_interp_add_mod_tables(
     }
   }
 
-  D("added tables: { ofs = %zu, len = %zu }", imports.ofs, imports.len + mod->num_tables);
-
   // populate result
   *ret = (pwasm_slice_t) {
     .ofs = imports.ofs,
@@ -12523,7 +12520,6 @@ pwasm_new_interp_add_mod(
     // return failure
     return 0;
   }
-  D("tables = { .ofs = %zu, .len = %zu }", tables.ofs, tables.len);
 
   // build mod instance
   pwasm_new_interp_mod_t interp_mod = {
@@ -17279,19 +17275,6 @@ pwasm_new_interp_call(
   }
 }
 
-static void
-pwasm_new_interp_dump_u32s(
-  const pwasm_new_interp_t * const interp
-) {
-  const size_t num_u32s = pwasm_vec_get_size(&(interp->u32s));
-  const uint32_t * const u32s = pwasm_vec_get_data(&(interp->u32s));
-
-  D("num_u32s = %zu", num_u32s);
-  for (size_t i = 0; i < num_u32s; i++) {
-    D("u32s[%zu] = %u", i, u32s[i]);
-  }
-}
-
 /**
  * Given a frame and a table ID, get the offset of the table instance in
  * the interpreter.
@@ -17314,9 +17297,6 @@ pwasm_new_interp_get_mod_table_ofs(
     pwasm_env_fail(frame.env, "table index out of bounds");
     return false;
   }
-
-  pwasm_new_interp_dump_u32s(interp);
-  D("frame.mod->tables.ofs = %zu, mod_table_id = %u", frame.mod->tables.ofs, mod_table_id);
 
   // map local index to table interpreter offset
   *ret_ofs = u32s[frame.mod->tables.ofs + mod_table_id];
