@@ -12328,11 +12328,13 @@ pwasm_new_interp_add_mod_tables(
   return true;
 }
 
-// forward reference
+// forward declarations
 static bool pwasm_new_interp_eval_expr(
   pwasm_new_interp_frame_t frame,
   const pwasm_slice_t
 );
+
+static bool pwasm_new_interp_call(pwasm_env_t *, const uint32_t);
 
 static bool
 pwasm_new_interp_init_globals(
@@ -12478,10 +12480,20 @@ pwasm_new_interp_init_start(
 ) {
   (void) frame;
 
-  // TODO: call start
+  // check for start function
+  if (!frame.mod->mod->has_start) {
+    // return success
+    return true;
+  }
 
-  // return success
-  return true;
+  // get start function ID in mod, map to interpreter func ID
+  pwasm_new_interp_t * const interp = frame.env->env_data;
+  const uint32_t * const u32s = pwasm_vec_get_data(&(interp->u32s));
+  const uint32_t start = frame.mod->mod->start;
+  const uint32_t func_id = u32s[frame.mod->funcs.ofs + start] + 1;
+
+  // call start function, return result
+  return pwasm_new_interp_call(frame.env, func_id);
 }
 
 static uint32_t

@@ -38,7 +38,6 @@ tag.
 * [ ] code: add global, table, and mem init, call start func (added,
       but untested)
 * [ ] code, test: add v128 tests
-* [ ] code, test: fix start
 
 ## Done
 
@@ -96,6 +95,7 @@ Items in this section have been completed.
 * [x] code, ops: add `simd` interpreter impls
 * [x] code: regen simd enum/data
 * [x] code, test: fix `get_table`
+* [x] code, test: fix start
 
 ## Tag Definitions
 
