@@ -328,6 +328,23 @@ static const uint8_t V128_CONST_WASM[] = {
   0x0f, 0xfd, 0x6e, 0xfd, 0x16, 0x03, 0x0b
 };
 
+// start.wasm: one function used to test module start
+// functions:
+//
+// * get() -> i32
+//
+// (source: data/wat/10-start.wat)
+static const uint8_t START_WASM[] = {
+  0x00, 0x61, 0x73, 0x6d, 0x01, 0x00, 0x00, 0x00,
+  0x01, 0x08, 0x02, 0x60, 0x00, 0x00, 0x60, 0x00,
+  0x01, 0x7f, 0x03, 0x03, 0x02, 0x00, 0x01, 0x06,
+  0x06, 0x01, 0x7f, 0x01, 0x41, 0x00, 0x0b, 0x07,
+  0x07, 0x01, 0x03, 0x67, 0x65, 0x74, 0x00, 0x01,
+  0x08, 0x01, 0x00, 0x0a, 0x10, 0x02, 0x09, 0x00,
+  0x23, 0x00, 0x41, 0x2a, 0x6a, 0x24, 0x00, 0x0b,
+  0x04, 0x00, 0x23, 0x00, 0x0b
+};
+
 static const struct {
   const char * const name;
   const pwasm_buf_t data;
@@ -358,6 +375,9 @@ static const struct {
 }, {
   .name = "v128-const",
   .data = { V128_CONST_WASM, sizeof(V128_CONST_WASM) },
+}, {
+  .name = "start",
+  .data = { START_WASM, sizeof(START_WASM) },
 }};
 
 static const pwasm_val_t
@@ -543,6 +563,9 @@ TEST_VALS[] = {
 
   // mod: "v128-const", func: "i8x16_add", test: 0, type: "result", num: 1
   { .i32 = 20 },
+
+  // mod: "start", func: "get", test: 0, type: "result", num: 1
+  { .i32 = 42 },
 };
 
 typedef struct {
@@ -756,6 +779,12 @@ TEST_CALLS[] = {{
   .func   = "i8x16_add",
   .params = { 68, 1 },
   .result = { 69, 1 },
+  .type   = PWASM_RESULT_TYPE_I32,
+}, {
+  .text   = "start.get()",
+  .mod    = "start",
+  .func   = "get",
+  .result = { 70, 1 },
   .type   = PWASM_RESULT_TYPE_I32,
 }};
 
