@@ -35,7 +35,7 @@ tag.
 
 ## In Progress
 * [ ] code, test: add v128 tests
-* [ ] test: add tests for all opcodes
+* [ ] code, test: add tests for all opcodes
 
 ## Done
 
