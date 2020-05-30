@@ -8,9 +8,8 @@ See the "Tag Definitions" section below for a brief description of each
 tag.
 
 * [ ] code, test: test `br` to outermost block (according to `return` documentation this should work)
+* [ ] code, test: check stack size at start of call
 * [ ] code, test: add invalid code tests (e.g. checker assertion tests)
-* [ ] test: add tests for all opcodes
-* [ ] test: add tests for all module sections
 * [ ] code, test: fix memory leaks on parse/validation/exec errors
 * [ ] code: remove redundant validation checks in interp/env calls
 * [ ] code, jit: add jit (`dynasm`?)
@@ -35,9 +34,8 @@ tag.
 * [ ] code: add `uint64_t pwasm_platform_get_value()` (e.g. compile-time limits, flags, etc)
 
 ## In Progress
-* [ ] code: add global, table, and mem init, call start func (added,
-      but untested)
 * [ ] code, test: add v128 tests
+* [ ] test: add tests for all opcodes
 
 ## Done
 
@@ -96,6 +94,8 @@ Items in this section have been completed.
 * [x] code: regen simd enum/data
 * [x] code, test: fix `get_table`
 * [x] code, test: fix start
+* [x] code: add global, table, and mem init, call start func
+* [x] test: add tests for all module sections
 
 ## Tag Definitions
 
