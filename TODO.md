@@ -34,8 +34,9 @@ tag.
 * [ ] code: add `uint64_t pwasm_platform_get_value()` (e.g. compile-time limits, flags, etc)
 
 ## In Progress
-* [ ] code, test: add v128 tests
-* [ ] code, test: add tests for all opcodes
+* [ ] code, test: add main opcode tests (tests added, need to add to
+  tests/wasm.c)
+* [ ] code, test: add v128 opcode tests
 
 ## Done
 
