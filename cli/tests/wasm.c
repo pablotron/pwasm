@@ -1450,6 +1450,30 @@ TEST_VALS[] = {
 
   // mod: "ops", func: "test_i64_load32_u", test: 1, type: "result", num: 1
   { .i64 = 2147483648 },
+
+  // mod: "ops", func: "test_i32_store", test: 0, type: "params", num: 1
+  { .i32 = 321654 },
+
+  // mod: "ops", func: "test_i32_store", test: 0, type: "result", num: 1
+  { .i32 = 321654 },
+
+  // mod: "ops", func: "test_i64_store", test: 0, type: "params", num: 1
+  { .i64 = 987654321654 },
+
+  // mod: "ops", func: "test_i64_store", test: 0, type: "result", num: 1
+  { .i64 = 987654321654 },
+
+  // mod: "ops", func: "test_f32_store", test: 0, type: "params", num: 1
+  { .f32 = 3.1415f },
+
+  // mod: "ops", func: "test_f32_store", test: 0, type: "result", num: 1
+  { .f32 = 3.1415f },
+
+  // mod: "ops", func: "test_f64_store", test: 0, type: "params", num: 1
+  { .f64 = 31415.926535 },
+
+  // mod: "ops", func: "test_f64_store", test: 0, type: "result", num: 1
+  { .f64 = 31415.926535 },
 };
 
 typedef struct {
@@ -1932,6 +1956,34 @@ TEST_CALLS[] = {{
   .params = { 146, 1 },
   .result = { 147, 1 },
   .type   = PWASM_RESULT_TYPE_I64,
+}, {
+  .text   = "ops.test_i32_store(0)",
+  .mod    = "ops",
+  .func   = "test_i32_store",
+  .params = { 148, 1 },
+  .result = { 149, 1 },
+  .type   = PWASM_RESULT_TYPE_I32,
+}, {
+  .text   = "ops.test_i64_store(0)",
+  .mod    = "ops",
+  .func   = "test_i64_store",
+  .params = { 150, 1 },
+  .result = { 151, 1 },
+  .type   = PWASM_RESULT_TYPE_I64,
+}, {
+  .text   = "ops.test_f32_store(0)",
+  .mod    = "ops",
+  .func   = "test_f32_store",
+  .params = { 152, 1 },
+  .result = { 153, 1 },
+  .type   = PWASM_RESULT_TYPE_F32,
+}, {
+  .text   = "ops.test_f64_store(0)",
+  .mod    = "ops",
+  .func   = "test_f64_store",
+  .params = { 154, 1 },
+  .result = { 155, 1 },
+  .type   = PWASM_RESULT_TYPE_F64,
 }};
 
 static bool is_valid_result_type(
