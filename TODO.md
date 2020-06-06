@@ -32,6 +32,7 @@ tag.
 * [ ] code, cli: `wat`: fix alignment
 * [ ] test: add wat2wasm round-trip tests
 * [ ] code: add `uint64_t pwasm_platform_get_value()` (e.g. compile-time limits, flags, etc)
+* [ ] investigate rounding mode for f32.div (fenv)
 
 ## In Progress
 * [ ] code, test: add main opcode tests (tests added, need to add to
