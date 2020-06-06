@@ -143,8 +143,8 @@
 
   ;;
   ;; test_local_get:
-  ;;   $a = 0: expect i32 31337
-  ;;   $a = 1: expect i32 $b
+  ;;   $a = 0: expect i32 $b
+  ;;   $a = 1: expect i32 31337
   ;;
   (func $test_local_get (param $a i32)
                         (param $b i32)

@@ -1312,6 +1312,15 @@ TEST_VALS[] = {
 
   // mod: "ops", func: "test_local_tee", test: 0, type: "result", num: 1
   { .i32 = 10117496 },
+
+  // mod: "ops", func: "test_global_get", test: 0, type: "result", num: 1
+  { .i32 = 314159 },
+
+  // mod: "ops", func: "test_global_set", test: 0, type: "result", num: 1
+  { .i32 = 42 },
+
+  // mod: "ops", func: "test_i32_load", test: 0, type: "result", num: 1
+  { .i32 = 1234 },
 };
 
 typedef struct {
@@ -1645,6 +1654,24 @@ TEST_CALLS[] = {{
   .func   = "test_local_tee",
   .params = { 108, 1 },
   .result = { 109, 1 },
+  .type   = PWASM_RESULT_TYPE_I32,
+}, {
+  .text   = "ops.test_global_get(0)",
+  .mod    = "ops",
+  .func   = "test_global_get",
+  .result = { 110, 1 },
+  .type   = PWASM_RESULT_TYPE_I32,
+}, {
+  .text   = "ops.test_global_set(0)",
+  .mod    = "ops",
+  .func   = "test_global_set",
+  .result = { 111, 1 },
+  .type   = PWASM_RESULT_TYPE_I32,
+}, {
+  .text   = "ops.test_i32_load(0)",
+  .mod    = "ops",
+  .func   = "test_i32_load",
+  .result = { 112, 1 },
   .type   = PWASM_RESULT_TYPE_I32,
 }};
 
