@@ -13600,6 +13600,10 @@ pwasm_new_interp_eval_expr(
       }
 
       break;
+    case PWASM_OP_I64_EQZ:
+      stack->ptr[stack->pos - 1].i32 = (stack->ptr[stack->pos - 1].i64 == 0);
+
+      break;
     case PWASM_OP_I64_EQ:
       {
         const uint64_t a = stack->ptr[stack->pos - 2].i64;
@@ -13676,7 +13680,7 @@ pwasm_new_interp_eval_expr(
       {
         const int64_t a = (int64_t) stack->ptr[stack->pos - 2].i64;
         const int64_t b = (int64_t) stack->ptr[stack->pos - 1].i64;
-        stack->ptr[stack->pos - 2].i32 = (a <= b);
+        stack->ptr[stack->pos - 2].i32 = (a >= b);
         stack->pos--;
       }
 
@@ -13685,7 +13689,7 @@ pwasm_new_interp_eval_expr(
       {
         const uint64_t a = stack->ptr[stack->pos - 2].i64;
         const uint64_t b = stack->ptr[stack->pos - 1].i64;
-        stack->ptr[stack->pos - 2].i32 = (a <= b);
+        stack->ptr[stack->pos - 2].i32 = (a >= b);
         stack->pos--;
       }
 
