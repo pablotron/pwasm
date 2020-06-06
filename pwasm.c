@@ -12867,7 +12867,7 @@ pwasm_new_interp_mem_store(
   }
 
   // pwasm_new_interp_dump_mem_chunk(chunk);
-  // D("store i32 = %u", val.i32);
+  // D("chunk.size = %zu", chunk.size);
 
   // copy to result
   memcpy((uint8_t*) chunk.mem->buf.ptr + chunk.ofs, &val, chunk.size);

@@ -161,6 +161,17 @@
   (export "test_local_get" (func $test_local_get))
 
   ;;
+  ;; test_local_get_f32:
+  ;;   expect f32 $a * 2.0
+  ;;
+  (func $test_local_get_f32 (param $a f32)
+                        (result f32)
+    (f32.mul (local.get $a) (f32.const 2))
+  )
+
+  (export "test_local_get_f32" (func $test_local_get_f32))
+
+  ;;
   ;; test_local_set:
   ;;   expect i32 $a + 22
   ;;
@@ -419,8 +430,8 @@
   ;;
   (func $test_f32_store (param $a f32)
                         (result f32)
-    (f32.store (i32.const 1000) (local.get $a))
-    (f32.load (i32.const 1000))
+    (f32.store (i32.const 2000) (local.get $a))
+    (f32.load (i32.const 2000))
   )
 
   (export "test_f32_store" (func $test_f32_store))
@@ -443,6 +454,7 @@
   ;;
   (func $test_i32_store8 (param $a i32)
                         (result i32)
+    (i32.store (i32.const 1000) (i32.const 0))
     (i32.store8 (i32.const 1000) (local.get $a))
     (i32.load (i32.const 1000))
   )
@@ -455,6 +467,7 @@
   ;;
   (func $test_i32_store16 (param $a i32)
                         (result i32)
+    (i32.store (i32.const 1000) (i32.const 0))
     (i32.store16 (i32.const 1000) (local.get $a))
     (i32.load (i32.const 1000))
   )
@@ -467,6 +480,7 @@
   ;;
   (func $test_i64_store8 (param $a i64)
                          (result i64)
+    (i64.store (i32.const 1000) (i64.const 0))
     (i64.store8 (i32.const 1000) (local.get $a))
     (i64.load (i32.const 1000))
   )
@@ -479,6 +493,7 @@
   ;;
   (func $test_i64_store16 (param $a i64)
                           (result i64)
+    (i64.store (i32.const 1000) (i64.const 0))
     (i64.store16 (i32.const 1000) (local.get $a))
     (i64.load (i32.const 1000))
   )
@@ -491,6 +506,7 @@
   ;;
   (func $test_i64_store32 (param $a i64)
                           (result i64)
+    (i64.store (i32.const 1000) (i64.const 0))
     (i64.store32 (i32.const 1000) (local.get $a))
     (i64.load (i32.const 1000))
   )
