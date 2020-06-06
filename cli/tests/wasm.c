@@ -1552,6 +1552,9 @@ TEST_VALS[] = {
 
   // mod: "ops", func: "test_memory_size", test: 1, type: "result", num: 1
   { .i32 = 1 },
+
+  // mod: "ops", func: "test_memory_grow", test: 1, type: "result", num: 1
+  { .i32 = 1 },
 };
 
 typedef struct {
@@ -2172,6 +2175,12 @@ TEST_CALLS[] = {{
   .mod    = "ops",
   .func   = "test_memory_size",
   .result = { 186, 1 },
+  .type   = PWASM_RESULT_TYPE_I32,
+}, {
+  .text   = "ops.test_memory_grow",
+  .mod    = "ops",
+  .func   = "test_memory_grow",
+  .result = { 187, 1 },
   .type   = PWASM_RESULT_TYPE_I32,
 }};
 
