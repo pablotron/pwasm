@@ -3021,6 +3021,190 @@ TEST_VALS[] = {
   { .f64 = 60 },
   { .f64 = 1 },
   { .f64 = 60 },
+
+  // mod: "ops", func: "test_i32_wrap_i64", test: 0, params: 1, result: 1
+  { .i64 = 0 },
+  { .i32 = 0 },
+
+  // mod: "ops", func: "test_i32_wrap_i64", test: 1, params: 1, result: 1
+  { .i64 = 0xFFFF },
+  { .i32 = 0xFFFF },
+
+  // mod: "ops", func: "test_i32_wrap_i64", test: 2, params: 1, result: 1
+  { .i64 = 0xFFFFFFFFFFFFULL },
+  { .i32 = 0xFFFFFFFF },
+
+  // mod: "ops", func: "test_i32_trunc_f32_s", test: 0, params: 1, result: 1
+  { .f32 = 0 },
+  { .i32 = 0 },
+
+  // mod: "ops", func: "test_i32_trunc_f32_s", test: 1, params: 1, result: 1
+  { .f32 = 1.5 },
+  { .i32 = 1 },
+
+  // mod: "ops", func: "test_i32_trunc_f32_s", test: 2, params: 1, result: 1
+  { .f32 = -1.5 },
+  { .i32 = -1 },
+
+  // mod: "ops", func: "test_i32_trunc_f32_s", test: 3, params: 1, result: 1
+  { .f32 = 1024.9 },
+  { .i32 = 1024 },
+
+  // mod: "ops", func: "test_i32_trunc_f32_s", test: 4, params: 1, result: 1
+  { .f32 = -4096.9 },
+  { .i32 = -4096 },
+
+  // mod: "ops", func: "test_i32_trunc_f32_u", test: 0, params: 1, result: 1
+  { .f32 = 0 },
+  { .i32 = 0 },
+
+  // mod: "ops", func: "test_i32_trunc_f32_u", test: 1, params: 1, result: 1
+  { .f32 = 1.5 },
+  { .i32 = 1 },
+
+  // mod: "ops", func: "test_i32_trunc_f32_u", test: 2, params: 1, result: 1
+  { .f32 = 2.9 },
+  { .i32 = 2 },
+
+  // mod: "ops", func: "test_i32_trunc_f32_u", test: 3, params: 1, result: 1
+  { .f32 = 4000000.1 },
+  { .i32 = 4000000 },
+
+  // mod: "ops", func: "test_i32_trunc_f64_s", test: 0, params: 1, result: 1
+  { .f64 = 0 },
+  { .i32 = 0 },
+
+  // mod: "ops", func: "test_i32_trunc_f64_s", test: 1, params: 1, result: 1
+  { .f64 = 1.5 },
+  { .i32 = 1 },
+
+  // mod: "ops", func: "test_i32_trunc_f64_s", test: 2, params: 1, result: 1
+  { .f64 = -1.5 },
+  { .i32 = -1 },
+
+  // mod: "ops", func: "test_i32_trunc_f64_s", test: 3, params: 1, result: 1
+  { .f64 = 1024.9 },
+  { .i32 = 1024 },
+
+  // mod: "ops", func: "test_i32_trunc_f64_s", test: 4, params: 1, result: 1
+  { .f64 = -4096.9 },
+  { .i32 = -4096 },
+
+  // mod: "ops", func: "test_i32_trunc_f64_u", test: 0, params: 1, result: 1
+  { .f64 = 0 },
+  { .i32 = 0 },
+
+  // mod: "ops", func: "test_i32_trunc_f64_u", test: 1, params: 1, result: 1
+  { .f64 = 1.5 },
+  { .i32 = 1 },
+
+  // mod: "ops", func: "test_i32_trunc_f64_u", test: 2, params: 1, result: 1
+  { .f64 = 2.9 },
+  { .i32 = 2 },
+
+  // mod: "ops", func: "test_i32_trunc_f64_u", test: 3, params: 1, result: 1
+  { .f64 = 4000000.1 },
+  { .i32 = 4000000 },
+
+  // mod: "ops", func: "test_i64_extend_i32_s", test: 0, params: 1, result: 1
+  { .i32 = 0 },
+  { .i64 = 0 },
+
+  // mod: "ops", func: "test_i64_extend_i32_s", test: 1, params: 1, result: 1
+  { .i32 = 1 },
+  { .i64 = 1 },
+
+  // mod: "ops", func: "test_i64_extend_i32_s", test: 2, params: 1, result: 1
+  { .i32 = -1 },
+  { .i64 = -1 },
+
+  // mod: "ops", func: "test_i64_extend_i32_s", test: 3, params: 1, result: 1
+  { .i32 = -0x7FFFFFFF },
+  { .i64 = -0x7FFFFFFF },
+
+  // mod: "ops", func: "test_i64_extend_i32_s", test: 4, params: 1, result: 1
+  { .i32 = 0x7FFFFFFE },
+  { .i64 = 0x7FFFFFFE },
+
+  // mod: "ops", func: "test_i64_extend_i32_u", test: 0, params: 1, result: 1
+  { .i32 = 0 },
+  { .i64 = 0 },
+
+  // mod: "ops", func: "test_i64_extend_i32_u", test: 1, params: 1, result: 1
+  { .i32 = 0xFFFFFFFF },
+  { .i64 = 0xFFFFFFFF },
+
+  // mod: "ops", func: "test_i64_trunc_f32_s", test: 0, params: 1, result: 1
+  { .f32 = 0 },
+  { .i64 = 0 },
+
+  // mod: "ops", func: "test_i64_trunc_f32_s", test: 1, params: 1, result: 1
+  { .f32 = 1.5 },
+  { .i64 = 1 },
+
+  // mod: "ops", func: "test_i64_trunc_f32_s", test: 2, params: 1, result: 1
+  { .f32 = -1.5 },
+  { .i64 = -1 },
+
+  // mod: "ops", func: "test_i64_trunc_f32_s", test: 3, params: 1, result: 1
+  { .f32 = 1024.9 },
+  { .i64 = 1024 },
+
+  // mod: "ops", func: "test_i64_trunc_f32_s", test: 4, params: 1, result: 1
+  { .f32 = -4096.9 },
+  { .i64 = -4096 },
+
+  // mod: "ops", func: "test_i64_trunc_f32_u", test: 0, params: 1, result: 1
+  { .f32 = 0 },
+  { .i64 = 0 },
+
+  // mod: "ops", func: "test_i64_trunc_f32_u", test: 1, params: 1, result: 1
+  { .f32 = 1.5 },
+  { .i64 = 1 },
+
+  // mod: "ops", func: "test_i64_trunc_f32_u", test: 2, params: 1, result: 1
+  { .f32 = 2.9 },
+  { .i64 = 2 },
+
+  // mod: "ops", func: "test_i64_trunc_f32_u", test: 3, params: 1, result: 1
+  { .f32 = 4000000.1 },
+  { .i64 = 4000000 },
+
+  // mod: "ops", func: "test_i64_trunc_f64_s", test: 0, params: 1, result: 1
+  { .f64 = 0 },
+  { .i64 = 0 },
+
+  // mod: "ops", func: "test_i64_trunc_f64_s", test: 1, params: 1, result: 1
+  { .f64 = 1.5 },
+  { .i64 = 1 },
+
+  // mod: "ops", func: "test_i64_trunc_f64_s", test: 2, params: 1, result: 1
+  { .f64 = -1.5 },
+  { .i64 = -1 },
+
+  // mod: "ops", func: "test_i64_trunc_f64_s", test: 3, params: 1, result: 1
+  { .f64 = 1024.9 },
+  { .i64 = 1024 },
+
+  // mod: "ops", func: "test_i64_trunc_f64_s", test: 4, params: 1, result: 1
+  { .f64 = -4096.9 },
+  { .i64 = -4096 },
+
+  // mod: "ops", func: "test_i64_trunc_f64_u", test: 0, params: 1, result: 1
+  { .f64 = 0 },
+  { .i64 = 0 },
+
+  // mod: "ops", func: "test_i64_trunc_f64_u", test: 1, params: 1, result: 1
+  { .f64 = 1.5 },
+  { .i64 = 1 },
+
+  // mod: "ops", func: "test_i64_trunc_f64_u", test: 2, params: 1, result: 1
+  { .f64 = 2.9 },
+  { .i64 = 2 },
+
+  // mod: "ops", func: "test_i64_trunc_f64_u", test: 3, params: 1, result: 1
+  { .f64 = 4000000.1 },
+  { .i64 = 4000000 },
 };
 
 typedef struct {
@@ -6000,6 +6184,321 @@ TEST_CALLS[] = {{
   .params = { 1115, 2 },
   .result = { 1117, 1 },
   .type   = PWASM_RESULT_TYPE_F64,
+}, {
+  .text   = "ops.test_i32_wrap_i64(0)",
+  .mod    = "ops",
+  .func   = "test_i32_wrap_i64",
+  .params = { 1118, 1 },
+  .result = { 1119, 1 },
+  .type   = PWASM_RESULT_TYPE_I32,
+}, {
+  .text   = "ops.test_i32_wrap_i64(1)",
+  .mod    = "ops",
+  .func   = "test_i32_wrap_i64",
+  .params = { 1120, 1 },
+  .result = { 1121, 1 },
+  .type   = PWASM_RESULT_TYPE_I32,
+}, {
+  .text   = "ops.test_i32_wrap_i64(2)",
+  .mod    = "ops",
+  .func   = "test_i32_wrap_i64",
+  .params = { 1122, 1 },
+  .result = { 1123, 1 },
+  .type   = PWASM_RESULT_TYPE_I32,
+}, {
+  .text   = "ops.test_i32_trunc_f32_s(0)",
+  .mod    = "ops",
+  .func   = "test_i32_trunc_f32_s",
+  .params = { 1124, 1 },
+  .result = { 1125, 1 },
+  .type   = PWASM_RESULT_TYPE_I32,
+}, {
+  .text   = "ops.test_i32_trunc_f32_s(1)",
+  .mod    = "ops",
+  .func   = "test_i32_trunc_f32_s",
+  .params = { 1126, 1 },
+  .result = { 1127, 1 },
+  .type   = PWASM_RESULT_TYPE_I32,
+}, {
+  .text   = "ops.test_i32_trunc_f32_s(2)",
+  .mod    = "ops",
+  .func   = "test_i32_trunc_f32_s",
+  .params = { 1128, 1 },
+  .result = { 1129, 1 },
+  .type   = PWASM_RESULT_TYPE_I32,
+}, {
+  .text   = "ops.test_i32_trunc_f32_s(3)",
+  .mod    = "ops",
+  .func   = "test_i32_trunc_f32_s",
+  .params = { 1130, 1 },
+  .result = { 1131, 1 },
+  .type   = PWASM_RESULT_TYPE_I32,
+}, {
+  .text   = "ops.test_i32_trunc_f32_s(4)",
+  .mod    = "ops",
+  .func   = "test_i32_trunc_f32_s",
+  .params = { 1132, 1 },
+  .result = { 1133, 1 },
+  .type   = PWASM_RESULT_TYPE_I32,
+}, {
+  .text   = "ops.test_i32_trunc_f32_u(0)",
+  .mod    = "ops",
+  .func   = "test_i32_trunc_f32_u",
+  .params = { 1134, 1 },
+  .result = { 1135, 1 },
+  .type   = PWASM_RESULT_TYPE_I32,
+}, {
+  .text   = "ops.test_i32_trunc_f32_u(1)",
+  .mod    = "ops",
+  .func   = "test_i32_trunc_f32_u",
+  .params = { 1136, 1 },
+  .result = { 1137, 1 },
+  .type   = PWASM_RESULT_TYPE_I32,
+}, {
+  .text   = "ops.test_i32_trunc_f32_u(2)",
+  .mod    = "ops",
+  .func   = "test_i32_trunc_f32_u",
+  .params = { 1138, 1 },
+  .result = { 1139, 1 },
+  .type   = PWASM_RESULT_TYPE_I32,
+}, {
+  .text   = "ops.test_i32_trunc_f32_u(3)",
+  .mod    = "ops",
+  .func   = "test_i32_trunc_f32_u",
+  .params = { 1140, 1 },
+  .result = { 1141, 1 },
+  .type   = PWASM_RESULT_TYPE_I32,
+}, {
+  .text   = "ops.test_i32_trunc_f64_s(0)",
+  .mod    = "ops",
+  .func   = "test_i32_trunc_f64_s",
+  .params = { 1142, 1 },
+  .result = { 1143, 1 },
+  .type   = PWASM_RESULT_TYPE_I32,
+}, {
+  .text   = "ops.test_i32_trunc_f64_s(1)",
+  .mod    = "ops",
+  .func   = "test_i32_trunc_f64_s",
+  .params = { 1144, 1 },
+  .result = { 1145, 1 },
+  .type   = PWASM_RESULT_TYPE_I32,
+}, {
+  .text   = "ops.test_i32_trunc_f64_s(2)",
+  .mod    = "ops",
+  .func   = "test_i32_trunc_f64_s",
+  .params = { 1146, 1 },
+  .result = { 1147, 1 },
+  .type   = PWASM_RESULT_TYPE_I32,
+}, {
+  .text   = "ops.test_i32_trunc_f64_s(3)",
+  .mod    = "ops",
+  .func   = "test_i32_trunc_f64_s",
+  .params = { 1148, 1 },
+  .result = { 1149, 1 },
+  .type   = PWASM_RESULT_TYPE_I32,
+}, {
+  .text   = "ops.test_i32_trunc_f64_s(4)",
+  .mod    = "ops",
+  .func   = "test_i32_trunc_f64_s",
+  .params = { 1150, 1 },
+  .result = { 1151, 1 },
+  .type   = PWASM_RESULT_TYPE_I32,
+}, {
+  .text   = "ops.test_i32_trunc_f64_u(0)",
+  .mod    = "ops",
+  .func   = "test_i32_trunc_f64_u",
+  .params = { 1152, 1 },
+  .result = { 1153, 1 },
+  .type   = PWASM_RESULT_TYPE_I32,
+}, {
+  .text   = "ops.test_i32_trunc_f64_u(1)",
+  .mod    = "ops",
+  .func   = "test_i32_trunc_f64_u",
+  .params = { 1154, 1 },
+  .result = { 1155, 1 },
+  .type   = PWASM_RESULT_TYPE_I32,
+}, {
+  .text   = "ops.test_i32_trunc_f64_u(2)",
+  .mod    = "ops",
+  .func   = "test_i32_trunc_f64_u",
+  .params = { 1156, 1 },
+  .result = { 1157, 1 },
+  .type   = PWASM_RESULT_TYPE_I32,
+}, {
+  .text   = "ops.test_i32_trunc_f64_u(3)",
+  .mod    = "ops",
+  .func   = "test_i32_trunc_f64_u",
+  .params = { 1158, 1 },
+  .result = { 1159, 1 },
+  .type   = PWASM_RESULT_TYPE_I32,
+}, {
+  .text   = "ops.test_i64_extend_i32_s(0)",
+  .mod    = "ops",
+  .func   = "test_i64_extend_i32_s",
+  .params = { 1160, 1 },
+  .result = { 1161, 1 },
+  .type   = PWASM_RESULT_TYPE_I64,
+}, {
+  .text   = "ops.test_i64_extend_i32_s(1)",
+  .mod    = "ops",
+  .func   = "test_i64_extend_i32_s",
+  .params = { 1162, 1 },
+  .result = { 1163, 1 },
+  .type   = PWASM_RESULT_TYPE_I64,
+}, {
+  .text   = "ops.test_i64_extend_i32_s(2)",
+  .mod    = "ops",
+  .func   = "test_i64_extend_i32_s",
+  .params = { 1164, 1 },
+  .result = { 1165, 1 },
+  .type   = PWASM_RESULT_TYPE_I64,
+}, {
+  .text   = "ops.test_i64_extend_i32_s(3)",
+  .mod    = "ops",
+  .func   = "test_i64_extend_i32_s",
+  .params = { 1166, 1 },
+  .result = { 1167, 1 },
+  .type   = PWASM_RESULT_TYPE_I64,
+}, {
+  .text   = "ops.test_i64_extend_i32_s(4)",
+  .mod    = "ops",
+  .func   = "test_i64_extend_i32_s",
+  .params = { 1168, 1 },
+  .result = { 1169, 1 },
+  .type   = PWASM_RESULT_TYPE_I64,
+}, {
+  .text   = "ops.test_i64_extend_i32_u(0)",
+  .mod    = "ops",
+  .func   = "test_i64_extend_i32_u",
+  .params = { 1170, 1 },
+  .result = { 1171, 1 },
+  .type   = PWASM_RESULT_TYPE_I64,
+}, {
+  .text   = "ops.test_i64_extend_i32_u(1)",
+  .mod    = "ops",
+  .func   = "test_i64_extend_i32_u",
+  .params = { 1172, 1 },
+  .result = { 1173, 1 },
+  .type   = PWASM_RESULT_TYPE_I64,
+}, {
+  .text   = "ops.test_i64_trunc_f32_s(0)",
+  .mod    = "ops",
+  .func   = "test_i64_trunc_f32_s",
+  .params = { 1174, 1 },
+  .result = { 1175, 1 },
+  .type   = PWASM_RESULT_TYPE_I64,
+}, {
+  .text   = "ops.test_i64_trunc_f32_s(1)",
+  .mod    = "ops",
+  .func   = "test_i64_trunc_f32_s",
+  .params = { 1176, 1 },
+  .result = { 1177, 1 },
+  .type   = PWASM_RESULT_TYPE_I64,
+}, {
+  .text   = "ops.test_i64_trunc_f32_s(2)",
+  .mod    = "ops",
+  .func   = "test_i64_trunc_f32_s",
+  .params = { 1178, 1 },
+  .result = { 1179, 1 },
+  .type   = PWASM_RESULT_TYPE_I64,
+}, {
+  .text   = "ops.test_i64_trunc_f32_s(3)",
+  .mod    = "ops",
+  .func   = "test_i64_trunc_f32_s",
+  .params = { 1180, 1 },
+  .result = { 1181, 1 },
+  .type   = PWASM_RESULT_TYPE_I64,
+}, {
+  .text   = "ops.test_i64_trunc_f32_s(4)",
+  .mod    = "ops",
+  .func   = "test_i64_trunc_f32_s",
+  .params = { 1182, 1 },
+  .result = { 1183, 1 },
+  .type   = PWASM_RESULT_TYPE_I64,
+}, {
+  .text   = "ops.test_i64_trunc_f32_u(0)",
+  .mod    = "ops",
+  .func   = "test_i64_trunc_f32_u",
+  .params = { 1184, 1 },
+  .result = { 1185, 1 },
+  .type   = PWASM_RESULT_TYPE_I64,
+}, {
+  .text   = "ops.test_i64_trunc_f32_u(1)",
+  .mod    = "ops",
+  .func   = "test_i64_trunc_f32_u",
+  .params = { 1186, 1 },
+  .result = { 1187, 1 },
+  .type   = PWASM_RESULT_TYPE_I64,
+}, {
+  .text   = "ops.test_i64_trunc_f32_u(2)",
+  .mod    = "ops",
+  .func   = "test_i64_trunc_f32_u",
+  .params = { 1188, 1 },
+  .result = { 1189, 1 },
+  .type   = PWASM_RESULT_TYPE_I64,
+}, {
+  .text   = "ops.test_i64_trunc_f32_u(3)",
+  .mod    = "ops",
+  .func   = "test_i64_trunc_f32_u",
+  .params = { 1190, 1 },
+  .result = { 1191, 1 },
+  .type   = PWASM_RESULT_TYPE_I64,
+}, {
+  .text   = "ops.test_i64_trunc_f64_s(0)",
+  .mod    = "ops",
+  .func   = "test_i64_trunc_f64_s",
+  .params = { 1192, 1 },
+  .result = { 1193, 1 },
+  .type   = PWASM_RESULT_TYPE_I64,
+}, {
+  .text   = "ops.test_i64_trunc_f64_s(1)",
+  .mod    = "ops",
+  .func   = "test_i64_trunc_f64_s",
+  .params = { 1194, 1 },
+  .result = { 1195, 1 },
+  .type   = PWASM_RESULT_TYPE_I64,
+}, {
+  .text   = "ops.test_i64_trunc_f64_s(2)",
+  .mod    = "ops",
+  .func   = "test_i64_trunc_f64_s",
+  .params = { 1196, 1 },
+  .result = { 1197, 1 },
+  .type   = PWASM_RESULT_TYPE_I64,
+}, {
+  .text   = "ops.test_i64_trunc_f64_s(3)",
+  .mod    = "ops",
+  .func   = "test_i64_trunc_f64_s",
+  .params = { 1198, 1 },
+  .result = { 1199, 1 },
+  .type   = PWASM_RESULT_TYPE_I64,
+}, {
+  .text   = "ops.test_i64_trunc_f64_s(4)",
+  .mod    = "ops",
+  .func   = "test_i64_trunc_f64_s",
+  .params = { 1200, 1 },
+  .result = { 1201, 1 },
+  .type   = PWASM_RESULT_TYPE_I64,
+}, {
+  .text   = "ops.test_i64_trunc_f64_u(0)",
+  .mod    = "ops",
+  .func   = "test_i64_trunc_f64_u",
+  .params = { 1202, 1 },
+  .result = { 1203, 1 },
+  .type   = PWASM_RESULT_TYPE_I64,
+}, {
+  .text   = "ops.test_i64_trunc_f64_u(1)",
+  .mod    = "ops",
+  .func   = "test_i64_trunc_f64_u",
+  .params = { 1204, 1 },
+  .result = { 1205, 1 },
+  .type   = PWASM_RESULT_TYPE_I64,
+}, {
+  .text   = "ops.test_i64_trunc_f64_u(2)",
+  .mod    = "ops",
+  .func   = "test_i64_trunc_f64_u",
+  .params = { 1206, 1 },
+  .result = { 1207, 1 },
+  .type   = PWASM_RESULT_TYPE_I64,
 }};
 
 static bool is_valid_result_type(
