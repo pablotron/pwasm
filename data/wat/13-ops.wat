@@ -143,14 +143,14 @@
 
   ;;
   ;; test_local_get:
-  ;;   $a = 0: expect i32 $b
-  ;;   $a = 1: expect i32 31337
+  ;;   $a = 0: expect i32 31337
+  ;;   $a = 1: expect i32 $b
   ;;
   (func $test_local_get (param $a i32)
                         (param $b i32)
                         (result i32)
     (local $c i32)
-    (local.set $b (i32.const 31337))
+    (local.set $c (i32.const 31337))
     (select
       (local.get $c)
       (local.get $b)
