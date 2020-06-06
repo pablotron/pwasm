@@ -1037,6 +1037,18 @@
   (export "test_i32_sub" (func $test_i32_sub))
 
   ;;
+  ;; test_i32_mul:
+  ;;   expect i32 $a * $b
+  ;;
+  (func $test_i32_mul (param $a i32)
+                      (param $b i32)
+                      (result i32)
+    (i32.mul (local.get $a) (local.get $b))
+  )
+
+  (export "test_i32_mul" (func $test_i32_mul))
+
+  ;;
   ;; test_i32_div_s:
   ;;   expect i32 $a / $b (signed)
   ;;
@@ -1242,6 +1254,18 @@
   )
 
   (export "test_i64_sub" (func $test_i64_sub))
+
+  ;;
+  ;; test_i64_mul:
+  ;;   expect i64 $a * $b
+  ;;
+  (func $test_i64_mul (param $a i64)
+                      (param $b i64)
+                      (result i64)
+    (i64.mul (local.get $a) (local.get $b))
+  )
+
+  (export "test_i64_mul" (func $test_i64_mul))
 
   ;;
   ;; test_i64_div_s:
