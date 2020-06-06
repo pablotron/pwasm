@@ -2126,9 +2126,39 @@ TEST_VALS[] = {
   { .i32 = 0xF0F0F0F0 },
   { .i32 = 16 },
 
-  // mod: "ops", func: "test_i32_popcnt", test: 2, params: 1, result: 1
+  // mod: "ops", func: "test_i32_popcnt", test: 3, params: 1, result: 1
   { .i32 = 0x0F0F0F00 },
   { .i32 = 12 },
+
+  // mod: "ops", func: "test_i32_add", test: 0, params: 2, result: 1
+  { .i32 = 6 },
+  { .i32 = 2 },
+  { .i32 = 8 },
+
+  // mod: "ops", func: "test_i32_add", test: 1, params: 2, result: 1
+  { .i32 = 9 },
+  { .i32 = 986852 },
+  { .i32 = 986861 },
+
+  // mod: "ops", func: "test_i32_add", test: 2, params: 2, result: 1
+  { .i32 = 4294967295 },
+  { .i32 = 1 },
+  { .i32 = 0 },
+
+  // mod: "ops", func: "test_i32_sub", test: 0, params: 2, result: 1
+  { .i32 = 6 },
+  { .i32 = 2 },
+  { .i32 = 4 },
+
+  // mod: "ops", func: "test_i32_sub", test: 1, params: 2, result: 1
+  { .i32 = 99999999 },
+  { .i32 = 99999990 },
+  { .i32 = 9 },
+
+  // mod: "ops", func: "test_i32_sub", test: 2, params: 2, result: 1
+  { .i32 = 10 },
+  { .i32 = 20 },
+  { .i32 = 4294967286 },
 };
 
 typedef struct {
@@ -3728,6 +3758,104 @@ TEST_CALLS[] = {{
   .func   = "test_i32_clz",
   .params = { 592, 1 },
   .result = { 593, 1 },
+  .type   = PWASM_RESULT_TYPE_I32,
+}, {
+  .text   = "ops.test_i32_ctz(0)",
+  .mod    = "ops",
+  .func   = "test_i32_ctz",
+  .params = { 594, 1 },
+  .result = { 595, 1 },
+  .type   = PWASM_RESULT_TYPE_I32,
+}, {
+  .text   = "ops.test_i32_ctz(1)",
+  .mod    = "ops",
+  .func   = "test_i32_ctz",
+  .params = { 596, 1 },
+  .result = { 597, 1 },
+  .type   = PWASM_RESULT_TYPE_I32,
+}, {
+  .text   = "ops.test_i32_ctz(2)",
+  .mod    = "ops",
+  .func   = "test_i32_ctz",
+  .params = { 598, 1 },
+  .result = { 599, 1 },
+  .type   = PWASM_RESULT_TYPE_I32,
+}, {
+  .text   = "ops.test_i32_ctz(3)",
+  .mod    = "ops",
+  .func   = "test_i32_ctz",
+  .params = { 600, 1 },
+  .result = { 601, 1 },
+  .type   = PWASM_RESULT_TYPE_I32,
+}, {
+  .text   = "ops.test_i32_popcnt(0)",
+  .mod    = "ops",
+  .func   = "test_i32_popcnt",
+  .params = { 602, 1 },
+  .result = { 603, 1 },
+  .type   = PWASM_RESULT_TYPE_I32,
+}, {
+  .text   = "ops.test_i32_popcnt(1)",
+  .mod    = "ops",
+  .func   = "test_i32_popcnt",
+  .params = { 604, 1 },
+  .result = { 605, 1 },
+  .type   = PWASM_RESULT_TYPE_I32,
+}, {
+  .text   = "ops.test_i32_popcnt(2)",
+  .mod    = "ops",
+  .func   = "test_i32_popcnt",
+  .params = { 606, 1 },
+  .result = { 607, 1 },
+  .type   = PWASM_RESULT_TYPE_I32,
+}, {
+  .text   = "ops.test_i32_popcnt(3)",
+  .mod    = "ops",
+  .func   = "test_i32_popcnt",
+  .params = { 608, 1 },
+  .result = { 609, 1 },
+  .type   = PWASM_RESULT_TYPE_I32,
+}, {
+  .text   = "ops.test_i32_add(0)",
+  .mod    = "ops",
+  .func   = "test_i32_add",
+  .params = { 610, 2 },
+  .result = { 612, 1 },
+  .type   = PWASM_RESULT_TYPE_I32,
+}, {
+  .text   = "ops.test_i32_add(1)",
+  .mod    = "ops",
+  .func   = "test_i32_add",
+  .params = { 613, 2 },
+  .result = { 615, 1 },
+  .type   = PWASM_RESULT_TYPE_I32,
+}, {
+  .text   = "ops.test_i32_add(2)",
+  .mod    = "ops",
+  .func   = "test_i32_add",
+  .params = { 616, 2 },
+  .result = { 618, 1 },
+  .type   = PWASM_RESULT_TYPE_I32,
+}, {
+  .text   = "ops.test_i32_sub(0)",
+  .mod    = "ops",
+  .func   = "test_i32_sub",
+  .params = { 619, 2 },
+  .result = { 621, 1 },
+  .type   = PWASM_RESULT_TYPE_I32,
+}, {
+  .text   = "ops.test_i32_sub(1)",
+  .mod    = "ops",
+  .func   = "test_i32_sub",
+  .params = { 622, 2 },
+  .result = { 624, 1 },
+  .type   = PWASM_RESULT_TYPE_I32,
+}, {
+  .text   = "ops.test_i32_sub(2)",
+  .mod    = "ops",
+  .func   = "test_i32_sub",
+  .params = { 625, 2 },
+  .result = { 627, 1 },
   .type   = PWASM_RESULT_TYPE_I32,
 }};
 
