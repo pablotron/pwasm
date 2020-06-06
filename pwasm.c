@@ -13804,14 +13804,16 @@ pwasm_new_interp_eval_expr(
       break;
     case PWASM_OP_I32_CLZ:
       {
-        const int val = __builtin_clz(stack->ptr[stack->pos - 1].i32);
+        const uint32_t a = stack->ptr[stack->pos - 1].i32;
+        const int val = a ? __builtin_clz(a) : 32;
         stack->ptr[stack->pos - 1].i32 = val;
       }
 
       break;
     case PWASM_OP_I32_CTZ:
       {
-        const int val = __builtin_ctz(stack->ptr[stack->pos - 1].i32);
+        const uint32_t a = stack->ptr[stack->pos - 1].i32;
+        const int val = a ? __builtin_ctz(a) : 32;
         stack->ptr[stack->pos - 1].i32 = val;
       }
 
