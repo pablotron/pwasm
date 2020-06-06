@@ -13147,12 +13147,6 @@ pwasm_new_interp_eval_expr(
       break;
     case PWASM_OP_BR_IF:
       if (stack->ptr[--stack->pos].i32) {
-        // check branch index
-        // TODO: remove, handled by checker
-        if (in.v_index >= depth - 1) {
-          return false;
-        }
-
         // decriment control stack
         depth -= in.v_index;
 
