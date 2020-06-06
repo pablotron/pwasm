@@ -3205,6 +3205,158 @@ TEST_VALS[] = {
   // mod: "ops", func: "test_i64_trunc_f64_u", test: 3, params: 1, result: 1
   { .f64 = 4000000.1 },
   { .i64 = 4000000 },
+
+  // mod: "ops", func: "test_f32_convert_i32_s", test: 0, params: 1, result: 1
+  { .i32 = 0 },
+  { .f32 = 0 },
+
+  // mod: "ops", func: "test_f32_convert_i32_s", test: 1, params: 1, result: 1
+  { .i32 = 1 },
+  { .f32 = 1 },
+
+  // mod: "ops", func: "test_f32_convert_i32_s", test: 2, params: 1, result: 1
+  { .i32 = -1 },
+  { .f32 = -1 },
+
+  // mod: "ops", func: "test_f32_convert_i32_s", test: 3, params: 1, result: 1
+  { .i32 = -1024 },
+  { .f32 = -1024 },
+
+  // mod: "ops", func: "test_f32_convert_i32_u", test: 0, params: 1, result: 1
+  { .i32 = 0 },
+  { .f32 = 0 },
+
+  // mod: "ops", func: "test_f32_convert_i32_u", test: 1, params: 1, result: 1
+  { .i32 = 1 },
+  { .f32 = 1 },
+
+  // mod: "ops", func: "test_f32_convert_i32_u", test: 2, params: 1, result: 1
+  { .i32 = 4096 },
+  { .f32 = 4096 },
+
+  // mod: "ops", func: "test_f32_convert_i64_s", test: 0, params: 1, result: 1
+  { .i64 = 0 },
+  { .f32 = 0 },
+
+  // mod: "ops", func: "test_f32_convert_i64_s", test: 1, params: 1, result: 1
+  { .i64 = 1 },
+  { .f32 = 1 },
+
+  // mod: "ops", func: "test_f32_convert_i64_s", test: 2, params: 1, result: 1
+  { .i64 = -1 },
+  { .f32 = -1 },
+
+  // mod: "ops", func: "test_f32_convert_i64_s", test: 3, params: 1, result: 1
+  { .i64 = -1024 },
+  { .f32 = -1024 },
+
+  // mod: "ops", func: "test_f32_convert_i64_u", test: 0, params: 1, result: 1
+  { .i64 = 0 },
+  { .f32 = 0 },
+
+  // mod: "ops", func: "test_f32_convert_i64_u", test: 1, params: 1, result: 1
+  { .i64 = 1 },
+  { .f32 = 1 },
+
+  // mod: "ops", func: "test_f32_convert_i64_u", test: 2, params: 1, result: 1
+  { .i64 = 4096 },
+  { .f32 = 4096 },
+
+  // mod: "ops", func: "test_f32_demote_f64", test: 0, params: 1, result: 1
+  { .f64 = 0 },
+  { .f32 = 0 },
+
+  // mod: "ops", func: "test_f32_demote_f64", test: 1, params: 1, result: 1
+  { .f64 = 1 },
+  { .f32 = 1 },
+
+  // mod: "ops", func: "test_f32_demote_f64", test: 2, params: 1, result: 1
+  { .f64 = -1 },
+  { .f32 = -1 },
+
+  // mod: "ops", func: "test_f32_demote_f64", test: 3, params: 1, result: 1
+  { .f64 = 3141.59 },
+  { .f32 = 3141.59 },
+
+  // mod: "ops", func: "test_f32_demote_f64", test: 4, params: 1, result: 1
+  { .f64 = -31415.92 },
+  { .f32 = -31415.92 },
+
+  // mod: "ops", func: "test_f64_convert_i32_s", test: 0, params: 1, result: 1
+  { .i32 = 0 },
+  { .f64 = 0 },
+
+  // mod: "ops", func: "test_f64_convert_i32_s", test: 1, params: 1, result: 1
+  { .i32 = 1 },
+  { .f64 = 1 },
+
+  // mod: "ops", func: "test_f64_convert_i32_s", test: 2, params: 1, result: 1
+  { .i32 = -1 },
+  { .f64 = -1 },
+
+  // mod: "ops", func: "test_f64_convert_i32_s", test: 3, params: 1, result: 1
+  { .i32 = -1024 },
+  { .f64 = -1024 },
+
+  // mod: "ops", func: "test_f64_convert_i32_u", test: 0, params: 1, result: 1
+  { .i32 = 0 },
+  { .f64 = 0 },
+
+  // mod: "ops", func: "test_f64_convert_i32_u", test: 1, params: 1, result: 1
+  { .i32 = 1 },
+  { .f64 = 1 },
+
+  // mod: "ops", func: "test_f64_convert_i32_u", test: 2, params: 1, result: 1
+  { .i32 = 4096 },
+  { .f64 = 4096 },
+
+  // mod: "ops", func: "test_f64_convert_i64_s", test: 0, params: 1, result: 1
+  { .i64 = 0 },
+  { .f64 = 0 },
+
+  // mod: "ops", func: "test_f64_convert_i64_s", test: 1, params: 1, result: 1
+  { .i64 = 1 },
+  { .f64 = 1 },
+
+  // mod: "ops", func: "test_f64_convert_i64_s", test: 2, params: 1, result: 1
+  { .i64 = -1 },
+  { .f64 = -1 },
+
+  // mod: "ops", func: "test_f64_convert_i64_s", test: 3, params: 1, result: 1
+  { .i64 = -1024 },
+  { .f64 = -1024 },
+
+  // mod: "ops", func: "test_f64_convert_i64_u", test: 0, params: 1, result: 1
+  { .i64 = 0 },
+  { .f64 = 0 },
+
+  // mod: "ops", func: "test_f64_convert_i64_u", test: 1, params: 1, result: 1
+  { .i64 = 1 },
+  { .f64 = 1 },
+
+  // mod: "ops", func: "test_f64_convert_i64_u", test: 2, params: 1, result: 1
+  { .i64 = 4096 },
+  { .f64 = 4096 },
+
+  // mod: "ops", func: "test_f64_promote_f32", test: 0, params: 1, result: 1
+  { .f32 = 0 },
+  { .f64 = 0 },
+
+  // mod: "ops", func: "test_f64_promote_f32", test: 1, params: 1, result: 1
+  { .f32 = 1 },
+  { .f64 = 1 },
+
+  // mod: "ops", func: "test_f64_promote_f32", test: 2, params: 1, result: 1
+  { .f32 = -1 },
+  { .f64 = -1 },
+
+  // mod: "ops", func: "test_f64_promote_f32", test: 3, params: 1, result: 1
+  { .f32 = 3141.592 },
+  { .f64 = 3141.592041 },
+
+  // mod: "ops", func: "test_f64_promote_f32", test: 4, params: 1, result: 1
+  { .f32 = -31415.92 },
+  { .f64 = -31415.919922 },
 };
 
 typedef struct {
@@ -6499,6 +6651,279 @@ TEST_CALLS[] = {{
   .params = { 1206, 1 },
   .result = { 1207, 1 },
   .type   = PWASM_RESULT_TYPE_I64,
+}, {
+  .text   = "ops.test_i64_trunc_f64_u(3)",
+  .mod    = "ops",
+  .func   = "test_i64_trunc_f64_u",
+  .params = { 1208, 1 },
+  .result = { 1209, 1 },
+  .type   = PWASM_RESULT_TYPE_I64,
+}, {
+  .text   = "ops.test_f32_convert_i32_s(0)",
+  .mod    = "ops",
+  .func   = "test_f32_convert_i32_s",
+  .params = { 1210, 1 },
+  .result = { 1211, 1 },
+  .type   = PWASM_RESULT_TYPE_F32,
+}, {
+  .text   = "ops.test_f32_convert_i32_s(1)",
+  .mod    = "ops",
+  .func   = "test_f32_convert_i32_s",
+  .params = { 1212, 1 },
+  .result = { 1213, 1 },
+  .type   = PWASM_RESULT_TYPE_F32,
+}, {
+  .text   = "ops.test_f32_convert_i32_s(2)",
+  .mod    = "ops",
+  .func   = "test_f32_convert_i32_s",
+  .params = { 1214, 1 },
+  .result = { 1215, 1 },
+  .type   = PWASM_RESULT_TYPE_F32,
+}, {
+  .text   = "ops.test_f32_convert_i32_s(3)",
+  .mod    = "ops",
+  .func   = "test_f32_convert_i32_s",
+  .params = { 1216, 1 },
+  .result = { 1217, 1 },
+  .type   = PWASM_RESULT_TYPE_F32,
+}, {
+  .text   = "ops.test_f32_convert_i32_u(0)",
+  .mod    = "ops",
+  .func   = "test_f32_convert_i32_u",
+  .params = { 1218, 1 },
+  .result = { 1219, 1 },
+  .type   = PWASM_RESULT_TYPE_F32,
+}, {
+  .text   = "ops.test_f32_convert_i32_u(1)",
+  .mod    = "ops",
+  .func   = "test_f32_convert_i32_u",
+  .params = { 1220, 1 },
+  .result = { 1221, 1 },
+  .type   = PWASM_RESULT_TYPE_F32,
+}, {
+  .text   = "ops.test_f32_convert_i32_u(2)",
+  .mod    = "ops",
+  .func   = "test_f32_convert_i32_u",
+  .params = { 1222, 1 },
+  .result = { 1223, 1 },
+  .type   = PWASM_RESULT_TYPE_F32,
+}, {
+  .text   = "ops.test_f32_convert_i64_s(0)",
+  .mod    = "ops",
+  .func   = "test_f32_convert_i64_s",
+  .params = { 1224, 1 },
+  .result = { 1225, 1 },
+  .type   = PWASM_RESULT_TYPE_F32,
+}, {
+  .text   = "ops.test_f32_convert_i64_s(1)",
+  .mod    = "ops",
+  .func   = "test_f32_convert_i64_s",
+  .params = { 1226, 1 },
+  .result = { 1227, 1 },
+  .type   = PWASM_RESULT_TYPE_F32,
+}, {
+  .text   = "ops.test_f32_convert_i64_s(2)",
+  .mod    = "ops",
+  .func   = "test_f32_convert_i64_s",
+  .params = { 1228, 1 },
+  .result = { 1229, 1 },
+  .type   = PWASM_RESULT_TYPE_F32,
+}, {
+  .text   = "ops.test_f32_convert_i64_s(3)",
+  .mod    = "ops",
+  .func   = "test_f32_convert_i64_s",
+  .params = { 1230, 1 },
+  .result = { 1231, 1 },
+  .type   = PWASM_RESULT_TYPE_F32,
+}, {
+  .text   = "ops.test_f32_convert_i64_u(0)",
+  .mod    = "ops",
+  .func   = "test_f32_convert_i64_u",
+  .params = { 1232, 1 },
+  .result = { 1233, 1 },
+  .type   = PWASM_RESULT_TYPE_F32,
+}, {
+  .text   = "ops.test_f32_convert_i64_u(1)",
+  .mod    = "ops",
+  .func   = "test_f32_convert_i64_u",
+  .params = { 1234, 1 },
+  .result = { 1235, 1 },
+  .type   = PWASM_RESULT_TYPE_F32,
+}, {
+  .text   = "ops.test_f32_convert_i64_u(2)",
+  .mod    = "ops",
+  .func   = "test_f32_convert_i64_u",
+  .params = { 1236, 1 },
+  .result = { 1237, 1 },
+  .type   = PWASM_RESULT_TYPE_F32,
+}, {
+  .text   = "ops.test_f32_demote_f64(0)",
+  .mod    = "ops",
+  .func   = "test_f32_demote_f64",
+  .params = { 1238, 1 },
+  .result = { 1239, 1 },
+  .type   = PWASM_RESULT_TYPE_F32,
+}, {
+  .text   = "ops.test_f32_demote_f64(1)",
+  .mod    = "ops",
+  .func   = "test_f32_demote_f64",
+  .params = { 1240, 1 },
+  .result = { 1241, 1 },
+  .type   = PWASM_RESULT_TYPE_F32,
+}, {
+  .text   = "ops.test_f32_demote_f64(2)",
+  .mod    = "ops",
+  .func   = "test_f32_demote_f64",
+  .params = { 1242, 1 },
+  .result = { 1243, 1 },
+  .type   = PWASM_RESULT_TYPE_F32,
+}, {
+  .text   = "ops.test_f32_demote_f64(3)",
+  .mod    = "ops",
+  .func   = "test_f32_demote_f64",
+  .params = { 1244, 1 },
+  .result = { 1245, 1 },
+  .type   = PWASM_RESULT_TYPE_F32,
+}, {
+  .text   = "ops.test_f32_demote_f64(4)",
+  .mod    = "ops",
+  .func   = "test_f32_demote_f64",
+  .params = { 1246, 1 },
+  .result = { 1247, 1 },
+  .type   = PWASM_RESULT_TYPE_F32,
+}, {
+  .text   = "ops.test_f64_convert_i32_s(0)",
+  .mod    = "ops",
+  .func   = "test_f64_convert_i32_s",
+  .params = { 1248, 1 },
+  .result = { 1249, 1 },
+  .type   = PWASM_RESULT_TYPE_F64,
+}, {
+  .text   = "ops.test_f64_convert_i32_s(1)",
+  .mod    = "ops",
+  .func   = "test_f64_convert_i32_s",
+  .params = { 1250, 1 },
+  .result = { 1251, 1 },
+  .type   = PWASM_RESULT_TYPE_F64,
+}, {
+  .text   = "ops.test_f64_convert_i32_s(2)",
+  .mod    = "ops",
+  .func   = "test_f64_convert_i32_s",
+  .params = { 1252, 1 },
+  .result = { 1253, 1 },
+  .type   = PWASM_RESULT_TYPE_F64,
+}, {
+  .text   = "ops.test_f64_convert_i32_s(3)",
+  .mod    = "ops",
+  .func   = "test_f64_convert_i32_s",
+  .params = { 1254, 1 },
+  .result = { 1255, 1 },
+  .type   = PWASM_RESULT_TYPE_F64,
+}, {
+  .text   = "ops.test_f64_convert_i32_u(0)",
+  .mod    = "ops",
+  .func   = "test_f64_convert_i32_u",
+  .params = { 1256, 1 },
+  .result = { 1257, 1 },
+  .type   = PWASM_RESULT_TYPE_F64,
+}, {
+  .text   = "ops.test_f64_convert_i32_u(1)",
+  .mod    = "ops",
+  .func   = "test_f64_convert_i32_u",
+  .params = { 1258, 1 },
+  .result = { 1259, 1 },
+  .type   = PWASM_RESULT_TYPE_F64,
+}, {
+  .text   = "ops.test_f64_convert_i32_u(2)",
+  .mod    = "ops",
+  .func   = "test_f64_convert_i32_u",
+  .params = { 1260, 1 },
+  .result = { 1261, 1 },
+  .type   = PWASM_RESULT_TYPE_F64,
+}, {
+  .text   = "ops.test_f64_convert_i64_s(0)",
+  .mod    = "ops",
+  .func   = "test_f64_convert_i64_s",
+  .params = { 1262, 1 },
+  .result = { 1263, 1 },
+  .type   = PWASM_RESULT_TYPE_F64,
+}, {
+  .text   = "ops.test_f64_convert_i64_s(1)",
+  .mod    = "ops",
+  .func   = "test_f64_convert_i64_s",
+  .params = { 1264, 1 },
+  .result = { 1265, 1 },
+  .type   = PWASM_RESULT_TYPE_F64,
+}, {
+  .text   = "ops.test_f64_convert_i64_s(2)",
+  .mod    = "ops",
+  .func   = "test_f64_convert_i64_s",
+  .params = { 1266, 1 },
+  .result = { 1267, 1 },
+  .type   = PWASM_RESULT_TYPE_F64,
+}, {
+  .text   = "ops.test_f64_convert_i64_s(3)",
+  .mod    = "ops",
+  .func   = "test_f64_convert_i64_s",
+  .params = { 1268, 1 },
+  .result = { 1269, 1 },
+  .type   = PWASM_RESULT_TYPE_F64,
+}, {
+  .text   = "ops.test_f64_convert_i64_u(0)",
+  .mod    = "ops",
+  .func   = "test_f64_convert_i64_u",
+  .params = { 1270, 1 },
+  .result = { 1271, 1 },
+  .type   = PWASM_RESULT_TYPE_F64,
+}, {
+  .text   = "ops.test_f64_convert_i64_u(1)",
+  .mod    = "ops",
+  .func   = "test_f64_convert_i64_u",
+  .params = { 1272, 1 },
+  .result = { 1273, 1 },
+  .type   = PWASM_RESULT_TYPE_F64,
+}, {
+  .text   = "ops.test_f64_convert_i64_u(2)",
+  .mod    = "ops",
+  .func   = "test_f64_convert_i64_u",
+  .params = { 1274, 1 },
+  .result = { 1275, 1 },
+  .type   = PWASM_RESULT_TYPE_F64,
+}, {
+  .text   = "ops.test_f64_promote_f32(0)",
+  .mod    = "ops",
+  .func   = "test_f64_promote_f32",
+  .params = { 1276, 1 },
+  .result = { 1277, 1 },
+  .type   = PWASM_RESULT_TYPE_F64,
+}, {
+  .text   = "ops.test_f64_promote_f32(1)",
+  .mod    = "ops",
+  .func   = "test_f64_promote_f32",
+  .params = { 1278, 1 },
+  .result = { 1279, 1 },
+  .type   = PWASM_RESULT_TYPE_F64,
+}, {
+  .text   = "ops.test_f64_promote_f32(2)",
+  .mod    = "ops",
+  .func   = "test_f64_promote_f32",
+  .params = { 1280, 1 },
+  .result = { 1281, 1 },
+  .type   = PWASM_RESULT_TYPE_F64,
+}, {
+  .text   = "ops.test_f64_promote_f32(3)",
+  .mod    = "ops",
+  .func   = "test_f64_promote_f32",
+  .params = { 1282, 1 },
+  .result = { 1283, 1 },
+  .type   = PWASM_RESULT_TYPE_F64,
+}, {
+  .text   = "ops.test_f64_promote_f32(4)",
+  .mod    = "ops",
+  .func   = "test_f64_promote_f32",
+  .params = { 1284, 1 },
+  .result = { 1285, 1 },
+  .type   = PWASM_RESULT_TYPE_F64,
 }};
 
 static bool is_valid_result_type(
@@ -6593,7 +7018,7 @@ static bool check_result(
 
   if (!r) {
     // populate destination buffer
-    snprintf(dst_buf, dst_buf_len, "check result (%s) of pwasm_call(&env, \"%s\", \"%s\"): %s", pwasm_result_type_get_name(test.type), test.mod, test.func, buf);
+    snprintf(dst_buf, dst_buf_len, "%s: bad result (%s): %s", test.text, pwasm_result_type_get_name(test.type), buf);
   }
 
   // return result
