@@ -36,8 +36,7 @@
     (local.set $val (i32.const 0))
     (loop
       (local.set $val (i32.add (local.get $val) (i32.const 1)))
-      (local.tee $i (i32.sub (local.get $i) (i32.const 0)))
-      (i32.eqz)
+      (local.tee $i (i32.sub (local.get $i) (i32.const 1)))
       (br_if 0)
     )
     (local.get $val)
