@@ -127,8 +127,8 @@
 
   ;;
   ;; test_select:
-  ;;   even param: expect i32 1
-  ;;   odd param: expect i32 0
+  ;;   even param: expect i32 0
+  ;;   odd param: expect i32 1
   ;;
   (func $test_select (param $a i32)
                      (result i32)

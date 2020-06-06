@@ -1239,6 +1239,79 @@ TEST_VALS[] = {
 
   // mod: "ops", func: "test_call", test: 1, type: "result", num: 1
   { .i32 = 55 },
+
+  // mod: "ops", func: "test_call_indirect", test: 0, type: "params", num: 3
+  { .i32 = 0 },
+  { .i32 = 8 },
+  { .i32 = 6 },
+
+  // mod: "ops", func: "test_call_indirect", test: 0, type: "result", num: 1
+  { .i32 = 14 },
+
+  // mod: "ops", func: "test_call_indirect", test: 1, type: "params", num: 3
+  { .i32 = 1 },
+  { .i32 = 7 },
+  { .i32 = 5 },
+
+  // mod: "ops", func: "test_call_indirect", test: 1, type: "result", num: 1
+  { .i32 = 2 },
+
+  // mod: "ops", func: "test_call_indirect", test: 2, type: "params", num: 3
+  { .i32 = 2 },
+  { .i32 = 3 },
+  { .i32 = 9 },
+
+  // mod: "ops", func: "test_call_indirect", test: 2, type: "result", num: 1
+  { .i32 = 27 },
+
+  // mod: "ops", func: "test_call_indirect", test: 3, type: "params", num: 3
+  { .i32 = 3 },
+  { .i32 = 93857 },
+  { .i32 = 9 },
+
+  // mod: "ops", func: "test_call_indirect", test: 3, type: "result", num: 1
+  { .i32 = 93857 },
+
+  // mod: "ops", func: "test_drop", test: 0, type: "result", num: 1
+  { .i32 = 2 },
+
+  // mod: "ops", func: "test_select", test: 0, type: "params", num: 1
+  { .i32 = 9 },
+
+  // mod: "ops", func: "test_select", test: 0, type: "result", num: 1
+  { .i32 = 1 },
+
+  // mod: "ops", func: "test_select", test: 1, type: "params", num: 1
+  { .i32 = 44 },
+
+  // mod: "ops", func: "test_select", test: 1, type: "result", num: 1
+  { .i32 = 0 },
+
+  // mod: "ops", func: "test_local_get", test: 0, type: "params", num: 2
+  { .i32 = 0 },
+  { .i32 = 123987 },
+
+  // mod: "ops", func: "test_local_get", test: 0, type: "result", num: 1
+  { .i32 = 123987 },
+
+  // mod: "ops", func: "test_local_get", test: 1, type: "params", num: 2
+  { .i32 = 1 },
+  { .i32 = 123987 },
+
+  // mod: "ops", func: "test_local_get", test: 1, type: "result", num: 1
+  { .i32 = 31337 },
+
+  // mod: "ops", func: "test_local_set", test: 0, type: "params", num: 1
+  { .i32 = 123 },
+
+  // mod: "ops", func: "test_local_set", test: 0, type: "result", num: 1
+  { .i32 = 145 },
+
+  // mod: "ops", func: "test_local_tee", test: 0, type: "params", num: 1
+  { .i32 = 10117452 },
+
+  // mod: "ops", func: "test_local_tee", test: 0, type: "result", num: 1
+  { .i32 = 10117496 },
 };
 
 typedef struct {
@@ -1496,6 +1569,82 @@ TEST_CALLS[] = {{
   .mod    = "ops",
   .func   = "test_call",
   .result = { 78, 1 },
+  .type   = PWASM_RESULT_TYPE_I32,
+}, {
+  .text   = "ops.test_call_indirect(0)",
+  .mod    = "ops",
+  .func   = "test_call_indirect",
+  .params = { 79, 3 },
+  .result = { 82, 1 },
+  .type   = PWASM_RESULT_TYPE_I32,
+}, {
+  .text   = "ops.test_call_indirect(1)",
+  .mod    = "ops",
+  .func   = "test_call_indirect",
+  .params = { 83, 3 },
+  .result = { 86, 1 },
+  .type   = PWASM_RESULT_TYPE_I32,
+}, {
+  .text   = "ops.test_call_indirect(2)",
+  .mod    = "ops",
+  .func   = "test_call_indirect",
+  .params = { 87, 3 },
+  .result = { 90, 1 },
+  .type   = PWASM_RESULT_TYPE_I32,
+}, {
+  .text   = "ops.test_call_indirect(3)",
+  .mod    = "ops",
+  .func   = "test_call_indirect",
+  .params = { 91, 3 },
+  .result = { 94, 1 },
+  .type   = PWASM_RESULT_TYPE_I32,
+}, {
+  .text   = "ops.test_drop(0)",
+  .mod    = "ops",
+  .func   = "test_drop",
+  .result = { 95, 1 },
+  .type   = PWASM_RESULT_TYPE_I32,
+}, {
+  .text   = "ops.test_select(0)",
+  .mod    = "ops",
+  .func   = "test_select",
+  .params = { 96, 1 },
+  .result = { 97, 1 },
+  .type   = PWASM_RESULT_TYPE_I32,
+}, {
+  .text   = "ops.test_select(1)",
+  .mod    = "ops",
+  .func   = "test_select",
+  .params = { 98, 1 },
+  .result = { 99, 1 },
+  .type   = PWASM_RESULT_TYPE_I32,
+}, {
+  .text   = "ops.test_local_get(0)",
+  .mod    = "ops",
+  .func   = "test_local_get",
+  .params = { 100, 2 },
+  .result = { 102, 1 },
+  .type   = PWASM_RESULT_TYPE_I32,
+}, {
+  .text   = "ops.test_local_get(1)",
+  .mod    = "ops",
+  .func   = "test_local_get",
+  .params = { 103, 2 },
+  .result = { 105, 1 },
+  .type   = PWASM_RESULT_TYPE_I32,
+}, {
+  .text   = "ops.test_local_set(0)",
+  .mod    = "ops",
+  .func   = "test_local_set",
+  .params = { 106, 1 },
+  .result = { 107, 1 },
+  .type   = PWASM_RESULT_TYPE_I32,
+}, {
+  .text   = "ops.test_local_tee(0)",
+  .mod    = "ops",
+  .func   = "test_local_tee",
+  .params = { 108, 1 },
+  .result = { 109, 1 },
   .type   = PWASM_RESULT_TYPE_I32,
 }};
 
