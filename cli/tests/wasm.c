@@ -2276,14 +2276,69 @@ TEST_VALS[] = {
   { .i32 = 0x00000001 },
 
   // mod: "ops", func: "test_i32_shr_s", test: 1, params: 2, result: 1
-  { .i32 = 0x10000010 },
+  { .i32 = 0x80000010 },
   { .i32 = 1 },
-  { .i32 = 0x10000001 },
+  { .i32 = 0xC0000008 },
 
   // mod: "ops", func: "test_i32_shr_s", test: 2, params: 2, result: 1
-  { .i32 = 0x10000010 },
+  { .i32 = 0x80000010 },
   { .i32 = 2 },
-  { .i32 = 0x10000000 },
+  { .i32 = 0xE0000004 },
+
+  // mod: "ops", func: "test_i32_shr_s", test: 3, params: 2, result: 1
+  { .i32 = 0x80000010 },
+  { .i32 = 34 },
+  { .i32 = 0xE0000004 },
+
+  // mod: "ops", func: "test_i32_shr_s", test: 4, params: 2, result: 1
+  { .i32 = 0x80000010 },
+  { .i32 = 15 },
+  { .i32 = 0xFFFF0000 },
+
+  // mod: "ops", func: "test_i32_shr_u", test: 0, params: 2, result: 1
+  { .i32 = 0x80000000 },
+  { .i32 = 0 },
+  { .i32 = 0x80000000 },
+
+  // mod: "ops", func: "test_i32_shr_u", test: 1, params: 2, result: 1
+  { .i32 = 0x80000000 },
+  { .i32 = 16 },
+  { .i32 = 0x00008000 },
+
+  // mod: "ops", func: "test_i32_shr_u", test: 2, params: 2, result: 1
+  { .i32 = 0x80000000 },
+  { .i32 = 33 },
+  { .i32 = 0x40000000 },
+
+  // mod: "ops", func: "test_i32_rotl", test: 0, params: 2, result: 1
+  { .i32 = 0x80000000 },
+  { .i32 = 0 },
+  { .i32 = 0x80000000 },
+
+  // mod: "ops", func: "test_i32_rotl", test: 1, params: 2, result: 1
+  { .i32 = 0x80008000 },
+  { .i32 = 1 },
+  { .i32 = 0x00010001 },
+
+  // mod: "ops", func: "test_i32_rotl", test: 2, params: 2, result: 1
+  { .i32 = 0x80008000 },
+  { .i32 = 30 },
+  { .i32 = 0x20002000 },
+
+  // mod: "ops", func: "test_i32_rotr", test: 0, params: 2, result: 1
+  { .i32 = 0x80008000 },
+  { .i32 = 0 },
+  { .i32 = 0x80008000 },
+
+  // mod: "ops", func: "test_i32_rotr", test: 1, params: 2, result: 1
+  { .i32 = 0xF000F000 },
+  { .i32 = 4 },
+  { .i32 = 0x0F000F00 },
+
+  // mod: "ops", func: "test_i32_rotr", test: 2, params: 2, result: 1
+  { .i32 = 0xF000F000 },
+  { .i32 = 40 },
+  { .i32 = 0x00F000F0 },
 };
 
 typedef struct {
@@ -4156,6 +4211,83 @@ TEST_CALLS[] = {{
   .func   = "test_i32_shr_s",
   .params = { 700, 2 },
   .result = { 702, 1 },
+  .type   = PWASM_RESULT_TYPE_I32,
+}, {
+  .text   = "ops.test_i32_shr_s(3)",
+  .mod    = "ops",
+  .func   = "test_i32_shr_s",
+  .params = { 703, 2 },
+  .result = { 705, 1 },
+  .type   = PWASM_RESULT_TYPE_I32,
+}, {
+  .text   = "ops.test_i32_shr_s(4)",
+  .mod    = "ops",
+  .func   = "test_i32_shr_s",
+  .params = { 706, 2 },
+  .result = { 708, 1 },
+  .type   = PWASM_RESULT_TYPE_I32,
+}, {
+  .text   = "ops.test_i32_shr_u(0)",
+  .mod    = "ops",
+  .func   = "test_i32_shr_u",
+  .params = { 709, 2 },
+  .result = { 711, 1 },
+  .type   = PWASM_RESULT_TYPE_I32,
+}, {
+  .text   = "ops.test_i32_shr_u(1)",
+  .mod    = "ops",
+  .func   = "test_i32_shr_u",
+  .params = { 712, 2 },
+  .result = { 714, 1 },
+  .type   = PWASM_RESULT_TYPE_I32,
+}, {
+  .text   = "ops.test_i32_shr_u(2)",
+  .mod    = "ops",
+  .func   = "test_i32_shr_u",
+  .params = { 715, 2 },
+  .result = { 717, 1 },
+  .type   = PWASM_RESULT_TYPE_I32,
+}, {
+  .text   = "ops.test_i32_rotl(0)",
+  .mod    = "ops",
+  .func   = "test_i32_rotl",
+  .params = { 718, 2 },
+  .result = { 720, 1 },
+  .type   = PWASM_RESULT_TYPE_I32,
+}, {
+  .text   = "ops.test_i32_rotl(1)",
+  .mod    = "ops",
+  .func   = "test_i32_rotl",
+  .params = { 721, 2 },
+  .result = { 723, 1 },
+  .type   = PWASM_RESULT_TYPE_I32,
+}, {
+  .text   = "ops.test_i32_rotl(2)",
+  .mod    = "ops",
+  .func   = "test_i32_rotl",
+  .params = { 724, 2 },
+  .result = { 726, 1 },
+  .type   = PWASM_RESULT_TYPE_I32,
+}, {
+  .text   = "ops.test_i32_rotr(0)",
+  .mod    = "ops",
+  .func   = "test_i32_rotr",
+  .params = { 727, 2 },
+  .result = { 729, 1 },
+  .type   = PWASM_RESULT_TYPE_I32,
+}, {
+  .text   = "ops.test_i32_rotr(1)",
+  .mod    = "ops",
+  .func   = "test_i32_rotr",
+  .params = { 730, 2 },
+  .result = { 732, 1 },
+  .type   = PWASM_RESULT_TYPE_I32,
+}, {
+  .text   = "ops.test_i32_rotr(2)",
+  .mod    = "ops",
+  .func   = "test_i32_rotr",
+  .params = { 733, 2 },
+  .result = { 735, 1 },
   .type   = PWASM_RESULT_TYPE_I32,
 }};
 
