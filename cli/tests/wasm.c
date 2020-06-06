@@ -1341,7 +1341,7 @@ TEST_VALS[] = {
   { .i32 = 128 },
 
   // mod: "ops", func: "test_i32_load8_s", test: 1, type: "result", num: 1
-  { .i32 = 4294967168 },
+  { .i32 = 128 },
 
   // mod: "ops", func: "test_i32_load8_u", test: 0, type: "params", num: 1
   { .i32 = 127 },

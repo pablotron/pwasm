@@ -12838,8 +12838,15 @@ pwasm_new_interp_mem_load(
   // pwasm_new_interp_dump_mem_chunk(chunk);
   // D("load i32 = %u", ((pwasm_val_t*) (chunk.mem->buf.ptr + chunk.ofs))->i32);
 
-  // copy to result
-  memcpy(ret_val, chunk.mem->buf.ptr + chunk.ofs, chunk.size);
+  // clear temp val
+  pwasm_val_t tmp;
+  memset(&tmp, 0, sizeof(pwasm_val_t));
+
+  // copy to temp
+  memcpy(&tmp, chunk.mem->buf.ptr + chunk.ofs, chunk.size);
+
+  // copy temp to destination
+  memcpy(ret_val, &tmp, sizeof(pwasm_val_t));
 
   // return success
   return true;
