@@ -1549,6 +1549,9 @@ TEST_VALS[] = {
 
   // mod: "ops", func: "test_i64_store32", test: 1, type: "result", num: 1
   { .i64 = 0xFFFFFFFF },
+
+  // mod: "ops", func: "test_memory_size", test: 1, type: "result", num: 1
+  { .i32 = 1 },
 };
 
 typedef struct {
@@ -2164,6 +2167,12 @@ TEST_CALLS[] = {{
   .params = { 184, 1 },
   .result = { 185, 1 },
   .type   = PWASM_RESULT_TYPE_I64,
+}, {
+  .text   = "ops.test_memory_size",
+  .mod    = "ops",
+  .func   = "test_memory_size",
+  .result = { 186, 1 },
+  .type   = PWASM_RESULT_TYPE_I32,
 }};
 
 static bool is_valid_result_type(

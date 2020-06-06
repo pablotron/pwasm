@@ -17,6 +17,13 @@
 #define PWASM_BATCH_SIZE (1 << 7)
 
 /**
+ * Page size of WASM memory chunks.
+ *
+ * Note: Defined by the spec to be 2^16
+ */
+#define PWASM_PAGE_SIZE (1 << 16)
+
+/**
  * Maximum depth of checking stack.
  *
  * Note: currently incorrectly used for control frame stack in
@@ -12220,7 +12227,7 @@ pwasm_new_interp_add_mod_mems(
 
   for (size_t i = 0; i < mod->num_mems; i++) {
     // allocate buffer
-    const size_t num_bytes = mod->mems[i].min * (1 << 16);
+    const size_t num_bytes = mod->mems[i].min * PWASM_PAGE_SIZE;
     uint8_t * const ptr = pwasm_realloc(env->mem_ctx, NULL, num_bytes);
     if (!ptr && num_bytes) {
       // log error, return failure
@@ -12882,13 +12889,20 @@ pwasm_new_interp_mem_size(
   const uint32_t mem_id,
   uint32_t * const ret_val
 ) {
-  // TODO
-  (void) env;
-  (void) mem_id;
-  (void) ret_val;
+  // get memory, check for error
+  pwasm_env_mem_t * const mem = pwasm_new_interp_get_mem(env, mem_id);
+  if (!mem) {
+    // return failure
+    return false;
+  }
 
-  // return failure
-  return false;
+  if (ret_val) {
+    // save result
+    *ret_val = mem->buf.len / PWASM_PAGE_SIZE;
+  }
+
+  // return success
+  return true;
 }
 
 static bool
