@@ -2833,6 +2833,194 @@ TEST_VALS[] = {
   { .f32 = 60 },
   { .f32 = 1 },
   { .f32 = 60 },
+
+  // mod: "ops", func: "test_f64_abs", test: 0, params: 1, result: 1
+  { .f64 = 0 },
+  { .f64 = 0 },
+
+  // mod: "ops", func: "test_f64_abs", test: 1, params: 1, result: 1
+  { .f64 = -1 },
+  { .f64 = 1 },
+
+  // mod: "ops", func: "test_f64_abs", test: 2, params: 1, result: 1
+  { .f64 = 1 },
+  { .f64 = 1 },
+
+  // mod: "ops", func: "test_f64_neg", test: 0, params: 1, result: 1
+  { .f64 = 0 },
+  { .f64 = 0 },
+
+  // mod: "ops", func: "test_f64_neg", test: 1, params: 1, result: 1
+  { .f64 = -1 },
+  { .f64 = 1 },
+
+  // mod: "ops", func: "test_f64_neg", test: 2, params: 1, result: 1
+  { .f64 = 1 },
+  { .f64 = -1 },
+
+  // mod: "ops", func: "test_f64_ceil", test: 0, params: 1, result: 1
+  { .f64 = 1.1 },
+  { .f64 = 2 },
+
+  // mod: "ops", func: "test_f64_ceil", test: 1, params: 1, result: 1
+  { .f64 = -1.1 },
+  { .f64 = -1 },
+
+  // mod: "ops", func: "test_f64_ceil", test: 2, params: 1, result: 1
+  { .f64 = 2 },
+  { .f64 = 2 },
+
+  // mod: "ops", func: "test_f64_floor", test: 0, params: 1, result: 1
+  { .f64 = 2.1 },
+  { .f64 = 2 },
+
+  // mod: "ops", func: "test_f64_floor", test: 1, params: 1, result: 1
+  { .f64 = 0 },
+  { .f64 = 0 },
+
+  // mod: "ops", func: "test_f64_floor", test: 2, params: 1, result: 1
+  { .f64 = -0.9 },
+  { .f64 = -1 },
+
+  // mod: "ops", func: "test_f64_trunc", test: 0, params: 1, result: 1
+  { .f64 = 0 },
+  { .f64 = 0 },
+
+  // mod: "ops", func: "test_f64_trunc", test: 1, params: 1, result: 1
+  { .f64 = 1.1 },
+  { .f64 = 1 },
+
+  // mod: "ops", func: "test_f64_trunc", test: 2, params: 1, result: 1
+  { .f64 = 1.9 },
+  { .f64 = 1 },
+
+  // mod: "ops", func: "test_f64_nearest", test: 0, params: 1, result: 1
+  { .f64 = 0 },
+  { .f64 = 0 },
+
+  // mod: "ops", func: "test_f64_nearest", test: 1, params: 1, result: 1
+  { .f64 = 0.4 },
+  { .f64 = 0 },
+
+  // mod: "ops", func: "test_f64_nearest", test: 2, params: 1, result: 1
+  { .f64 = -0.4 },
+  { .f64 = -0 },
+
+  // mod: "ops", func: "test_f64_nearest", test: 3, params: 1, result: 1
+  { .f64 = 0.9 },
+  { .f64 = 1 },
+
+  // mod: "ops", func: "test_f64_nearest", test: 4, params: 1, result: 1
+  { .f64 = -0.9 },
+  { .f64 = -1 },
+
+  // mod: "ops", func: "test_f64_sqrt", test: 0, params: 1, result: 1
+  { .f64 = 4.0 },
+  { .f64 = 2.0 },
+
+  // mod: "ops", func: "test_f64_sqrt", test: 1, params: 1, result: 1
+  { .f64 = 81.0 },
+  { .f64 = 9.0 },
+
+  // mod: "ops", func: "test_f64_add", test: 0, params: 2, result: 1
+  { .f64 = 81.0 },
+  { .f64 = 9.0 },
+  { .f64 = 90.0 },
+
+  // mod: "ops", func: "test_f64_add", test: 1, params: 2, result: 1
+  { .f64 = 81.0 },
+  { .f64 = -9.0 },
+  { .f64 = 72.0 },
+
+  // mod: "ops", func: "test_f64_sub", test: 0, params: 2, result: 1
+  { .f64 = 867.0 },
+  { .f64 = 530.0 },
+  { .f64 = 337.0 },
+
+  // mod: "ops", func: "test_f64_sub", test: 1, params: 2, result: 1
+  { .f64 = 3141.0 },
+  { .f64 = 5926.0 },
+  { .f64 = -2785.0 },
+
+  // mod: "ops", func: "test_f64_mul", test: 0, params: 2, result: 1
+  { .f64 = 0.0 },
+  { .f64 = 1.0 },
+  { .f64 = 0.0 },
+
+  // mod: "ops", func: "test_f64_mul", test: 1, params: 2, result: 1
+  { .f64 = 12.0 },
+  { .f64 = 20.0 },
+  { .f64 = 240.0 },
+
+  // mod: "ops", func: "test_f64_mul", test: 2, params: 2, result: 1
+  { .f64 = -12.0 },
+  { .f64 = 20.0 },
+  { .f64 = -240.0 },
+
+  // mod: "ops", func: "test_f64_div", test: 0, params: 2, result: 1
+  { .f64 = -12.0 },
+  { .f64 = 20.0 },
+  { .f64 = -0.6 },
+
+  // mod: "ops", func: "test_f64_div", test: 1, params: 2, result: 1
+  { .f64 = 0 },
+  { .f64 = 1.0 },
+  { .f64 = 0 },
+
+  // mod: "ops", func: "test_f64_div", test: 2, params: 2, result: 1
+  { .f64 = 35 },
+  { .f64 = 5 },
+  { .f64 = 7 },
+
+  // mod: "ops", func: "test_f64_min", test: 0, params: 2, result: 1
+  { .f64 = 0 },
+  { .f64 = 0 },
+  { .f64 = 0 },
+
+  // mod: "ops", func: "test_f64_min", test: 1, params: 2, result: 1
+  { .f64 = 0 },
+  { .f64 = 1024 },
+  { .f64 = 0 },
+
+  // mod: "ops", func: "test_f64_min", test: 2, params: 2, result: 1
+  { .f64 = 512 },
+  { .f64 = -512 },
+  { .f64 = -512 },
+
+  // mod: "ops", func: "test_f64_max", test: 0, params: 2, result: 1
+  { .f64 = 0 },
+  { .f64 = 0 },
+  { .f64 = 0 },
+
+  // mod: "ops", func: "test_f64_max", test: 1, params: 2, result: 1
+  { .f64 = 10 },
+  { .f64 = 0 },
+  { .f64 = 10 },
+
+  // mod: "ops", func: "test_f64_max", test: 2, params: 2, result: 1
+  { .f64 = -20 },
+  { .f64 = 20 },
+  { .f64 = 20 },
+
+  // mod: "ops", func: "test_f64_copysign", test: 0, params: 2, result: 1
+  { .f64 = -30 },
+  { .f64 = 1 },
+  { .f64 = 30 },
+
+  // mod: "ops", func: "test_f64_copysign", test: 1, params: 2, result: 1
+  { .f64 = -40 },
+  { .f64 = -1 },
+  { .f64 = -40 },
+
+  // mod: "ops", func: "test_f64_copysign", test: 2, params: 2, result: 1
+  { .f64 = 50 },
+  { .f64 = -1 },
+  { .f64 = -50 },
+
+  // mod: "ops", func: "test_f64_copysign", test: 3, params: 2, result: 1
+  { .f64 = 60 },
+  { .f64 = 1 },
+  { .f64 = 60 },
 };
 
 typedef struct {
@@ -5518,6 +5706,300 @@ TEST_CALLS[] = {{
   .params = { 1011, 2 },
   .result = { 1013, 1 },
   .type   = PWASM_RESULT_TYPE_F32,
+}, {
+  .text   = "ops.test_f64_abs(0)",
+  .mod    = "ops",
+  .func   = "test_f64_abs",
+  .params = { 1014, 1 },
+  .result = { 1015, 1 },
+  .type   = PWASM_RESULT_TYPE_F64,
+}, {
+  .text   = "ops.test_f64_abs(1)",
+  .mod    = "ops",
+  .func   = "test_f64_abs",
+  .params = { 1016, 1 },
+  .result = { 1017, 1 },
+  .type   = PWASM_RESULT_TYPE_F64,
+}, {
+  .text   = "ops.test_f64_abs(2)",
+  .mod    = "ops",
+  .func   = "test_f64_abs",
+  .params = { 1018, 1 },
+  .result = { 1019, 1 },
+  .type   = PWASM_RESULT_TYPE_F64,
+}, {
+  .text   = "ops.test_f64_neg(0)",
+  .mod    = "ops",
+  .func   = "test_f64_neg",
+  .params = { 1020, 1 },
+  .result = { 1021, 1 },
+  .type   = PWASM_RESULT_TYPE_F64,
+}, {
+  .text   = "ops.test_f64_neg(1)",
+  .mod    = "ops",
+  .func   = "test_f64_neg",
+  .params = { 1022, 1 },
+  .result = { 1023, 1 },
+  .type   = PWASM_RESULT_TYPE_F64,
+}, {
+  .text   = "ops.test_f64_neg(2)",
+  .mod    = "ops",
+  .func   = "test_f64_neg",
+  .params = { 1024, 1 },
+  .result = { 1025, 1 },
+  .type   = PWASM_RESULT_TYPE_F64,
+}, {
+  .text   = "ops.test_f64_ceil(0)",
+  .mod    = "ops",
+  .func   = "test_f64_ceil",
+  .params = { 1026, 1 },
+  .result = { 1027, 1 },
+  .type   = PWASM_RESULT_TYPE_F64,
+}, {
+  .text   = "ops.test_f64_ceil(1)",
+  .mod    = "ops",
+  .func   = "test_f64_ceil",
+  .params = { 1028, 1 },
+  .result = { 1029, 1 },
+  .type   = PWASM_RESULT_TYPE_F64,
+}, {
+  .text   = "ops.test_f64_ceil(2)",
+  .mod    = "ops",
+  .func   = "test_f64_ceil",
+  .params = { 1030, 1 },
+  .result = { 1031, 1 },
+  .type   = PWASM_RESULT_TYPE_F64,
+}, {
+  .text   = "ops.test_f64_floor(0)",
+  .mod    = "ops",
+  .func   = "test_f64_floor",
+  .params = { 1032, 1 },
+  .result = { 1033, 1 },
+  .type   = PWASM_RESULT_TYPE_F64,
+}, {
+  .text   = "ops.test_f64_floor(1)",
+  .mod    = "ops",
+  .func   = "test_f64_floor",
+  .params = { 1034, 1 },
+  .result = { 1035, 1 },
+  .type   = PWASM_RESULT_TYPE_F64,
+}, {
+  .text   = "ops.test_f64_floor(2)",
+  .mod    = "ops",
+  .func   = "test_f64_floor",
+  .params = { 1036, 1 },
+  .result = { 1037, 1 },
+  .type   = PWASM_RESULT_TYPE_F64,
+}, {
+  .text   = "ops.test_f64_trunc(0)",
+  .mod    = "ops",
+  .func   = "test_f64_trunc",
+  .params = { 1038, 1 },
+  .result = { 1039, 1 },
+  .type   = PWASM_RESULT_TYPE_F64,
+}, {
+  .text   = "ops.test_f64_trunc(1)",
+  .mod    = "ops",
+  .func   = "test_f64_trunc",
+  .params = { 1040, 1 },
+  .result = { 1041, 1 },
+  .type   = PWASM_RESULT_TYPE_F64,
+}, {
+  .text   = "ops.test_f64_trunc(2)",
+  .mod    = "ops",
+  .func   = "test_f64_trunc",
+  .params = { 1042, 1 },
+  .result = { 1043, 1 },
+  .type   = PWASM_RESULT_TYPE_F64,
+}, {
+  .text   = "ops.test_f64_nearest(0)",
+  .mod    = "ops",
+  .func   = "test_f64_nearest",
+  .params = { 1044, 1 },
+  .result = { 1045, 1 },
+  .type   = PWASM_RESULT_TYPE_F64,
+}, {
+  .text   = "ops.test_f64_nearest(1)",
+  .mod    = "ops",
+  .func   = "test_f64_nearest",
+  .params = { 1046, 1 },
+  .result = { 1047, 1 },
+  .type   = PWASM_RESULT_TYPE_F64,
+}, {
+  .text   = "ops.test_f64_nearest(2)",
+  .mod    = "ops",
+  .func   = "test_f64_nearest",
+  .params = { 1048, 1 },
+  .result = { 1049, 1 },
+  .type   = PWASM_RESULT_TYPE_F64,
+}, {
+  .text   = "ops.test_f64_nearest(3)",
+  .mod    = "ops",
+  .func   = "test_f64_nearest",
+  .params = { 1050, 1 },
+  .result = { 1051, 1 },
+  .type   = PWASM_RESULT_TYPE_F64,
+}, {
+  .text   = "ops.test_f64_nearest(4)",
+  .mod    = "ops",
+  .func   = "test_f64_nearest",
+  .params = { 1052, 1 },
+  .result = { 1053, 1 },
+  .type   = PWASM_RESULT_TYPE_F64,
+}, {
+  .text   = "ops.test_f64_sqrt(0)",
+  .mod    = "ops",
+  .func   = "test_f64_sqrt",
+  .params = { 1054, 1 },
+  .result = { 1055, 1 },
+  .type   = PWASM_RESULT_TYPE_F64,
+}, {
+  .text   = "ops.test_f64_sqrt(1)",
+  .mod    = "ops",
+  .func   = "test_f64_sqrt",
+  .params = { 1056, 1 },
+  .result = { 1057, 1 },
+  .type   = PWASM_RESULT_TYPE_F64,
+}, {
+  .text   = "ops.test_f64_add(0)",
+  .mod    = "ops",
+  .func   = "test_f64_add",
+  .params = { 1058, 2 },
+  .result = { 1060, 1 },
+  .type   = PWASM_RESULT_TYPE_F64,
+}, {
+  .text   = "ops.test_f64_add(1)",
+  .mod    = "ops",
+  .func   = "test_f64_add",
+  .params = { 1061, 2 },
+  .result = { 1063, 1 },
+  .type   = PWASM_RESULT_TYPE_F64,
+}, {
+  .text   = "ops.test_f64_sub(0)",
+  .mod    = "ops",
+  .func   = "test_f64_sub",
+  .params = { 1064, 2 },
+  .result = { 1066, 1 },
+  .type   = PWASM_RESULT_TYPE_F64,
+}, {
+  .text   = "ops.test_f64_sub(1)",
+  .mod    = "ops",
+  .func   = "test_f64_sub",
+  .params = { 1067, 2 },
+  .result = { 1069, 1 },
+  .type   = PWASM_RESULT_TYPE_F64,
+}, {
+  .text   = "ops.test_f64_mul(0)",
+  .mod    = "ops",
+  .func   = "test_f64_mul",
+  .params = { 1070, 2 },
+  .result = { 1072, 1 },
+  .type   = PWASM_RESULT_TYPE_F64,
+}, {
+  .text   = "ops.test_f64_mul(1)",
+  .mod    = "ops",
+  .func   = "test_f64_mul",
+  .params = { 1073, 2 },
+  .result = { 1075, 1 },
+  .type   = PWASM_RESULT_TYPE_F64,
+}, {
+  .text   = "ops.test_f64_mul(2)",
+  .mod    = "ops",
+  .func   = "test_f64_mul",
+  .params = { 1076, 2 },
+  .result = { 1078, 1 },
+  .type   = PWASM_RESULT_TYPE_F64,
+}, {
+  .text   = "ops.test_f64_div(0)",
+  .mod    = "ops",
+  .func   = "test_f64_div",
+  .params = { 1079, 2 },
+  .result = { 1081, 1 },
+  .type   = PWASM_RESULT_TYPE_F64,
+}, {
+  .text   = "ops.test_f64_div(1)",
+  .mod    = "ops",
+  .func   = "test_f64_div",
+  .params = { 1082, 2 },
+  .result = { 1084, 1 },
+  .type   = PWASM_RESULT_TYPE_F64,
+}, {
+  .text   = "ops.test_f64_div(2)",
+  .mod    = "ops",
+  .func   = "test_f64_div",
+  .params = { 1085, 2 },
+  .result = { 1087, 1 },
+  .type   = PWASM_RESULT_TYPE_F64,
+}, {
+  .text   = "ops.test_f64_min(0)",
+  .mod    = "ops",
+  .func   = "test_f64_min",
+  .params = { 1088, 2 },
+  .result = { 1090, 1 },
+  .type   = PWASM_RESULT_TYPE_F64,
+}, {
+  .text   = "ops.test_f64_min(1)",
+  .mod    = "ops",
+  .func   = "test_f64_min",
+  .params = { 1091, 2 },
+  .result = { 1093, 1 },
+  .type   = PWASM_RESULT_TYPE_F64,
+}, {
+  .text   = "ops.test_f64_min(2)",
+  .mod    = "ops",
+  .func   = "test_f64_min",
+  .params = { 1094, 2 },
+  .result = { 1096, 1 },
+  .type   = PWASM_RESULT_TYPE_F64,
+}, {
+  .text   = "ops.test_f64_max(0)",
+  .mod    = "ops",
+  .func   = "test_f64_max",
+  .params = { 1097, 2 },
+  .result = { 1099, 1 },
+  .type   = PWASM_RESULT_TYPE_F64,
+}, {
+  .text   = "ops.test_f64_max(1)",
+  .mod    = "ops",
+  .func   = "test_f64_max",
+  .params = { 1100, 2 },
+  .result = { 1102, 1 },
+  .type   = PWASM_RESULT_TYPE_F64,
+}, {
+  .text   = "ops.test_f64_max(2)",
+  .mod    = "ops",
+  .func   = "test_f64_max",
+  .params = { 1103, 2 },
+  .result = { 1105, 1 },
+  .type   = PWASM_RESULT_TYPE_F64,
+}, {
+  .text   = "ops.test_f64_copysign(0)",
+  .mod    = "ops",
+  .func   = "test_f64_copysign",
+  .params = { 1106, 2 },
+  .result = { 1108, 1 },
+  .type   = PWASM_RESULT_TYPE_F64,
+}, {
+  .text   = "ops.test_f64_copysign(1)",
+  .mod    = "ops",
+  .func   = "test_f64_copysign",
+  .params = { 1109, 2 },
+  .result = { 1111, 1 },
+  .type   = PWASM_RESULT_TYPE_F64,
+}, {
+  .text   = "ops.test_f64_copysign(2)",
+  .mod    = "ops",
+  .func   = "test_f64_copysign",
+  .params = { 1112, 2 },
+  .result = { 1114, 1 },
+  .type   = PWASM_RESULT_TYPE_F64,
+}, {
+  .text   = "ops.test_f64_copysign(2)",
+  .mod    = "ops",
+  .func   = "test_f64_copysign",
+  .params = { 1115, 2 },
+  .result = { 1117, 1 },
+  .type   = PWASM_RESULT_TYPE_F64,
 }};
 
 static bool is_valid_result_type(
