@@ -3417,6 +3417,38 @@ TEST_VALS[] = {
   // mod: "ops", func: "test_i64_extend32_s", test: 2, params: 1, result: 1
   { .i64 = 0xFFFFFFFF },
   { .i64 = -1 },
+
+  // mod: "ops", func: "test_i32_reinterpret_f32", test: 0, params: 1, result: 1
+  { .f32 = 0 },
+  { .i32 = 0 },
+
+  // mod: "ops", func: "test_i32_reinterpret_f32", test: 1, params: 1, result: 1
+  { .f32 = 3.14 },
+  { .i32 = 1078523331 },
+
+  // mod: "ops", func: "test_i64_reinterpret_f64", test: 0, params: 1, result: 1
+  { .f64 = 0 },
+  { .i64 = 0 },
+
+  // mod: "ops", func: "test_i64_reinterpret_f64", test: 1, params: 1, result: 1
+  { .f64 = 3.14 },
+  { .i64 = 4614253070214989087 },
+
+  // mod: "ops", func: "test_f32_reinterpret_i32", test: 0, params: 1, result: 1
+  { .i32 = 0 },
+  { .f32 = 0 },
+
+  // mod: "ops", func: "test_f32_reinterpret_i32", test: 1, params: 1, result: 1
+  { .i32 = 1073741824 },
+  { .f32 = 2.0 },
+
+  // mod: "ops", func: "test_f64_reinterpret_i64", test: 0, params: 1, result: 1
+  { .i64 = 0 },
+  { .f64 = 0 },
+
+  // mod: "ops", func: "test_f64_reinterpret_i64", test: 1, params: 1, result: 1
+  { .i64 = 0x4000000000000000 },
+  { .f64 = 2.0 },
 };
 
 typedef struct {
@@ -7089,6 +7121,62 @@ TEST_CALLS[] = {{
   .params = { 1314, 1 },
   .result = { 1315, 1 },
   .type   = PWASM_RESULT_TYPE_I64,
+}, {
+  .text   = "ops.test_i32_reinterpret_f32(0)",
+  .mod    = "ops",
+  .func   = "test_i32_reinterpret_f32",
+  .params = { 1316, 1 },
+  .result = { 1317, 1 },
+  .type   = PWASM_RESULT_TYPE_I32,
+}, {
+  .text   = "ops.test_i32_reinterpret_f32(1)",
+  .mod    = "ops",
+  .func   = "test_i32_reinterpret_f32",
+  .params = { 1318, 1 },
+  .result = { 1319, 1 },
+  .type   = PWASM_RESULT_TYPE_I32,
+}, {
+  .text   = "ops.test_i64_reinterpret_f64(0)",
+  .mod    = "ops",
+  .func   = "test_i64_reinterpret_f64",
+  .params = { 1320, 1 },
+  .result = { 1321, 1 },
+  .type   = PWASM_RESULT_TYPE_I64,
+}, {
+  .text   = "ops.test_i64_reinterpret_f64(1)",
+  .mod    = "ops",
+  .func   = "test_i64_reinterpret_f64",
+  .params = { 1322, 1 },
+  .result = { 1323, 1 },
+  .type   = PWASM_RESULT_TYPE_I64,
+}, {
+  .text   = "ops.test_f32_reinterpret_i32(0)",
+  .mod    = "ops",
+  .func   = "test_f32_reinterpret_i32",
+  .params = { 1324, 1 },
+  .result = { 1325, 1 },
+  .type   = PWASM_RESULT_TYPE_F32,
+}, {
+  .text   = "ops.test_f32_reinterpret_i32(1)",
+  .mod    = "ops",
+  .func   = "test_f32_reinterpret_i32",
+  .params = { 1326, 1 },
+  .result = { 1327, 1 },
+  .type   = PWASM_RESULT_TYPE_F32,
+}, {
+  .text   = "ops.test_f64_reinterpret_i64(0)",
+  .mod    = "ops",
+  .func   = "test_f64_reinterpret_i64",
+  .params = { 1328, 1 },
+  .result = { 1329, 1 },
+  .type   = PWASM_RESULT_TYPE_F64,
+}, {
+  .text   = "ops.test_f64_reinterpret_i64(1)",
+  .mod    = "ops",
+  .func   = "test_f64_reinterpret_i64",
+  .params = { 1330, 1 },
+  .result = { 1331, 1 },
+  .type   = PWASM_RESULT_TYPE_F64,
 }};
 
 static bool is_valid_result_type(
