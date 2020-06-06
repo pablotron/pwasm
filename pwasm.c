@@ -12912,14 +12912,69 @@ pwasm_new_interp_mem_grow(
   const uint32_t grow,
   uint32_t * const ret_val
 ) {
-  // TODO
-  (void) env;
-  (void) mem_id;
-  (void) grow;
-  (void) ret_val;
+  // get memory, check for error
+  pwasm_env_mem_t * const mem = pwasm_new_interp_get_mem(env, mem_id);
+  if (!mem) {
+    // return failure (trap)
+    return false;
+  }
 
-  // return failure
-  return false;
+  // get current size, in number of pages
+  const uint32_t old_size = mem->buf.len / PWASM_PAGE_SIZE;
+  const uint32_t new_size = old_size + grow;
+
+  // check upper bound
+  if (mem->limits.has_max && new_size > mem->limits.max) {
+    // at this point we save a -1 to the return value pointer to
+    // indicate failure, then return true from the function so that it
+    // doesn't trap.
+    //
+    // see https://webassembly.github.io/spec/core/exec/instructions.html#exec-memory-size
+
+    if (ret_val) {
+      // return -1 to indicate failure
+      *ret_val = -1;
+    }
+
+    // return "success"
+    return true;
+  }
+
+  if (new_size > 0) {
+    // get old pointer and number of bytes
+    void *old_ptr = (void*) mem->buf.ptr;
+    const size_t num_bytes = new_size * PWASM_PAGE_SIZE;
+
+    // resize buffer, check for error
+    uint8_t * const ptr = pwasm_realloc(env->mem_ctx, old_ptr, num_bytes);
+    if (!ptr && num_bytes) {
+      // at this point we save a -1 to the return value pointer to
+      // indicate failure, then return true from the function so that it
+      // doesn't trap.
+      //
+      // see https://webassembly.github.io/spec/core/exec/instructions.html#exec-memory-size
+
+      if (ret_val) {
+        // return -1 to indicate failure
+        *ret_val = -1;
+      }
+
+      // return "success"
+      return true;
+    }
+
+    // update buffer attributes
+    mem->buf.ptr = ptr;
+    mem->buf.len = num_bytes;
+  }
+
+  if (ret_val) {
+    // update return value
+    *ret_val = old_size;
+  }
+
+  // return success
+  return true;
 }
 
 static bool
