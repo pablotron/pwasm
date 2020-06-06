@@ -12371,7 +12371,7 @@ pwasm_new_interp_init_globals(
     }
 
     // get destination offset, save value to global
-    const uint32_t ofs = interp_u32s[frame.mod->globals.ofs + i];
+    const uint32_t ofs = interp_u32s[i];
     env_globals[ofs].val = stack->pos ? stack->ptr[0] : zero;
   }
 
