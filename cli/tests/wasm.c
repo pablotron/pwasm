@@ -1879,6 +1879,101 @@ TEST_VALS[] = {
   { .i64 = 18446744073709551615ULL },
   { .i64 = 18446744073709551614ULL },
   { .i32 = 1 },
+
+  // mod: "ops", func: "test_f32_eq", test: 0, params: 2, result: 1
+  { .f32 = 0 },
+  { .f32 = 0 },
+  { .i32 = 1 },
+
+  // mod: "ops", func: "test_f32_eq", test: 1, params: 2, result: 1
+  { .f32 = 1 },
+  { .f32 = 0 },
+  { .i32 = 0 },
+
+  // mod: "ops", func: "test_f32_eq", test: 2, params: 2, result: 1
+  { .f32 = 3.14159 },
+  { .f32 = 3.14159 },
+  { .i32 = 1 },
+
+  // mod: "ops", func: "test_f32_ne", test: 0, params: 2, result: 1
+  { .f32 = 0 },
+  { .f32 = 0 },
+  { .i32 = 0 },
+
+  // mod: "ops", func: "test_f32_ne", test: 1, params: 2, result: 1
+  { .f32 = 1 },
+  { .f32 = 0 },
+  { .i32 = 1 },
+
+  // mod: "ops", func: "test_f32_ne", test: 2, params: 2, result: 1
+  { .f32 = 3.14159 },
+  { .f32 = 3.14159 },
+  { .i32 = 0 },
+
+  // mod: "ops", func: "test_f32_lt", test: 0, params: 2, result: 1
+  { .f32 = 0 },
+  { .f32 = 0 },
+  { .i32 = 0 },
+
+  // mod: "ops", func: "test_f32_lt", test: 1, params: 2, result: 1
+  { .f32 = -1 },
+  { .f32 = 0 },
+  { .i32 = 1 },
+
+  // mod: "ops", func: "test_f32_lt", test: 2, params: 2, result: 1
+  { .f32 = 314.59 },
+  { .f32 = -314.59 },
+  { .i32 = 0 },
+
+  // mod: "ops", func: "test_f32_gt", test: 0, params: 2, result: 1
+  { .f32 = 0 },
+  { .f32 = 0 },
+  { .i32 = 0 },
+
+  // mod: "ops", func: "test_f32_gt", test: 1, params: 2, result: 1
+  { .f32 = 0 },
+  { .f32 = -1 },
+  { .i32 = 1 },
+
+  // mod: "ops", func: "test_f32_gt", test: 2, params: 2, result: 1
+  { .f32 = -31.4 },
+  { .f32 = 0 },
+  { .i32 = 0 },
+
+  // mod: "ops", func: "test_f32_gt", test: 3, params: 2, result: 1
+  { .f32 = 314.59 },
+  { .f32 = -314.59 },
+  { .i32 = 1 },
+
+  // mod: "ops", func: "test_f32_le", test: 0, params: 2, result: 1
+  { .f32 = 0 },
+  { .f32 = 0 },
+  { .i32 = 1 },
+
+  // mod: "ops", func: "test_f32_le", test: 1, params: 2, result: 1
+  { .f32 = -3141.5 },
+  { .f32 = 0 },
+  { .i32 = 1 },
+
+  // mod: "ops", func: "test_f32_le", test: 2, params: 2, result: 1
+  { .f32 = 1 },
+  { .f32 = 0 },
+  { .i32 = 0 },
+
+  // mod: "ops", func: "test_f32_ge", test: 0, params: 2, result: 1
+  { .f32 = 0 },
+  { .f32 = 0 },
+  { .i32 = 1 },
+
+  // mod: "ops", func: "test_f32_ge", test: 1, params: 2, result: 1
+  { .f32 = 0 },
+  { .f32 = 1 },
+  { .i32 = 0 },
+
+  // mod: "ops", func: "test_f32_ge", test: 2, params: 2, result: 1
+  { .f32 = 3141.5 },
+  { .f32 = -3141.5 },
+  { .i32 = 1 },
 };
 
 typedef struct {
@@ -3163,6 +3258,139 @@ TEST_CALLS[] = {{
   .func   = "test_i64_ge_u",
   .params = { 463, 2 },
   .result = { 465, 1 },
+  .type   = PWASM_RESULT_TYPE_I32,
+}, {
+  .text   = "ops.test_f32_eq(0)",
+  .mod    = "ops",
+  .func   = "test_f32_eq",
+  .params = { 466, 2 },
+  .result = { 468, 1 },
+  .type   = PWASM_RESULT_TYPE_I32,
+}, {
+  .text   = "ops.test_f32_eq(1)",
+  .mod    = "ops",
+  .func   = "test_f32_eq",
+  .params = { 469, 2 },
+  .result = { 471, 1 },
+  .type   = PWASM_RESULT_TYPE_I32,
+}, {
+  .text   = "ops.test_f32_eq(2)",
+  .mod    = "ops",
+  .func   = "test_f32_eq",
+  .params = { 472, 2 },
+  .result = { 474, 1 },
+  .type   = PWASM_RESULT_TYPE_I32,
+}, {
+  .text   = "ops.test_f32_ne(0)",
+  .mod    = "ops",
+  .func   = "test_f32_ne",
+  .params = { 475, 2 },
+  .result = { 477, 1 },
+  .type   = PWASM_RESULT_TYPE_I32,
+}, {
+  .text   = "ops.test_f32_ne(1)",
+  .mod    = "ops",
+  .func   = "test_f32_ne",
+  .params = { 478, 2 },
+  .result = { 480, 1 },
+  .type   = PWASM_RESULT_TYPE_I32,
+}, {
+  .text   = "ops.test_f32_ne(2)",
+  .mod    = "ops",
+  .func   = "test_f32_ne",
+  .params = { 481, 2 },
+  .result = { 483, 1 },
+  .type   = PWASM_RESULT_TYPE_I32,
+}, {
+  .text   = "ops.test_f32_lt(0)",
+  .mod    = "ops",
+  .func   = "test_f32_lt",
+  .params = { 484, 2 },
+  .result = { 486, 1 },
+  .type   = PWASM_RESULT_TYPE_I32,
+}, {
+  .text   = "ops.test_f32_lt(1)",
+  .mod    = "ops",
+  .func   = "test_f32_lt",
+  .params = { 487, 2 },
+  .result = { 489, 1 },
+  .type   = PWASM_RESULT_TYPE_I32,
+}, {
+  .text   = "ops.test_f32_lt(2)",
+  .mod    = "ops",
+  .func   = "test_f32_lt",
+  .params = { 490, 2 },
+  .result = { 492, 1 },
+  .type   = PWASM_RESULT_TYPE_I32,
+}, {
+  .text   = "ops.test_f32_gt(0)",
+  .mod    = "ops",
+  .func   = "test_f32_gt",
+  .params = { 493, 2 },
+  .result = { 495, 1 },
+  .type   = PWASM_RESULT_TYPE_I32,
+}, {
+  .text   = "ops.test_f32_gt(1)",
+  .mod    = "ops",
+  .func   = "test_f32_gt",
+  .params = { 496, 2 },
+  .result = { 498, 1 },
+  .type   = PWASM_RESULT_TYPE_I32,
+}, {
+  .text   = "ops.test_f32_gt(2)",
+  .mod    = "ops",
+  .func   = "test_f32_gt",
+  .params = { 499, 2 },
+  .result = { 501, 1 },
+  .type   = PWASM_RESULT_TYPE_I32,
+}, {
+  .text   = "ops.test_f32_gt(3)",
+  .mod    = "ops",
+  .func   = "test_f32_gt",
+  .params = { 502, 2 },
+  .result = { 504, 1 },
+  .type   = PWASM_RESULT_TYPE_I32,
+}, {
+  .text   = "ops.test_f32_le(0)",
+  .mod    = "ops",
+  .func   = "test_f32_le",
+  .params = { 505, 2 },
+  .result = { 507, 1 },
+  .type   = PWASM_RESULT_TYPE_I32,
+}, {
+  .text   = "ops.test_f32_le(1)",
+  .mod    = "ops",
+  .func   = "test_f32_le",
+  .params = { 508, 2 },
+  .result = { 510, 1 },
+  .type   = PWASM_RESULT_TYPE_I32,
+}, {
+  .text   = "ops.test_f32_le(2)",
+  .mod    = "ops",
+  .func   = "test_f32_le",
+  .params = { 511, 2 },
+  .result = { 513, 1 },
+  .type   = PWASM_RESULT_TYPE_I32,
+}, {
+  .text   = "ops.test_f32_ge(0)",
+  .mod    = "ops",
+  .func   = "test_f32_ge",
+  .params = { 514, 2 },
+  .result = { 516, 1 },
+  .type   = PWASM_RESULT_TYPE_I32,
+}, {
+  .text   = "ops.test_f32_ge(1)",
+  .mod    = "ops",
+  .func   = "test_f32_ge",
+  .params = { 517, 2 },
+  .result = { 519, 1 },
+  .type   = PWASM_RESULT_TYPE_I32,
+}, {
+  .text   = "ops.test_f32_ge(2)",
+  .mod    = "ops",
+  .func   = "test_f32_ge",
+  .params = { 520, 2 },
+  .result = { 522, 1 },
   .type   = PWASM_RESULT_TYPE_I32,
 }};
 
