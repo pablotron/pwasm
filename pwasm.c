@@ -14574,8 +14574,8 @@ pwasm_new_interp_eval_expr(
     case PWASM_OP_F64_REINTERPRET_I64:
       {
         const union {
-          uint32_t i64;
-          float f64;
+          uint64_t i64;
+          double f64;
         } v = { .i64 = stack->ptr[stack->pos - 1].i64 };
         stack->ptr[stack->pos - 1].f64 = v.f64;
       }
