@@ -14128,7 +14128,7 @@ pwasm_new_interp_eval_expr(
     case PWASM_OP_I64_SHL:
       {
         const uint64_t a = stack->ptr[stack->pos - 2].i64;
-        const uint64_t b = stack->ptr[stack->pos - 1].i64;
+        const uint64_t b = stack->ptr[stack->pos - 1].i64 & 0x3F;
         stack->ptr[stack->pos - 2].i64 = a << b;
         stack->pos--;
       }
@@ -14137,7 +14137,7 @@ pwasm_new_interp_eval_expr(
     case PWASM_OP_I64_SHR_S:
       {
         const int64_t a = (int64_t) stack->ptr[stack->pos - 2].i64;
-        const uint64_t b = stack->ptr[stack->pos - 1].i64;
+        const uint64_t b = stack->ptr[stack->pos - 1].i64 & 0x3F;
         stack->ptr[stack->pos - 2].i64 = a >> b;
         stack->pos--;
       }
@@ -14146,7 +14146,7 @@ pwasm_new_interp_eval_expr(
     case PWASM_OP_I64_SHR_U:
       {
         const uint64_t a = stack->ptr[stack->pos - 2].i64;
-        const uint64_t b = stack->ptr[stack->pos - 1].i64;
+        const uint64_t b = stack->ptr[stack->pos - 1].i64 & 0x3F;
         stack->ptr[stack->pos - 2].i64 = a >> b;
         stack->pos--;
       }
@@ -14155,7 +14155,7 @@ pwasm_new_interp_eval_expr(
     case PWASM_OP_I64_ROTL:
       {
         const uint64_t a = stack->ptr[stack->pos - 2].i64;
-        const uint64_t b = stack->ptr[stack->pos - 1].i64 & 0x7F;
+        const uint64_t b = stack->ptr[stack->pos - 1].i64 & 0x3F;
         stack->ptr[stack->pos - 2].i64 = (a << b) | (a >> (64 - b));
         stack->pos--;
       }
@@ -14164,7 +14164,7 @@ pwasm_new_interp_eval_expr(
     case PWASM_OP_I64_ROTR:
       {
         const uint64_t a = stack->ptr[stack->pos - 2].i64;
-        const uint64_t b = stack->ptr[stack->pos - 1].i64 & 0x7F;
+        const uint64_t b = stack->ptr[stack->pos - 1].i64 & 0x3F;
         stack->ptr[stack->pos - 2].i64 = (a << (64 - b)) | (a >> b);
         stack->pos--;
       }
