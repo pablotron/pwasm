@@ -2269,6 +2269,21 @@ TEST_VALS[] = {
   { .i32 = 0x00000001 },
   { .i32 = 36 },
   { .i32 = 0x00000010 },
+
+  // mod: "ops", func: "test_i32_shr_s", test: 0, params: 2, result: 1
+  { .i32 = 0x00000001 },
+  { .i32 = 0 },
+  { .i32 = 0x00000001 },
+
+  // mod: "ops", func: "test_i32_shr_s", test: 1, params: 2, result: 1
+  { .i32 = 0x10000010 },
+  { .i32 = 1 },
+  { .i32 = 0x10000001 },
+
+  // mod: "ops", func: "test_i32_shr_s", test: 2, params: 2, result: 1
+  { .i32 = 0x10000010 },
+  { .i32 = 2 },
+  { .i32 = 0x10000000 },
 };
 
 typedef struct {
@@ -4120,6 +4135,27 @@ TEST_CALLS[] = {{
   .func   = "test_i32_shl",
   .params = { 691, 2 },
   .result = { 693, 1 },
+  .type   = PWASM_RESULT_TYPE_I32,
+}, {
+  .text   = "ops.test_i32_shr_s(0)",
+  .mod    = "ops",
+  .func   = "test_i32_shr_s",
+  .params = { 694, 2 },
+  .result = { 696, 1 },
+  .type   = PWASM_RESULT_TYPE_I32,
+}, {
+  .text   = "ops.test_i32_shr_s(1)",
+  .mod    = "ops",
+  .func   = "test_i32_shr_s",
+  .params = { 697, 2 },
+  .result = { 699, 1 },
+  .type   = PWASM_RESULT_TYPE_I32,
+}, {
+  .text   = "ops.test_i32_shr_s(2)",
+  .mod    = "ops",
+  .func   = "test_i32_shr_s",
+  .params = { 700, 2 },
+  .result = { 702, 1 },
   .type   = PWASM_RESULT_TYPE_I32,
 }};
 
