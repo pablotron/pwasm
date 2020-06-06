@@ -13946,7 +13946,7 @@ pwasm_new_interp_eval_expr(
     case PWASM_OP_I32_SHL:
       {
         const uint32_t a = stack->ptr[stack->pos - 2].i32;
-        const uint32_t b = stack->ptr[stack->pos - 1].i32;
+        const uint32_t b = stack->ptr[stack->pos - 1].i32 & 0x1F;
         stack->ptr[stack->pos - 2].i32 = a << b;
         stack->pos--;
       }
@@ -13955,7 +13955,7 @@ pwasm_new_interp_eval_expr(
     case PWASM_OP_I32_SHR_S:
       {
         const int32_t a = (int32_t) stack->ptr[stack->pos - 2].i32;
-        const uint32_t b = stack->ptr[stack->pos - 1].i32;
+        const uint32_t b = stack->ptr[stack->pos - 1].i32 & 0x1F;
         stack->ptr[stack->pos - 2].i32 = a >> b;
         stack->pos--;
       }
@@ -13964,7 +13964,7 @@ pwasm_new_interp_eval_expr(
     case PWASM_OP_I32_SHR_U:
       {
         const uint32_t a = stack->ptr[stack->pos - 2].i32;
-        const uint32_t b = stack->ptr[stack->pos - 1].i32;
+        const uint32_t b = stack->ptr[stack->pos - 1].i32 & 0x1F;
         stack->ptr[stack->pos - 2].i32 = a >> b;
         stack->pos--;
       }
@@ -13973,7 +13973,7 @@ pwasm_new_interp_eval_expr(
     case PWASM_OP_I32_ROTL:
       {
         const uint32_t a = stack->ptr[stack->pos - 2].i32;
-        const uint32_t b = stack->ptr[stack->pos - 1].i32 & 0x3F;
+        const uint32_t b = stack->ptr[stack->pos - 1].i32 & 0x1F;
         stack->ptr[stack->pos - 2].i32 = (a << b) | (a >> (32 - b));
         stack->pos--;
       }
@@ -13982,7 +13982,7 @@ pwasm_new_interp_eval_expr(
     case PWASM_OP_I32_ROTR:
       {
         const uint32_t a = stack->ptr[stack->pos - 2].i32;
-        const uint32_t b = stack->ptr[stack->pos - 1].i32 & 0x3F;
+        const uint32_t b = stack->ptr[stack->pos - 1].i32 & 0x1F;
         stack->ptr[stack->pos - 2].i32 = (a << (32 - b)) | (a >> b);
         stack->pos--;
       }
