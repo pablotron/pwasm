@@ -1900,14 +1900,14 @@
 
   ;;
   ;; test_f32_demote_f64:
-  ;;   expect f32 promote_f64($a)
+  ;;   expect f32 demote_f64($a)
   ;;
-  (func $test_f32_promote_f64 (param $a f64)
+  (func $test_f32_demote_f64 (param $a f64)
                               (result f32)
     (f32.demote_f64 (local.get $a))
   )
 
-  (export "test_f32_demote_f64" (func $test_f32_promote_f64))
+  (export "test_f32_demote_f64" (func $test_f32_demote_f64))
 
   ;;
   ;; test_f64_convert_i32_s:
