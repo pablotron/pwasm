@@ -2072,7 +2072,7 @@
     (i32.trunc_sat_f32_s (local.get $a))
   )
 
-  (export "test_i32.trunc_sat_f32_s" (func $test_i32_trunc_sat_f32_s))
+  (export "test_i32_trunc_sat_f32_s" (func $test_i32_trunc_sat_f32_s))
 
   ;;
   ;; test_i32_trunc_sat_f32_u
@@ -2083,7 +2083,7 @@
     (i32.trunc_sat_f32_u (local.get $a))
   )
 
-  (export "test_i32.trunc_sat_f32_u" (func $test_i32_trunc_sat_f32_u))
+  (export "test_i32_trunc_sat_f32_u" (func $test_i32_trunc_sat_f32_u))
 
   ;;
   ;; test_i32_trunc_sat_f64_s
@@ -2094,7 +2094,7 @@
     (i32.trunc_sat_f64_s (local.get $a))
   )
 
-  (export "test_i32.trunc_sat_f64_s" (func $test_i32_trunc_sat_f64_s))
+  (export "test_i32_trunc_sat_f64_s" (func $test_i32_trunc_sat_f64_s))
 
   ;;
   ;; test_i32_trunc_sat_f64_u
@@ -2105,7 +2105,7 @@
     (i32.trunc_sat_f64_u (local.get $a))
   )
 
-  (export "test_i32.trunc_sat_f64_u" (func $test_i32_trunc_sat_f64_u))
+  (export "test_i32_trunc_sat_f64_u" (func $test_i32_trunc_sat_f64_u))
 
   ;;
   ;; test_i64_trunc_sat_f32_s
@@ -2116,7 +2116,7 @@
     (i64.trunc_sat_f32_s (local.get $a))
   )
 
-  (export "test_i64.trunc_sat_f32_s" (func $test_i64_trunc_sat_f32_s))
+  (export "test_i64_trunc_sat_f32_s" (func $test_i64_trunc_sat_f32_s))
 
   ;;
   ;; test_i64_trunc_sat_f32_u
@@ -2127,7 +2127,7 @@
     (i64.trunc_sat_f32_u (local.get $a))
   )
 
-  (export "test_i64.trunc_sat_f32_u" (func $test_i64_trunc_sat_f32_u))
+  (export "test_i64_trunc_sat_f32_u" (func $test_i64_trunc_sat_f32_u))
 
   ;;
   ;; test_i64_trunc_sat_f64_s
@@ -2138,7 +2138,7 @@
     (i64.trunc_sat_f64_s (local.get $a))
   )
 
-  (export "test_i64.trunc_sat_f64_s" (func $test_i64_trunc_sat_f64_s))
+  (export "test_i64_trunc_sat_f64_s" (func $test_i64_trunc_sat_f64_s))
 
   ;;
   ;; test_i64_trunc_sat_f64_u
@@ -2149,5 +2149,5 @@
     (i64.trunc_sat_f64_u (local.get $a))
   )
 
-  (export "test_i64.trunc_sat_f64_u" (func $test_i64_trunc_sat_f64_u))
+  (export "test_i64_trunc_sat_f64_u" (func $test_i64_trunc_sat_f64_u))
 )
