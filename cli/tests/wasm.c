@@ -1321,6 +1321,15 @@ TEST_VALS[] = {
 
   // mod: "ops", func: "test_i32_load", test: 0, type: "result", num: 1
   { .i32 = 1234 },
+
+  // mod: "ops", func: "test_i64_load", test: 0, type: "result", num: 1
+  { .i64 = 987654321 },
+
+  // mod: "ops", func: "test_f32_load", test: 0, type: "result", num: 1
+  { .f32 = 3.14159 },
+
+  // mod: "ops", func: "test_f64_load", test: 0, type: "result", num: 1
+  { .f64 = 3.14159 },
 };
 
 typedef struct {
@@ -1673,6 +1682,24 @@ TEST_CALLS[] = {{
   .func   = "test_i32_load",
   .result = { 112, 1 },
   .type   = PWASM_RESULT_TYPE_I32,
+}, {
+  .text   = "ops.test_i64_load(0)",
+  .mod    = "ops",
+  .func   = "test_i64_load",
+  .result = { 113, 1 },
+  .type   = PWASM_RESULT_TYPE_I64,
+}, {
+  .text   = "ops.test_f32_load(0)",
+  .mod    = "ops",
+  .func   = "test_f32_load",
+  .result = { 114, 1 },
+  .type   = PWASM_RESULT_TYPE_F32,
+}, {
+  .text   = "ops.test_f64_load(0)",
+  .mod    = "ops",
+  .func   = "test_f64_load",
+  .result = { 115, 1 },
+  .type   = PWASM_RESULT_TYPE_F64,
 }};
 
 static bool is_valid_result_type(
