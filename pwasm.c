@@ -849,7 +849,7 @@ PWASM_OPS[] = {{
   .name       = "memory.size",
   .bytes      = { 0x3f },
   .num_bytes  = 1,
-  .imm        = PWASM_IMM_NONE,
+  .imm        = PWASM_IMM_INDEX,
   .mem_size   = 0,
   .num_lanes  = 0,
 }, {
@@ -857,7 +857,7 @@ PWASM_OPS[] = {{
   .name       = "memory.grow",
   .bytes      = { 0x40 },
   .num_bytes  = 1,
-  .imm        = PWASM_IMM_NONE,
+  .imm        = PWASM_IMM_INDEX,
   .mem_size   = 0,
   .num_lanes  = 0,
 }, {

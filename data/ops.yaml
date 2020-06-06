@@ -238,10 +238,12 @@ sets:
   - code: '0x3F'
     name: "memory.size"
     text: "Get size of memory in pages."
+    imm: "INDEX"
 
   - code: '0x40'
     name: "memory.grow"
     text: "Grow memory by given number of pages, and return the previous size."
+    imm: "INDEX"
 
   - code: '0x41'
     name: "i32.const"
