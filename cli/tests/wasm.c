@@ -1672,6 +1672,216 @@ TEST_VALS[] = {
 
   // mod: "ops", func: "test_i32_lt_s", test: 6, type: "result", num: 1
   { .i32 = 1 },
+
+  // mod: "ops", func: "test_i32_lt_u", test: 0, type: "params", num: 2
+  { .i32 = 0 },
+  { .i32 = 0 },
+
+  // mod: "ops", func: "test_i32_lt_u", test: 0, type: "result", num: 1
+  { .i32 = 0 },
+
+  // mod: "ops", func: "test_i32_lt_u", test: 1, type: "params", num: 2
+  { .i32 = 0 },
+  { .i32 = 1 },
+
+  // mod: "ops", func: "test_i32_lt_u", test: 1, type: "result", num: 1
+  { .i32 = 1 },
+
+  // mod: "ops", func: "test_i32_lt_u", test: 2, type: "params", num: 2
+  { .i32 = 1 },
+  { .i32 = 0 },
+
+  // mod: "ops", func: "test_i32_lt_u", test: 2, type: "result", num: 1
+  { .i32 = 0 },
+
+  // mod: "ops", func: "test_i32_lt_u", test: 3, type: "params", num: 2
+  { .i32 = 0 },
+  { .i32 = 4294967295 },
+
+  // mod: "ops", func: "test_i32_lt_u", test: 3, type: "result", num: 1
+  { .i32 = 1 },
+
+  // mod: "ops", func: "test_i32_gt_s", test: 0, type: "params", num: 2
+  { .i32 = 0 },
+  { .i32 = 0 },
+
+  // mod: "ops", func: "test_i32_gt_s", test: 0, type: "result", num: 1
+  { .i32 = 0 },
+
+  // mod: "ops", func: "test_i32_gt_s", test: 1, type: "params", num: 2
+  { .i32 = 0 },
+  { .i32 = 1 },
+
+  // mod: "ops", func: "test_i32_gt_s", test: 1, type: "result", num: 1
+  { .i32 = 0 },
+
+  // mod: "ops", func: "test_i32_gt_s", test: 2, type: "params", num: 2
+  { .i32 = 1 },
+  { .i32 = 0 },
+
+  // mod: "ops", func: "test_i32_gt_s", test: 2, type: "result", num: 1
+  { .i32 = 1 },
+
+  // mod: "ops", func: "test_i32_gt_s", test: 3, type: "params", num: 2
+  { .i32 = -1 },
+  { .i32 = 0 },
+
+  // mod: "ops", func: "test_i32_gt_s", test: 3, type: "result", num: 1
+  { .i32 = 0 },
+
+  // mod: "ops", func: "test_i32_gt_s", test: 4, type: "params", num: 2
+  { .i32 = -2147483648 },
+  { .i32 = 2147483647 },
+
+  // mod: "ops", func: "test_i32_gt_s", test: 4, type: "result", num: 1
+  { .i32 = 0 },
+
+  // mod: "ops", func: "test_i32_gt_u", test: 0, type: "params", num: 2
+  { .i32 = 0 },
+  { .i32 = 0 },
+
+  // mod: "ops", func: "test_i32_gt_u", test: 0, type: "result", num: 1
+  { .i32 = 0 },
+
+  // mod: "ops", func: "test_i32_gt_u", test: 1, type: "params", num: 2
+  { .i32 = 0 },
+  { .i32 = 1 },
+
+  // mod: "ops", func: "test_i32_gt_u", test: 1, type: "result", num: 1
+  { .i32 = 0 },
+
+  // mod: "ops", func: "test_i32_gt_u", test: 2, type: "params", num: 2
+  { .i32 = 1 },
+  { .i32 = 0 },
+
+  // mod: "ops", func: "test_i32_gt_u", test: 2, type: "result", num: 1
+  { .i32 = 1 },
+
+  // mod: "ops", func: "test_i32_gt_u", test: 3, type: "params", num: 2
+  { .i32 = 0 },
+  { .i32 = 4294967295 },
+
+  // mod: "ops", func: "test_i32_gt_u", test: 3, type: "result", num: 1
+  { .i32 = 0 },
+
+  // mod: "ops", func: "test_i32_le_s", test: 0, type: "params", num: 2
+  { .i32 = 0 },
+  { .i32 = 0 },
+
+  // mod: "ops", func: "test_i32_le_s", test: 0, type: "result", num: 1
+  { .i32 = 1 },
+
+  // mod: "ops", func: "test_i32_le_s", test: 1, type: "params", num: 2
+  { .i32 = 0 },
+  { .i32 = 1 },
+
+  // mod: "ops", func: "test_i32_le_s", test: 1, type: "result", num: 1
+  { .i32 = 1 },
+
+  // mod: "ops", func: "test_i32_le_s", test: 2, type: "params", num: 2
+  { .i32 = -2147483648 },
+  { .i32 = 2147483647 },
+
+  // mod: "ops", func: "test_i32_le_s", test: 2, type: "result", num: 1
+  { .i32 = 1 },
+
+  // mod: "ops", func: "test_i32_le_u", test: 0, type: "params", num: 2
+  { .i32 = 0 },
+  { .i32 = 0 },
+
+  // mod: "ops", func: "test_i32_le_u", test: 0, type: "result", num: 1
+  { .i32 = 1 },
+
+  // mod: "ops", func: "test_i32_le_u", test: 1, type: "params", num: 2
+  { .i32 = 0 },
+  { .i32 = 1 },
+
+  // mod: "ops", func: "test_i32_le_u", test: 1, type: "result", num: 1
+  { .i32 = 1 },
+
+  // mod: "ops", func: "test_i32_le_u", test: 2, type: "params", num: 2
+  { .i32 = 1 },
+  { .i32 = 0 },
+
+  // mod: "ops", func: "test_i32_le_u", test: 2, type: "result", num: 1
+  { .i32 = 0 },
+
+  // mod: "ops", func: "test_i32_le_u", test: 3, type: "params", num: 2
+  { .i32 = 0 },
+  { .i32 = 4294967295 },
+
+  // mod: "ops", func: "test_i32_le_u", test: 3, type: "result", num: 1
+  { .i32 = 1 },
+
+  // mod: "ops", func: "test_i32_ge_s", test: 0, type: "params", num: 2
+  { .i32 = 0 },
+  { .i32 = 0 },
+
+  // mod: "ops", func: "test_i32_ge_s", test: 0, type: "result", num: 1
+  { .i32 = 1 },
+
+  // mod: "ops", func: "test_i32_ge_s", test: 1, type: "params", num: 2
+  { .i32 = 1 },
+  { .i32 = 0 },
+
+  // mod: "ops", func: "test_i32_ge_s", test: 1, type: "result", num: 1
+  { .i32 = 1 },
+
+  // mod: "ops", func: "test_i32_ge_s", test: 2, type: "params", num: 2
+  { .i32 = 0 },
+  { .i32 = 1 },
+
+  // mod: "ops", func: "test_i32_ge_s", test: 2, type: "result", num: 1
+  { .i32 = 0 },
+
+  // mod: "ops", func: "test_i32_ge_s", test: 3, type: "params", num: 2
+  { .i32 = 0 },
+  { .i32 = -1 },
+
+  // mod: "ops", func: "test_i32_ge_s", test: 3, type: "result", num: 1
+  { .i32 = 1 },
+
+  // mod: "ops", func: "test_i32_ge_s", test: 4, type: "params", num: 2
+  { .i32 = 2147483647 },
+  { .i32 = -2147483648 },
+
+  // mod: "ops", func: "test_i32_ge_s", test: 4, type: "result", num: 1
+  { .i32 = 1 },
+
+  // mod: "ops", func: "test_i32_ge_u", test: 0, type: "params", num: 2
+  { .i32 = 0 },
+  { .i32 = 0 },
+
+  // mod: "ops", func: "test_i32_ge_u", test: 0, type: "result", num: 1
+  { .i32 = 1 },
+
+  // mod: "ops", func: "test_i32_ge_u", test: 1, type: "params", num: 2
+  { .i32 = 1 },
+  { .i32 = 0 },
+
+  // mod: "ops", func: "test_i32_ge_u", test: 1, type: "result", num: 1
+  { .i32 = 1 },
+
+  // mod: "ops", func: "test_i32_ge_u", test: 2, type: "params", num: 2
+  { .i32 = 0 },
+  { .i32 = 1 },
+
+  // mod: "ops", func: "test_i32_ge_u", test: 2, type: "result", num: 1
+  { .i32 = 0 },
+
+  // mod: "ops", func: "test_i32_ge_u", test: 3, type: "params", num: 2
+  { .i32 = 4294967295 },
+  { .i32 = 0 },
+
+  // mod: "ops", func: "test_i32_ge_u", test: 3, type: "result", num: 1
+  { .i32 = 1 },
+
+  // mod: "ops", func: "test_i32_ge_u", test: 4, type: "params", num: 2
+  { .i32 = 4294967295 },
+  { .i32 = 4294967294 },
+
+  // mod: "ops", func: "test_i32_ge_u", test: 4, type: "result", num: 1
+  { .i32 = 1 },
 };
 
 typedef struct {
@@ -2417,6 +2627,216 @@ TEST_CALLS[] = {{
   .func   = "test_i32_lt_s",
   .params = { 234, 2 },
   .result = { 236, 1 },
+  .type   = PWASM_RESULT_TYPE_I32,
+}, {
+  .text   = "ops.test_i32_lt_u(0)",
+  .mod    = "ops",
+  .func   = "test_i32_lt_u",
+  .params = { 237, 2 },
+  .result = { 239, 1 },
+  .type   = PWASM_RESULT_TYPE_I32,
+}, {
+  .text   = "ops.test_i32_lt_u(1)",
+  .mod    = "ops",
+  .func   = "test_i32_lt_u",
+  .params = { 240, 2 },
+  .result = { 242, 1 },
+  .type   = PWASM_RESULT_TYPE_I32,
+}, {
+  .text   = "ops.test_i32_lt_u(2)",
+  .mod    = "ops",
+  .func   = "test_i32_lt_u",
+  .params = { 243, 2 },
+  .result = { 245, 1 },
+  .type   = PWASM_RESULT_TYPE_I32,
+}, {
+  .text   = "ops.test_i32_lt_u(3)",
+  .mod    = "ops",
+  .func   = "test_i32_lt_u",
+  .params = { 246, 2 },
+  .result = { 248, 1 },
+  .type   = PWASM_RESULT_TYPE_I32,
+}, {
+  .text   = "ops.test_i32_gt_s(0)",
+  .mod    = "ops",
+  .func   = "test_i32_gt_s",
+  .params = { 249, 2 },
+  .result = { 251, 1 },
+  .type   = PWASM_RESULT_TYPE_I32,
+}, {
+  .text   = "ops.test_i32_gt_s(1)",
+  .mod    = "ops",
+  .func   = "test_i32_gt_s",
+  .params = { 252, 2 },
+  .result = { 254, 1 },
+  .type   = PWASM_RESULT_TYPE_I32,
+}, {
+  .text   = "ops.test_i32_gt_s(2)",
+  .mod    = "ops",
+  .func   = "test_i32_gt_s",
+  .params = { 255, 2 },
+  .result = { 257, 1 },
+  .type   = PWASM_RESULT_TYPE_I32,
+}, {
+  .text   = "ops.test_i32_gt_s(3)",
+  .mod    = "ops",
+  .func   = "test_i32_gt_s",
+  .params = { 258, 2 },
+  .result = { 260, 1 },
+  .type   = PWASM_RESULT_TYPE_I32,
+}, {
+  .text   = "ops.test_i32_gt_s(4)",
+  .mod    = "ops",
+  .func   = "test_i32_gt_s",
+  .params = { 261, 2 },
+  .result = { 263, 1 },
+  .type   = PWASM_RESULT_TYPE_I32,
+}, {
+  .text   = "ops.test_i32_gt_u(0)",
+  .mod    = "ops",
+  .func   = "test_i32_gt_u",
+  .params = { 264, 2 },
+  .result = { 266, 1 },
+  .type   = PWASM_RESULT_TYPE_I32,
+}, {
+  .text   = "ops.test_i32_gt_u(1)",
+  .mod    = "ops",
+  .func   = "test_i32_gt_u",
+  .params = { 267, 2 },
+  .result = { 269, 1 },
+  .type   = PWASM_RESULT_TYPE_I32,
+}, {
+  .text   = "ops.test_i32_gt_u(2)",
+  .mod    = "ops",
+  .func   = "test_i32_gt_u",
+  .params = { 270, 2 },
+  .result = { 272, 1 },
+  .type   = PWASM_RESULT_TYPE_I32,
+}, {
+  .text   = "ops.test_i32_gt_u(3)",
+  .mod    = "ops",
+  .func   = "test_i32_gt_u",
+  .params = { 273, 2 },
+  .result = { 275, 1 },
+  .type   = PWASM_RESULT_TYPE_I32,
+}, {
+  .text   = "ops.test_i32_le_s(0)",
+  .mod    = "ops",
+  .func   = "test_i32_le_s",
+  .params = { 276, 2 },
+  .result = { 278, 1 },
+  .type   = PWASM_RESULT_TYPE_I32,
+}, {
+  .text   = "ops.test_i32_le_s(1)",
+  .mod    = "ops",
+  .func   = "test_i32_le_s",
+  .params = { 279, 2 },
+  .result = { 281, 1 },
+  .type   = PWASM_RESULT_TYPE_I32,
+}, {
+  .text   = "ops.test_i32_le_s(2)",
+  .mod    = "ops",
+  .func   = "test_i32_le_s",
+  .params = { 282, 2 },
+  .result = { 284, 1 },
+  .type   = PWASM_RESULT_TYPE_I32,
+}, {
+  .text   = "ops.test_i32_le_u(0)",
+  .mod    = "ops",
+  .func   = "test_i32_le_u",
+  .params = { 285, 2 },
+  .result = { 287, 1 },
+  .type   = PWASM_RESULT_TYPE_I32,
+}, {
+  .text   = "ops.test_i32_le_u(1)",
+  .mod    = "ops",
+  .func   = "test_i32_le_u",
+  .params = { 288, 2 },
+  .result = { 290, 1 },
+  .type   = PWASM_RESULT_TYPE_I32,
+}, {
+  .text   = "ops.test_i32_le_u(2)",
+  .mod    = "ops",
+  .func   = "test_i32_le_u",
+  .params = { 291, 2 },
+  .result = { 293, 1 },
+  .type   = PWASM_RESULT_TYPE_I32,
+}, {
+  .text   = "ops.test_i32_le_u(3)",
+  .mod    = "ops",
+  .func   = "test_i32_le_u",
+  .params = { 294, 2 },
+  .result = { 296, 1 },
+  .type   = PWASM_RESULT_TYPE_I32,
+}, {
+  .text   = "ops.test_i32_ge_s(0)",
+  .mod    = "ops",
+  .func   = "test_i32_ge_s",
+  .params = { 297, 2 },
+  .result = { 299, 1 },
+  .type   = PWASM_RESULT_TYPE_I32,
+}, {
+  .text   = "ops.test_i32_ge_s(1)",
+  .mod    = "ops",
+  .func   = "test_i32_ge_s",
+  .params = { 300, 2 },
+  .result = { 302, 1 },
+  .type   = PWASM_RESULT_TYPE_I32,
+}, {
+  .text   = "ops.test_i32_ge_s(2)",
+  .mod    = "ops",
+  .func   = "test_i32_ge_s",
+  .params = { 303, 2 },
+  .result = { 305, 1 },
+  .type   = PWASM_RESULT_TYPE_I32,
+}, {
+  .text   = "ops.test_i32_ge_s(3)",
+  .mod    = "ops",
+  .func   = "test_i32_ge_s",
+  .params = { 306, 2 },
+  .result = { 308, 1 },
+  .type   = PWASM_RESULT_TYPE_I32,
+}, {
+  .text   = "ops.test_i32_ge_s(4)",
+  .mod    = "ops",
+  .func   = "test_i32_ge_s",
+  .params = { 309, 2 },
+  .result = { 311, 1 },
+  .type   = PWASM_RESULT_TYPE_I32,
+}, {
+  .text   = "ops.test_i32_ge_u(0)",
+  .mod    = "ops",
+  .func   = "test_i32_ge_u",
+  .params = { 312, 2 },
+  .result = { 314, 1 },
+  .type   = PWASM_RESULT_TYPE_I32,
+}, {
+  .text   = "ops.test_i32_ge_u(1)",
+  .mod    = "ops",
+  .func   = "test_i32_ge_u",
+  .params = { 315, 2 },
+  .result = { 317, 1 },
+  .type   = PWASM_RESULT_TYPE_I32,
+}, {
+  .text   = "ops.test_i32_ge_u(2)",
+  .mod    = "ops",
+  .func   = "test_i32_ge_u",
+  .params = { 318, 2 },
+  .result = { 320, 1 },
+  .type   = PWASM_RESULT_TYPE_I32,
+}, {
+  .text   = "ops.test_i32_ge_u(3)",
+  .mod    = "ops",
+  .func   = "test_i32_ge_u",
+  .params = { 321, 2 },
+  .result = { 323, 1 },
+  .type   = PWASM_RESULT_TYPE_I32,
+}, {
+  .text   = "ops.test_i32_ge_u(4)",
+  .mod    = "ops",
+  .func   = "test_i32_ge_u",
+  .params = { 324, 2 },
+  .result = { 326, 1 },
   .type   = PWASM_RESULT_TYPE_I32,
 }};
 
