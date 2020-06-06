@@ -2645,6 +2645,194 @@ TEST_VALS[] = {
   { .i64 = 0xF000F00000000000ULL },
   { .i64 = 72 },
   { .i64 = 0x00F000F000000000ULL },
+
+  // mod: "ops", func: "test_f32_abs", test: 0, params: 1, result: 1
+  { .f32 = 0 },
+  { .f32 = 0 },
+
+  // mod: "ops", func: "test_f32_abs", test: 1, params: 1, result: 1
+  { .f32 = -1 },
+  { .f32 = 1 },
+
+  // mod: "ops", func: "test_f32_abs", test: 2, params: 1, result: 1
+  { .f32 = 1 },
+  { .f32 = 1 },
+
+  // mod: "ops", func: "test_f32_neg", test: 0, params: 1, result: 1
+  { .f32 = 0 },
+  { .f32 = 0 },
+
+  // mod: "ops", func: "test_f32_neg", test: 1, params: 1, result: 1
+  { .f32 = -1 },
+  { .f32 = 1 },
+
+  // mod: "ops", func: "test_f32_neg", test: 2, params: 1, result: 1
+  { .f32 = 1 },
+  { .f32 = -1 },
+
+  // mod: "ops", func: "test_f32_ceil", test: 0, params: 1, result: 1
+  { .f32 = 1.1 },
+  { .f32 = 2 },
+
+  // mod: "ops", func: "test_f32_ceil", test: 1, params: 1, result: 1
+  { .f32 = -1.1 },
+  { .f32 = -1 },
+
+  // mod: "ops", func: "test_f32_ceil", test: 2, params: 1, result: 1
+  { .f32 = 2 },
+  { .f32 = 2 },
+
+  // mod: "ops", func: "test_f32_floor", test: 0, params: 1, result: 1
+  { .f32 = 2.1 },
+  { .f32 = 2 },
+
+  // mod: "ops", func: "test_f32_floor", test: 1, params: 1, result: 1
+  { .f32 = 0 },
+  { .f32 = 0 },
+
+  // mod: "ops", func: "test_f32_floor", test: 2, params: 1, result: 1
+  { .f32 = -0.9 },
+  { .f32 = -1 },
+
+  // mod: "ops", func: "test_f32_trunc", test: 0, params: 1, result: 1
+  { .f32 = 0 },
+  { .f32 = 0 },
+
+  // mod: "ops", func: "test_f32_trunc", test: 1, params: 1, result: 1
+  { .f32 = 1.1 },
+  { .f32 = 1 },
+
+  // mod: "ops", func: "test_f32_trunc", test: 2, params: 1, result: 1
+  { .f32 = 1.9 },
+  { .f32 = 1 },
+
+  // mod: "ops", func: "test_f32_nearest", test: 0, params: 1, result: 1
+  { .f32 = 0 },
+  { .f32 = 0 },
+
+  // mod: "ops", func: "test_f32_nearest", test: 1, params: 1, result: 1
+  { .f32 = 0.4 },
+  { .f32 = 0 },
+
+  // mod: "ops", func: "test_f32_nearest", test: 2, params: 1, result: 1
+  { .f32 = -0.4 },
+  { .f32 = -0 },
+
+  // mod: "ops", func: "test_f32_nearest", test: 3, params: 1, result: 1
+  { .f32 = 0.9 },
+  { .f32 = 1 },
+
+  // mod: "ops", func: "test_f32_nearest", test: 4, params: 1, result: 1
+  { .f32 = -0.9 },
+  { .f32 = -1 },
+
+  // mod: "ops", func: "test_f32_sqrt", test: 0, params: 1, result: 1
+  { .f32 = 4.0 },
+  { .f32 = 2.0 },
+
+  // mod: "ops", func: "test_f32_sqrt", test: 1, params: 1, result: 1
+  { .f32 = 81.0 },
+  { .f32 = 9.0 },
+
+  // mod: "ops", func: "test_f32_add", test: 0, params: 2, result: 1
+  { .f32 = 81.0 },
+  { .f32 = 9.0 },
+  { .f32 = 90.0 },
+
+  // mod: "ops", func: "test_f32_add", test: 1, params: 2, result: 1
+  { .f32 = 81.0 },
+  { .f32 = -9.0 },
+  { .f32 = 72.0 },
+
+  // mod: "ops", func: "test_f32_sub", test: 0, params: 2, result: 1
+  { .f32 = 867.0 },
+  { .f32 = 530.0 },
+  { .f32 = 337.0 },
+
+  // mod: "ops", func: "test_f32_sub", test: 1, params: 2, result: 1
+  { .f32 = 3141.0 },
+  { .f32 = 5926.0 },
+  { .f32 = -2785.0 },
+
+  // mod: "ops", func: "test_f32_mul", test: 0, params: 2, result: 1
+  { .f32 = 0.0 },
+  { .f32 = 1.0 },
+  { .f32 = 0.0 },
+
+  // mod: "ops", func: "test_f32_mul", test: 1, params: 2, result: 1
+  { .f32 = 12.0 },
+  { .f32 = 20.0 },
+  { .f32 = 240.0 },
+
+  // mod: "ops", func: "test_f32_mul", test: 2, params: 2, result: 1
+  { .f32 = -12.0 },
+  { .f32 = 20.0 },
+  { .f32 = -240.0 },
+
+  // mod: "ops", func: "test_f32_div", test: 0, params: 2, result: 1
+  { .f32 = -12.0 },
+  { .f32 = 20.0 },
+  { .f32 = -0.6 },
+
+  // mod: "ops", func: "test_f32_div", test: 1, params: 2, result: 1
+  { .f32 = 0 },
+  { .f32 = 1.0 },
+  { .f32 = 0 },
+
+  // mod: "ops", func: "test_f32_div", test: 2, params: 2, result: 1
+  { .f32 = 35 },
+  { .f32 = 5 },
+  { .f32 = 7 },
+
+  // mod: "ops", func: "test_f32_min", test: 0, params: 2, result: 1
+  { .f32 = 0 },
+  { .f32 = 0 },
+  { .f32 = 0 },
+
+  // mod: "ops", func: "test_f32_min", test: 1, params: 2, result: 1
+  { .f32 = 0 },
+  { .f32 = 1024 },
+  { .f32 = 0 },
+
+  // mod: "ops", func: "test_f32_min", test: 2, params: 2, result: 1
+  { .f32 = 512 },
+  { .f32 = -512 },
+  { .f32 = -512 },
+
+  // mod: "ops", func: "test_f32_max", test: 0, params: 2, result: 1
+  { .f32 = 0 },
+  { .f32 = 0 },
+  { .f32 = 0 },
+
+  // mod: "ops", func: "test_f32_max", test: 1, params: 2, result: 1
+  { .f32 = 10 },
+  { .f32 = 0 },
+  { .f32 = 10 },
+
+  // mod: "ops", func: "test_f32_max", test: 2, params: 2, result: 1
+  { .f32 = -20 },
+  { .f32 = 20 },
+  { .f32 = 20 },
+
+  // mod: "ops", func: "test_f32_copysign", test: 0, params: 2, result: 1
+  { .f32 = -30 },
+  { .f32 = 1 },
+  { .f32 = 30 },
+
+  // mod: "ops", func: "test_f32_copysign", test: 1, params: 2, result: 1
+  { .f32 = -40 },
+  { .f32 = -1 },
+  { .f32 = -40 },
+
+  // mod: "ops", func: "test_f32_copysign", test: 2, params: 2, result: 1
+  { .f32 = 50 },
+  { .f32 = -1 },
+  { .f32 = -50 },
+
+  // mod: "ops", func: "test_f32_copysign", test: 3, params: 2, result: 1
+  { .f32 = 60 },
+  { .f32 = 1 },
+  { .f32 = 60 },
 };
 
 typedef struct {
@@ -5036,6 +5224,300 @@ TEST_CALLS[] = {{
   .params = { 907, 2 },
   .result = { 909, 1 },
   .type   = PWASM_RESULT_TYPE_I64,
+}, {
+  .text   = "ops.test_f32_abs(0)",
+  .mod    = "ops",
+  .func   = "test_f32_abs",
+  .params = { 910, 1 },
+  .result = { 911, 1 },
+  .type   = PWASM_RESULT_TYPE_F32,
+}, {
+  .text   = "ops.test_f32_abs(1)",
+  .mod    = "ops",
+  .func   = "test_f32_abs",
+  .params = { 912, 1 },
+  .result = { 913, 1 },
+  .type   = PWASM_RESULT_TYPE_F32,
+}, {
+  .text   = "ops.test_f32_abs(2)",
+  .mod    = "ops",
+  .func   = "test_f32_abs",
+  .params = { 914, 1 },
+  .result = { 915, 1 },
+  .type   = PWASM_RESULT_TYPE_F32,
+}, {
+  .text   = "ops.test_f32_neg(0)",
+  .mod    = "ops",
+  .func   = "test_f32_neg",
+  .params = { 916, 1 },
+  .result = { 917, 1 },
+  .type   = PWASM_RESULT_TYPE_F32,
+}, {
+  .text   = "ops.test_f32_neg(1)",
+  .mod    = "ops",
+  .func   = "test_f32_neg",
+  .params = { 918, 1 },
+  .result = { 919, 1 },
+  .type   = PWASM_RESULT_TYPE_F32,
+}, {
+  .text   = "ops.test_f32_neg(2)",
+  .mod    = "ops",
+  .func   = "test_f32_neg",
+  .params = { 920, 1 },
+  .result = { 921, 1 },
+  .type   = PWASM_RESULT_TYPE_F32,
+}, {
+  .text   = "ops.test_f32_ceil(0)",
+  .mod    = "ops",
+  .func   = "test_f32_ceil",
+  .params = { 922, 1 },
+  .result = { 923, 1 },
+  .type   = PWASM_RESULT_TYPE_F32,
+}, {
+  .text   = "ops.test_f32_ceil(1)",
+  .mod    = "ops",
+  .func   = "test_f32_ceil",
+  .params = { 924, 1 },
+  .result = { 925, 1 },
+  .type   = PWASM_RESULT_TYPE_F32,
+}, {
+  .text   = "ops.test_f32_ceil(2)",
+  .mod    = "ops",
+  .func   = "test_f32_ceil",
+  .params = { 926, 1 },
+  .result = { 927, 1 },
+  .type   = PWASM_RESULT_TYPE_F32,
+}, {
+  .text   = "ops.test_f32_floor(0)",
+  .mod    = "ops",
+  .func   = "test_f32_floor",
+  .params = { 928, 1 },
+  .result = { 929, 1 },
+  .type   = PWASM_RESULT_TYPE_F32,
+}, {
+  .text   = "ops.test_f32_floor(1)",
+  .mod    = "ops",
+  .func   = "test_f32_floor",
+  .params = { 930, 1 },
+  .result = { 931, 1 },
+  .type   = PWASM_RESULT_TYPE_F32,
+}, {
+  .text   = "ops.test_f32_floor(2)",
+  .mod    = "ops",
+  .func   = "test_f32_floor",
+  .params = { 932, 1 },
+  .result = { 933, 1 },
+  .type   = PWASM_RESULT_TYPE_F32,
+}, {
+  .text   = "ops.test_f32_trunc(0)",
+  .mod    = "ops",
+  .func   = "test_f32_trunc",
+  .params = { 934, 1 },
+  .result = { 935, 1 },
+  .type   = PWASM_RESULT_TYPE_F32,
+}, {
+  .text   = "ops.test_f32_trunc(1)",
+  .mod    = "ops",
+  .func   = "test_f32_trunc",
+  .params = { 936, 1 },
+  .result = { 937, 1 },
+  .type   = PWASM_RESULT_TYPE_F32,
+}, {
+  .text   = "ops.test_f32_trunc(2)",
+  .mod    = "ops",
+  .func   = "test_f32_trunc",
+  .params = { 938, 1 },
+  .result = { 939, 1 },
+  .type   = PWASM_RESULT_TYPE_F32,
+}, {
+  .text   = "ops.test_f32_nearest(0)",
+  .mod    = "ops",
+  .func   = "test_f32_nearest",
+  .params = { 940, 1 },
+  .result = { 941, 1 },
+  .type   = PWASM_RESULT_TYPE_F32,
+}, {
+  .text   = "ops.test_f32_nearest(1)",
+  .mod    = "ops",
+  .func   = "test_f32_nearest",
+  .params = { 942, 1 },
+  .result = { 943, 1 },
+  .type   = PWASM_RESULT_TYPE_F32,
+}, {
+  .text   = "ops.test_f32_nearest(2)",
+  .mod    = "ops",
+  .func   = "test_f32_nearest",
+  .params = { 944, 1 },
+  .result = { 945, 1 },
+  .type   = PWASM_RESULT_TYPE_F32,
+}, {
+  .text   = "ops.test_f32_nearest(3)",
+  .mod    = "ops",
+  .func   = "test_f32_nearest",
+  .params = { 946, 1 },
+  .result = { 947, 1 },
+  .type   = PWASM_RESULT_TYPE_F32,
+}, {
+  .text   = "ops.test_f32_nearest(4)",
+  .mod    = "ops",
+  .func   = "test_f32_nearest",
+  .params = { 948, 1 },
+  .result = { 949, 1 },
+  .type   = PWASM_RESULT_TYPE_F32,
+}, {
+  .text   = "ops.test_f32_sqrt(0)",
+  .mod    = "ops",
+  .func   = "test_f32_sqrt",
+  .params = { 950, 1 },
+  .result = { 951, 1 },
+  .type   = PWASM_RESULT_TYPE_F32,
+}, {
+  .text   = "ops.test_f32_sqrt(1)",
+  .mod    = "ops",
+  .func   = "test_f32_sqrt",
+  .params = { 952, 1 },
+  .result = { 953, 1 },
+  .type   = PWASM_RESULT_TYPE_F32,
+}, {
+  .text   = "ops.test_f32_add(0)",
+  .mod    = "ops",
+  .func   = "test_f32_add",
+  .params = { 954, 2 },
+  .result = { 956, 1 },
+  .type   = PWASM_RESULT_TYPE_F32,
+}, {
+  .text   = "ops.test_f32_add(1)",
+  .mod    = "ops",
+  .func   = "test_f32_add",
+  .params = { 957, 2 },
+  .result = { 959, 1 },
+  .type   = PWASM_RESULT_TYPE_F32,
+}, {
+  .text   = "ops.test_f32_sub(0)",
+  .mod    = "ops",
+  .func   = "test_f32_sub",
+  .params = { 960, 2 },
+  .result = { 962, 1 },
+  .type   = PWASM_RESULT_TYPE_F32,
+}, {
+  .text   = "ops.test_f32_sub(1)",
+  .mod    = "ops",
+  .func   = "test_f32_sub",
+  .params = { 963, 2 },
+  .result = { 965, 1 },
+  .type   = PWASM_RESULT_TYPE_F32,
+}, {
+  .text   = "ops.test_f32_mul(0)",
+  .mod    = "ops",
+  .func   = "test_f32_mul",
+  .params = { 966, 2 },
+  .result = { 968, 1 },
+  .type   = PWASM_RESULT_TYPE_F32,
+}, {
+  .text   = "ops.test_f32_mul(1)",
+  .mod    = "ops",
+  .func   = "test_f32_mul",
+  .params = { 969, 2 },
+  .result = { 971, 1 },
+  .type   = PWASM_RESULT_TYPE_F32,
+}, {
+  .text   = "ops.test_f32_mul(2)",
+  .mod    = "ops",
+  .func   = "test_f32_mul",
+  .params = { 972, 2 },
+  .result = { 974, 1 },
+  .type   = PWASM_RESULT_TYPE_F32,
+}, {
+  .text   = "ops.test_f32_div(0)",
+  .mod    = "ops",
+  .func   = "test_f32_div",
+  .params = { 975, 2 },
+  .result = { 977, 1 },
+  .type   = PWASM_RESULT_TYPE_F32,
+}, {
+  .text   = "ops.test_f32_div(1)",
+  .mod    = "ops",
+  .func   = "test_f32_div",
+  .params = { 978, 2 },
+  .result = { 980, 1 },
+  .type   = PWASM_RESULT_TYPE_F32,
+}, {
+  .text   = "ops.test_f32_div(2)",
+  .mod    = "ops",
+  .func   = "test_f32_div",
+  .params = { 981, 2 },
+  .result = { 983, 1 },
+  .type   = PWASM_RESULT_TYPE_F32,
+}, {
+  .text   = "ops.test_f32_min(0)",
+  .mod    = "ops",
+  .func   = "test_f32_min",
+  .params = { 984, 2 },
+  .result = { 986, 1 },
+  .type   = PWASM_RESULT_TYPE_F32,
+}, {
+  .text   = "ops.test_f32_min(1)",
+  .mod    = "ops",
+  .func   = "test_f32_min",
+  .params = { 987, 2 },
+  .result = { 989, 1 },
+  .type   = PWASM_RESULT_TYPE_F32,
+}, {
+  .text   = "ops.test_f32_min(2)",
+  .mod    = "ops",
+  .func   = "test_f32_min",
+  .params = { 990, 2 },
+  .result = { 992, 1 },
+  .type   = PWASM_RESULT_TYPE_F32,
+}, {
+  .text   = "ops.test_f32_max(0)",
+  .mod    = "ops",
+  .func   = "test_f32_max",
+  .params = { 993, 2 },
+  .result = { 995, 1 },
+  .type   = PWASM_RESULT_TYPE_F32,
+}, {
+  .text   = "ops.test_f32_max(1)",
+  .mod    = "ops",
+  .func   = "test_f32_max",
+  .params = { 996, 2 },
+  .result = { 998, 1 },
+  .type   = PWASM_RESULT_TYPE_F32,
+}, {
+  .text   = "ops.test_f32_max(2)",
+  .mod    = "ops",
+  .func   = "test_f32_max",
+  .params = { 999, 2 },
+  .result = { 1001, 1 },
+  .type   = PWASM_RESULT_TYPE_F32,
+}, {
+  .text   = "ops.test_f32_copysign(0)",
+  .mod    = "ops",
+  .func   = "test_f32_copysign",
+  .params = { 1002, 2 },
+  .result = { 1004, 1 },
+  .type   = PWASM_RESULT_TYPE_F32,
+}, {
+  .text   = "ops.test_f32_copysign(1)",
+  .mod    = "ops",
+  .func   = "test_f32_copysign",
+  .params = { 1005, 2 },
+  .result = { 1007, 1 },
+  .type   = PWASM_RESULT_TYPE_F32,
+}, {
+  .text   = "ops.test_f32_copysign(2)",
+  .mod    = "ops",
+  .func   = "test_f32_copysign",
+  .params = { 1008, 2 },
+  .result = { 1010, 1 },
+  .type   = PWASM_RESULT_TYPE_F32,
+}, {
+  .text   = "ops.test_f32_copysign(2)",
+  .mod    = "ops",
+  .func   = "test_f32_copysign",
+  .params = { 1011, 2 },
+  .result = { 1013, 1 },
+  .type   = PWASM_RESULT_TYPE_F32,
 }};
 
 static bool is_valid_result_type(
