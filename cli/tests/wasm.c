@@ -1378,6 +1378,78 @@ TEST_VALS[] = {
 
   // mod: "ops", func: "test_i32_load16_u", test: 1, type: "result", num: 1
   { .i32 = 32768 },
+
+  // mod: "ops", func: "test_i64_load8_s", test: 0, type: "params", num: 1
+  { .i64 = 127 },
+
+  // mod: "ops", func: "test_i64_load8_s", test: 0, type: "result", num: 1
+  { .i64 = 127 },
+
+  // mod: "ops", func: "test_i64_load8_s", test: 1, type: "params", num: 1
+  { .i64 = 128 },
+
+  // mod: "ops", func: "test_i64_load8_s", test: 1, type: "result", num: 1
+  { .i64 = 128 },
+
+  // mod: "ops", func: "test_i64_load8_u", test: 0, type: "params", num: 1
+  { .i64 = 127 },
+
+  // mod: "ops", func: "test_i64_load8_u", test: 0, type: "result", num: 1
+  { .i64 = 127 },
+
+  // mod: "ops", func: "test_i64_load8_u", test: 1, type: "params", num: 1
+  { .i64 = 128 },
+
+  // mod: "ops", func: "test_i64_load8_u", test: 1, type: "result", num: 1
+  { .i64 = 128 },
+
+  // mod: "ops", func: "test_i64_load16_s", test: 0, type: "params", num: 1
+  { .i64 = 32767 },
+
+  // mod: "ops", func: "test_i64_load16_s", test: 0, type: "result", num: 1
+  { .i64 = 32767 },
+
+  // mod: "ops", func: "test_i64_load16_s", test: 1, type: "params", num: 1
+  { .i64 = 32768 },
+
+  // mod: "ops", func: "test_i64_load16_s", test: 1, type: "result", num: 1
+  { .i64 = 32768 },
+
+  // mod: "ops", func: "test_i64_load16_u", test: 0, type: "params", num: 1
+  { .i64 = 32768 },
+
+  // mod: "ops", func: "test_i64_load16_u", test: 0, type: "result", num: 1
+  { .i64 = 32768 },
+
+  // mod: "ops", func: "test_i64_load16_u", test: 1, type: "params", num: 1
+  { .i64 = 32768 },
+
+  // mod: "ops", func: "test_i64_load16_u", test: 1, type: "result", num: 1
+  { .i64 = 32768 },
+
+  // mod: "ops", func: "test_i64_load32_s", test: 0, type: "params", num: 1
+  { .i64 = 2147483647 },
+
+  // mod: "ops", func: "test_i64_load32_s", test: 0, type: "result", num: 1
+  { .i64 = 2147483647 },
+
+  // mod: "ops", func: "test_i64_load32_s", test: 1, type: "params", num: 1
+  { .i64 = 2147483648 },
+
+  // mod: "ops", func: "test_i64_load32_s", test: 1, type: "result", num: 1
+  { .i64 = 2147483648 },
+
+  // mod: "ops", func: "test_i64_load32_u", test: 0, type: "params", num: 1
+  { .i64 = 2147483647 },
+
+  // mod: "ops", func: "test_i64_load32_u", test: 0, type: "result", num: 1
+  { .i64 = 2147483647 },
+
+  // mod: "ops", func: "test_i64_load32_u", test: 1, type: "params", num: 1
+  { .i64 = 2147483648 },
+
+  // mod: "ops", func: "test_i64_load32_u", test: 1, type: "result", num: 1
+  { .i64 = 2147483648 },
 };
 
 typedef struct {
@@ -1804,6 +1876,62 @@ TEST_CALLS[] = {{
   .params = { 130, 1 },
   .result = { 131, 1 },
   .type   = PWASM_RESULT_TYPE_I32,
+}, {
+  .text   = "ops.test_i64_load8_s(0)",
+  .mod    = "ops",
+  .func   = "test_i64_load8_s",
+  .params = { 132, 1 },
+  .result = { 133, 1 },
+  .type   = PWASM_RESULT_TYPE_I64,
+}, {
+  .text   = "ops.test_i64_load8_s(1)",
+  .mod    = "ops",
+  .func   = "test_i64_load8_s",
+  .params = { 134, 1 },
+  .result = { 135, 1 },
+  .type   = PWASM_RESULT_TYPE_I64,
+}, {
+  .text   = "ops.test_i64_load8_u(0)",
+  .mod    = "ops",
+  .func   = "test_i64_load8_u",
+  .params = { 136, 1 },
+  .result = { 137, 1 },
+  .type   = PWASM_RESULT_TYPE_I64,
+}, {
+  .text   = "ops.test_i64_load8_u(1)",
+  .mod    = "ops",
+  .func   = "test_i64_load8_u",
+  .params = { 138, 1 },
+  .result = { 139, 1 },
+  .type   = PWASM_RESULT_TYPE_I64,
+}, {
+  .text   = "ops.test_i64_load16_s(0)",
+  .mod    = "ops",
+  .func   = "test_i64_load16_s",
+  .params = { 140, 1 },
+  .result = { 141, 1 },
+  .type   = PWASM_RESULT_TYPE_I64,
+}, {
+  .text   = "ops.test_i64_load16_s(1)",
+  .mod    = "ops",
+  .func   = "test_i64_load16_s",
+  .params = { 142, 1 },
+  .result = { 143, 1 },
+  .type   = PWASM_RESULT_TYPE_I64,
+}, {
+  .text   = "ops.test_i64_load16_u(0)",
+  .mod    = "ops",
+  .func   = "test_i64_load16_u",
+  .params = { 144, 1 },
+  .result = { 145, 1 },
+  .type   = PWASM_RESULT_TYPE_I64,
+}, {
+  .text   = "ops.test_i64_load16_u(1)",
+  .mod    = "ops",
+  .func   = "test_i64_load16_u",
+  .params = { 146, 1 },
+  .result = { 147, 1 },
+  .type   = PWASM_RESULT_TYPE_I64,
 }};
 
 static bool is_valid_result_type(
