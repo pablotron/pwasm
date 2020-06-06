@@ -13805,16 +13805,14 @@ pwasm_new_interp_eval_expr(
     case PWASM_OP_I32_CLZ:
       {
         const uint32_t a = stack->ptr[stack->pos - 1].i32;
-        const int val = a ? __builtin_clz(a) : 32;
-        stack->ptr[stack->pos - 1].i32 = val;
+        stack->ptr[stack->pos - 1].i32 = a ? __builtin_clz(a) : 32;
       }
 
       break;
     case PWASM_OP_I32_CTZ:
       {
         const uint32_t a = stack->ptr[stack->pos - 1].i32;
-        const int val = a ? __builtin_ctz(a) : 32;
-        stack->ptr[stack->pos - 1].i32 = val;
+        stack->ptr[stack->pos - 1].i32 = a ? __builtin_ctz(a) : 32;
       }
 
       break;
@@ -13990,15 +13988,15 @@ pwasm_new_interp_eval_expr(
       break;
     case PWASM_OP_I64_CLZ:
       {
-        const int val = __builtin_clzl(stack->ptr[stack->pos - 1].i64);
-        stack->ptr[stack->pos - 1].i64 = val;
+        const uint64_t a = stack->ptr[stack->pos - 1].i64;
+        stack->ptr[stack->pos - 1].i64 = a ? __builtin_clzl(a) : 64;
       }
 
       break;
     case PWASM_OP_I64_CTZ:
       {
-        const int val = __builtin_ctzl(stack->ptr[stack->pos - 1].i64);
-        stack->ptr[stack->pos - 1].i64 = val;
+        const uint64_t a = stack->ptr[stack->pos - 1].i64;
+        stack->ptr[stack->pos - 1].i64 = a ? __builtin_ctzl(a) : 64;
       }
 
       break;
