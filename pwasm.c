@@ -9727,6 +9727,12 @@ pwasm_checker_check(
           return false;
         }
 
+        // check memory index (must be zero for current wasm)
+        if (id != 0) {
+          pwasm_checker_fail(checker, "memory.size: non-zero memory index");
+          return false;
+        }
+
         // push size
         if (!pwasm_checker_type_push(checker, PWASM_CHECKER_TYPE_I32)) {
           return false;
@@ -9738,6 +9744,12 @@ pwasm_checker_check(
       {
         // check memory
         if (!pwasm_checker_check_mem(checker, mod)) {
+          return false;
+        }
+
+        // check memory index (must be zero for current wasm)
+        if (id != 0) {
+          pwasm_checker_fail(checker, "memory.grow: non-zero memory index");
           return false;
         }
 
