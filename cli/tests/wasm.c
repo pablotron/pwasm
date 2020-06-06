@@ -3357,6 +3357,66 @@ TEST_VALS[] = {
   // mod: "ops", func: "test_f64_promote_f32", test: 4, params: 1, result: 1
   { .f32 = -31415.92 },
   { .f64 = -31415.919922 },
+
+  // mod: "ops", func: "test_i32_extend8_s", test: 0, params: 1, result: 1
+  { .i32 = 0 },
+  { .i32 = 0 },
+
+  // mod: "ops", func: "test_i32_extend8_s", test: 1, params: 1, result: 1
+  { .i32 = 0x0F },
+  { .i32 = 0x0F },
+
+  // mod: "ops", func: "test_i32_extend8_s", test: 2, params: 1, result: 1
+  { .i32 = 0xFF },
+  { .i32 = -1 },
+
+  // mod: "ops", func: "test_i32_extend16_s", test: 0, params: 1, result: 1
+  { .i32 = 0 },
+  { .i32 = 0 },
+
+  // mod: "ops", func: "test_i32_extend16_s", test: 1, params: 1, result: 1
+  { .i32 = 0x00FF },
+  { .i32 = 0x00FF },
+
+  // mod: "ops", func: "test_i32_extend16_s", test: 2, params: 1, result: 1
+  { .i32 = 0xFFFF },
+  { .i32 = -1 },
+
+  // mod: "ops", func: "test_i64_extend8_s", test: 0, params: 1, result: 1
+  { .i64 = 0 },
+  { .i64 = 0 },
+
+  // mod: "ops", func: "test_i64_extend8_s", test: 1, params: 1, result: 1
+  { .i64 = 0x0F },
+  { .i64 = 0x0F },
+
+  // mod: "ops", func: "test_i64_extend8_s", test: 2, params: 1, result: 1
+  { .i64 = 0xFF },
+  { .i64 = -1 },
+
+  // mod: "ops", func: "test_i64_extend16_s", test: 0, params: 1, result: 1
+  { .i64 = 0 },
+  { .i64 = 0 },
+
+  // mod: "ops", func: "test_i64_extend16_s", test: 1, params: 1, result: 1
+  { .i64 = 0x00FF },
+  { .i64 = 0x00FF },
+
+  // mod: "ops", func: "test_i64_extend16_s", test: 2, params: 1, result: 1
+  { .i64 = 0xFFFF },
+  { .i64 = -1 },
+
+  // mod: "ops", func: "test_i64_extend32_s", test: 0, params: 1, result: 1
+  { .i64 = 0 },
+  { .i64 = 0 },
+
+  // mod: "ops", func: "test_i64_extend32_s", test: 1, params: 1, result: 1
+  { .i64 = 0x00FFFFFF },
+  { .i64 = 0x00FFFFFF },
+
+  // mod: "ops", func: "test_i64_extend32_s", test: 2, params: 1, result: 1
+  { .i64 = 0xFFFFFFFF },
+  { .i64 = -1 },
 };
 
 typedef struct {
@@ -6924,6 +6984,111 @@ TEST_CALLS[] = {{
   .params = { 1284, 1 },
   .result = { 1285, 1 },
   .type   = PWASM_RESULT_TYPE_F64,
+}, {
+  .text   = "ops.test_i32_extend8_s(0)",
+  .mod    = "ops",
+  .func   = "test_i32_extend8_s",
+  .params = { 1286, 1 },
+  .result = { 1287, 1 },
+  .type   = PWASM_RESULT_TYPE_I32,
+}, {
+  .text   = "ops.test_i32_extend8_s(1)",
+  .mod    = "ops",
+  .func   = "test_i32_extend8_s",
+  .params = { 1288, 1 },
+  .result = { 1289, 1 },
+  .type   = PWASM_RESULT_TYPE_I32,
+}, {
+  .text   = "ops.test_i32_extend8_s(2)",
+  .mod    = "ops",
+  .func   = "test_i32_extend8_s",
+  .params = { 1290, 1 },
+  .result = { 1291, 1 },
+  .type   = PWASM_RESULT_TYPE_I32,
+}, {
+  .text   = "ops.test_i32_extend16_s(0)",
+  .mod    = "ops",
+  .func   = "test_i32_extend16_s",
+  .params = { 1292, 1 },
+  .result = { 1293, 1 },
+  .type   = PWASM_RESULT_TYPE_I32,
+}, {
+  .text   = "ops.test_i32_extend16_s(1)",
+  .mod    = "ops",
+  .func   = "test_i32_extend16_s",
+  .params = { 1294, 1 },
+  .result = { 1295, 1 },
+  .type   = PWASM_RESULT_TYPE_I32,
+}, {
+  .text   = "ops.test_i32_extend16_s(2)",
+  .mod    = "ops",
+  .func   = "test_i32_extend16_s",
+  .params = { 1296, 1 },
+  .result = { 1297, 1 },
+  .type   = PWASM_RESULT_TYPE_I32,
+}, {
+  .text   = "ops.test_i64_extend8_s(0)",
+  .mod    = "ops",
+  .func   = "test_i64_extend8_s",
+  .params = { 1298, 1 },
+  .result = { 1299, 1 },
+  .type   = PWASM_RESULT_TYPE_I64,
+}, {
+  .text   = "ops.test_i64_extend8_s(1)",
+  .mod    = "ops",
+  .func   = "test_i64_extend8_s",
+  .params = { 1300, 1 },
+  .result = { 1301, 1 },
+  .type   = PWASM_RESULT_TYPE_I64,
+}, {
+  .text   = "ops.test_i64_extend8_s(2)",
+  .mod    = "ops",
+  .func   = "test_i64_extend8_s",
+  .params = { 1302, 1 },
+  .result = { 1303, 1 },
+  .type   = PWASM_RESULT_TYPE_I64,
+}, {
+  .text   = "ops.test_i64_extend16_s(0)",
+  .mod    = "ops",
+  .func   = "test_i64_extend16_s",
+  .params = { 1304, 1 },
+  .result = { 1305, 1 },
+  .type   = PWASM_RESULT_TYPE_I64,
+}, {
+  .text   = "ops.test_i64_extend16_s(1)",
+  .mod    = "ops",
+  .func   = "test_i64_extend16_s",
+  .params = { 1306, 1 },
+  .result = { 1307, 1 },
+  .type   = PWASM_RESULT_TYPE_I64,
+}, {
+  .text   = "ops.test_i64_extend16_s(2)",
+  .mod    = "ops",
+  .func   = "test_i64_extend16_s",
+  .params = { 1308, 1 },
+  .result = { 1309, 1 },
+  .type   = PWASM_RESULT_TYPE_I64,
+}, {
+  .text   = "ops.test_i64_extend32_s(0)",
+  .mod    = "ops",
+  .func   = "test_i64_extend32_s",
+  .params = { 1310, 1 },
+  .result = { 1311, 1 },
+  .type   = PWASM_RESULT_TYPE_I64,
+}, {
+  .text   = "ops.test_i64_extend32_s(1)",
+  .mod    = "ops",
+  .func   = "test_i64_extend32_s",
+  .params = { 1312, 1 },
+  .result = { 1313, 1 },
+  .type   = PWASM_RESULT_TYPE_I64,
+}, {
+  .text   = "ops.test_i64_extend32_s(2)",
+  .mod    = "ops",
+  .func   = "test_i64_extend32_s",
+  .params = { 1314, 1 },
+  .result = { 1315, 1 },
+  .type   = PWASM_RESULT_TYPE_I64,
 }};
 
 static bool is_valid_result_type(
