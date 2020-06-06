@@ -13586,7 +13586,7 @@ pwasm_new_interp_eval_expr(
       {
         const int32_t a = (int32_t) stack->ptr[stack->pos - 2].i32;
         const int32_t b = (int32_t) stack->ptr[stack->pos - 1].i32;
-        stack->ptr[stack->pos - 2].i32 = (a <= b);
+        stack->ptr[stack->pos - 2].i32 = (a >= b);
         stack->pos--;
       }
 
@@ -13595,7 +13595,7 @@ pwasm_new_interp_eval_expr(
       {
         const uint32_t a = stack->ptr[stack->pos - 2].i32;
         const uint32_t b = stack->ptr[stack->pos - 1].i32;
-        stack->ptr[stack->pos - 2].i32 = (a <= b);
+        stack->ptr[stack->pos - 2].i32 = (a >= b);
         stack->pos--;
       }
 
