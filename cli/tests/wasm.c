@@ -2069,6 +2069,66 @@ TEST_VALS[] = {
   { .f64 = 3141.5 },
   { .f64 = -3141.5 },
   { .i32 = 1 },
+
+  // mod: "ops", func: "test_i32_clz", test: 0, params: 1, result: 1
+  { .i32 = 0x000000000 },
+  { .i32 = 32 },
+
+  // mod: "ops", func: "test_i32_clz", test: 1, params: 1, result: 1
+  { .i32 = 0xFFFF },
+  { .i32 = 16 },
+
+  // mod: "ops", func: "test_i32_clz", test: 2, params: 1, result: 1
+  { .i32 = 0xFFFFFFFF },
+  { .i32 = 0 },
+
+  // mod: "ops", func: "test_i32_clz", test: 3, params: 1, result: 1
+  { .i32 = 0x80000000 },
+  { .i32 = 0 },
+
+  // mod: "ops", func: "test_i32_clz", test: 4, params: 1, result: 1
+  { .i32 = 0x08000000 },
+  { .i32 = 4 },
+
+  // mod: "ops", func: "test_i32_clz", test: 5, params: 1, result: 1
+  { .i32 = 0x00080000 },
+  { .i32 = 12 },
+
+  // mod: "ops", func: "test_i32_clz", test: 6, params: 1, result: 1
+  { .i32 = 0x00000400 },
+  { .i32 = 21 },
+
+  // mod: "ops", func: "test_i32_ctz", test: 0, params: 1, result: 1
+  { .i32 = 0 },
+  { .i32 = 32 },
+
+  // mod: "ops", func: "test_i32_ctz", test: 1, params: 1, result: 1
+  { .i32 = 0xF0000 },
+  { .i32 = 16 },
+
+  // mod: "ops", func: "test_i32_ctz", test: 2, params: 1, result: 1
+  { .i32 = 0x80000000 },
+  { .i32 = 31 },
+
+  // mod: "ops", func: "test_i32_ctz", test: 3, params: 1, result: 1
+  { .i32 = 0x00C00000 },
+  { .i32 = 22 },
+
+  // mod: "ops", func: "test_i32_popcnt", test: 0, params: 1, result: 1
+  { .i32 = 0 },
+  { .i32 = 0 },
+
+  // mod: "ops", func: "test_i32_popcnt", test: 1, params: 1, result: 1
+  { .i32 = 0xFFFFFFFF },
+  { .i32 = 32 },
+
+  // mod: "ops", func: "test_i32_popcnt", test: 2, params: 1, result: 1
+  { .i32 = 0xF0F0F0F0 },
+  { .i32 = 16 },
+
+  // mod: "ops", func: "test_i32_popcnt", test: 2, params: 1, result: 1
+  { .i32 = 0x0F0F0F00 },
+  { .i32 = 12 },
 };
 
 typedef struct {
@@ -3619,6 +3679,55 @@ TEST_CALLS[] = {{
   .func   = "test_f64_ge",
   .params = { 577, 2 },
   .result = { 579, 1 },
+  .type   = PWASM_RESULT_TYPE_I32,
+}, {
+  .text   = "ops.test_i32_clz(0)",
+  .mod    = "ops",
+  .func   = "test_i32_clz",
+  .params = { 580, 1 },
+  .result = { 581, 1 },
+  .type   = PWASM_RESULT_TYPE_I32,
+}, {
+  .text   = "ops.test_i32_clz(1)",
+  .mod    = "ops",
+  .func   = "test_i32_clz",
+  .params = { 582, 1 },
+  .result = { 583, 1 },
+  .type   = PWASM_RESULT_TYPE_I32,
+}, {
+  .text   = "ops.test_i32_clz(2)",
+  .mod    = "ops",
+  .func   = "test_i32_clz",
+  .params = { 584, 1 },
+  .result = { 585, 1 },
+  .type   = PWASM_RESULT_TYPE_I32,
+}, {
+  .text   = "ops.test_i32_clz(3)",
+  .mod    = "ops",
+  .func   = "test_i32_clz",
+  .params = { 586, 1 },
+  .result = { 587, 1 },
+  .type   = PWASM_RESULT_TYPE_I32,
+}, {
+  .text   = "ops.test_i32_clz(4)",
+  .mod    = "ops",
+  .func   = "test_i32_clz",
+  .params = { 588, 1 },
+  .result = { 589, 1 },
+  .type   = PWASM_RESULT_TYPE_I32,
+}, {
+  .text   = "ops.test_i32_clz(5)",
+  .mod    = "ops",
+  .func   = "test_i32_clz",
+  .params = { 590, 1 },
+  .result = { 591, 1 },
+  .type   = PWASM_RESULT_TYPE_I32,
+}, {
+  .text   = "ops.test_i32_clz(6)",
+  .mod    = "ops",
+  .func   = "test_i32_clz",
+  .params = { 592, 1 },
+  .result = { 593, 1 },
   .type   = PWASM_RESULT_TYPE_I32,
 }};
 
