@@ -1040,847 +1040,611 @@ static const struct {
 
 static const pwasm_val_t
 TEST_VALS[] = {
-  // mod: "native", func: "add_one", test: 1, type: "params", num: 1
-  { .i32 = 3 },
-
-  // mod: "native", func: "add_one", test: 1, type: "result", num: 1
-  { .i32 = 4 },
-
-  // mod: "native", func: "add_two", test: 1, type: "params", num: 2
+  // mod: "native", func: "add_one", test: 1, params: 1, result: 1
   { .i32 = 3 },
   { .i32 = 4 },
 
-  // mod: "native", func: "add_two", test: 1, type: "result", num: 1
+  // mod: "native", func: "add_two", test: 1, params: 2, result: 1
+  { .i32 = 3 },
+  { .i32 = 4 },
   { .i32 = 12 },
 
-  // mod: "guide", func: "life", test: 1, type: "params", num: 0
-
-  // mod: "guide", func: "life", test: 1, type: "result", num: 1
+  // mod: "guide", func: "life", test: 1, params: 0, result: 1
   { .i32 = 42 },
 
-  // mod: "pythag", func: "f32.pythag", test: 1, type: "params", num: 2
+  // mod: "pythag", func: "f32.pythag", test: 1, params: 2, result: 1
   { .f32 = 3.0f },
   { .f32 = 4.0f },
-
-  // mod: "pythag", func: "f32.pythag", test: 1, type: "result", num: 1
   { .f32 = 5.0f },
 
-  // mod: "pythag", func: "f64.pythag", test: 1, type: "params", num: 2
+  // mod: "pythag", func: "f64.pythag", test: 1, params: 2, result: 1
   { .f64 = 5.0f },
   { .f64 = 6.0f },
-
-  // mod: "pythag", func: "f64.pythag", test: 1, type: "result", num: 1
   { .f64 = 7.810250f },
 
-  // mod: "fib", func: "fib_recurse", test: 1, type: "params", num: 1
+  // mod: "fib", func: "fib_recurse", test: 1, params: 1, result: 1
   { .i32 = 3 },
-
-  // mod: "fib", func: "fib_recurse", test: 1, type: "result", num: 1
   { .i32 = 2 },
 
-  // mod: "fib", func: "fib_recurse", test: 2, type: "params", num: 1
+  // mod: "fib", func: "fib_recurse", test: 2, params: 1, result: 1
+  { .i32 = 5 },
   { .i32 = 5 },
 
-  // mod: "fib", func: "fib_recurse", test: 2, type: "result", num: 1
-  { .i32 = 5 },
-
-  // mod: "fib", func: "fib_iterate", test: 1, type: "params", num: 1
+  // mod: "fib", func: "fib_iterate", test: 1, params: 1, result: 1
   { .i32 = 3 },
-
-  // mod: "fib", func: "fib_iterate", test: 1, type: "result", num: 1
   { .i32 = 2 },
 
-  // mod: "fib", func: "fib_iterate", test: 2, type: "params", num: 1
+  // mod: "fib", func: "fib_iterate", test: 2, params: 1, result: 1
+  { .i32 = 5 },
   { .i32 = 5 },
 
-  // mod: "fib", func: "fib_iterate", test: 2, type: "result", num: 1
-  { .i32 = 5 },
+  // mod: "mem", func: "set", test: 1, params: 2, result: 1
+  { .i32 = 0 },
+  { .i32 = 3141 },
+  { .i32 = 3141 },
 
-  // mod: "mem", func: "set", test: 1, type: "params", num: 2
+  // mod: "mem", func: "set", test: 2, params: 2, result: 1
+  { .i32 = 4 },
+  { .i32 = 5926 },
+  { .i32 = 5926 },
+
+  // mod: "mem", func: "get", test: 1, params: 1, result: 1
   { .i32 = 0 },
   { .i32 = 3141 },
 
-  // mod: "mem", func: "set", test: 1, type: "result", num: 1
-  { .i32 = 3141 },
-
-  // mod: "mem", func: "set", test: 2, type: "params", num: 2
+  // mod: "mem", func: "get", test: 2, params: 1, result: 1
   { .i32 = 4 },
   { .i32 = 5926 },
 
-  // mod: "mem", func: "set", test: 2, type: "result", num: 1
-  { .i32 = 5926 },
-
-  // mod: "mem", func: "get", test: 1, type: "params", num: 1
-  { .i32 = 0 },
-
-  // mod: "mem", func: "get", test: 1, type: "result", num: 1
-  { .i32 = 3141 },
-
-  // mod: "mem", func: "get", test: 2, type: "params", num: 1
-  { .i32 = 4 },
-
-  // mod: "mem", func: "get", test: 2, type: "result", num: 1
-  { .i32 = 5926 },
-
-  // mod: "global", func: "i32.set", test: 1, type: "params", num: 1
+  // mod: "global", func: "i32.set", test: 1, params: 1, result: 0
   { .i32 = 27 },
 
-  // mod: "global", func: "i32.get", test: 2, type: "result", num: 1
+  // mod: "global", func: "i32.get", test: 2, params: 0, result: 1
   { .i32 = 27 },
 
-  // mod: "global", func: "i64.set", test: 1, type: "params", num: 1
+  // mod: "global", func: "i64.set", test: 1, params: 1, result: 0
   { .i64 = 31415926535987 },
 
-  // mod: "global", func: "i64.get", test: 2, type: "result", num: 1
+  // mod: "global", func: "i64.get", test: 2, params: 0, result: 1
   { .i64 = 31415926535987 },
 
-  // mod: "global", func: "f32.set", test: 1, type: "params", num: 1
+  // mod: "global", func: "f32.set", test: 1, params: 1, result: 0
   { .f32 = 3.14159 },
 
-  // mod: "global", func: "f32.get", test: 2, type: "result", num: 1
+  // mod: "global", func: "f32.get", test: 2, params: 0, result: 1
   { .f32 = 3.14159 },
 
-  // mod: "global", func: "f64.set", test: 1, type: "params", num: 1
+  // mod: "global", func: "f64.set", test: 1, params: 1, result: 0
   { .f64 = 2.718281 },
 
-  // mod: "global", func: "f64.get", test: 2, type: "result", num: 1
+  // mod: "global", func: "f64.get", test: 2, params: 0, result: 1
   { .f64 = 2.718281 },
 
-  // mod: "br_table", func: "add_nth", test: 0, type: "params", num: 2
+  // mod: "br_table", func: "add_nth", test: 0, params: 2, result: 1
   { .i32 = 0 },
   { .i32 = 0 },
-
-  // mod: "br_table", func: "add_nth", test: 0, type: "result", num: 1
   { .i32 = 21 },
 
-  // mod: "br_table", func: "add_nth", test: 1, type: "params", num: 2
+  // mod: "br_table", func: "add_nth", test: 1, params: 2, result: 1
   { .i32 = 3 },
   { .i32 = 0 },
-
-  // mod: "br_table", func: "add_nth", test: 1, type: "result", num: 1
   { .i32 = 24 },
 
-  // mod: "call_indirect", func: "i32_map", test: 0, type: "params", num: 2
+  // mod: "call_indirect", func: "i32_map", test: 0, params: 2, result: 1
   { .i32 = 5 },
   { .i32 = 0 },
-
-  // mod: "call_indirect", func: "i32_map", test: 0, type: "result", num: 1
   { .i32 = 10 },
 
-  // mod: "call_indirect", func: "i32_map", test: 1, type: "params", num: 2
+  // mod: "call_indirect", func: "i32_map", test: 1, params: 2, result: 1
   { .i32 = 33 },
   { .i32 = 1 },
-
-  // mod: "call_indirect", func: "i32_map", test: 1, type: "result", num: 1
   { .i32 = 99 },
 
-  // mod: "call_indirect", func: "i32_map", test: 2, type: "params", num: 2
+  // mod: "call_indirect", func: "i32_map", test: 2, params: 2, result: 1
   { .i32 = 9 },
   { .i32 = 2 },
-
-  // mod: "call_indirect", func: "i32_map", test: 2, type: "result", num: 1
   { .i32 = 81 },
 
-  // mod: "call_indirect", func: "i32_map", test: 3, type: "params", num: 2
+  // mod: "call_indirect", func: "i32_map", test: 3, params: 2, result: 1
   { .i32 = 7 },
   { .i32 = 3 },
-
-  // mod: "call_indirect", func: "i32_map", test: 3, type: "result", num: 1
   { .i32 = 343 },
 
-  // mod: "call_indirect", func: "f32_map", test: 0, type: "params", num: 2
+  // mod: "call_indirect", func: "f32_map", test: 0, params: 2, result: 1
   { .f32 = 5 },
   { .i32 = 4 },
-
-  // mod: "call_indirect", func: "f32_map", test: 0, type: "result", num: 1
   { .f32 = 10 },
 
-  // mod: "call_indirect", func: "f32_map", test: 1, type: "params", num: 2
+  // mod: "call_indirect", func: "f32_map", test: 1, params: 2, result: 1
   { .f32 = 33 },
   { .i32 = 5 },
-
-  // mod: "call_indirect", func: "f32_map", test: 1, type: "result", num: 1
   { .f32 = 99 },
 
-  // mod: "call_indirect", func: "f32_map", test: 2, type: "params", num: 2
+  // mod: "call_indirect", func: "f32_map", test: 2, params: 2, result: 1
   { .f32 = 9 },
   { .i32 = 6 },
-
-  // mod: "call_indirect", func: "f32_map", test: 2, type: "result", num: 1
   { .f32 = 81 },
 
-  // mod: "call_indirect", func: "f32_map", test: 3, type: "params", num: 2
+  // mod: "call_indirect", func: "f32_map", test: 3, params: 2, result: 1
   { .f32 = 7 },
   { .i32 = 7 },
-
-  // mod: "call_indirect", func: "f32_map", test: 3, type: "result", num: 1
   { .f32 = 343 },
 
-  // mod: "v128-const", func: "i8x16_add", test: 0, type: "params", num: 1
+  // mod: "v128-const", func: "i8x16_add", test: 0, params: 1, result: 1
   { .i32 = 17 },
-
-  // mod: "v128-const", func: "i8x16_add", test: 0, type: "result", num: 1
   { .i32 = 20 },
 
-  // mod: "start", func: "get", test: 0, type: "result", num: 1
+  // mod: "start", func: "get", test: 0, params: 0, result: 1
   { .i32 = 42 },
 
-  // mod: "ops", func: "test_nop", test: 0, type: "result", num: 1
+  // mod: "ops", func: "test_nop", test: 0, params: 0, result: 1
   { .i32 = 1234 },
 
-  // mod: "ops", func: "test_block", test: 0, type: "result", num: 1
+  // mod: "ops", func: "test_block", test: 0, params: 0, result: 1
   { .i32 = 34 },
 
-  // mod: "ops", func: "test_loop", test: 0, type: "result", num: 1
+  // mod: "ops", func: "test_loop", test: 0, params: 0, result: 1
   { .i32 = 5 },
 
-  // mod: "ops", func: "test_if_else", test: 0, type: "params", num: 1
+  // mod: "ops", func: "test_if_else", test: 0, params: 1, result: 1
   { .i32 = 99 },
-
-  // mod: "ops", func: "test_if_else", test: 0, type: "result", num: 1
   { .i32 = 33 },
 
-  // mod: "ops", func: "test_if_else", test: 1, type: "params", num: 1
+  // mod: "ops", func: "test_if_else", test: 1, params: 1, result: 1
   { .i32 = 100 },
-
-  // mod: "ops", func: "test_if_else", test: 1, type: "result", num: 1
   { .i32 = 22 },
 
-  // mod: "ops", func: "test_call", test: 1, type: "result", num: 1
+  // mod: "ops", func: "test_call", test: 1, params: 0, result: 1
   { .i32 = 55 },
 
-  // mod: "ops", func: "test_call_indirect", test: 0, type: "params", num: 3
+  // mod: "ops", func: "test_call_indirect", test: 0, params: 3, result: 1
   { .i32 = 0 },
   { .i32 = 8 },
   { .i32 = 6 },
-
-  // mod: "ops", func: "test_call_indirect", test: 0, type: "result", num: 1
   { .i32 = 14 },
 
-  // mod: "ops", func: "test_call_indirect", test: 1, type: "params", num: 3
+  // mod: "ops", func: "test_call_indirect", test: 1, params: 3, result: 1
   { .i32 = 1 },
   { .i32 = 7 },
   { .i32 = 5 },
-
-  // mod: "ops", func: "test_call_indirect", test: 1, type: "result", num: 1
   { .i32 = 2 },
 
-  // mod: "ops", func: "test_call_indirect", test: 2, type: "params", num: 3
+  // mod: "ops", func: "test_call_indirect", test: 2, params: 3, result: 1
   { .i32 = 2 },
   { .i32 = 3 },
   { .i32 = 9 },
-
-  // mod: "ops", func: "test_call_indirect", test: 2, type: "result", num: 1
   { .i32 = 27 },
 
-  // mod: "ops", func: "test_call_indirect", test: 3, type: "params", num: 3
+  // mod: "ops", func: "test_call_indirect", test: 3, params: 3, result: 1
   { .i32 = 3 },
   { .i32 = 93857 },
   { .i32 = 9 },
-
-  // mod: "ops", func: "test_call_indirect", test: 3, type: "result", num: 1
   { .i32 = 93857 },
 
-  // mod: "ops", func: "test_drop", test: 0, type: "result", num: 1
+  // mod: "ops", func: "test_drop", test: 0, params: 0, result: 1
   { .i32 = 2 },
 
-  // mod: "ops", func: "test_select", test: 0, type: "params", num: 1
+  // mod: "ops", func: "test_select", test: 0, params: 1, result: 1
   { .i32 = 9 },
-
-  // mod: "ops", func: "test_select", test: 0, type: "result", num: 1
   { .i32 = 1 },
 
-  // mod: "ops", func: "test_select", test: 1, type: "params", num: 1
+  // mod: "ops", func: "test_select", test: 1, params: 1, result: 1
   { .i32 = 44 },
-
-  // mod: "ops", func: "test_select", test: 1, type: "result", num: 1
   { .i32 = 0 },
 
-  // mod: "ops", func: "test_local_get", test: 0, type: "params", num: 2
+  // mod: "ops", func: "test_local_get", test: 0, params: 2, result: 1
   { .i32 = 0 },
   { .i32 = 123987 },
-
-  // mod: "ops", func: "test_local_get", test: 0, type: "result", num: 1
   { .i32 = 123987 },
 
-  // mod: "ops", func: "test_local_get", test: 1, type: "params", num: 2
+  // mod: "ops", func: "test_local_get", test: 1, params: 2, result: 1
   { .i32 = 1 },
   { .i32 = 123987 },
-
-  // mod: "ops", func: "test_local_get", test: 1, type: "result", num: 1
   { .i32 = 31337 },
 
-  // mod: "ops", func: "test_local_set", test: 0, type: "params", num: 1
+  // mod: "ops", func: "test_local_set", test: 0, params: 1, result: 1
   { .i32 = 123 },
-
-  // mod: "ops", func: "test_local_set", test: 0, type: "result", num: 1
   { .i32 = 145 },
 
-  // mod: "ops", func: "test_local_tee", test: 0, type: "params", num: 1
+  // mod: "ops", func: "test_local_tee", test: 0, params: 1, result: 1
   { .i32 = 10117452 },
-
-  // mod: "ops", func: "test_local_tee", test: 0, type: "result", num: 1
   { .i32 = 10117496 },
 
-  // mod: "ops", func: "test_global_get", test: 0, type: "result", num: 1
+  // mod: "ops", func: "test_global_get", test: 0, params: 0, result: 1
   { .i32 = 314159 },
 
-  // mod: "ops", func: "test_global_set", test: 0, type: "result", num: 1
+  // mod: "ops", func: "test_global_set", test: 0, params: 0, result: 1
   { .i32 = 42 },
 
-  // mod: "ops", func: "test_i32_load", test: 0, type: "result", num: 1
+  // mod: "ops", func: "test_i32_load", test: 0, params: 0, result: 1
   { .i32 = 1234 },
 
-  // mod: "ops", func: "test_i64_load", test: 0, type: "result", num: 1
+  // mod: "ops", func: "test_i64_load", test: 0, params: 0, result: 1
   { .i64 = 987654321 },
 
-  // mod: "ops", func: "test_f32_load", test: 0, type: "result", num: 1
+  // mod: "ops", func: "test_f32_load", test: 0, params: 0, result: 1
   { .f32 = 3.14159 },
 
-  // mod: "ops", func: "test_f64_load", test: 0, type: "result", num: 1
+  // mod: "ops", func: "test_f64_load", test: 0, params: 0, result: 1
   { .f64 = 3.14159 },
 
-  // mod: "ops", func: "test_i32_load8_s", test: 0, type: "params", num: 1
+  // mod: "ops", func: "test_i32_load8_s", test: 0, params: 1, result: 1
+  { .i32 = 127 },
   { .i32 = 127 },
 
-  // mod: "ops", func: "test_i32_load8_s", test: 0, type: "result", num: 1
+  // mod: "ops", func: "test_i32_load8_s", test: 1, params: 1, result: 1
+  { .i32 = 128 },
+  { .i32 = 128 },
+
+  // mod: "ops", func: "test_i32_load8_u", test: 0, params: 1, result: 1
+  { .i32 = 127 },
   { .i32 = 127 },
 
-  // mod: "ops", func: "test_i32_load8_s", test: 1, type: "params", num: 1
+  // mod: "ops", func: "test_i32_load8_u", test: 1, params: 1, result: 1
+  { .i32 = 128 },
   { .i32 = 128 },
 
-  // mod: "ops", func: "test_i32_load8_s", test: 1, type: "result", num: 1
-  { .i32 = 128 },
-
-  // mod: "ops", func: "test_i32_load8_u", test: 0, type: "params", num: 1
-  { .i32 = 127 },
-
-  // mod: "ops", func: "test_i32_load8_u", test: 0, type: "result", num: 1
-  { .i32 = 127 },
-
-  // mod: "ops", func: "test_i32_load8_u", test: 1, type: "params", num: 1
-  { .i32 = 128 },
-
-  // mod: "ops", func: "test_i32_load8_u", test: 1, type: "result", num: 1
-  { .i32 = 128 },
-
-  // mod: "ops", func: "test_i32_load16_s", test: 0, type: "params", num: 1
+  // mod: "ops", func: "test_i32_load16_s", test: 0, params: 1, result: 1
+  { .i32 = 32767 },
   { .i32 = 32767 },
 
-  // mod: "ops", func: "test_i32_load16_s", test: 0, type: "result", num: 1
-  { .i32 = 32767 },
-
-  // mod: "ops", func: "test_i32_load16_s", test: 1, type: "params", num: 1
+  // mod: "ops", func: "test_i32_load16_s", test: 1, params: 1, result: 1
+  { .i32 = 32768 },
   { .i32 = 32768 },
 
-  // mod: "ops", func: "test_i32_load16_s", test: 1, type: "result", num: 1
+  // mod: "ops", func: "test_i32_load16_u", test: 0, params: 1, result: 1
+  { .i32 = 32768 },
   { .i32 = 32768 },
 
-  // mod: "ops", func: "test_i32_load16_u", test: 0, type: "params", num: 1
+  // mod: "ops", func: "test_i32_load16_u", test: 1, params: 1, result: 1
+  { .i32 = 32768 },
   { .i32 = 32768 },
 
-  // mod: "ops", func: "test_i32_load16_u", test: 0, type: "result", num: 1
-  { .i32 = 32768 },
-
-  // mod: "ops", func: "test_i32_load16_u", test: 1, type: "params", num: 1
-  { .i32 = 32768 },
-
-  // mod: "ops", func: "test_i32_load16_u", test: 1, type: "result", num: 1
-  { .i32 = 32768 },
-
-  // mod: "ops", func: "test_i64_load8_s", test: 0, type: "params", num: 1
+  // mod: "ops", func: "test_i64_load8_s", test: 0, params: 1, result: 1
+  { .i64 = 127 },
   { .i64 = 127 },
 
-  // mod: "ops", func: "test_i64_load8_s", test: 0, type: "result", num: 1
+  // mod: "ops", func: "test_i64_load8_s", test: 1, params: 1, result: 1
+  { .i64 = 128 },
+  { .i64 = 128 },
+
+  // mod: "ops", func: "test_i64_load8_u", test: 0, params: 1, result: 1
+  { .i64 = 127 },
   { .i64 = 127 },
 
-  // mod: "ops", func: "test_i64_load8_s", test: 1, type: "params", num: 1
+  // mod: "ops", func: "test_i64_load8_u", test: 1, params: 1, result: 1
+  { .i64 = 128 },
   { .i64 = 128 },
 
-  // mod: "ops", func: "test_i64_load8_s", test: 1, type: "result", num: 1
-  { .i64 = 128 },
-
-  // mod: "ops", func: "test_i64_load8_u", test: 0, type: "params", num: 1
-  { .i64 = 127 },
-
-  // mod: "ops", func: "test_i64_load8_u", test: 0, type: "result", num: 1
-  { .i64 = 127 },
-
-  // mod: "ops", func: "test_i64_load8_u", test: 1, type: "params", num: 1
-  { .i64 = 128 },
-
-  // mod: "ops", func: "test_i64_load8_u", test: 1, type: "result", num: 1
-  { .i64 = 128 },
-
-  // mod: "ops", func: "test_i64_load16_s", test: 0, type: "params", num: 1
+  // mod: "ops", func: "test_i64_load16_s", test: 0, params: 1, result: 1
+  { .i64 = 32767 },
   { .i64 = 32767 },
 
-  // mod: "ops", func: "test_i64_load16_s", test: 0, type: "result", num: 1
-  { .i64 = 32767 },
-
-  // mod: "ops", func: "test_i64_load16_s", test: 1, type: "params", num: 1
+  // mod: "ops", func: "test_i64_load16_s", test: 1, params: 1, result: 1
+  { .i64 = 32768 },
   { .i64 = 32768 },
 
-  // mod: "ops", func: "test_i64_load16_s", test: 1, type: "result", num: 1
+  // mod: "ops", func: "test_i64_load16_u", test: 0, params: 1, result: 1
+  { .i64 = 32768 },
   { .i64 = 32768 },
 
-  // mod: "ops", func: "test_i64_load16_u", test: 0, type: "params", num: 1
+  // mod: "ops", func: "test_i64_load16_u", test: 1, params: 1, result: 1
+  { .i64 = 32768 },
   { .i64 = 32768 },
 
-  // mod: "ops", func: "test_i64_load16_u", test: 0, type: "result", num: 1
-  { .i64 = 32768 },
-
-  // mod: "ops", func: "test_i64_load16_u", test: 1, type: "params", num: 1
-  { .i64 = 32768 },
-
-  // mod: "ops", func: "test_i64_load16_u", test: 1, type: "result", num: 1
-  { .i64 = 32768 },
-
-  // mod: "ops", func: "test_i64_load32_s", test: 0, type: "params", num: 1
+  // mod: "ops", func: "test_i64_load32_s", test: 0, params: 1, result: 1
+  { .i64 = 2147483647 },
   { .i64 = 2147483647 },
 
-  // mod: "ops", func: "test_i64_load32_s", test: 0, type: "result", num: 1
+  // mod: "ops", func: "test_i64_load32_s", test: 1, params: 1, result: 1
+  { .i64 = 2147483648 },
+  { .i64 = 2147483648 },
+
+  // mod: "ops", func: "test_i64_load32_u", test: 0, params: 1, result: 1
+  { .i64 = 2147483647 },
   { .i64 = 2147483647 },
 
-  // mod: "ops", func: "test_i64_load32_s", test: 1, type: "params", num: 1
+  // mod: "ops", func: "test_i64_load32_u", test: 1, params: 1, result: 1
+  { .i64 = 2147483648 },
   { .i64 = 2147483648 },
 
-  // mod: "ops", func: "test_i64_load32_s", test: 1, type: "result", num: 1
-  { .i64 = 2147483648 },
-
-  // mod: "ops", func: "test_i64_load32_u", test: 0, type: "params", num: 1
-  { .i64 = 2147483647 },
-
-  // mod: "ops", func: "test_i64_load32_u", test: 0, type: "result", num: 1
-  { .i64 = 2147483647 },
-
-  // mod: "ops", func: "test_i64_load32_u", test: 1, type: "params", num: 1
-  { .i64 = 2147483648 },
-
-  // mod: "ops", func: "test_i64_load32_u", test: 1, type: "result", num: 1
-  { .i64 = 2147483648 },
-
-  // mod: "ops", func: "test_i32_store", test: 0, type: "params", num: 1
+  // mod: "ops", func: "test_i32_store", test: 0, params: 1, result: 1
+  { .i32 = 321654 },
   { .i32 = 321654 },
 
-  // mod: "ops", func: "test_i32_store", test: 0, type: "result", num: 1
-  { .i32 = 321654 },
-
-  // mod: "ops", func: "test_i64_store", test: 0, type: "params", num: 1
+  // mod: "ops", func: "test_i64_store", test: 0, params: 1, result: 1
+  { .i64 = 987654321654 },
   { .i64 = 987654321654 },
 
-  // mod: "ops", func: "test_i64_store", test: 0, type: "result", num: 1
-  { .i64 = 987654321654 },
-
-  // mod: "ops", func: "test_f32_store", test: 0, type: "params", num: 1
+  // mod: "ops", func: "test_f32_store", test: 0, params: 1, result: 1
+  { .f32 = 3.14159f },
   { .f32 = 3.14159f },
 
-  // mod: "ops", func: "test_f32_store", test: 0, type: "result", num: 1
-  { .f32 = 3.14159f },
-
-  // mod: "ops", func: "test_f64_store", test: 0, type: "params", num: 1
+  // mod: "ops", func: "test_f64_store", test: 0, params: 1, result: 1
+  { .f64 = 31415.926535 },
   { .f64 = 31415.926535 },
 
-  // mod: "ops", func: "test_f64_store", test: 0, type: "result", num: 1
-  { .f64 = 31415.926535 },
-
-  // mod: "ops", func: "test_local_get_f32", test: 0, type: "params", num: 1
+  // mod: "ops", func: "test_local_get_f32", test: 0, params: 1, result: 1
   { .f32 = 3.14159f },
-
-  // mod: "ops", func: "test_local_get_f32", test: 0, type: "result", num: 1
   { .f32 = 6.28318f },
 
-  // mod: "ops", func: "test_i32_store8", test: 0, type: "params", num: 1
+  // mod: "ops", func: "test_i32_store8", test: 0, params: 1, result: 1
+  { .i32 = 0xFF },
   { .i32 = 0xFF },
 
-  // mod: "ops", func: "test_i32_store8", test: 0, type: "result", num: 1
+  // mod: "ops", func: "test_i32_store8", test: 1, params: 1, result: 1
+  { .i32 = 0xFFFF },
   { .i32 = 0xFF },
 
-  // mod: "ops", func: "test_i32_store8", test: 1, type: "params", num: 1
+  // mod: "ops", func: "test_i32_store16", test: 0, params: 1, result: 1
+  { .i32 = 0xFFFF },
   { .i32 = 0xFFFF },
 
-  // mod: "ops", func: "test_i32_store8", test: 1, type: "result", num: 1
-  { .i32 = 0xFF },
-
-  // mod: "ops", func: "test_i32_store16", test: 0, type: "params", num: 1
-  { .i32 = 0xFFFF },
-
-  // mod: "ops", func: "test_i32_store16", test: 0, type: "result", num: 1
-  { .i32 = 0xFFFF },
-
-  // mod: "ops", func: "test_i32_store16", test: 1, type: "params", num: 1
+  // mod: "ops", func: "test_i32_store16", test: 1, params: 1, result: 1
   { .i32 = 0xFFFFFFFF },
-
-  // mod: "ops", func: "test_i32_store16", test: 1, type: "result", num: 1
   { .i32 = 0xFFFF },
 
-  // mod: "ops", func: "test_i64_store8", test: 0, type: "params", num: 1
+  // mod: "ops", func: "test_i64_store8", test: 0, params: 1, result: 1
+  { .i64 = 0xFF },
   { .i64 = 0xFF },
 
-  // mod: "ops", func: "test_i64_store8", test: 0, type: "result", num: 1
+  // mod: "ops", func: "test_i64_store8", test: 1, params: 1, result: 1
+  { .i64 = 0xFFFF },
   { .i64 = 0xFF },
 
-  // mod: "ops", func: "test_i64_store8", test: 1, type: "params", num: 1
+  // mod: "ops", func: "test_i64_store16", test: 0, params: 1, result: 1
+  { .i64 = 0xFFFF },
   { .i64 = 0xFFFF },
 
-  // mod: "ops", func: "test_i64_store8", test: 1, type: "result", num: 1
-  { .i64 = 0xFF },
-
-  // mod: "ops", func: "test_i64_store16", test: 0, type: "params", num: 1
+  // mod: "ops", func: "test_i64_store16", test: 1, params: 1, result: 1
+  { .i64 = 0xFFFFFFFF },
   { .i64 = 0xFFFF },
 
-  // mod: "ops", func: "test_i64_store16", test: 0, type: "result", num: 1
-  { .i64 = 0xFFFF },
-
-  // mod: "ops", func: "test_i64_store16", test: 1, type: "params", num: 1
+  // mod: "ops", func: "test_i64_store32", test: 0, params: 1, result: 1
+  { .i64 = 0xFFFFFFFF },
   { .i64 = 0xFFFFFFFF },
 
-  // mod: "ops", func: "test_i64_store16", test: 1, type: "result", num: 1
-  { .i64 = 0xFFFF },
-
-  // mod: "ops", func: "test_i64_store32", test: 0, type: "params", num: 1
-  { .i64 = 0xFFFFFFFF },
-
-  // mod: "ops", func: "test_i64_store32", test: 0, type: "result", num: 1
-  { .i64 = 0xFFFFFFFF },
-
-  // mod: "ops", func: "test_i64_store32", test: 1, type: "params", num: 1
+  // mod: "ops", func: "test_i64_store32", test: 1, params: 1, result: 1
   { .i64 = 0xFFFFFFFFFF },
-
-  // mod: "ops", func: "test_i64_store32", test: 1, type: "result", num: 1
   { .i64 = 0xFFFFFFFF },
 
-  // mod: "ops", func: "test_memory_size", test: 0, type: "result", num: 1
+  // mod: "ops", func: "test_memory_size", test: 0, params: 0, result: 1
   { .i32 = 1 },
 
-  // mod: "ops", func: "test_memory_grow", test: 0, type: "result", num: 1
+  // mod: "ops", func: "test_memory_grow", test: 0, params: 0, result: 1
   { .i32 = 1 },
 
-  // mod: "ops", func: "test_i32_eqz", test: 0, type: "params", num: 1
+  // mod: "ops", func: "test_i32_eqz", test: 0, params: 1, result: 1
+  { .i32 = 0 },
+  { .i32 = 1 },
+
+  // mod: "ops", func: "test_i32_eqz", test: 1, params: 1, result: 1
+  { .i32 = 1 },
   { .i32 = 0 },
 
-  // mod: "ops", func: "test_i32_eqz", test: 0, type: "result", num: 1
-  { .i32 = 1 },
-
-  // mod: "ops", func: "test_i32_eqz", test: 1, type: "params", num: 1
-  { .i32 = 1 },
-
-  // mod: "ops", func: "test_i32_eqz", test: 1, type: "result", num: 1
-  { .i32 = 0 },
-
-  // mod: "ops", func: "test_i32_eq", test: 0, type: "params", num: 2
+  // mod: "ops", func: "test_i32_eq", test: 0, params: 2, result: 1
   { .i32 = 0 },
   { .i32 = 0 },
-
-  // mod: "ops", func: "test_i32_eq", test: 0, type: "result", num: 1
   { .i32 = 1 },
 
-  // mod: "ops", func: "test_i32_eq", test: 1, type: "params", num: 2
+  // mod: "ops", func: "test_i32_eq", test: 1, params: 2, result: 1
   { .i32 = 4 },
   { .i32 = 4 },
-
-  // mod: "ops", func: "test_i32_eq", test: 1, type: "result", num: 1
   { .i32 = 1 },
 
-  // mod: "ops", func: "test_i32_eq", test: 2, type: "params", num: 2
+  // mod: "ops", func: "test_i32_eq", test: 2, params: 2, result: 1
   { .i32 = 9 },
   { .i32 = 2 },
-
-  // mod: "ops", func: "test_i32_eq", test: 2, type: "result", num: 1
   { .i32 = 0 },
 
-  // mod: "ops", func: "test_i32_eq", test: 3, type: "params", num: 2
+  // mod: "ops", func: "test_i32_eq", test: 3, params: 2, result: 1
   { .i32 = 1 },
   { .i32 = 10 },
-
-  // mod: "ops", func: "test_i32_eq", test: 3, type: "result", num: 1
   { .i32 = 0 },
 
-  // mod: "ops", func: "test_i32_ne", test: 0, type: "params", num: 2
+  // mod: "ops", func: "test_i32_ne", test: 0, params: 2, result: 1
   { .i32 = 0 },
   { .i32 = 0 },
-
-  // mod: "ops", func: "test_i32_ne", test: 0, type: "result", num: 1
   { .i32 = 0 },
 
-  // mod: "ops", func: "test_i32_ne", test: 1, type: "params", num: 2
+  // mod: "ops", func: "test_i32_ne", test: 1, params: 2, result: 1
   { .i32 = 4 },
   { .i32 = 4 },
-
-  // mod: "ops", func: "test_i32_ne", test: 1, type: "result", num: 1
   { .i32 = 0 },
 
-  // mod: "ops", func: "test_i32_ne", test: 2, type: "params", num: 2
+  // mod: "ops", func: "test_i32_ne", test: 2, params: 2, result: 1
   { .i32 = 9 },
   { .i32 = 2 },
-
-  // mod: "ops", func: "test_i32_ne", test: 2, type: "result", num: 1
   { .i32 = 1 },
 
-  // mod: "ops", func: "test_i32_ne", test: 3, type: "params", num: 2
+  // mod: "ops", func: "test_i32_ne", test: 3, params: 2, result: 1
   { .i32 = 1 },
   { .i32 = 10 },
-
-  // mod: "ops", func: "test_i32_ne", test: 3, type: "result", num: 1
   { .i32 = 1 },
 
-  // mod: "ops", func: "test_i32_lt_s", test: 0, type: "params", num: 2
+  // mod: "ops", func: "test_i32_lt_s", test: 0, params: 2, result: 1
   { .i32 = 0 },
   { .i32 = 0 },
-
-  // mod: "ops", func: "test_i32_lt_s", test: 0, type: "result", num: 1
   { .i32 = 0 },
 
-  // mod: "ops", func: "test_i32_lt_s", test: 1, type: "params", num: 2
+  // mod: "ops", func: "test_i32_lt_s", test: 1, params: 2, result: 1
   { .i32 = -1 },
   { .i32 = 0 },
-
-  // mod: "ops", func: "test_i32_lt_s", test: 1, type: "result", num: 1
   { .i32 = 1 },
 
-  // mod: "ops", func: "test_i32_lt_s", test: 2, type: "params", num: 2
+  // mod: "ops", func: "test_i32_lt_s", test: 2, params: 2, result: 1
   { .i32 = -2 },
   { .i32 = -1 },
-
-  // mod: "ops", func: "test_i32_lt_s", test: 2, type: "result", num: 1
   { .i32 = 1 },
 
-  // mod: "ops", func: "test_i32_lt_s", test: 3, type: "params", num: 2
+  // mod: "ops", func: "test_i32_lt_s", test: 3, params: 2, result: 1
   { .i32 = -4 },
   { .i32 = -5 },
-
-  // mod: "ops", func: "test_i32_lt_s", test: 3, type: "result", num: 1
   { .i32 = 0 },
 
-  // mod: "ops", func: "test_i32_lt_s", test: 4, type: "params", num: 2
+  // mod: "ops", func: "test_i32_lt_s", test: 4, params: 2, result: 1
   { .i32 = -4 },
   { .i32 = 1024 },
-
-  // mod: "ops", func: "test_i32_lt_s", test: 4, type: "result", num: 1
   { .i32 = 1 },
 
-  // mod: "ops", func: "test_i32_lt_s", test: 5, type: "params", num: 2
+  // mod: "ops", func: "test_i32_lt_s", test: 5, params: 2, result: 1
   { .i32 = 1024 },
   { .i32 = -4 },
-
-  // mod: "ops", func: "test_i32_lt_s", test: 5, type: "result", num: 1
   { .i32 = 0 },
 
-  // mod: "ops", func: "test_i32_lt_s", test: 6, type: "params", num: 2
+  // mod: "ops", func: "test_i32_lt_s", test: 6, params: 2, result: 1
   { .i32 = 31337 },
   { .i32 = 31415 },
-
-  // mod: "ops", func: "test_i32_lt_s", test: 6, type: "result", num: 1
   { .i32 = 1 },
 
-  // mod: "ops", func: "test_i32_lt_u", test: 0, type: "params", num: 2
+  // mod: "ops", func: "test_i32_lt_u", test: 0, params: 2, result: 1
   { .i32 = 0 },
   { .i32 = 0 },
-
-  // mod: "ops", func: "test_i32_lt_u", test: 0, type: "result", num: 1
   { .i32 = 0 },
 
-  // mod: "ops", func: "test_i32_lt_u", test: 1, type: "params", num: 2
+  // mod: "ops", func: "test_i32_lt_u", test: 1, params: 2, result: 1
   { .i32 = 0 },
   { .i32 = 1 },
-
-  // mod: "ops", func: "test_i32_lt_u", test: 1, type: "result", num: 1
   { .i32 = 1 },
 
-  // mod: "ops", func: "test_i32_lt_u", test: 2, type: "params", num: 2
+  // mod: "ops", func: "test_i32_lt_u", test: 2, params: 2, result: 1
   { .i32 = 1 },
   { .i32 = 0 },
-
-  // mod: "ops", func: "test_i32_lt_u", test: 2, type: "result", num: 1
   { .i32 = 0 },
 
-  // mod: "ops", func: "test_i32_lt_u", test: 3, type: "params", num: 2
+  // mod: "ops", func: "test_i32_lt_u", test: 3, params: 2, result: 1
   { .i32 = 0 },
   { .i32 = 4294967295 },
-
-  // mod: "ops", func: "test_i32_lt_u", test: 3, type: "result", num: 1
   { .i32 = 1 },
 
-  // mod: "ops", func: "test_i32_gt_s", test: 0, type: "params", num: 2
+  // mod: "ops", func: "test_i32_gt_s", test: 0, params: 2, result: 1
   { .i32 = 0 },
   { .i32 = 0 },
-
-  // mod: "ops", func: "test_i32_gt_s", test: 0, type: "result", num: 1
   { .i32 = 0 },
 
-  // mod: "ops", func: "test_i32_gt_s", test: 1, type: "params", num: 2
+  // mod: "ops", func: "test_i32_gt_s", test: 1, params: 2, result: 1
   { .i32 = 0 },
-  { .i32 = 1 },
-
-  // mod: "ops", func: "test_i32_gt_s", test: 1, type: "result", num: 1
-  { .i32 = 0 },
-
-  // mod: "ops", func: "test_i32_gt_s", test: 2, type: "params", num: 2
   { .i32 = 1 },
   { .i32 = 0 },
 
-  // mod: "ops", func: "test_i32_gt_s", test: 2, type: "result", num: 1
+  // mod: "ops", func: "test_i32_gt_s", test: 2, params: 2, result: 1
+  { .i32 = 1 },
+  { .i32 = 0 },
   { .i32 = 1 },
 
-  // mod: "ops", func: "test_i32_gt_s", test: 3, type: "params", num: 2
+  // mod: "ops", func: "test_i32_gt_s", test: 3, params: 2, result: 1
   { .i32 = -1 },
   { .i32 = 0 },
-
-  // mod: "ops", func: "test_i32_gt_s", test: 3, type: "result", num: 1
   { .i32 = 0 },
 
-  // mod: "ops", func: "test_i32_gt_s", test: 4, type: "params", num: 2
+  // mod: "ops", func: "test_i32_gt_s", test: 4, params: 2, result: 1
   { .i32 = -2147483648 },
   { .i32 = 2147483647 },
-
-  // mod: "ops", func: "test_i32_gt_s", test: 4, type: "result", num: 1
   { .i32 = 0 },
 
-  // mod: "ops", func: "test_i32_gt_u", test: 0, type: "params", num: 2
+  // mod: "ops", func: "test_i32_gt_u", test: 0, params: 2, result: 1
   { .i32 = 0 },
   { .i32 = 0 },
-
-  // mod: "ops", func: "test_i32_gt_u", test: 0, type: "result", num: 1
   { .i32 = 0 },
 
-  // mod: "ops", func: "test_i32_gt_u", test: 1, type: "params", num: 2
+  // mod: "ops", func: "test_i32_gt_u", test: 1, params: 2, result: 1
+  { .i32 = 0 },
+  { .i32 = 1 },
+  { .i32 = 0 },
+
+  // mod: "ops", func: "test_i32_gt_u", test: 2, params: 2, result: 1
+  { .i32 = 1 },
   { .i32 = 0 },
   { .i32 = 1 },
 
-  // mod: "ops", func: "test_i32_gt_u", test: 1, type: "result", num: 1
-  { .i32 = 0 },
-
-  // mod: "ops", func: "test_i32_gt_u", test: 2, type: "params", num: 2
-  { .i32 = 1 },
-  { .i32 = 0 },
-
-  // mod: "ops", func: "test_i32_gt_u", test: 2, type: "result", num: 1
-  { .i32 = 1 },
-
-  // mod: "ops", func: "test_i32_gt_u", test: 3, type: "params", num: 2
+  // mod: "ops", func: "test_i32_gt_u", test: 3, params: 2, result: 1
   { .i32 = 0 },
   { .i32 = 4294967295 },
-
-  // mod: "ops", func: "test_i32_gt_u", test: 3, type: "result", num: 1
   { .i32 = 0 },
 
-  // mod: "ops", func: "test_i32_le_s", test: 0, type: "params", num: 2
+  // mod: "ops", func: "test_i32_le_s", test: 0, params: 2, result: 1
   { .i32 = 0 },
-  { .i32 = 0 },
-
-  // mod: "ops", func: "test_i32_le_s", test: 0, type: "result", num: 1
-  { .i32 = 1 },
-
-  // mod: "ops", func: "test_i32_le_s", test: 1, type: "params", num: 2
   { .i32 = 0 },
   { .i32 = 1 },
 
-  // mod: "ops", func: "test_i32_le_s", test: 1, type: "result", num: 1
+  // mod: "ops", func: "test_i32_le_s", test: 1, params: 2, result: 1
+  { .i32 = 0 },
+  { .i32 = 1 },
   { .i32 = 1 },
 
-  // mod: "ops", func: "test_i32_le_s", test: 2, type: "params", num: 2
+  // mod: "ops", func: "test_i32_le_s", test: 2, params: 2, result: 1
   { .i32 = -2147483648 },
   { .i32 = 2147483647 },
-
-  // mod: "ops", func: "test_i32_le_s", test: 2, type: "result", num: 1
   { .i32 = 1 },
 
-  // mod: "ops", func: "test_i32_le_u", test: 0, type: "params", num: 2
+  // mod: "ops", func: "test_i32_le_u", test: 0, params: 2, result: 1
   { .i32 = 0 },
-  { .i32 = 0 },
-
-  // mod: "ops", func: "test_i32_le_u", test: 0, type: "result", num: 1
-  { .i32 = 1 },
-
-  // mod: "ops", func: "test_i32_le_u", test: 1, type: "params", num: 2
   { .i32 = 0 },
   { .i32 = 1 },
 
-  // mod: "ops", func: "test_i32_le_u", test: 1, type: "result", num: 1
+  // mod: "ops", func: "test_i32_le_u", test: 1, params: 2, result: 1
+  { .i32 = 0 },
+  { .i32 = 1 },
   { .i32 = 1 },
 
-  // mod: "ops", func: "test_i32_le_u", test: 2, type: "params", num: 2
+  // mod: "ops", func: "test_i32_le_u", test: 2, params: 2, result: 1
   { .i32 = 1 },
   { .i32 = 0 },
-
-  // mod: "ops", func: "test_i32_le_u", test: 2, type: "result", num: 1
   { .i32 = 0 },
 
-  // mod: "ops", func: "test_i32_le_u", test: 3, type: "params", num: 2
+  // mod: "ops", func: "test_i32_le_u", test: 3, params: 2, result: 1
   { .i32 = 0 },
   { .i32 = 4294967295 },
-
-  // mod: "ops", func: "test_i32_le_u", test: 3, type: "result", num: 1
   { .i32 = 1 },
 
-  // mod: "ops", func: "test_i32_ge_s", test: 0, type: "params", num: 2
+  // mod: "ops", func: "test_i32_ge_s", test: 0, params: 2, result: 1
   { .i32 = 0 },
-  { .i32 = 0 },
-
-  // mod: "ops", func: "test_i32_ge_s", test: 0, type: "result", num: 1
-  { .i32 = 1 },
-
-  // mod: "ops", func: "test_i32_ge_s", test: 1, type: "params", num: 2
-  { .i32 = 1 },
-  { .i32 = 0 },
-
-  // mod: "ops", func: "test_i32_ge_s", test: 1, type: "result", num: 1
-  { .i32 = 1 },
-
-  // mod: "ops", func: "test_i32_ge_s", test: 2, type: "params", num: 2
   { .i32 = 0 },
   { .i32 = 1 },
 
-  // mod: "ops", func: "test_i32_ge_s", test: 2, type: "result", num: 1
+  // mod: "ops", func: "test_i32_ge_s", test: 1, params: 2, result: 1
+  { .i32 = 1 },
+  { .i32 = 0 },
+  { .i32 = 1 },
+
+  // mod: "ops", func: "test_i32_ge_s", test: 2, params: 2, result: 1
+  { .i32 = 0 },
+  { .i32 = 1 },
   { .i32 = 0 },
 
-  // mod: "ops", func: "test_i32_ge_s", test: 3, type: "params", num: 2
+  // mod: "ops", func: "test_i32_ge_s", test: 3, params: 2, result: 1
   { .i32 = 0 },
   { .i32 = -1 },
-
-  // mod: "ops", func: "test_i32_ge_s", test: 3, type: "result", num: 1
   { .i32 = 1 },
 
-  // mod: "ops", func: "test_i32_ge_s", test: 4, type: "params", num: 2
+  // mod: "ops", func: "test_i32_ge_s", test: 4, params: 2, result: 1
   { .i32 = 2147483647 },
   { .i32 = -2147483648 },
-
-  // mod: "ops", func: "test_i32_ge_s", test: 4, type: "result", num: 1
   { .i32 = 1 },
 
-  // mod: "ops", func: "test_i32_ge_u", test: 0, type: "params", num: 2
+  // mod: "ops", func: "test_i32_ge_u", test: 0, params: 2, result: 1
   { .i32 = 0 },
-  { .i32 = 0 },
-
-  // mod: "ops", func: "test_i32_ge_u", test: 0, type: "result", num: 1
-  { .i32 = 1 },
-
-  // mod: "ops", func: "test_i32_ge_u", test: 1, type: "params", num: 2
-  { .i32 = 1 },
-  { .i32 = 0 },
-
-  // mod: "ops", func: "test_i32_ge_u", test: 1, type: "result", num: 1
-  { .i32 = 1 },
-
-  // mod: "ops", func: "test_i32_ge_u", test: 2, type: "params", num: 2
   { .i32 = 0 },
   { .i32 = 1 },
 
-  // mod: "ops", func: "test_i32_ge_u", test: 2, type: "result", num: 1
+  // mod: "ops", func: "test_i32_ge_u", test: 1, params: 2, result: 1
+  { .i32 = 1 },
+  { .i32 = 0 },
+  { .i32 = 1 },
+
+  // mod: "ops", func: "test_i32_ge_u", test: 2, params: 2, result: 1
+  { .i32 = 0 },
+  { .i32 = 1 },
   { .i32 = 0 },
 
-  // mod: "ops", func: "test_i32_ge_u", test: 3, type: "params", num: 2
+  // mod: "ops", func: "test_i32_ge_u", test: 3, params: 2, result: 1
   { .i32 = 4294967295 },
   { .i32 = 0 },
-
-  // mod: "ops", func: "test_i32_ge_u", test: 3, type: "result", num: 1
   { .i32 = 1 },
 
-  // mod: "ops", func: "test_i32_ge_u", test: 4, type: "params", num: 2
+  // mod: "ops", func: "test_i32_ge_u", test: 4, params: 2, result: 1
   { .i32 = 4294967295 },
   { .i32 = 4294967294 },
-
-  // mod: "ops", func: "test_i32_ge_u", test: 4, type: "result", num: 1
   { .i32 = 1 },
 };
 
