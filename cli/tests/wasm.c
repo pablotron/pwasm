@@ -4313,7 +4313,7 @@ TEST_VALS[] = {
   { .f64 = 3.14159 },
 
   // mod: "ops", func: "test_f64x2_replace_lane", test: 0, params: 0, result: 1
-  { .f64 = -1.5 },
+  { .f64 = -3.14159 },
 
   // mod: "ops", func: "test_i8x16_eq", test: 0, params: 0, result: 1
   { .i32 = 0xff00ff00 },
