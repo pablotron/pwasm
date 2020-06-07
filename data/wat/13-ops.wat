@@ -2361,4 +2361,120 @@
   )
 
   (export "test_v64x2_load_splat" (func $test_v64x2_load_splat))
+
+  ;;
+  ;; test_v128_store
+  ;;   expect i32 0x03020100
+  ;;
+  (func $test_v128_store (result i32)
+    (v128.store
+      (i32.const 0)
+      (v128.const i32x4 0x03020100 0x07060504 0x0b0a0908 0x0f0e0d0c))
+    (i32x4.extract_lane 0 (v128.load (i32.const 0)))
+  )
+
+  (export "test_v128_store" (func $test_v128_store))
+
+  ;;
+  ;; test_v128_const
+  ;;   expect i32 0x03020100
+  ;;
+  (func $test_v128_const (result i32)
+    (i32x4.extract_lane 0
+      (v128.const i32x4 0x03020100 0x07060504 0x0b0a0908 0x0f0e0d0c))
+  )
+
+  (export "test_v128_const" (func $test_v128_const))
+
+  ;;
+  ;; test_v8x16_shuffle
+  ;;   expect i32 0x0b090201
+  ;;
+  (func $test_v8x16_shuffle (result i32)
+    (i32x4.extract_lane 0
+      (v8x16.shuffle 1 3 17 19  0 0 0 0  0 0 0 0  0 0 0 0
+        (v128.const i32x4 0x03020100 0x07060504 0x0b0a0908 0x0f0e0d0c)
+        (v128.const i32x4 0x0b0a0908 0x0f0e0d0c 0x03020100 0x07060504)))
+  )
+
+  (export "test_v8x16_shuffle" (func $test_v8x16_shuffle))
+
+  ;;
+  ;; test_v8x16_swizzle
+  ;;   expect i32 0xf6f4f2f0
+  ;;
+  (func $test_v8x16_swizzle (result i32)
+    (i32x4.extract_lane 0
+      (v8x16.swizzle
+        (v128.const i32x4 0xf3f2f1f0 0xf7f6f5f4 0x0b0a0908 0x0f0e0d0c)
+        (v128.const i32x4 0x06040200 0x00000000 0x00000000 0x00000000)))
+  )
+
+  (export "test_v8x16_swizzle" (func $test_v8x16_swizzle))
+
+  ;;
+  ;; test_i8x16_splat
+  ;;   expect i32 0xF2F2F2F2
+  ;;
+  (func $test_i8x16_splat (result i32)
+    (i32x4.extract_lane 0
+      (i8x16.splat (i32.const 0xF2)))
+  )
+
+  (export "test_i8x16_splat" (func $test_i8x16_splat))
+
+  ;;
+  ;; test_i16x8_splat
+  ;;   expect i32 0xF00FF00F
+  ;;
+  (func $test_i16x8_splat (result i32)
+    (i32x4.extract_lane 0
+      (i16x8.splat (i32.const 0xF00F)))
+  )
+
+  (export "test_i16x8_splat" (func $test_i16x8_splat))
+
+  ;;
+  ;; test_i32x4_splat
+  ;;   expect i32 0x08070605
+  ;;
+  (func $test_i32x4_splat (result i32)
+    (i32x4.extract_lane 0
+      (i32x4.splat (i32.const 0x08070605)))
+  )
+
+  (export "test_i32x4_splat" (func $test_i32x4_splat))
+
+  ;;
+  ;; test_i64x2_splat
+  ;;   expect i64 0xFEDCBA9876543210
+  ;;
+  (func $test_i64x2_splat (result i64)
+    (i64x2.extract_lane 0
+      (i64x2.splat (i64.const 0xFEDCBA9876543210)))
+  )
+
+  (export "test_i64x2_splat" (func $test_i64x2_splat))
+
+  ;;
+  ;; test_f32x4_splat
+  ;;   expect f32 3.14159
+  ;;
+  (func $test_f32x4_splat (result f32)
+    (f32x4.extract_lane 1
+      (f32x4.splat (f32.const 3.14159)))
+  )
+
+  (export "test_f32x4_splat" (func $test_f32x4_splat))
+
+  ;;
+  ;; test_f64x2_splat
+  ;;   expect f64 3.14159
+  ;;
+  (func $test_f64x2_splat (result f64)
+    (f64x2.extract_lane 1
+      (f64x2.splat (f64.const 3.14159)))
+  )
+
+  (export "test_f64x2_splat" (func $test_f64x2_splat))
 )
