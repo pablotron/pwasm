@@ -4242,7 +4242,205 @@ TEST_VALS[] = {
 
   // mod: "ops", func: "test_v64x2_load_splat", test: 0, params: 0, result: 1
   { .i64 = 0x0000000200000000 },
-};
+
+  // mod: "ops", func: "test_v128_store", test: 0, params: 0, result: 1
+  { .i32 = 0x03020100 },
+
+  // mod: "ops", func: "test_v128_const", test: 0, params: 0, result: 1
+  { .i32 = 0x03020100 },
+
+  // mod: "ops", func: "test_v8x16_shuffle", test: 0, params: 0, result: 1
+  { .i32 = 0x0b090301 },
+
+  // mod: "ops", func: "test_v8x16_swizzle", test: 0, params: 0, result: 1
+  { .i32 = 0XF6F4F2F0 },
+
+  // mod: "ops", func: "test_i8x16_splat", test: 0, params: 0, result: 1
+  { .i32 = 0xF2F2F2F2 },
+
+  // mod: "ops", func: "test_i16x8_splat", test: 0, params: 0, result: 1
+  { .i32 = 0xF00FF00F },
+
+  // mod: "ops", func: "test_i32x4_splat", test: 0, params: 0, result: 1
+  { .i32 = 0x08070605 },
+
+  // mod: "ops", func: "test_i64x2_splat", test: 0, params: 0, result: 1
+  { .i64 = 0x7EDCBA9876543210 },
+
+  // mod: "ops", func: "test_f32x4_splat", test: 0, params: 0, result: 1
+  { .f32 = 3.14159 },
+
+  // mod: "ops", func: "test_f64x2_splat", test: 0, params: 0, result: 1
+  { .f64 = 3.14159 },
+
+  // mod: "ops", func: "test_i8x16_extract_lane_s", test: 0, params: 0, result: 1
+  { .i32 = -2 },
+
+  // mod: "ops", func: "test_i8x16_extract_lane_u", test: 0, params: 0, result: 1
+  { .i32 = 0x7f },
+
+  // mod: "ops", func: "test_i8x16_replace_lane", test: 0, params: 0, result: 1
+  { .i32 = 0xcd },
+
+  // mod: "ops", func: "test_i16x8_extract_lane_s", test: 0, params: 0, result: 1
+  { .i32 = -1 },
+
+  // mod: "ops", func: "test_i16x8_extract_lane_u", test: 0, params: 0, result: 1
+  { .i32 = 0xFFFF },
+
+  // mod: "ops", func: "test_i16x8_replace_lane", test: 0, params: 0, result: 1
+  { .i32 = 0xF00F },
+
+  // mod: "ops", func: "test_i32x4_extract_lane", test: 0, params: 0, result: 1
+  { .i32 = 0xFEDCBA98 },
+
+  // mod: "ops", func: "test_i32x4_replace_lane", test: 0, params: 0, result: 1
+  { .i32 = 0xFEDCBA98 },
+
+  // mod: "ops", func: "test_i64x2_extract_lane", test: 0, params: 0, result: 1
+  { .i64 = 0xFEDCBA9876543210 },
+
+  // mod: "ops", func: "test_i64x2_replace_lane", test: 0, params: 0, result: 1
+  { .i64 = 0xDDDDFFFFDDDDFFFF },
+
+  // mod: "ops", func: "test_f32x4_extract_lane", test: 0, params: 0, result: 1
+  { .f32 = 3.14159 },
+
+  // mod: "ops", func: "test_f32x4_replace_lane", test: 0, params: 0, result: 1
+  { .f32 = -1.5 },
+
+  // mod: "ops", func: "test_f64x2_extract_lane", test: 0, params: 0, result: 1
+  { .f64 = 3.14159 },
+
+  // mod: "ops", func: "test_f64x2_replace_lane", test: 0, params: 0, result: 1
+  { .f64 = -1.5 },
+
+  // mod: "ops", func: "test_i8x16_eq", test: 0, params: 0, result: 1
+  { .i32 = 0xff00ff00 },
+
+  // mod: "ops", func: "test_i8x16_ne", test: 0, params: 0, result: 1
+  { .i32 = 0x00ff00ff },
+
+  // mod: "ops", func: "test_i8x16_lt_s", test: 0, params: 0, result: 1
+  { .i32 = 0x00ff00ff },
+
+  // mod: "ops", func: "test_i8x16_lt_u", test: 0, params: 0, result: 1
+  { .i32 = 0x00ff00ff },
+
+  // mod: "ops", func: "test_i8x16_gt_s", test: 0, params: 0, result: 1
+  { .i32 = 0x00ff00ff },
+
+  // mod: "ops", func: "test_i8x16_gt_u", test: 0, params: 0, result: 1
+  { .i32 = 0x00ff00ff },
+
+  // mod: "ops", func: "test_i8x16_le_s", test: 0, params: 0, result: 1
+  { .i32 = 0x00ff00ff },
+
+  // mod: "ops", func: "test_i8x16_le_u", test: 0, params: 0, result: 1
+  { .i32 = 0x00ff00ff },
+
+  // mod: "ops", func: "test_i8x16_ge_s", test: 0, params: 0, result: 1
+  { .i32 = 0x00ff00ff },
+
+  // mod: "ops", func: "test_i8x16_ge_u", test: 0, params: 0, result: 1
+  { .i32 = 0x00ff00ff },
+
+  // mod: "ops", func: "test_i16x8_eq", test: 0, params: 0, result: 1
+  { .i32 = 0x0000ffff },
+
+  // mod: "ops", func: "test_i16x8_ne", test: 0, params: 0, result: 1
+  { .i32 = 0xffff0000 },
+
+  // mod: "ops", func: "test_i16x8_lt_s", test: 0, params: 0, result: 1
+  { .i32 = 0xffff0000 },
+
+  // mod: "ops", func: "test_i16x8_lt_u", test: 0, params: 0, result: 1
+  { .i32 = 0xffff0000 },
+
+  // mod: "ops", func: "test_i16x8_gt_s", test: 0, params: 0, result: 1
+  { .i32 = 0xffff0000 },
+
+  // mod: "ops", func: "test_i16x8_gt_u", test: 0, params: 0, result: 1
+  { .i32 = 0xffff0000 },
+
+  // mod: "ops", func: "test_i16x8_le_s", test: 0, params: 0, result: 1
+  { .i32 = 0xffff0000 },
+
+  // mod: "ops", func: "test_i16x8_le_u", test: 0, params: 0, result: 1
+  { .i32 = 0xffff0000 },
+
+  // mod: "ops", func: "test_i16x8_ge_s", test: 0, params: 0, result: 1
+  { .i32 = 0xffff0000 },
+
+  // mod: "ops", func: "test_i16x8_ge_u", test: 0, params: 0, result: 1
+  { .i32 = 0xffff0000 },
+
+  // mod: "ops", func: "test_i32x4_eq", test: 0, params: 0, result: 1
+  { .i64 = 0x00000000ffffffff },
+
+  // mod: "ops", func: "test_i32x4_ne", test: 0, params: 0, result: 1
+  { .i64 = 0xffffffff00000000 },
+
+  // mod: "ops", func: "test_i32x4_lt_s", test: 0, params: 0, result: 1
+  { .i64 = 0xffffffff00000000 },
+
+  // mod: "ops", func: "test_i32x4_lt_u", test: 0, params: 0, result: 1
+  { .i64 = 0xffffffff00000000 },
+
+  // mod: "ops", func: "test_i32x4_gt_s", test: 0, params: 0, result: 1
+  { .i64 = 0xffffffff00000000 },
+
+  // mod: "ops", func: "test_i32x4_gt_u", test: 0, params: 0, result: 1
+  { .i64 = 0xffffffff00000000 },
+
+  // mod: "ops", func: "test_i32x4_le_s", test: 0, params: 0, result: 1
+  { .i64 = 0xffffffff00000000 },
+
+  // mod: "ops", func: "test_i32x4_le_u", test: 0, params: 0, result: 1
+  { .i64 = 0xffffffff00000000 },
+
+  // mod: "ops", func: "test_i32x4_ge_s", test: 0, params: 0, result: 1
+  { .i64 = 0xffffffff00000000 },
+
+  // mod: "ops", func: "test_i32x4_ge_u", test: 0, params: 0, result: 1
+  { .i64 = 0xffffffff00000000 },
+
+  // mod: "ops", func: "test_f32x4_eq", test: 0, params: 0, result: 1
+  { .i64 = 0x00000000ffffffff },
+
+  // mod: "ops", func: "test_f32x4_ne", test: 0, params: 0, result: 1
+  { .i64 = 0xffffffff00000000 },
+
+  // mod: "ops", func: "test_f32x4_lt", test: 0, params: 0, result: 1
+  { .i64 = 0xffffffff00000000 },
+
+  // mod: "ops", func: "test_f32x4_gt", test: 0, params: 0, result: 1
+  { .i64 = 0xffffffff00000000 },
+
+  // mod: "ops", func: "test_f32x4_le", test: 0, params: 0, result: 1
+  { .i64 = 0xffffffff00000000 },
+
+  // mod: "ops", func: "test_f32x4_ge", test: 0, params: 0, result: 1
+  { .i64 = 0xffffffff00000000 },
+
+  // mod: "ops", func: "test_f64x2_eq", test: 0, params: 0, result: 1
+  { .i32 = 0x00ff00ff },
+
+  // mod: "ops", func: "test_f64x2_ne", test: 0, params: 0, result: 1
+  { .i32 = 0xff00ff00 },
+
+  // mod: "ops", func: "test_f64x2_lt", test: 0, params: 0, result: 1
+  { .i32 = 0xff00ff00 },
+
+  // mod: "ops", func: "test_f64x2_gt", test: 0, params: 0, result: 1
+  { .i32 = 0xff00ff00 },
+
+  // mod: "ops", func: "test_f64x2_le", test: 0, params: 0, result: 1
+  { .i32 = 0xff00ff00 },
+
+  // mod: "ops", func: "test_f64x2_ge", test: 0, params: 0, result: 1
+  { .i32 = 0xff00ff00 },
+}; // sentinel
 
 typedef struct {
   const char * const text;
@@ -8288,7 +8486,67 @@ TEST_CALLS[] = {{
   .func   = "test_v64x2_load_splat",
   .result = { 1414, 1 },
   .type   = PWASM_RESULT_TYPE_I64,
-}};
+}, {
+  .text   = "ops.test_v128_store(0)",
+  .mod    = "ops",
+  .func   = "test_v128_store",
+  .result = { 1415, 1 },
+  .type   = PWASM_RESULT_TYPE_I32,
+}, {
+  .text   = "ops.test_v128_const(0)",
+  .mod    = "ops",
+  .func   = "test_v128_const",
+  .result = { 1416, 1 },
+  .type   = PWASM_RESULT_TYPE_I32,
+}, {
+  .text   = "ops.test_v8x16_shuffle(0)",
+  .mod    = "ops",
+  .func   = "test_v8x16_shuffle",
+  .result = { 1417, 1 },
+  .type   = PWASM_RESULT_TYPE_I32,
+}, {
+  .text   = "ops.test_v8x16_swizzle(0)",
+  .mod    = "ops",
+  .func   = "test_v8x16_swizzle",
+  .result = { 1418, 1 },
+  .type   = PWASM_RESULT_TYPE_I32,
+}, {
+  .text   = "ops.test_i8x16_splat(0)",
+  .mod    = "ops",
+  .func   = "test_i8x16_splat",
+  .result = { 1419, 1 },
+  .type   = PWASM_RESULT_TYPE_I32,
+}, {
+  .text   = "ops.test_i16x8_splat(0)",
+  .mod    = "ops",
+  .func   = "test_i16x8_splat",
+  .result = { 1420, 1 },
+  .type   = PWASM_RESULT_TYPE_I32,
+}, {
+  .text   = "ops.test_i32x4_splat(0)",
+  .mod    = "ops",
+  .func   = "test_i32x4_splat",
+  .result = { 1421, 1 },
+  .type   = PWASM_RESULT_TYPE_I32,
+}, {
+  .text   = "ops.test_i64x2_splat(0)",
+  .mod    = "ops",
+  .func   = "test_i64x2_splat",
+  .result = { 1422, 1 },
+  .type   = PWASM_RESULT_TYPE_I64,
+}, {
+  .text   = "ops.test_f32x4_splat(0)",
+  .mod    = "ops",
+  .func   = "test_f32x4_splat",
+  .result = { 1423, 1 },
+  .type   = PWASM_RESULT_TYPE_F32,
+}, {
+  .text   = "ops.test_f64x2_splat(0)",
+  .mod    = "ops",
+  .func   = "test_f64x2_splat",
+  .result = { 1424, 1 },
+  .type   = PWASM_RESULT_TYPE_F64,
+}}; // sentinel
 
 static bool is_valid_result_type(
   const pwasm_result_type_t type
