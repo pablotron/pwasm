@@ -2167,4 +2167,33 @@
   )
 
   (export "test_v128_load" (func $test_v128_load))
+
+  ;;
+  ;; test_i16x8_load8x8_s
+  ;;   expect i64
+  ;;
+  (func $test_i16x8_load8x8_s (result i32)
+    (i64.store (i32.const 0) (i64.const 0x0706050403020100))
+    (i64.store (i32.const 8) (i64.const 0x0000000000000000))
+    (i64.store (i32.const 16) (i64.const 0x0000000000000000))
+
+    (i16x8.extract_lane_s 0
+      (i16x8.add
+        (i16x8.load8x8_s (i32.const 7))
+        (i16x8.add
+          (i16x8.load8x8_s (i32.const 6))
+          (i16x8.add
+            (i16x8.load8x8_s (i32.const 5))
+            (i16x8.add
+              (i16x8.load8x8_s (i32.const 4))
+              (i16x8.add
+                (i16x8.load8x8_s (i32.const 3))
+                (i16x8.add
+                  (i16x8.load8x8_s (i32.const 2))
+                  (i16x8.add
+                    (i16x8.load8x8_s (i32.const 1))
+                    (i16x8.load8x8_s (i32.const 0))))))))))
+  )
+
+  (export "test_i16x8_load8x8_s" (func $test_i16x8_load8x8_s))
 )
