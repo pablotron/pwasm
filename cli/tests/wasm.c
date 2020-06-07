@@ -3689,6 +3689,15 @@ TEST_VALS[] = {
 
   // mod: "ops", func: "test_i32x4_load16x4_s", test: 0, params: 0, result: 1
   { .i32 = -90 },
+
+  // mod: "ops", func: "test_i32x4_load16x4_u", test: 0, params: 0, result: 1
+  { .i32 = 5898150 },
+
+  // mod: "ops", func: "test_i64x2_load32x2_s", test: 0, params: 0, result: 1
+  { .i64 = -255 },
+
+  // mod: "ops", func: "test_i64x2_load32x2_u", test: 0, params: 0, result: 1
+  { .i64 = 1095216660225 },
 };
 
 typedef struct {
@@ -7693,6 +7702,24 @@ TEST_CALLS[] = {{
   .func   = "test_i32x4_load16x4_s",
   .result = { 1407, 1 },
   .type   = PWASM_RESULT_TYPE_I32,
+}, {
+  .text   = "ops.test_i32x4_load16x4_u(0)",
+  .mod    = "ops",
+  .func   = "test_i32x4_load16x4_u",
+  .result = { 1408, 1 },
+  .type   = PWASM_RESULT_TYPE_I32,
+}, {
+  .text   = "ops.test_i64x2_load32x2_s(0)",
+  .mod    = "ops",
+  .func   = "test_i64x2_load32x2_s",
+  .result = { 1409, 1 },
+  .type   = PWASM_RESULT_TYPE_I64,
+}, {
+  .text   = "ops.test_i64x2_load32x2_u(0)",
+  .mod    = "ops",
+  .func   = "test_i64x2_load32x2_u",
+  .result = { 1410, 1 },
+  .type   = PWASM_RESULT_TYPE_I64,
 }};
 
 static bool is_valid_result_type(
