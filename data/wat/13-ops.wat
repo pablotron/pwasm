@@ -2477,4 +2477,39 @@
   )
 
   (export "test_f64x2_splat" (func $test_f64x2_splat))
+
+  ;;
+  ;; test_i8x16_extract_lane_s
+  ;;   expect i32 -2
+  ;;
+  (func $test_i8x16_extract_lane_s (result i32)
+    (i8x16.extract_lane_s 3
+      (v128.const i32x4 0xfe040200 0x00000000 0x00000000 0x00000000))
+  )
+
+  (export "test_i8x16_extract_lane_s" (func $test_i8x16_extract_lane_s))
+
+  ;;
+  ;; test_i8x16_extract_lane_u
+  ;;   expect i32 0x7f
+  ;;
+  (func $test_i8x16_extract_lane_u (result i32)
+    (i8x16.extract_lane_u 4
+      (v128.const i32x4 0x00040200 0x0000007f 0x00000000 0x00000000))
+  )
+
+  (export "test_i8x16_extract_lane_u" (func $test_i8x16_extract_lane_u))
+
+  ;;
+  ;; test_i8x16_replace_lane
+  ;;   expect i32 0xcd
+  ;;
+  (func $test_i8x16_replace_lane (result i32)
+    (i8x16.extract_lane_u 4
+      (i8x16.replace_lane 4
+        (v128.const i32x4 0x00000000 0x00000000 0x00000000 0x00000000)
+        (i32.const 0xcd)))
+  )
+
+  (export "test_i8x16_replace_lane" (func $test_i8x16_replace_lane))
 )
