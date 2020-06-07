@@ -7,6 +7,8 @@ Each entry in this list is prefixed with category tags.
 See the "Tag Definitions" section below for a brief description of each
 tag.
 
+* [ ] investigate/document rounding mode for f32.div (fenv)
+* [ ] add {i32,i64,f32,f64}.const tests
 * [ ] code, test: test `br` to outermost block (according to `return` documentation this should work)
 * [ ] code, test: check stack size at start of call
 * [ ] code, test: add invalid code tests (e.g. checker assertion tests)
@@ -32,7 +34,6 @@ tag.
 * [ ] code, cli: `wat`: fix alignment
 * [ ] test: add wat2wasm round-trip tests
 * [ ] code: add `uint64_t pwasm_platform_get_value()` (e.g. compile-time limits, flags, etc)
-* [ ] investigate rounding mode for f32.div (fenv)
 
 ## In Progress
 * [ ] code, test: add v128 opcode tests
