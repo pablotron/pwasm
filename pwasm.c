@@ -16751,9 +16751,12 @@ pwasm_new_interp_eval_expr(
       break;
     case PWASM_OP_V8X16_LOAD_SPLAT:
       {
+        // get offset operand
+        const uint32_t ofs = stack->ptr[stack->pos - 1].i32;
+
         // load value, check for error
         pwasm_val_t a;
-        if (!pwasm_env_mem_load(frame.env, frame.mem_id, in, 0, &a)) {
+        if (!pwasm_env_mem_load(frame.env, frame.mem_id, in, ofs, &a)) {
           return false;
         }
 
@@ -16764,15 +16767,18 @@ pwasm_new_interp_eval_expr(
         }
 
         // push val
-        stack->ptr[stack->pos++].v128 = b;
+        stack->ptr[stack->pos - 1].v128 = b;
       }
 
       break;
     case PWASM_OP_V16X8_LOAD_SPLAT:
       {
+        // get offset operand
+        const uint32_t ofs = stack->ptr[stack->pos - 1].i32;
+
         // load value, check for error
         pwasm_val_t a;
-        if (!pwasm_env_mem_load(frame.env, frame.mem_id, in, 0, &a)) {
+        if (!pwasm_env_mem_load(frame.env, frame.mem_id, in, ofs, &a)) {
           return false;
         }
 
@@ -16783,15 +16789,18 @@ pwasm_new_interp_eval_expr(
         }
 
         // push val
-        stack->ptr[stack->pos++].v128 = b;
+        stack->ptr[stack->pos - 1].v128 = b;
       }
 
       break;
     case PWASM_OP_V32X4_LOAD_SPLAT:
       {
+        // get offset operand
+        const uint32_t ofs = stack->ptr[stack->pos - 1].i32;
+
         // load value, check for error
         pwasm_val_t a;
-        if (!pwasm_env_mem_load(frame.env, frame.mem_id, in, 0, &a)) {
+        if (!pwasm_env_mem_load(frame.env, frame.mem_id, in, ofs, &a)) {
           return false;
         }
 
@@ -16802,15 +16811,18 @@ pwasm_new_interp_eval_expr(
         }
 
         // push val
-        stack->ptr[stack->pos++].v128 = b;
+        stack->ptr[stack->pos - 1].v128 = b;
       }
 
       break;
     case PWASM_OP_V64X2_LOAD_SPLAT:
       {
+        // get offset operand
+        const uint32_t ofs = stack->ptr[stack->pos - 1].i32;
+
         // load value, check for error
         pwasm_val_t a;
-        if (!pwasm_env_mem_load(frame.env, frame.mem_id, in, 0, &a)) {
+        if (!pwasm_env_mem_load(frame.env, frame.mem_id, in, ofs, &a)) {
           return false;
         }
 
@@ -16821,7 +16833,7 @@ pwasm_new_interp_eval_expr(
         }
 
         // push val
-        stack->ptr[stack->pos++].v128 = b;
+        stack->ptr[stack->pos - 1].v128 = b;
       }
 
       break;
@@ -17019,9 +17031,12 @@ pwasm_new_interp_eval_expr(
       break;
     case PWASM_OP_I16X8_LOAD8X8_S:
       {
+        // get offset operand
+        const uint32_t ofs = stack->ptr[stack->pos - 1].i32;
+
         // load value, check for error
         pwasm_val_t a;
-        if (!pwasm_env_mem_load(frame.env, frame.mem_id, in, 0, &a)) {
+        if (!pwasm_env_mem_load(frame.env, frame.mem_id, in, ofs, &a)) {
           return false;
         }
 
@@ -17033,15 +17048,18 @@ pwasm_new_interp_eval_expr(
         }
 
         // push val
-        stack->ptr[stack->pos++].v128 = b;
+        stack->ptr[stack->pos - 1].v128 = b;
       }
 
       break;
     case PWASM_OP_I16X8_LOAD8X8_U:
       {
+        // get offset operand
+        const uint32_t ofs = stack->ptr[stack->pos - 1].i32;
+
         // load value, check for error
         pwasm_val_t a;
-        if (!pwasm_env_mem_load(frame.env, frame.mem_id, in, 0, &a)) {
+        if (!pwasm_env_mem_load(frame.env, frame.mem_id, in, ofs, &a)) {
           return false;
         }
 
@@ -17052,15 +17070,18 @@ pwasm_new_interp_eval_expr(
         }
 
         // push val
-        stack->ptr[stack->pos++].v128 = b;
+        stack->ptr[stack->pos - 1].v128 = b;
       }
 
       break;
     case PWASM_OP_I32X4_LOAD16X4_S:
       {
+        // get offset operand
+        const uint32_t ofs = stack->ptr[stack->pos - 1].i32;
+
         // load value, check for error
         pwasm_val_t a;
-        if (!pwasm_env_mem_load(frame.env, frame.mem_id, in, 0, &a)) {
+        if (!pwasm_env_mem_load(frame.env, frame.mem_id, in, ofs, &a)) {
           return false;
         }
 
@@ -17072,15 +17093,18 @@ pwasm_new_interp_eval_expr(
         }
 
         // push val
-        stack->ptr[stack->pos++].v128 = b;
+        stack->ptr[stack->pos - 1].v128 = b;
       }
 
       break;
     case PWASM_OP_I32X4_LOAD16X4_U:
       {
+        // get offset operand
+        const uint32_t ofs = stack->ptr[stack->pos - 1].i32;
+
         // load value, check for error
         pwasm_val_t a;
-        if (!pwasm_env_mem_load(frame.env, frame.mem_id, in, 0, &a)) {
+        if (!pwasm_env_mem_load(frame.env, frame.mem_id, in, ofs, &a)) {
           return false;
         }
 
@@ -17091,15 +17115,18 @@ pwasm_new_interp_eval_expr(
         }
 
         // push val
-        stack->ptr[stack->pos++].v128 = b;
+        stack->ptr[stack->pos - 1].v128 = b;
       }
 
       break;
     case PWASM_OP_I64X2_LOAD32X2_S:
       {
+        // get offset operand
+        const uint32_t ofs = stack->ptr[stack->pos - 1].i32;
+
         // load value, check for error
         pwasm_val_t a;
-        if (!pwasm_env_mem_load(frame.env, frame.mem_id, in, 0, &a)) {
+        if (!pwasm_env_mem_load(frame.env, frame.mem_id, in, ofs, &a)) {
           return false;
         }
 
@@ -17111,15 +17138,18 @@ pwasm_new_interp_eval_expr(
         }
 
         // push val
-        stack->ptr[stack->pos++].v128 = b;
+        stack->ptr[stack->pos - 1].v128 = b;
       }
 
       break;
     case PWASM_OP_I64X2_LOAD32X2_U:
       {
+        // get offset operand
+        const uint32_t ofs = stack->ptr[stack->pos - 1].i32;
+
         // load value, check for error
         pwasm_val_t a;
-        if (!pwasm_env_mem_load(frame.env, frame.mem_id, in, 0, &a)) {
+        if (!pwasm_env_mem_load(frame.env, frame.mem_id, in, ofs, &a)) {
           return false;
         }
 
@@ -17130,7 +17160,7 @@ pwasm_new_interp_eval_expr(
         }
 
         // push val
-        stack->ptr[stack->pos++].v128 = b;
+        stack->ptr[stack->pos - 1].v128 = b;
       }
 
       break;
