@@ -2301,4 +2301,64 @@
   )
 
   (export "test_i64x2_load32x2_u" (func $test_i64x2_load32x2_u))
+
+  ;;
+  ;; test_v8x16_load_splat
+  ;;   expect i32 42
+  ;;
+  (func $test_v8x16_load_splat (result i32)
+    (i32.store (i32.const 0) (i32.const 0x00000015))
+
+    (i8x16.extract_lane_u 3
+      (i64x2.add
+        (v8x16.load_splat (i32.const 0))
+        (v8x16.load_splat (i32.const 0))))
+  )
+
+  (export "test_v8x16_load_splat" (func $test_v8x16_load_splat))
+
+  ;;
+  ;; test_v16x8_load_splat
+  ;;   expect i32 0x2000
+  ;;
+  (func $test_v16x8_load_splat (result i32)
+    (i32.store (i32.const 0) (i32.const 0x00001000))
+
+    (i16x8.extract_lane_u 3
+      (i16x8.add
+        (v16x8.load_splat (i32.const 0))
+        (v16x8.load_splat (i32.const 0))))
+  )
+
+  (export "test_v16x8_load_splat" (func $test_v16x8_load_splat))
+
+  ;;
+  ;; test_v32x4_load_splat
+  ;;   expect i32 0xFFFE0001
+  ;;
+  (func $test_v32x4_load_splat (result i32)
+    (i32.store (i32.const 0) (i32.const 0x0000FFFF))
+
+    (i32x4.extract_lane 2
+      (i32x4.mul
+        (v32x4.load_splat (i32.const 0))
+        (v32x4.load_splat (i32.const 0))))
+  )
+
+  (export "test_v32x4_load_splat" (func $test_v32x4_load_splat))
+
+  ;;
+  ;; test_v64x2_load_splat
+  ;;   expect i64 0x0000000200000000
+  ;;
+  (func $test_v64x2_load_splat (result i64)
+    (i64.store (i32.const 0) (i64.const 0x0000000100000000))
+
+    (i64x2.extract_lane 0
+      (i64x2.mul
+        (v64x2.load_splat (i32.const 0))
+        (v64x2.load_splat (i32.const 0))))
+  )
+
+  (export "test_v64x2_load_splat" (func $test_v64x2_load_splat))
 )
