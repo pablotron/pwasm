@@ -2355,7 +2355,7 @@
     (i64.store (i32.const 0) (i64.const 0x0000000100000000))
 
     (i64x2.extract_lane 0
-      (i64x2.mul
+      (i64x2.add
         (v64x2.load_splat (i32.const 0))
         (v64x2.load_splat (i32.const 0))))
   )
