@@ -35,8 +35,6 @@ tag.
 * [ ] investigate rounding mode for f32.div (fenv)
 
 ## In Progress
-* [ ] code, test: add main opcode tests (tests added, need to add to
-  tests/wasm.c)
 * [ ] code, test: add v128 opcode tests
 
 ## Done
@@ -98,6 +96,7 @@ Items in this section have been completed.
 * [x] code, test: fix start
 * [x] code: add global, table, and mem init, call start func
 * [x] test: add tests for all module sections
+* [x] code, test: add main opcode tests (`ops.wasm` in `tests/wasm.c`)
 
 ## Tag Definitions
 
