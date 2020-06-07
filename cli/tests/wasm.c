@@ -8604,7 +8604,7 @@ static bool check_result(
       r = (got_val.i32 == exp_val.i32);
       if (!r) {
         // build error
-        snprintf(buf, sizeof(buf), "expected %u, got %u", exp_val.i32, got_val.i32);
+        snprintf(buf, sizeof(buf), "expected 0x%08x, got 0x%08x", exp_val.i32, got_val.i32);
       }
 
       break;
