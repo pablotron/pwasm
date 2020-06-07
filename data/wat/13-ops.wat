@@ -3211,4 +3211,14 @@
   )
 
   (export "test_f64x2_ge" (func $test_f64x2_ge))
+
+  ;;
+  ;; test_i64_const
+  ;;   expect i64 0xFF00FF00FF00FF00
+  ;;
+  (func $test_i64_const (result i64)
+    (i64.const 0xFF00FF00FF00FF00)
+  )
+
+  (export "test_i64_const" (func $test_i64_const))
 )
