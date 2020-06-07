@@ -2273,7 +2273,7 @@
   ;;   expect i64 -255
   ;;
   (func $test_i64x2_load32x2_s (result i64)
-    (i64.store (i32.const 0) (i64.const 0xFF000000FFFFFFFF))
+    (i64.store (i32.const 0) (i64.const 0x000000FFFFFFFFFF))
     (i64.store (i32.const 8) (i64.const 0x0000000000000000))
     (i64.store (i32.const 16) (i64.const 0x0000000000000000))
 
@@ -2290,7 +2290,7 @@
   ;;   expect i64 1095216660225
   ;;
   (func $test_i64x2_load32x2_u (result i64)
-    (i64.store (i32.const 0) (i64.const 0xFF000000FFFFFFFF))
+    (i64.store (i32.const 0) (i64.const 0x000000FFFFFFFFFF))
     (i64.store (i32.const 8) (i64.const 0x0000000000000000))
     (i64.store (i32.const 16) (i64.const 0x0000000000000000))
 
