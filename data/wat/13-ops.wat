@@ -2150,4 +2150,21 @@
   )
 
   (export "test_i64_trunc_sat_f64_u" (func $test_i64_trunc_sat_f64_u))
+
+  ;;
+  ;; test_v128_load
+  ;;   expect i64
+  ;;
+  (func $test_v128_load (result i64)
+    (i64.store (i32.const 0) (i64.const 0x0706050403020100))
+    (i64.store (i32.const 16) (i64.const 0x0f0e0d0c0b0a0908))
+    (i64.store (i32.const 32) (i64.const 0x0000000000000000))
+
+    (i64x2.extract_lane 0
+      (i64x2.add
+        (v128.load (i32.const 0))
+        (v128.load (i32.const 16))))
+  )
+
+  (export "test_v128_load" (func $test_v128_load))
 )
