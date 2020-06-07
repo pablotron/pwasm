@@ -863,18 +863,25 @@ sets:
   - code: "0x07"
     name: "v8x16.load_splat"
     text: "Load an i8 from memory and splat it to an i8x16 v128."
+    imm: "MEM"
     mem_size: 1
 
   - code: "0x08"
     name: "v16x8.load_splat"
+    text: "Load an i16 from memory and splat it to an i16x8 v128."
+    imm: "MEM"
     mem_size: 2
 
   - code: "0x09"
     name: "v32x4.load_splat"
+    text: "Load an i32 from memory and splat it to an i32x4 v128."
+    imm: "MEM"
     mem_size: 4
 
   - code: "0x0a"
     name: "v64x2.load_splat"
+    text: "Load an i64 from memory and splat it to an i64x2 v128."
+    imm: "MEM"
     mem_size: 8
 
   - code: "0x0b"
