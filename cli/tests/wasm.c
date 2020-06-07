@@ -8354,7 +8354,7 @@ static bool check_result(
       r = (got_val.i64 == exp_val.i64);
       if (!r) {
         // build error
-        snprintf(buf, sizeof(buf), "expected %lu, got %lu", exp_val.i64, got_val.i64);
+        snprintf(buf, sizeof(buf), "expected 0x%016lx, got 0x%016lx", exp_val.i64, got_val.i64);
       }
 
       break;
