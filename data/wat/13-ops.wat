@@ -2225,4 +2225,25 @@
   )
 
   (export "test_i16x8_load8x8_u" (func $test_i16x8_load8x8_u))
+
+  ;;
+  ;; test_i32x4_load16x4_s
+  ;;   expect i32 -90
+  ;;
+  (func $test_i32x4_load16x4_s (result i32)
+    (i64.store (i32.const 0) (i64.const 0x000600050003FFFF))
+    (i64.store (i32.const 8) (i64.const 0x0000000000000000))
+    (i64.store (i32.const 16) (i64.const 0x0000000000000000))
+
+    (i32x4.extract_lane 0
+      (i32x4.mul
+        (i32x4.load16x4_s (i32.const 6))
+        (i32x4.mul
+          (i32x4.load16x4_s (i32.const 4))
+          (i32x4.mul
+            (i32x4.load16x4_s (i32.const 2))
+            (i32x4.load16x4_s (i32.const 0))))))
+  )
+
+  (export "test_i32x4_load16x4_s" (func $test_i32x4_load16x4_s))
 )
