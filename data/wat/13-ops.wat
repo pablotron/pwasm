@@ -2153,24 +2153,24 @@
 
   ;;
   ;; test_v128_load
-  ;;   expect i64
+  ;;   expect i64 0x161412100e0c0a08
   ;;
   (func $test_v128_load (result i64)
     (i64.store (i32.const 0) (i64.const 0x0706050403020100))
-    (i64.store (i32.const 16) (i64.const 0x0f0e0d0c0b0a0908))
-    (i64.store (i32.const 32) (i64.const 0x0000000000000000))
+    (i64.store (i32.const 8) (i64.const 0x0f0e0d0c0b0a0908))
+    (i64.store (i32.const 16) (i64.const 0x0000000000000000))
 
     (i64x2.extract_lane 0
       (i64x2.add
         (v128.load (i32.const 0))
-        (v128.load (i32.const 16))))
+        (v128.load (i32.const 8))))
   )
 
   (export "test_v128_load" (func $test_v128_load))
 
   ;;
   ;; test_i16x8_load8x8_s
-  ;;   expect i64
+  ;;   expect i32 28
   ;;
   (func $test_i16x8_load8x8_s (result i32)
     (i64.store (i32.const 0) (i64.const 0x0706050403020100))
@@ -2199,7 +2199,7 @@
 
   ;;
   ;; test_i16x8_load8x8_u
-  ;;   expect i64
+  ;;   expect i32 5040
   ;;
   (func $test_i16x8_load8x8_u (result i32)
     (i64.store (i32.const 0) (i64.const 0x0706050403020101))
