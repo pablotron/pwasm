@@ -2246,4 +2246,59 @@
   )
 
   (export "test_i32x4_load16x4_s" (func $test_i32x4_load16x4_s))
+
+  ;;
+  ;; test_i32x4_load16x4_u
+  ;;   expect i32 5898150
+  ;;
+  (func $test_i32x4_load16x4_u (result i32)
+    (i64.store (i32.const 0) (i64.const 0x000600050003FFFF))
+    (i64.store (i32.const 8) (i64.const 0x0000000000000000))
+    (i64.store (i32.const 16) (i64.const 0x0000000000000000))
+
+    (i32x4.extract_lane 0
+      (i32x4.mul
+        (i32x4.load16x4_u (i32.const 6))
+        (i32x4.mul
+          (i32x4.load16x4_u (i32.const 4))
+          (i32x4.mul
+            (i32x4.load16x4_u (i32.const 2))
+            (i32x4.load16x4_u (i32.const 0))))))
+  )
+
+  (export "test_i32x4_load16x4_u" (func $test_i32x4_load16x4_u))
+
+  ;;
+  ;; test_i64x2_load32x2_s
+  ;;   expect i64 -255
+  ;;
+  (func $test_i64x2_load32x2_s (result i64)
+    (i64.store (i32.const 0) (i64.const 0xFF000000FFFFFFFF))
+    (i64.store (i32.const 8) (i64.const 0x0000000000000000))
+    (i64.store (i32.const 16) (i64.const 0x0000000000000000))
+
+    (i64x2.extract_lane 0
+      (i64x2.mul
+        (i64x2.load32x2_s (i32.const 4))
+        (i64x2.load32x2_s (i32.const 0))))
+  )
+
+  (export "test_i64x2_load32x2_s" (func $test_i64x2_load32x2_s))
+
+  ;;
+  ;; test_i64x2_load32x2_u
+  ;;   expect i64 1095216660225
+  ;;
+  (func $test_i64x2_load32x2_u (result i64)
+    (i64.store (i32.const 0) (i64.const 0xFF000000FFFFFFFF))
+    (i64.store (i32.const 8) (i64.const 0x0000000000000000))
+    (i64.store (i32.const 16) (i64.const 0x0000000000000000))
+
+    (i64x2.extract_lane 0
+      (i64x2.mul
+        (i64x2.load32x2_u (i32.const 4))
+        (i64x2.load32x2_u (i32.const 0))))
+  )
+
+  (export "test_i64x2_load32x2_u" (func $test_i64x2_load32x2_u))
 )
