@@ -5334,6 +5334,7 @@ pwasm_parse_inst(
 
       // save value
       in.v_i64 = val;
+      D("in.v_i64 = 0x%016lx", val);
 
       // advance
       curr = pwasm_buf_step(curr, len);
@@ -14769,6 +14770,7 @@ pwasm_new_interp_eval_expr(
     case PWASM_OP_I64X2_SPLAT:
       {
         const uint64_t a = stack->ptr[stack->pos - 1].i64;
+        D("a = 0x%016lx", a);
         stack->ptr[stack->pos - 1].v128.i64[0] = a;
         stack->ptr[stack->pos - 1].v128.i64[1] = a;
       }
