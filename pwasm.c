@@ -2048,7 +2048,7 @@ PWASM_OPS[] = {{
   .name       = "v8x16.load_splat",
   .bytes      = { 0xfd, 0x07 },
   .num_bytes  = 2,
-  .imm        = PWASM_IMM_NONE,
+  .imm        = PWASM_IMM_MEM,
   .mem_size   = 1,
   .num_lanes  = 0,
 }, {
@@ -2056,7 +2056,7 @@ PWASM_OPS[] = {{
   .name       = "v16x8.load_splat",
   .bytes      = { 0xfd, 0x08 },
   .num_bytes  = 2,
-  .imm        = PWASM_IMM_NONE,
+  .imm        = PWASM_IMM_MEM,
   .mem_size   = 2,
   .num_lanes  = 0,
 }, {
@@ -2064,7 +2064,7 @@ PWASM_OPS[] = {{
   .name       = "v32x4.load_splat",
   .bytes      = { 0xfd, 0x09 },
   .num_bytes  = 2,
-  .imm        = PWASM_IMM_NONE,
+  .imm        = PWASM_IMM_MEM,
   .mem_size   = 4,
   .num_lanes  = 0,
 }, {
@@ -2072,7 +2072,7 @@ PWASM_OPS[] = {{
   .name       = "v64x2.load_splat",
   .bytes      = { 0xfd, 0x0a },
   .num_bytes  = 2,
-  .imm        = PWASM_IMM_NONE,
+  .imm        = PWASM_IMM_MEM,
   .mem_size   = 8,
   .num_lanes  = 0,
 }, {
