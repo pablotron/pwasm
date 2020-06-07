@@ -3656,6 +3656,9 @@ TEST_VALS[] = {
 
   // mod: "ops", func: "test_i16x8_load8x8_u", test: 0, params: 0, result: 1
   { .i32 = 5040 },
+
+  // mod: "ops", func: "test_i32x4_load16x4_s", test: 0, params: 0, result: 1
+  { .i32 = -90 },
 };
 
 typedef struct {
@@ -7653,6 +7656,12 @@ TEST_CALLS[] = {{
   .mod    = "ops",
   .func   = "test_i16x8_load8x8_u",
   .result = { 1406, 1 },
+  .type   = PWASM_RESULT_TYPE_I32,
+}, {
+  .text   = "ops.test_i32x4_load16x4_s(0)",
+  .mod    = "ops",
+  .func   = "test_i32x4_load16x4_s",
+  .result = { 1407, 1 },
   .type   = PWASM_RESULT_TYPE_I32,
 }};
 
