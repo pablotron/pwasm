@@ -3725,6 +3725,18 @@ TEST_VALS[] = {
 
   // mod: "ops", func: "test_i64x2_load32x2_u", test: 0, params: 0, result: 1
   { .i64 = 1095216660225 },
+
+  // mod: "ops", func: "test_v8x16_load_splat", test: 0, params: 0, result: 1
+  { .i32 = 42 },
+
+  // mod: "ops", func: "test_v16x8_load_splat", test: 0, params: 0, result: 1
+  { .i32 = 0x2000 },
+
+  // mod: "ops", func: "test_v32x4_load_splat", test: 0, params: 0, result: 1
+  { .i32 = 0xFFFE0001 },
+
+  // mod: "ops", func: "test_v64x2_load_splat", test: 0, params: 0, result: 1
+  { .i64 = 0x0000000200000000 },
 };
 
 typedef struct {
@@ -7746,6 +7758,30 @@ TEST_CALLS[] = {{
   .mod    = "ops",
   .func   = "test_i64x2_load32x2_u",
   .result = { 1410, 1 },
+  .type   = PWASM_RESULT_TYPE_I64,
+}, {
+  .text   = "ops.test_v8x16_load_splat(0)",
+  .mod    = "ops",
+  .func   = "test_v8x16_load_splat",
+  .result = { 1411, 1 },
+  .type   = PWASM_RESULT_TYPE_I32,
+}, {
+  .text   = "ops.test_v16x8_load_splat(0)",
+  .mod    = "ops",
+  .func   = "test_v16x8_load_splat",
+  .result = { 1412, 1 },
+  .type   = PWASM_RESULT_TYPE_I32,
+}, {
+  .text   = "ops.test_v32x4_load_splat(0)",
+  .mod    = "ops",
+  .func   = "test_v32x4_load_splat",
+  .result = { 1413, 1 },
+  .type   = PWASM_RESULT_TYPE_I32,
+}, {
+  .text   = "ops.test_v64x2_load_splat(0)",
+  .mod    = "ops",
+  .func   = "test_v64x2_load_splat",
+  .result = { 1414, 1 },
   .type   = PWASM_RESULT_TYPE_I64,
 }};
 
