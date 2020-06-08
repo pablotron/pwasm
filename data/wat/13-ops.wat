@@ -3386,4 +3386,69 @@
   )
 
   (export "test_i8x16_all_true" (func $test_i8x16_all_true))
+
+  ;;
+  ;; test_i8x16_narrow_i16x8_s
+  ;;   expect i32 0x7F81FF00
+  ;;
+  (func $test_i8x16_narrow_i16x8_s (result i32)
+    (i32x4.extract_lane 0
+      (i8x16.narrow_i16x8_s
+        (v128.const i16x8 0 -1 -127 127  0 0 0 0)
+        (v128.const i16x8 0 0 0 0  0 0 0 0)))
+  )
+
+  (export "test_i8x16_narrow_i16x8_s" (func $test_i8x16_narrow_i16x8_s))
+
+  ;;
+  ;; test_i8x16_narrow_i16x8_u
+  ;;   expect i32 0xFF7F0100
+  ;;
+  (func $test_i8x16_narrow_i16x8_u (result i32)
+    (i32x4.extract_lane 0
+      (i8x16.narrow_i16x8_u
+        (v128.const i16x8 0 1 127 255  0 0 0 0)
+        (v128.const i16x8 0 0 0 0  0 0 0 0)))
+  )
+
+  (export "test_i8x16_narrow_i16x8_u" (func $test_i8x16_narrow_i16x8_u))
+
+  ;;
+  ;; test_i8x16_shl
+  ;;   expect i32 0xFEFEFEFE
+  ;;
+  (func $test_i8x16_shl (result i32)
+    (i32x4.extract_lane 0
+      (i8x16.shl
+        (v128.const i32x4 0xffffffff 0 0 0)
+        (i32.const 1)))
+  )
+
+  (export "test_i8x16_shl" (func $test_i8x16_shl))
+
+  ;;
+  ;; test_i8x16_shr_s
+  ;;   expect i32 0x3FC801C8
+  ;;
+  (func $test_i8x16_shr_s (result i32)
+    (i32x4.extract_lane 0
+      (i8x16.shr_s
+        (v128.const i8x16 0x90 0x02 0x90 0x7F  0 0 0 0  0 0 0 0  0 0 0 0)
+        (i32.const 1)))
+  )
+
+  (export "test_i8x16_shr_s" (func $test_i8x16_shr_s))
+
+  ;;
+  ;; test_i8x16_shr_u
+  ;;   expect i32 0x007F017F
+  ;;
+  (func $test_i8x16_shr_u (result i32)
+    (i32x4.extract_lane 0
+      (i8x16.shr_s
+        (v128.const i8x16 0xFF 0x02 0xFF 0  0 0 0 0  0 0 0 0  0 0 0 0)
+        (i32.const 1)))
+  )
+
+  (export "test_i8x16_shr_u" (func $test_i8x16_shr_u))
 )
