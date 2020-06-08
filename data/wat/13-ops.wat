@@ -3303,4 +3303,74 @@
   )
 
   (export "test_v128_bitselect" (func $test_v128_bitselect))
+
+  ;;
+  ;; test_i8x16_abs
+  ;;   expect i32 0x0001017F
+  ;;
+  (func $test_i8x16_abs (result i32)
+    (i32x4.extract_lane 0
+      (i8x16.abs
+        (v128.const i8x16 0 1 -1 -127  0 0 0 0  0 0 0 0  0 0 0 0)))
+  )
+
+  (export "test_i8x16_abs" (func $test_i8x16_abs))
+
+  ;;
+  ;; test_i8x16_neg
+  ;;   expect i32 0x00FF017F
+  ;;
+  (func $test_i8x16_neg (result i32)
+    (i32x4.extract_lane 0
+      (i8x16.neg
+        (v128.const i8x16 0 1 -1 -127  0 0 0 0  0 0 0 0  0 0 0 0)))
+  )
+
+  (export "test_i8x16_neg" (func $test_i8x16_neg))
+
+  ;;
+  ;; test_i8x16_any_true
+  ;;   expect i32 8
+  ;;
+  (func $test_i8x16_any_true (result i32)
+    (i32.add
+      (i8x16.any_true
+        (v128.const i8x16 0 0 0 0  0 0 0 1  0 0 0 0  0 0 0 0))
+      (i32.add
+        (i8x16.any_true
+          (v128.const i8x16 0 0 0 0  0 0 1 0  0 0 0 0  0 0 0 0))
+        (i32.add
+          (i8x16.any_true
+            (v128.const i8x16 0 0 0 0  0 1 0 0  0 0 0 0  0 0 0 0))
+          (i32.add
+            (i8x16.any_true
+              (v128.const i8x16 0 0 0 0  1 0 0 0  0 0 0 0  0 0 0 0))
+            (i32.add
+              (i8x16.any_true
+                (v128.const i8x16 0 0 0 1  0 0 0 0  0 0 0 0  0 0 0 0))
+              (i32.add
+                (i8x16.any_true
+                  (v128.const i8x16 0 0 1 0  0 0 0 0  0 0 0 0  0 0 0 0))
+                (i32.add
+                  (i8x16.any_true
+                    (v128.const i8x16 0 1 0 0  0 0 0 0  0 0 0 0  0 0 0 0))
+                  (i8x16.any_true
+                    (v128.const i8x16 1 0 0 0  0 0 0 0  0 0 0 0  0 0 0 0)))))))))
+  )
+
+  (export "test_i8x16_any_true" (func $test_i8x16_any_true))
+
+  ;;
+  ;; test_i8x16_all_true
+  ;;   expect i32 1
+  ;;
+  (func $test_i8x16_all_true (result i32)
+    (i32.add
+      (i8x16.all_true
+        (v128.const i8x16 1 1 1 1  1 1 1 1  1 1 1 1  1 1 1 1))
+      (i8x16.all_true
+        (v128.const i8x16 0 1 1 1  1 1 1 1  1 1 1 1  1 1 1 1)))
+  )
+
+  (export "test_i8x16_all_true" (func $test_i8x16_all_true))
 )
