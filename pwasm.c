@@ -15572,9 +15572,9 @@ pwasm_new_interp_eval_expr(
       break;
     case PWASM_OP_V128_BITSELECT:
       {
-        const pwasm_v128_t m = stack->ptr[stack->pos - 3].v128;
-        const pwasm_v128_t a = stack->ptr[stack->pos - 2].v128;
-        const pwasm_v128_t b = stack->ptr[stack->pos - 1].v128;
+        const pwasm_v128_t a = stack->ptr[stack->pos - 3].v128;
+        const pwasm_v128_t b = stack->ptr[stack->pos - 2].v128;
+        const pwasm_v128_t m = stack->ptr[stack->pos - 1].v128;
 
         pwasm_v128_t c;
         c.i64[0] = (a.i64[0] & m.i64[0]) | (b.i64[0] & ~m.i64[0]);
