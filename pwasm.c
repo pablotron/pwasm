@@ -10138,6 +10138,7 @@ pwasm_checker_check(
     case PWASM_OP_I8X16_ABS:
     case PWASM_OP_I16X8_ABS:
     case PWASM_OP_I32X4_ABS:
+    case PWASM_OP_V128_NOT:
       if (!pwasm_checker_check_unop(checker, PWASM_CHECKER_TYPE_V128)) {
         return false;
       }
@@ -10186,7 +10187,6 @@ pwasm_checker_check(
     case PWASM_OP_F64X2_GT:
     case PWASM_OP_F64X2_LE:
     case PWASM_OP_F64X2_GE:
-    case PWASM_OP_V128_NOT:
     case PWASM_OP_V128_AND:
     case PWASM_OP_V128_OR:
     case PWASM_OP_V128_XOR:
