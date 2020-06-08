@@ -4300,13 +4300,13 @@ TEST_VALS[] = {
   { .i32 = 0xFEDCBA98 },
 
   // mod: "ops", func: "test_i32x4_replace_lane", test: 0, params: 0, result: 1
-  { .i32 = 0xFEDCBA98 },
+  { .i32 = 0xBEDCBA98 },
 
   // mod: "ops", func: "test_i64x2_extract_lane", test: 0, params: 0, result: 1
-  { .i64 = 0xFEDCBA9876543210 },
+  { .i64 = 0xBEDCBA9876543210 },
 
   // mod: "ops", func: "test_i64x2_replace_lane", test: 0, params: 0, result: 1
-  { .i64 = 0xDDDDFFFFDDDDFFFF },
+  { .i64 = 0xBDDDFFFFDDDDFFFF },
 
   // mod: "ops", func: "test_f32x4_extract_lane", test: 0, params: 0, result: 1
   { .f32 = 3.14159 },
@@ -4447,7 +4447,7 @@ TEST_VALS[] = {
   { .i32 = 0xff00ff00 },
 
   // mod: "ops", func: "test_i64_const", test: 0, params: 0, result: 1
-  { .i64 = 0xFF00FF00FF00FF00ULL },
+  { .i64 = 0xBF00FF00FF00FF00 },
 }; // sentinel
 
 typedef struct {
