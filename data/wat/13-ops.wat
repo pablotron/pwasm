@@ -3305,6 +3305,19 @@
   (export "test_v128_bitselect" (func $test_v128_bitselect))
 
   ;;
+  ;; test_v128_andnot
+  ;;   expect i32 0x000ff000
+  ;;
+  (func $test_v128_andnot (result i32)
+    (i32x4.extract_lane 0
+        (v128.andnot
+          (v128.const i32x4 0x0ffffff0 0 0 0)
+          (v128.const i32x4 0xfff00fff 0 0 0)))
+  )
+
+  (export "test_v128_andnot" (func $test_v128_andnot))
+
+  ;;
   ;; test_i8x16_abs
   ;;   expect i32 0x0001017F
   ;;
