@@ -3451,4 +3451,17 @@
   )
 
   (export "test_i8x16_shr_u" (func $test_i8x16_shr_u))
+
+  ;;
+  ;; test_i8x16_add
+  ;;   expect i32 0x010a0806
+  ;;
+  (func $test_i8x16_add (result i32)
+    (i32x4.extract_lane 0
+      (i8x16.add
+        (v128.const i8x16 1 2 3 255  0 0 0 0  0 0 0 0  0 0 0 0)
+        (v128.const i8x16 5 6 7   2  0 0 0 0  0 0 0 0  0 0 0 0))
+  )
+
+  (export "test_i8x16_add" (func $test_i8x16_add))
 )
