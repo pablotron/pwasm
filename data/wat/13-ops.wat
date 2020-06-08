@@ -3237,4 +3237,70 @@
   )
 
   (export "test_i64_const" (func $test_i64_const))
+
+  ;;
+  ;; test_v128_not
+  ;;   expect i32 0xffffffff
+  ;;
+  (func $test_v128_not (result i32)
+    (i32x4.extract_lane 0
+      (v8x16.shuffle 0 2 4 6  0 0 0 0  0 0 0 0  0 0 0 0
+        (v128.not (v128.const i64x2 0 0))
+        (v128.const i64x2 0 0)))
+  )
+
+  (export "test_v128_not" (func $test_v128_not))
+
+  ;;
+  ;; test_v128_and
+  ;;   expect i32 0x00ffff00
+  ;;
+  (func $test_v128_and (result i32)
+    (i32x4.extract_lane 0
+        (v128.and
+          (v128.const i32x4 0x00ffff00 0 0 0)
+          (v128.const i32x4 0xffffffff 0 0 0)))
+  )
+
+  (export "test_v128_and" (func $test_v128_and))
+
+  ;;
+  ;; test_v128_or
+  ;;   expect i32 0xf00ff00f
+  ;;
+  (func $test_v128_or (result i32)
+    (i32x4.extract_lane 0
+        (v128.or
+          (v128.const i32x4 0x000ff000 0 0 0)
+          (v128.const i32x4 0xf000000f 0 0 0)))
+  )
+
+  (export "test_v128_or" (func $test_v128_or))
+
+  ;;
+  ;; test_v128_xor
+  ;;   expect i32 0x0ff00ff0
+  ;;
+  (func $test_v128_xor (result i32)
+    (i32x4.extract_lane 0
+        (v128.xor
+          (v128.const i32x4 0x0f0ff0f0 0 0 0)
+          (v128.const i32x4 0x00ffff00 0 0 0)))
+  )
+
+  (export "test_v128_xor" (func $test_v128_xor))
+
+  ;;
+  ;; test_v128_bitselect
+  ;;   expect i32 0x033ffff0
+  ;;
+  (func $test_v128_bitselect (result i32)
+    (i32x4.extract_lane 0
+        (v128.bitselect
+          (v128.const i32x4 0x0f0ff0f0 0 0 0)
+          (v128.const i32x4 0x00ffff00 0 0 0)
+          (v128.const i32x4 0x03c000f0 0 0 0)))
+  )
+
+  (export "test_v128_bitselect" (func $test_v128_bitselect))
 )
