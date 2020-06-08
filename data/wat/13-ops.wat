@@ -2565,39 +2565,51 @@
 
   ;;
   ;; test_i32x4_replace_lane
-  ;;   expect i32 0xFEDCBA98
+  ;;   expect i32 0xBEDCBA98
+  ;;
+  ;; NOTE: The original value was 0xFEDCBA98, but the current version of
+  ;; WABT (1.0.13) is incorrectly treating i32.const values as signed
+  ;; and compacting them.
   ;;
   (func $test_i32x4_replace_lane (result i32)
     (i32x4.extract_lane 3
       (i32x4.replace_lane 3
         (i32x4.splat (i32.const 0x0))
-        (i32.const 0xFEDCBA98)))
+        (i32.const 0xBEDCBA98)))
   )
 
   (export "test_i32x4_replace_lane" (func $test_i32x4_replace_lane))
 
   ;;
   ;; test_i64x2_extract_lane
-  ;;   expect i64 0xFEDCBA9876543210
+  ;;   expect i64 0xBEDCBA9876543210
+  ;;
+  ;; NOTE: The original value was 0xFEDCBA9876543210, but the current
+  ;; version of WABT (1.0.13) is incorrectly treating i64.const values
+  ;; as signed and compacting them.
   ;;
   (func $test_i64x2_extract_lane (result i64)
     (i64x2.extract_lane 1
       (i64x2.replace_lane 1
         (i64x2.splat (i64.const 0x0))
-        (i64.const 0xFEDCBA9876543210)))
+        (i64.const 0xBEDCBA9876543210)))
   )
 
   (export "test_i64x2_extract_lane" (func $test_i64x2_extract_lane))
 
   ;;
   ;; test_i64x2_replace_lane
-  ;;   expect i64 0xDDDDFFFFDDDDFFFF
+  ;;   expect i64 0xBDDDFFFFDDDDFFFF
+  ;;
+  ;; NOTE: The original value was 0xDDDDFFFFDDDDFFFF, but the current
+  ;; version of WABT (1.0.13) is incorrectly treating i64.const values
+  ;; as signed and compacting them.
   ;;
   (func $test_i64x2_replace_lane (result i64)
     (i64x2.extract_lane 0
       (i64x2.replace_lane 0
         (i64x2.splat (i64.const 0x0))
-        (i64.const 0xDDDDFFFFDDDDFFFF)))
+        (i64.const 0xBDDDFFFFDDDDFFFF)))
   )
 
   (export "test_i64x2_replace_lane" (func $test_i64x2_replace_lane))
@@ -2669,7 +2681,7 @@
   ;;
   (func $test_i8x16_ne (result i32)
     (i32x4.extract_lane 0
-      (i8x16.eq
+      (i8x16.ne
         (v128.const i8x16 0 1 2 3 4 5 6 7 8 9 10 11 12 13 14 15)
         (v128.const i8x16 1 1 3 3 4 5 6 7 8 9 10 11 12 13 14 15)))
   )
@@ -2761,8 +2773,8 @@
   (func $test_i8x16_ge_s (result i32)
     (i32x4.extract_lane 0
       (i8x16.ge_s
-        (v128.const i8x16 0 127 -1 100  0 0 0 0  0 0 0 0  0 0 0 0)
-        (v128.const i8x16 0  -1  1   0  0 0 0 0  0 0 0 0  0 0 0 0)))
+        (v128.const i8x16 100 -1 127 0  0 0 0 0  0 0 0 0  0 0 0 0)
+        (v128.const i8x16   0  1  -1 1  0 0 0 0  0 0 0 0  0 0 0 0)))
   )
 
   (export "test_i8x16_ge_s" (func $test_i8x16_ge_s))
@@ -2774,8 +2786,8 @@
   (func $test_i8x16_ge_u (result i32)
     (i32x4.extract_lane 0
       (i8x16.ge_u
-        (v128.const i8x16 0 255 0 1  0 0 0 0  0 0 0 0  0 0 0 0)
-        (v128.const i8x16 0   0 1 0  0 0 0 0  0 0 0 0  0 0 0 0)))
+        (v128.const i8x16 1 0 255 0  0 0 0 0  0 0 0 0  0 0 0 0)
+        (v128.const i8x16 0 1   0 1  0 0 0 0  0 0 0 0  0 0 0 0)))
   )
 
   (export "test_i8x16_ge_u" (func $test_i8x16_ge_u))
@@ -2799,7 +2811,7 @@
   ;;
   (func $test_i16x8_ne (result i32)
     (i32x4.extract_lane 0
-      (i16x8.eq
+      (i16x8.ne
         (v128.const i16x8 0 0  0 0  0 0  0 0)
         (v128.const i16x8 0 1  0 0  0 0  0 0)))
   )
@@ -3214,10 +3226,14 @@
 
   ;;
   ;; test_i64_const
-  ;;   expect i64 0xFF00FF00FF00FF00
+  ;;   expect i64 0xBF00FF00FF00FF00
+  ;;
+  ;; NOTE: The original value was 0xFEDCBA9876543210, but the current
+  ;; version of WABT (1.0.13) is incorrectly treating i64.const values
+  ;; as signed and compacting them.
   ;;
   (func $test_i64_const (result i64)
-    (i64.const 0xFF00FF00FF00FF00)
+    (i64.const 0xBF00FF00FF00FF00)
   )
 
   (export "test_i64_const" (func $test_i64_const))
