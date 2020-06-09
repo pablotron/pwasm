@@ -5254,6 +5254,285 @@ TEST_VALS[] = {
 
   // mod: "ops", func: "test_v128_bitselect", test: 0, params: 0, result: 1
   { .i32 = 0x033ffff0 },
+
+  // mod: "ops", func: "test_v128_andnot", test: 0, params: 0, result: 1
+  { .i32 = 0x000ff000 },
+
+  // mod: "ops", func: "test_i8x16_abs", test: 0, params: 0, result: 1
+  { .i32 = 0x7F010100 },
+
+  // mod: "ops", func: "test_i8x16_neg", test: 0, params: 0, result: 1
+  { .i32 = 0x7F01FF00 },
+
+  // mod: "ops", func: "test_i8x16_any_true", test: 0, params: 0, result: 1
+  { .i32 = 8 },
+
+  // mod: "ops", func: "test_i8x16_all_true", test: 0, params: 0, result: 1
+  { .i32 = 1 },
+
+  // mod: "ops", func: "test_i8x16_narrow_i16x8_s", test: 0, params: 0, result: 1
+  { .i32 = 0x7F81FF00 },
+
+  // mod: "ops", func: "test_i8x16_narrow_i16x8_u", test: 0, params: 0, result: 1
+  { .i32 = 0xFF7F0100 },
+
+  // mod: "ops", func: "test_i8x16_shl", test: 0, params: 0, result: 1
+  { .i32 = 0xFEFEFEFE },
+
+  // mod: "ops", func: "test_i8x16_shr_s", test: 0, params: 0, result: 1
+  { .i32 = 0x3FC801C8 },
+
+  // mod: "ops", func: "test_i8x16_shr_u", test: 0, params: 0, result: 1
+  { .i32 = 0x007F017F },
+
+  // mod: "ops", func: "test_i8x16_add", test: 0, params: 0, result: 1
+  { .i32 = 0x010a0806 },
+
+  // mod: "ops", func: "test_i8x16_add_saturate_s", test: 0, params: 0, result: 1
+  { .i32 = 0x7F0A0800 },
+
+  // mod: "ops", func: "test_i8x16_add_saturate_u", test: 0, params: 0, result: 1
+  { .i32 = 0xFF0A0801 },
+
+  // mod: "ops", func: "test_i8x16_sub", test: 0, params: 0, result: 1
+  { .i32 = 0xFD040404 },
+
+  // mod: "ops", func: "test_i8x16_sub_saturate_s", test: 0, params: 0, result: 1
+  { .i32 = 0x80040404 },
+
+  // mod: "ops", func: "test_i8x16_sub_saturate_u", test: 0, params: 0, result: 1
+  { .i32 = 0x00FF0004 },
+
+  // mod: "ops", func: "test_i8x16_min_s", test: 0, params: 0, result: 1
+  { .i32 = 0x01FF0001 },
+
+  // mod: "ops", func: "test_i8x16_min_u", test: 0, params: 0, result: 1
+  { .i32 = 0x01000001 },
+
+  // mod: "ops", func: "test_i8x16_max_s", test: 0, params: 0, result: 1
+  { .i32 = 0x027F0205 },
+
+  // mod: "ops", func: "test_i8x16_max_u", test: 0, params: 0, result: 1
+  { .i32 = 0x02FF0205 },
+
+  // mod: "ops", func: "test_i8x16_avgr_u", test: 0, params: 0, result: 1
+  { .i32 = 0x02800103 },
+
+  // mod: "ops", func: "test_i16x8_abs", test: 0, params: 0, result: 1
+  { .i32 = 0x007F0001 },
+
+  // mod: "ops", func: "test_i16x8_neg", test: 0, params: 0, result: 1
+  { .i32 = 0xFFFF0001 },
+
+  // mod: "ops", func: "test_i16x8_any_true", test: 0, params: 0, result: 1
+  { .i32 = 8 },
+
+  // mod: "ops", func: "test_i16x8_all_true", test: 0, params: 0, result: 1
+  { .i32 = 1 },
+
+  // mod: "ops", func: "test_i16x8_narrow_i32x4_s", test: 0, params: 0, result: 1
+  { .i32 = 0x7FFF8001 },
+
+  // mod: "ops", func: "test_i16x8_narrow_i32x4_u", test: 0, params: 0, result: 1
+  { .i32 = 0x8000FFFF },
+
+  // mod: "ops", func: "test_i16x8_widen_low_i8x16_s", test: 0, params: 0, result: 1
+  { .i32 = 0x007FFF80 },
+
+  // mod: "ops", func: "test_i16x8_widen_high_i8x16_s", test: 0, params: 0, result: 1
+  { .i32 = 0x007FFF80 },
+
+  // mod: "ops", func: "test_i16x8_widen_low_i8x16_u", test: 0, params: 0, result: 1
+  { .i32 = 0x07F00FF },
+
+  // mod: "ops", func: "test_i16x8_widen_high_i8x16_u", test: 0, params: 0, result: 1
+  { .i32 = 0x07F00FF },
+
+  // mod: "ops", func: "test_i16x8_shl", test: 0, params: 0, result: 1
+  { .i32 = 0xFFFEFFFE },
+
+  // mod: "ops", func: "test_i16x8_shr_s", test: 0, params: 0, result: 1
+  { .i32 = 0x3FFFC000 },
+
+  // mod: "ops", func: "test_i16x8_shr_u", test: 0, params: 0, result: 1
+  { .i32 = 0x003F7FFF },
+
+  // mod: "ops", func: "test_i16x8_add", test: 0, params: 0, result: 1
+  { .i32 = 0x00080006 },
+
+  // mod: "ops", func: "test_i16x8_add_saturate_s", test: 0, params: 0, result: 1
+  { .i32 = 0x7FFF8000 },
+
+  // mod: "ops", func: "test_i16x8_add_saturate_u", test: 0, params: 0, result: 1
+  { .i32 = 0xFFFFFFFF },
+
+  // mod: "ops", func: "test_i16x8_sub", test: 0, params: 0, result: 1
+  { .i32 = 0x00040004 },
+
+  // mod: "ops", func: "test_i16x8_sub_saturate_s", test: 0, params: 0, result: 1
+  { .i32 = 0x00008000 },
+
+  // mod: "ops", func: "test_i16x8_sub_saturate_u", test: 0, params: 0, result: 1
+  { .i32 = 0x7FFF0000 },
+
+  // mod: "ops", func: "test_i16x8_mul", test: 0, params: 0, result: 1
+  { .i32 = 0x00080014 },
+
+  // mod: "ops", func: "test_i16x8_min_s", test: 0, params: 0, result: 1
+  { .i32 = 0x0001FFFF },
+
+  // mod: "ops", func: "test_i16x8_min_u", test: 0, params: 0, result: 1
+  { .i32 = 0x00010000 },
+
+  // mod: "ops", func: "test_i16x8_max_s", test: 0, params: 0, result: 1
+  { .i32 = 0x00020005 },
+
+  // mod: "ops", func: "test_i16x8_max_u", test: 0, params: 0, result: 1
+  { .i32 = 0x0002FFFF },
+
+  // mod: "ops", func: "test_i16x8_avgr_u", test: 0, params: 0, result: 1
+  { .i32 = 0x7FFF0080 },
+
+  // mod: "ops", func: "test_i32x4_abs", test: 0, params: 0, result: 1
+  { .i64 = 0x0000007F00000001 },
+
+  // mod: "ops", func: "test_i32x4_neg", test: 0, params: 0, result: 1
+  { .i64 = 0xFFFFFFFF00000001 },
+
+  // mod: "ops", func: "test_i32x4_any_true", test: 0, params: 0, result: 1
+  { .i32 = 4 },
+
+  // mod: "ops", func: "test_i32x4_all_true", test: 0, params: 0, result: 1
+  { .i32 = 1 },
+
+  // mod: "ops", func: "test_i32x4_widen_low_i16x8_s", test: 0, params: 0, result: 1
+  { .i64 = 0x0000007FFFFFFF80 },
+
+  // mod: "ops", func: "test_i32x4_widen_high_i16x8_s", test: 0, params: 0, result: 1
+  { .i64 = 0x0000007FFFFFFF80 },
+
+  // mod: "ops", func: "test_i32x4_widen_low_i16x8_u", test: 0, params: 0, result: 1
+  { .i64 = 0x0000007F000000FF },
+
+  // mod: "ops", func: "test_i32x4_widen_high_i16x8_u", test: 0, params: 0, result: 1
+  { .i64 = 0x0000007F000000FF },
+
+  // mod: "ops", func: "test_i32x4_shl", test: 0, params: 0, result: 1
+  { .i64 = 0xFFFFFFFEFFFFFFFE },
+
+  // mod: "ops", func: "test_i32x4_shr_s", test: 0, params: 0, result: 1
+  { .i64 = 0x3FFFFFFFC0000000 },
+
+  // mod: "ops", func: "test_i32x4_shr_u", test: 0, params: 0, result: 1
+  { .i64 = 0x0000003F3FFFFFFF },
+
+  // mod: "ops", func: "test_i32x4_add", test: 0, params: 0, result: 1
+  { .i64 = 0x0000000800000006 },
+
+  // mod: "ops", func: "test_i32x4_sub", test: 0, params: 0, result: 1
+  { .i64 = 0x0000000400000004 },
+
+  // mod: "ops", func: "test_i32x4_mul", test: 0, params: 0, result: 1
+  { .i64 = 0x000000080000000f },
+
+  // mod: "ops", func: "test_i32x4_min_s", test: 0, params: 0, result: 1
+  { .i64 = 0x00000001FFFFFFFF },
+
+  // mod: "ops", func: "test_i32x4_min_u", test: 0, params: 0, result: 1
+  { .i64 = 0x0000000100000000 },
+
+  // mod: "ops", func: "test_i32x4_max_s", test: 0, params: 0, result: 1
+  { .i64 = 0x0000000200000005 },
+
+  // mod: "ops", func: "test_i32x4_max_u", test: 0, params: 0, result: 1
+  { .i64 = 0x000000020000FFFF },
+
+  // mod: "ops", func: "test_i64x2_neg", test: 0, params: 0, result: 1
+  { .i64 = 0xFFFFFFFFFFFFFFFF },
+
+  // mod: "ops", func: "test_i64x2_shl", test: 0, params: 0, result: 1
+  { .i64 = 0xFFFFFFFFFFFFFFFE },
+
+  // mod: "ops", func: "test_i64x2_shr_s", test: 0, params: 0, result: 1
+  { .i64 = 0xC000000000000000 },
+
+  // mod: "ops", func: "test_i64x2_shr_u", test: 0, params: 0, result: 1
+  { .i64 = 0x7FFFFFFFFFFFFFFF },
+
+  // mod: "ops", func: "test_i64x2_add", test: 0, params: 0, result: 1
+  { .i64 = 8 },
+
+  // mod: "ops", func: "test_i64x2_sub", test: 0, params: 0, result: 1
+  { .i64 = 4 },
+
+  // mod: "ops", func: "test_i64x2_mul", test: 0, params: 0, result: 1
+  { .i64 = 20 },
+
+  // mod: "ops", func: "test_f32x4_abs", test: 0, params: 0, result: 1
+  { .f32 = 3.14159 },
+
+  // mod: "ops", func: "test_f32x4_neg", test: 0, params: 0, result: 1
+  { .f32 = -3.14159 },
+
+  // mod: "ops", func: "test_f32x4_sqrt", test: 0, params: 0, result: 1
+  { .f32 = 2.0 },
+
+  // mod: "ops", func: "test_f32x4_add", test: 0, params: 0, result: 1
+  { .f32 = 9.0 },
+
+  // mod: "ops", func: "test_f32x4_sub", test: 0, params: 0, result: 1
+  { .f32 = -7.0 },
+
+  // mod: "ops", func: "test_f32x4_mul", test: 0, params: 0, result: 1
+  { .f32 = 72.0 },
+
+  // mod: "ops", func: "test_f32x4_div", test: 0, params: 0, result: 1
+  { .f32 = 1.125 },
+
+  // mod: "ops", func: "test_f32x4_min", test: 0, params: 0, result: 1
+  { .f32 = 8.0 },
+
+  // mod: "ops", func: "test_f32x4_max", test: 0, params: 0, result: 1
+  { .f32 = 9.0 },
+
+  // mod: "ops", func: "test_f64x2_abs", test: 0, params: 0, result: 1
+  { .f64 = 3.14159 },
+
+  // mod: "ops", func: "test_f64x2_neg", test: 0, params: 0, result: 1
+  { .f64 = -3.14159 },
+
+  // mod: "ops", func: "test_f64x2_sqrt", test: 0, params: 0, result: 1
+  { .f64 = 2.0 },
+
+  // mod: "ops", func: "test_f64x2_add", test: 0, params: 0, result: 1
+  { .f64 = 9.0 },
+
+  // mod: "ops", func: "test_f64x2_sub", test: 0, params: 0, result: 1
+  { .f64 = -7.0 },
+
+  // mod: "ops", func: "test_f64x2_mul", test: 0, params: 0, result: 1
+  { .f64 = 72.0 },
+
+  // mod: "ops", func: "test_f64x2_div", test: 0, params: 0, result: 1
+  { .f64 = 1.125 },
+
+  // mod: "ops", func: "test_f64x2_min", test: 0, params: 0, result: 1
+  { .f64 = 8.0 },
+
+  // mod: "ops", func: "test_f64x2_max", test: 0, params: 0, result: 1
+  { .f64 = 9.0 },
+
+  // mod: "ops", func: "test_i32x4_trunc_sat_f32x4_s", test: 0, params: 0, result: 1
+  { .i64 = 0x7FFFFFFF80000000 },
+
+  // mod: "ops", func: "test_i32x4_trunc_sat_f32x4_u", test: 0, params: 0, result: 1
+  { .i64 = 0xFFFFFFFF00000000 },
+
+  // mod: "ops", func: "test_f32x4_convert_i32x4_s", test: 0, params: 0, result: 1
+  { .f32 = -127.0 },
+
+  // mod: "ops", func: "test_f32x4_convert_i32x4_u", test: 0, params: 0, result: 1
+  { .f32 = 1000000.0 },
 }; // sentinel
 
 typedef struct {
@@ -9732,6 +10011,564 @@ TEST_CALLS[] = {{
   .func   = "test_v128_bitselect",
   .result = { 1486, 1 },
   .type   = PWASM_RESULT_TYPE_I32,
+}, {
+  .text   = "ops.test_v128_andnot(0)",
+  .mod    = "ops",
+  .func   = "test_v128_andnot",
+  .result = { 1487, 1 },
+  .type   = PWASM_RESULT_TYPE_I32,
+}, {
+  .text   = "ops.test_i8x16_abs(0)",
+  .mod    = "ops",
+  .func   = "test_i8x16_abs",
+  .result = { 1488, 1 },
+  .type   = PWASM_RESULT_TYPE_I32,
+}, {
+  .text   = "ops.test_i8x16_neg(0)",
+  .mod    = "ops",
+  .func   = "test_i8x16_neg",
+  .result = { 1489, 1 },
+  .type   = PWASM_RESULT_TYPE_I32,
+}, {
+  .text   = "ops.test_i8x16_any_true(0)",
+  .mod    = "ops",
+  .func   = "test_i8x16_any_true",
+  .result = { 1490, 1 },
+  .type   = PWASM_RESULT_TYPE_I32,
+}, {
+  .text   = "ops.test_i8x16_all_true(0)",
+  .mod    = "ops",
+  .func   = "test_i8x16_all_true",
+  .result = { 1491, 1 },
+  .type   = PWASM_RESULT_TYPE_I32,
+}, {
+  .text   = "ops.test_i8x16_narrow_i16x8_s(0)",
+  .mod    = "ops",
+  .func   = "test_i8x16_narrow_i16x8_s",
+  .result = { 1492, 1 },
+  .type   = PWASM_RESULT_TYPE_I32,
+}, {
+  .text   = "ops.test_i8x16_narrow_i16x8_u(0)",
+  .mod    = "ops",
+  .func   = "test_i8x16_narrow_i16x8_u",
+  .result = { 1493, 1 },
+  .type   = PWASM_RESULT_TYPE_I32,
+}, {
+  .text   = "ops.test_i8x16_shl(0)",
+  .mod    = "ops",
+  .func   = "test_i8x16_shl",
+  .result = { 1494, 1 },
+  .type   = PWASM_RESULT_TYPE_I32,
+}, {
+  .text   = "ops.test_i8x16_shr_s(0)",
+  .mod    = "ops",
+  .func   = "test_i8x16_shr_s",
+  .result = { 1495, 1 },
+  .type   = PWASM_RESULT_TYPE_I32,
+}, {
+  .text   = "ops.test_i8x16_shr_u(0)",
+  .mod    = "ops",
+  .func   = "test_i8x16_shr_u",
+  .result = { 1496, 1 },
+  .type   = PWASM_RESULT_TYPE_I32,
+}, {
+  .text   = "ops.test_i8x16_add(0)",
+  .mod    = "ops",
+  .func   = "test_i8x16_add",
+  .result = { 1497, 1 },
+  .type   = PWASM_RESULT_TYPE_I32,
+}, {
+  .text   = "ops.test_i8x16_add_saturate_s(0)",
+  .mod    = "ops",
+  .func   = "test_i8x16_add_saturate_s",
+  .result = { 1498, 1 },
+  .type   = PWASM_RESULT_TYPE_I32,
+}, {
+  .text   = "ops.test_i8x16_add_saturate_u(0)",
+  .mod    = "ops",
+  .func   = "test_i8x16_add_saturate_u",
+  .result = { 1499, 1 },
+  .type   = PWASM_RESULT_TYPE_I32,
+}, {
+  .text   = "ops.test_i8x16_sub(0)",
+  .mod    = "ops",
+  .func   = "test_i8x16_sub",
+  .result = { 1500, 1 },
+  .type   = PWASM_RESULT_TYPE_I32,
+}, {
+  .text   = "ops.test_i8x16_sub_saturate_s(0)",
+  .mod    = "ops",
+  .func   = "test_i8x16_sub_saturate_s",
+  .result = { 1501, 1 },
+  .type   = PWASM_RESULT_TYPE_I32,
+}, {
+  .text   = "ops.test_i8x16_sub_saturate_u(0)",
+  .mod    = "ops",
+  .func   = "test_i8x16_sub_saturate_u",
+  .result = { 1502, 1 },
+  .type   = PWASM_RESULT_TYPE_I32,
+}, {
+  .text   = "ops.test_i8x16_min_s(0)",
+  .mod    = "ops",
+  .func   = "test_i8x16_min_s",
+  .result = { 1503, 1 },
+  .type   = PWASM_RESULT_TYPE_I32,
+}, {
+  .text   = "ops.test_i8x16_min_u(0)",
+  .mod    = "ops",
+  .func   = "test_i8x16_min_u",
+  .result = { 1504, 1 },
+  .type   = PWASM_RESULT_TYPE_I32,
+}, {
+  .text   = "ops.test_i8x16_max_s(0)",
+  .mod    = "ops",
+  .func   = "test_i8x16_max_s",
+  .result = { 1505, 1 },
+  .type   = PWASM_RESULT_TYPE_I32,
+}, {
+  .text   = "ops.test_i8x16_max_u(0)",
+  .mod    = "ops",
+  .func   = "test_i8x16_max_u",
+  .result = { 1506, 1 },
+  .type   = PWASM_RESULT_TYPE_I32,
+}, {
+  .text   = "ops.test_i8x16_avgr_u(0)",
+  .mod    = "ops",
+  .func   = "test_i8x16_avgr_u",
+  .result = { 1507, 1 },
+  .type   = PWASM_RESULT_TYPE_I32,
+}, {
+  .text   = "ops.test_i16x8_abs(0)",
+  .mod    = "ops",
+  .func   = "test_i16x8_abs",
+  .result = { 1508, 1 },
+  .type   = PWASM_RESULT_TYPE_I32,
+}, {
+  .text   = "ops.test_i16x8_neg(0)",
+  .mod    = "ops",
+  .func   = "test_i16x8_neg",
+  .result = { 1509, 1 },
+  .type   = PWASM_RESULT_TYPE_I32,
+}, {
+  .text   = "ops.test_i16x8_any_true(0)",
+  .mod    = "ops",
+  .func   = "test_i16x8_any_true",
+  .result = { 1510, 1 },
+  .type   = PWASM_RESULT_TYPE_I32,
+}, {
+  .text   = "ops.test_i16x8_all_true(0)",
+  .mod    = "ops",
+  .func   = "test_i16x8_all_true",
+  .result = { 1511, 1 },
+  .type   = PWASM_RESULT_TYPE_I32,
+}, {
+  .text   = "ops.test_i16x8_narrow_i32x4_s(0)",
+  .mod    = "ops",
+  .func   = "test_i16x8_narrow_i32x4_s",
+  .result = { 1512, 1 },
+  .type   = PWASM_RESULT_TYPE_I32,
+}, {
+  .text   = "ops.test_i16x8_narrow_i32x4_u(0)",
+  .mod    = "ops",
+  .func   = "test_i16x8_narrow_i32x4_u",
+  .result = { 1513, 1 },
+  .type   = PWASM_RESULT_TYPE_I32,
+}, {
+  .text   = "ops.test_i16x8_widen_low_i8x16_s(0)",
+  .mod    = "ops",
+  .func   = "test_i16x8_widen_low_i8x16_s",
+  .result = { 1514, 1 },
+  .type   = PWASM_RESULT_TYPE_I32,
+}, {
+  .text   = "ops.test_i16x8_widen_high_i8x16_s(0)",
+  .mod    = "ops",
+  .func   = "test_i16x8_widen_high_i8x16_s",
+  .result = { 1515, 1 },
+  .type   = PWASM_RESULT_TYPE_I32,
+}, {
+  .text   = "ops.test_i16x8_widen_low_i8x16_u(0)",
+  .mod    = "ops",
+  .func   = "test_i16x8_widen_low_i8x16_u",
+  .result = { 1516, 1 },
+  .type   = PWASM_RESULT_TYPE_I32,
+}, {
+  .text   = "ops.test_i16x8_widen_high_i8x16_u(0)",
+  .mod    = "ops",
+  .func   = "test_i16x8_widen_high_i8x16_u",
+  .result = { 1517, 1 },
+  .type   = PWASM_RESULT_TYPE_I32,
+}, {
+  .text   = "ops.test_i16x8_shl(0)",
+  .mod    = "ops",
+  .func   = "test_i16x8_shl",
+  .result = { 1518, 1 },
+  .type   = PWASM_RESULT_TYPE_I32,
+}, {
+  .text   = "ops.test_i16x8_shr_s(0)",
+  .mod    = "ops",
+  .func   = "test_i16x8_shr_s",
+  .result = { 1519, 1 },
+  .type   = PWASM_RESULT_TYPE_I32,
+}, {
+  .text   = "ops.test_i16x8_shr_u(0)",
+  .mod    = "ops",
+  .func   = "test_i16x8_shr_u",
+  .result = { 1520, 1 },
+  .type   = PWASM_RESULT_TYPE_I32,
+}, {
+  .text   = "ops.test_i16x8_add(0)",
+  .mod    = "ops",
+  .func   = "test_i16x8_add",
+  .result = { 1521, 1 },
+  .type   = PWASM_RESULT_TYPE_I32,
+}, {
+  .text   = "ops.test_i16x8_add_saturate_s(0)",
+  .mod    = "ops",
+  .func   = "test_i16x8_add_saturate_s",
+  .result = { 1522, 1 },
+  .type   = PWASM_RESULT_TYPE_I32,
+}, {
+  .text   = "ops.test_i16x8_add_saturate_u(0)",
+  .mod    = "ops",
+  .func   = "test_i16x8_add_saturate_u",
+  .result = { 1523, 1 },
+  .type   = PWASM_RESULT_TYPE_I32,
+}, {
+  .text   = "ops.test_i16x8_sub(0)",
+  .mod    = "ops",
+  .func   = "test_i16x8_sub",
+  .result = { 1524, 1 },
+  .type   = PWASM_RESULT_TYPE_I32,
+}, {
+  .text   = "ops.test_i16x8_sub_saturate_s(0)",
+  .mod    = "ops",
+  .func   = "test_i16x8_sub_saturate_s",
+  .result = { 1525, 1 },
+  .type   = PWASM_RESULT_TYPE_I32,
+}, {
+  .text   = "ops.test_i16x8_sub_saturate_u(0)",
+  .mod    = "ops",
+  .func   = "test_i16x8_sub_saturate_u",
+  .result = { 1526, 1 },
+  .type   = PWASM_RESULT_TYPE_I32,
+}, {
+  .text   = "ops.test_i16x8_mul(0)",
+  .mod    = "ops",
+  .func   = "test_i16x8_mul",
+  .result = { 1527, 1 },
+  .type   = PWASM_RESULT_TYPE_I32,
+}, {
+  .text   = "ops.test_i16x8_min_s(0)",
+  .mod    = "ops",
+  .func   = "test_i16x8_min_s",
+  .result = { 1528, 1 },
+  .type   = PWASM_RESULT_TYPE_I32,
+}, {
+  .text   = "ops.test_i16x8_min_u(0)",
+  .mod    = "ops",
+  .func   = "test_i16x8_min_u",
+  .result = { 1529, 1 },
+  .type   = PWASM_RESULT_TYPE_I32,
+}, {
+  .text   = "ops.test_i16x8_max_s(0)",
+  .mod    = "ops",
+  .func   = "test_i16x8_max_s",
+  .result = { 1530, 1 },
+  .type   = PWASM_RESULT_TYPE_I32,
+}, {
+  .text   = "ops.test_i16x8_max_u(0)",
+  .mod    = "ops",
+  .func   = "test_i16x8_max_u",
+  .result = { 1531, 1 },
+  .type   = PWASM_RESULT_TYPE_I32,
+}, {
+  .text   = "ops.test_i16x8_avgr_u(0)",
+  .mod    = "ops",
+  .func   = "test_i16x8_avgr_u",
+  .result = { 1532, 1 },
+  .type   = PWASM_RESULT_TYPE_I32,
+}, {
+  .text   = "ops.test_i32x4_abs(0)",
+  .mod    = "ops",
+  .func   = "test_i32x4_abs",
+  .result = { 1533, 1 },
+  .type   = PWASM_RESULT_TYPE_I64,
+}, {
+  .text   = "ops.test_i32x4_neg(0)",
+  .mod    = "ops",
+  .func   = "test_i32x4_neg",
+  .result = { 1534, 1 },
+  .type   = PWASM_RESULT_TYPE_I64,
+}, {
+  .text   = "ops.test_i32x4_any_true(0)",
+  .mod    = "ops",
+  .func   = "test_i32x4_any_true",
+  .result = { 1535, 1 },
+  .type   = PWASM_RESULT_TYPE_I32,
+}, {
+  .text   = "ops.test_i32x4_all_true(0)",
+  .mod    = "ops",
+  .func   = "test_i32x4_all_true",
+  .result = { 1536, 1 },
+  .type   = PWASM_RESULT_TYPE_I32,
+}, {
+  .text   = "ops.test_i32x4_widen_low_i16x8_s(0)",
+  .mod    = "ops",
+  .func   = "test_i32x4_widen_low_i16x8_s",
+  .result = { 1537, 1 },
+  .type   = PWASM_RESULT_TYPE_I64,
+}, {
+  .text   = "ops.test_i32x4_widen_high_i16x8_s(0)",
+  .mod    = "ops",
+  .func   = "test_i32x4_widen_high_i16x8_s",
+  .result = { 1538, 1 },
+  .type   = PWASM_RESULT_TYPE_I64,
+}, {
+  .text   = "ops.test_i32x4_widen_low_i16x8_u(0)",
+  .mod    = "ops",
+  .func   = "test_i32x4_widen_low_i16x8_u",
+  .result = { 1539, 1 },
+  .type   = PWASM_RESULT_TYPE_I64,
+}, {
+  .text   = "ops.test_i32x4_widen_high_i16x8_u(0)",
+  .mod    = "ops",
+  .func   = "test_i32x4_widen_high_i16x8_u",
+  .result = { 1540, 1 },
+  .type   = PWASM_RESULT_TYPE_I64,
+}, {
+  .text   = "ops.test_i32x4_shl(0)",
+  .mod    = "ops",
+  .func   = "test_i32x4_shl",
+  .result = { 1541, 1 },
+  .type   = PWASM_RESULT_TYPE_I64,
+}, {
+  .text   = "ops.test_i32x4_shr_s(0)",
+  .mod    = "ops",
+  .func   = "test_i32x4_shr_s",
+  .result = { 1542, 1 },
+  .type   = PWASM_RESULT_TYPE_I64,
+}, {
+  .text   = "ops.test_i32x4_shr_u(0)",
+  .mod    = "ops",
+  .func   = "test_i32x4_shr_u",
+  .result = { 1543, 1 },
+  .type   = PWASM_RESULT_TYPE_I64,
+}, {
+  .text   = "ops.test_i32x4_add(0)",
+  .mod    = "ops",
+  .func   = "test_i32x4_add",
+  .result = { 1544, 1 },
+  .type   = PWASM_RESULT_TYPE_I64,
+}, {
+  .text   = "ops.test_i32x4_sub(0)",
+  .mod    = "ops",
+  .func   = "test_i32x4_sub",
+  .result = { 1545, 1 },
+  .type   = PWASM_RESULT_TYPE_I64,
+}, {
+  .text   = "ops.test_i32x4_mul(0)",
+  .mod    = "ops",
+  .func   = "test_i32x4_mul",
+  .result = { 1546, 1 },
+  .type   = PWASM_RESULT_TYPE_I64,
+}, {
+  .text   = "ops.test_i32x4_min_s(0)",
+  .mod    = "ops",
+  .func   = "test_i32x4_min_s",
+  .result = { 1547, 1 },
+  .type   = PWASM_RESULT_TYPE_I64,
+}, {
+  .text   = "ops.test_i32x4_min_u(0)",
+  .mod    = "ops",
+  .func   = "test_i32x4_min_u",
+  .result = { 1548, 1 },
+  .type   = PWASM_RESULT_TYPE_I64,
+}, {
+  .text   = "ops.test_i32x4_max_s(0)",
+  .mod    = "ops",
+  .func   = "test_i32x4_max_s",
+  .result = { 1549, 1 },
+  .type   = PWASM_RESULT_TYPE_I64,
+}, {
+  .text   = "ops.test_i32x4_max_u(0)",
+  .mod    = "ops",
+  .func   = "test_i32x4_max_u",
+  .result = { 1550, 1 },
+  .type   = PWASM_RESULT_TYPE_I64,
+}, {
+  .text   = "ops.test_i64x2_neg(0)",
+  .mod    = "ops",
+  .func   = "test_i64x2_neg",
+  .result = { 1551, 1 },
+  .type   = PWASM_RESULT_TYPE_I64,
+}, {
+  .text   = "ops.test_i64x2_shl(0)",
+  .mod    = "ops",
+  .func   = "test_i64x2_shl",
+  .result = { 1552, 1 },
+  .type   = PWASM_RESULT_TYPE_I64,
+}, {
+  .text   = "ops.test_i64x2_shr_s(0)",
+  .mod    = "ops",
+  .func   = "test_i64x2_shr_s",
+  .result = { 1553, 1 },
+  .type   = PWASM_RESULT_TYPE_I64,
+}, {
+  .text   = "ops.test_i64x2_shr_u(0)",
+  .mod    = "ops",
+  .func   = "test_i64x2_shr_u",
+  .result = { 1554, 1 },
+  .type   = PWASM_RESULT_TYPE_I64,
+}, {
+  .text   = "ops.test_i64x2_add(0)",
+  .mod    = "ops",
+  .func   = "test_i64x2_add",
+  .result = { 1555, 1 },
+  .type   = PWASM_RESULT_TYPE_I64,
+}, {
+  .text   = "ops.test_i64x2_sub(0)",
+  .mod    = "ops",
+  .func   = "test_i64x2_sub",
+  .result = { 1556, 1 },
+  .type   = PWASM_RESULT_TYPE_I64,
+}, {
+  .text   = "ops.test_i64x2_mul(0)",
+  .mod    = "ops",
+  .func   = "test_i64x2_mul",
+  .result = { 1557, 1 },
+  .type   = PWASM_RESULT_TYPE_I64,
+}, {
+  .text   = "ops.test_f32x4_abs(0)",
+  .mod    = "ops",
+  .func   = "test_f32x4_abs",
+  .result = { 1558, 1 },
+  .type   = PWASM_RESULT_TYPE_F32,
+}, {
+  .text   = "ops.test_f32x4_neg(0)",
+  .mod    = "ops",
+  .func   = "test_f32x4_neg",
+  .result = { 1559, 1 },
+  .type   = PWASM_RESULT_TYPE_F32,
+}, {
+  .text   = "ops.test_f32x4_sqrt(0)",
+  .mod    = "ops",
+  .func   = "test_f32x4_sqrt",
+  .result = { 1560, 1 },
+  .type   = PWASM_RESULT_TYPE_F32,
+}, {
+  .text   = "ops.test_f32x4_add(0)",
+  .mod    = "ops",
+  .func   = "test_f32x4_add",
+  .result = { 1561, 1 },
+  .type   = PWASM_RESULT_TYPE_F32,
+}, {
+  .text   = "ops.test_f32x4_sub(0)",
+  .mod    = "ops",
+  .func   = "test_f32x4_sub",
+  .result = { 1562, 1 },
+  .type   = PWASM_RESULT_TYPE_F32,
+}, {
+  .text   = "ops.test_f32x4_mul(0)",
+  .mod    = "ops",
+  .func   = "test_f32x4_mul",
+  .result = { 1563, 1 },
+  .type   = PWASM_RESULT_TYPE_F32,
+}, {
+  .text   = "ops.test_f32x4_div(0)",
+  .mod    = "ops",
+  .func   = "test_f32x4_div",
+  .result = { 1564, 1 },
+  .type   = PWASM_RESULT_TYPE_F32,
+}, {
+  .text   = "ops.test_f32x4_min(0)",
+  .mod    = "ops",
+  .func   = "test_f32x4_min",
+  .result = { 1565, 1 },
+  .type   = PWASM_RESULT_TYPE_F32,
+}, {
+  .text   = "ops.test_f32x4_max(0)",
+  .mod    = "ops",
+  .func   = "test_f32x4_max",
+  .result = { 1566, 1 },
+  .type   = PWASM_RESULT_TYPE_F32,
+}, {
+  .text   = "ops.test_f64x2_abs(0)",
+  .mod    = "ops",
+  .func   = "test_f64x2_abs",
+  .result = { 1567, 1 },
+  .type   = PWASM_RESULT_TYPE_F64,
+}, {
+  .text   = "ops.test_f64x2_neg(0)",
+  .mod    = "ops",
+  .func   = "test_f64x2_neg",
+  .result = { 1568, 1 },
+  .type   = PWASM_RESULT_TYPE_F64,
+}, {
+  .text   = "ops.test_f64x2_sqrt(0)",
+  .mod    = "ops",
+  .func   = "test_f64x2_sqrt",
+  .result = { 1569, 1 },
+  .type   = PWASM_RESULT_TYPE_F64,
+}, {
+  .text   = "ops.test_f64x2_add(0)",
+  .mod    = "ops",
+  .func   = "test_f64x2_add",
+  .result = { 1570, 1 },
+  .type   = PWASM_RESULT_TYPE_F64,
+}, {
+  .text   = "ops.test_f64x2_sub(0)",
+  .mod    = "ops",
+  .func   = "test_f64x2_sub",
+  .result = { 1571, 1 },
+  .type   = PWASM_RESULT_TYPE_F64,
+}, {
+  .text   = "ops.test_f64x2_mul(0)",
+  .mod    = "ops",
+  .func   = "test_f64x2_mul",
+  .result = { 1572, 1 },
+  .type   = PWASM_RESULT_TYPE_F64,
+}, {
+  .text   = "ops.test_f64x2_div(0)",
+  .mod    = "ops",
+  .func   = "test_f64x2_div",
+  .result = { 1573, 1 },
+  .type   = PWASM_RESULT_TYPE_F64,
+}, {
+  .text   = "ops.test_f64x2_min(0)",
+  .mod    = "ops",
+  .func   = "test_f64x2_min",
+  .result = { 1574, 1 },
+  .type   = PWASM_RESULT_TYPE_F64,
+}, {
+  .text   = "ops.test_f64x2_max(0)",
+  .mod    = "ops",
+  .func   = "test_f64x2_max",
+  .result = { 1575, 1 },
+  .type   = PWASM_RESULT_TYPE_F64,
+}, {
+  .text   = "ops.test_i32x4_trunc_sat_f32x4_s(0)",
+  .mod    = "ops",
+  .func   = "test_i32x4_trunc_sat_f32x4_s",
+  .result = { 1576, 1 },
+  .type   = PWASM_RESULT_TYPE_I64,
+}, {
+  .text   = "ops.test_i32x4_trunc_sat_f32x4_u(0)",
+  .mod    = "ops",
+  .func   = "test_i32x4_trunc_sat_f32x4_u",
+  .result = { 1577, 1 },
+  .type   = PWASM_RESULT_TYPE_I64,
+}, {
+  .text   = "ops.test_f32x4_convert_i32x4_s(0)",
+  .mod    = "ops",
+  .func   = "test_f32x4_convert_i32x4_s",
+  .result = { 1578, 1 },
+  .type   = PWASM_RESULT_TYPE_F32,
+}, {
+  .text   = "ops.test_f32x4_convert_i32x4_u(0)",
+  .mod    = "ops",
+  .func   = "test_f32x4_convert_i32x4_u",
+  .result = { 1579, 1 },
+  .type   = PWASM_RESULT_TYPE_F32,
 }}; // sentinel
 
 static bool is_valid_result_type(
