@@ -7,7 +7,6 @@ Each entry in this list is prefixed with category tags.
 See the "Tag Definitions" section below for a brief description of each
 tag.
 
-* [ ] add {i32,i64,f32,f64}.const tests
 * [ ] code, test: test `br` to outermost block (according to `return` documentation this should work)
 * [ ] code, test: check stack size at start of call
 * [ ] code, test: add invalid code tests (e.g. checker assertion tests)
@@ -100,6 +99,7 @@ Items in this section have been completed.
 * [x] test: add tests for all module sections
 * [x] code, test: add main opcode tests (`ops.wasm` in `tests/wasm.c`)
 * [x] code, test: add v128 opcode tests
+* [x] add {i32,i64,f32,f64}.const tests
 
 ## Tag Definitions
 

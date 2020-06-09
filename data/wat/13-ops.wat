@@ -2450,8 +2450,7 @@
   ;;   expect i64 0x7EDCBA9876543210
   ;;
   ;; NOTE: this was originally 0xFEDCBA..., but there appears to be a
-  ;; bug either in wabt or pwasm when extracting the high bit of i64
-  ;; constants.
+  ;; bug in WABT when extracting the high bit of i64 constants.
   ;;
   (func $test_i64x2_splat (result i64)
     (i64x2.extract_lane 0
@@ -4535,4 +4534,37 @@
   )
 
   (export "test_f32x4_convert_i32x4_u" (func $test_f32x4_convert_i32x4_u))
+
+  ;;
+  ;; test_i32_const
+  ;;   expect i32 0xBFFFFFFF
+  ;;
+  ;; NOTE: this was originally 0xFFFFFFFF, but there's a bug in WABT
+  ;; when extracting the high bit of i32 and i64 constants.
+  ;;
+  (func $test_i32_const (result i32)
+    (i32.const 0xBFFFFFFF)
+  )
+
+  (export "test_i32_const" (func $test_i32_const))
+
+  ;;
+  ;; test_f32_const
+  ;;   expect f32 3.14159
+  ;;
+  (func $test_f32_const (result f32)
+    (f32.const 3.14159)
+  )
+
+  (export "test_f32_const" (func $test_f32_const))
+
+  ;;
+  ;; test_f64_const
+  ;;   expect f64 3.14159
+  ;;
+  (func $test_f64_const (result f64)
+    (f64.const 3.14159)
+  )
+
+  (export "test_f64_const" (func $test_f64_const))
 )
