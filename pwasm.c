@@ -9259,13 +9259,13 @@ static bool
 pwasm_checker_check_shift(
   pwasm_checker_t * const checker
 ) {
-  // pop v128 type, check for error
-  if (!pwasm_checker_type_pop_expected(checker, PWASM_CHECKER_TYPE_V128, NULL)) {
+  // pop i32 type, check for error
+  if (!pwasm_checker_type_pop_expected(checker, PWASM_CHECKER_TYPE_I32, NULL)) {
     return false;
   }
 
-  // pop i32 type, check for error
-  if (!pwasm_checker_type_pop_expected(checker, PWASM_CHECKER_TYPE_I32, NULL)) {
+  // pop v128 type, check for error
+  if (!pwasm_checker_type_pop_expected(checker, PWASM_CHECKER_TYPE_V128, NULL)) {
     return false;
   }
 
