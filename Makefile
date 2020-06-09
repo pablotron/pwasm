@@ -12,11 +12,15 @@ CFLAGS=-W -Wall -Wextra -Werror -std=c11 -pedantic -g -pg -DPWASM_DEBUG
 LIBS=-lm
 
 # asan
-# CFLAGS=-W -Wall -Wextra -Werror -std=c11 -pedantic -g -pg -fsanitize=address -DPWASM_DEBUG
+# https://clang.llvm.org/docs/AddressSanitizer.html
+# run with: LD_PRELOAD=/lib/x86_64-linux-gnu/libasan.so.5 ./pwasm test
+# CC=clang
+# CFLAGS=-W -Wall -Wextra -Werror -std=c11 -pedantic -g -pg -O1 -fsanitize=address -DPWASM_DEBUG
 # LIBS=-lm -lasan
 
 # ubsan
 # https://clang.llvm.org/docs/UndefinedBehaviorSanitizer.html
+# CC=clang
 # CFLAGS=-W -Wall -Wextra -Werror -std=c11 -pedantic -g -pg -fsanitize=undefined -DPWASM_DEBUG
 # LIBS=-lm -lubsan
 
