@@ -7,7 +7,6 @@ Each entry in this list is prefixed with category tags.
 See the "Tag Definitions" section below for a brief description of each
 tag.
 
-* [ ] investigate/document rounding mode for f32.div (fenv)
 * [ ] add {i32,i64,f32,f64}.const tests
 * [ ] code, test: test `br` to outermost block (according to `return` documentation this should work)
 * [ ] code, test: check stack size at start of call
@@ -17,12 +16,15 @@ tag.
 * [ ] code, jit: add jit (`dynasm`?)
 * [ ] code, jit: add jit modes (lazy, aot, optimize, etc)
 * [ ] doc: add internal documentation
+* [ ] doc, test: document v128 `avgr_u` rounding
+* [ ] doc, test: investigate/document rounding mode for `f32/f64.div` (fenv)
 * [ ] code, cleanup: consider calloc() for memory init (zero mem, bounds check)
 * [ ] code, test: check uses of realloc() for overflow (security)
 * [ ] cli, cleanup: properly escape values in CSV columns
 * [ ] cli: add `dump` command (e.g. `objdump` to JSON)
 * [ ] build: add meson support
 * [ ] build, test: add clang static analysis support
+* [ ] build, test: add valgrind memory tests
 * [ ] build: build dynamic library
 * [ ] ci, test: run full test suite on push
 * [ ] ci, test: build on all compilers on push
@@ -36,7 +38,6 @@ tag.
 * [ ] code: add `uint64_t pwasm_platform_get_value()` (e.g. compile-time limits, flags, etc)
 
 ## In Progress
-* [ ] code, test: add v128 opcode tests
 
 ## Done
 
@@ -98,6 +99,7 @@ Items in this section have been completed.
 * [x] code: add global, table, and mem init, call start func
 * [x] test: add tests for all module sections
 * [x] code, test: add main opcode tests (`ops.wasm` in `tests/wasm.c`)
+* [x] code, test: add v128 opcode tests
 
 ## Tag Definitions
 
