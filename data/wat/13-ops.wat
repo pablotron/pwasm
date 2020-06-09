@@ -4567,4 +4567,17 @@
   )
 
   (export "test_f64_const" (func $test_f64_const))
+
+  ;;
+  ;; test_br_outer
+  ;;   expect i32 22
+  ;;
+  (func $test_br_outer (result i32)
+    (block (result i32)
+      (i32.const 22)
+      (br 1)
+    )
+  )
+
+  (export "test_br_outer" (func $test_br_outer))
 )

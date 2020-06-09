@@ -7,7 +7,6 @@ Each entry in this list is prefixed with category tags.
 See the "Tag Definitions" section below for a brief description of each
 tag.
 
-* [ ] code, test: test `br` to outermost block (according to `return` documentation this should work)
 * [ ] code, test: check stack size at start of call
 * [ ] code, test: add invalid code tests (e.g. checker assertion tests)
 * [ ] code, test: fix memory leaks on parse/validation/exec errors
@@ -37,6 +36,7 @@ tag.
 * [ ] code: add `uint64_t pwasm_platform_get_value()` (e.g. compile-time limits, flags, etc)
 
 ## In Progress
+* [ ] code, test: test `br` to outermost block (according to `return` documentation this should work)
 
 ## Done
 
