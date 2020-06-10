@@ -275,6 +275,46 @@ pwasm_u64_decode(
 }
 
 /**
+ * Decode the LEB128-encoded signed 32-bit integer at the beginning of
+ * the buffer +src+ and return the value in +dst+.
+ *
+ * Returns the number of bytes consumed, or 0 on error.
+ */
+static inline size_t
+pwasm_s32_decode(
+  int32_t * const dst,
+  const pwasm_buf_t src
+) {
+  const size_t len = MIN(5, src.len);
+
+  if (dst) {
+    uint32_t val = 0, shift = 0;
+
+    for (size_t i = 0; i < len; i++) {
+      const uint32_t b = src.ptr[i];
+      val |= ((b & 0x7F) << shift);
+
+      if (!(b & 0x80)) {
+        if ((shift < 32) && (b & 0x40)) {
+          val |= ~0UL << shift;
+        }
+
+        // write result
+        *dst = val;
+
+        // return length (success)
+        return i + 1;
+      }
+
+      shift += 7;
+    }
+  }
+
+  // return zero (failure)
+  return 0;
+}
+
+/**
  * Define a vector parser for the given name and type.
  *
  * This macro also defines a function named pwasm_mod_parse_{NAME}s,
@@ -503,6 +543,257 @@ pwasm_is_valid_result_type(
   const uint8_t v
 ) {
   return ((v == 0x40) || (v == 0x7F) || (v == 0x7E) || (v == 0x7D) || (v == 0x7C));
+}
+
+/**
+ * Kinds of block types.
+ */
+typedef enum {
+  PWASM_BLOCK_TYPE_KIND_RESULT, //< Old single-result block.
+  PWASM_BLOCK_TYPE_KIND_IMPORT, //< New multi-value block.
+  PWASM_BLOCK_TYPE_KIND_LAST,
+} pwasm_block_type_kind_t;
+
+/**
+ * Is the given block type an old-style result block type?
+ */
+static inline bool
+pwasm_block_type_is_result_type(
+  const int32_t block_type
+) {
+  return (block_type < 0) && (
+    // i32, i64, f32, and f64
+    (block_type >= -4) ||
+
+    // void
+    (block_type == -64)
+  );
+}
+
+/**
+ * Is the given block type an new-style import block type?
+ */
+static inline bool
+pwasm_block_type_is_import_type(
+  const pwasm_mod_t * const mod,
+  const int32_t block_type
+) {
+  return (block_type > 0) && ((uint32_t) block_type < mod->num_types);
+}
+
+/**
+ * Get the kind of the block type.
+ *
+ * Returns PWASM_BLOCK_TYPE_KIND_LAST on error.
+ */
+static inline pwasm_block_type_kind_t
+pwasm_block_type_get_kind(
+  const pwasm_mod_t * const mod,
+  const int32_t block_type
+) {
+  if (pwasm_block_type_is_result_type(block_type)) {
+    return PWASM_BLOCK_TYPE_KIND_RESULT;
+  } else if (pwasm_block_type_is_import_type(mod, block_type)) {
+    return PWASM_BLOCK_TYPE_KIND_IMPORT;
+  } else {
+    return PWASM_BLOCK_TYPE_KIND_LAST;
+  }
+}
+
+/**
+ * Convert an old-style result block type to a value type.
+ *
+ * Returns `PWASM_VALUE_TYPE_LAST` on error.
+ */
+static uint32_t
+pwasm_block_type_result_get_value_type(
+  const int32_t block_type
+) {
+  switch (block_type) {
+  case -1: return PWASM_VALUE_TYPE_I32;
+  case -2: return PWASM_VALUE_TYPE_I64;
+  case -3: return PWASM_VALUE_TYPE_F32;
+  case -4: return PWASM_VALUE_TYPE_F64;
+  case -5: return PWASM_VALUE_TYPE_V128;
+  default: return PWASM_VALUE_TYPE_LAST;
+  }
+}
+
+/**
+ * Is this a valid block type?
+ */
+static inline bool
+pwasm_block_type_is_valid(
+  const pwasm_mod_t * const mod,
+  const int32_t type
+) {
+  const pwasm_block_type_kind_t kind = pwasm_block_type_get_kind(mod, type);
+
+  return (
+    (kind == PWASM_BLOCK_TYPE_KIND_RESULT) ||
+    (kind == PWASM_BLOCK_TYPE_KIND_IMPORT)
+  );
+}
+
+/**
+ * Get the number of parameters for the given block type.
+ *
+ * Returns `false` on error.
+ */
+static inline bool
+pwasm_block_type_params_get_size(
+  const pwasm_mod_t * const mod,
+  const int32_t block_type,
+  size_t * const ret
+) {
+  switch (pwasm_block_type_get_kind(mod, block_type)) {
+  case PWASM_BLOCK_TYPE_KIND_RESULT:
+    if (ret) {
+      // save result
+      *ret = 0;
+    }
+
+    // return success
+    return true;
+  case PWASM_BLOCK_TYPE_KIND_IMPORT:
+    if (ret) {
+      // save result
+      *ret = mod->types[block_type].params.len;
+    }
+
+    // return success
+    return true;
+  default:
+    // return failure
+    return false;
+  }
+}
+
+/**
+ * Get the Nth parameter for the given block type.
+ *
+ * Returns `false` on error.
+ */
+static inline bool
+pwasm_block_type_params_get_nth(
+  const pwasm_mod_t * const mod,
+  const int32_t block_type,
+  const size_t pos,
+  uint32_t * const ret_type
+) {
+  // get kind of block type, check for error
+  const pwasm_block_type_kind_t kind = pwasm_block_type_get_kind(mod, block_type);
+  if (kind != PWASM_BLOCK_TYPE_KIND_IMPORT) {
+    // return failure
+    return false;
+  }
+
+  // get params
+  const pwasm_slice_t slice = mod->types[block_type].params;
+
+  if (pos >= slice.len) {
+    // return failure
+    return false;
+  }
+
+  if (ret_type) {
+    // save result
+    *ret_type = mod->u32s[slice.ofs + pos];
+  }
+
+  // return success
+  return true;
+}
+
+/**
+ * Get the number of results for the given block type.
+ *
+ * Returns `false` on error.
+ */
+static inline bool
+pwasm_block_type_results_get_size(
+  const pwasm_mod_t * const mod,
+  const int32_t block_type,
+  size_t * const ret
+) {
+  switch (pwasm_block_type_get_kind(mod, block_type)) {
+  case PWASM_BLOCK_TYPE_KIND_RESULT:
+    if (ret) {
+      // save result
+      *ret = (block_type == -64) ? 0 : 1;
+    }
+
+    // return success
+    return true;
+  case PWASM_BLOCK_TYPE_KIND_IMPORT:
+    if (ret) {
+      // save result
+      *ret = mod->types[block_type].params.len;
+    }
+
+    // return success
+    return true;
+  default:
+    // return failure
+    return false;
+  }
+}
+
+/**
+ * Get the Nth result for the given block type.
+ *
+ * Returns `false` on error.
+ */
+static inline bool
+pwasm_block_type_results_get_nth(
+  const pwasm_mod_t * const mod,
+  const int32_t block_type,
+  const size_t pos,
+  uint32_t * const ret_type
+) {
+  switch (pwasm_block_type_get_kind(mod, block_type)) {
+  case PWASM_BLOCK_TYPE_KIND_RESULT:
+    // check type
+    if (block_type == -64) {
+      // return failure
+      return false;
+    }
+
+    // check offset
+    if (pos > 0) {
+      // return failure
+      return false;
+    }
+
+    if (ret_type) {
+      // save result
+      *ret_type = pwasm_block_type_result_get_value_type(block_type);
+    }
+
+    // return success
+    return true;
+  case PWASM_BLOCK_TYPE_KIND_IMPORT:
+    {
+      // get results
+      const pwasm_slice_t slice = mod->types[block_type].results;
+
+      // check offset
+      if (pos >= slice.len) {
+        return false;
+      }
+
+      if (ret_type) {
+        // save result
+        *ret_type = mod->u32s[slice.ofs + pos];
+      }
+    }
+
+    // return success
+    return true;
+  default:
+    // return failure
+    return false;
+  }
 }
 
 // generated by: bin/gen.rb op-data
@@ -5155,6 +5446,15 @@ pwasm_parse_inst(
     break;
   case PWASM_IMM_BLOCK:
     {
+      // TODO
+      // // parse block type, check for error
+      // int32_t block_type;
+      // const size_t len = pwasm_s32_decode(&block_type, curr);
+      // if (!len) {
+      //   cbs->on_error("missing result type immediate", cb_data);
+      //   return 0;
+      // }
+
       // check length
       if (!curr.len) {
         cbs->on_error("missing result type immediate", cb_data);

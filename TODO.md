@@ -36,6 +36,7 @@ tag.
 * [ ] code: add `uint64_t pwasm_platform_get_value()` (e.g. compile-time limits, flags, etc)
 
 ## In Progress
+* [ ] code: support multi-value blocks
 * [ ] code, test: test `br` to outermost block (according to `return` documentation this should work)
 
 ## Done

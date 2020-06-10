@@ -765,7 +765,7 @@ typedef struct {
      * Data for `block`, `loop`, and `if` instructions.
      */
     struct {
-      /// block result type
+      /// block result type (TODO: replace with int32_t block_type)
       pwasm_result_type_t type;
 
       /// offset to `else` instruction (`if` only).
