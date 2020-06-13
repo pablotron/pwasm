@@ -31,6 +31,14 @@
  */
 #define PWASM_STACK_CHECK_MAX_DEPTH 512
 
+/**
+ * Void block type.
+ *
+ * WASM 1.0 void block results were encoded with a single 0x40 byte,
+ * which decodes to -64 using the newer s32 block type encoding.
+ */
+#define PWASM_BLOCK_TYPE_VOID -64
+
 // return minimum of two values
 #define MIN(a, b) (((a) < (b)) ? (a) : (b))
 #define MAX(a, b) (((a) > (b)) ? (a) : (b))
@@ -274,6 +282,34 @@ pwasm_u64_decode(
   return 0;
 }
 
+static void
+pwasm_s32_dump_decode(
+  const pwasm_buf_t src, // src buf
+  const size_t used, // number of bytes consumed
+  const int32_t val // result value
+) {
+  #ifdef PWASM_DEBUG
+  char buf[512];
+  size_t ofs = 0;
+
+  for (size_t i = 0; i < used; i++) {
+    if (i > 0) {
+      memcpy(buf + ofs, ", ", 2);
+      ofs += 2;
+    }
+    ofs += sprintf(buf, "0x%02x", src.ptr[i]);
+  }
+  buf[ofs] = 0;
+
+  D("{ %s } -> val = %d", buf, val);
+
+  #else /* PWASM_DEBUG */
+  (void) src;
+  (void) used;
+  (void) val;
+  #endif /* PWASM_DEBUG */
+}
+
 /**
  * Decode the LEB128-encoded signed 32-bit integer at the beginning of
  * the buffer +src+ and return the value in +dst+.
@@ -294,10 +330,15 @@ pwasm_s32_decode(
       const uint32_t b = src.ptr[i];
       val |= ((b & 0x7F) << shift);
 
+      shift += 7;
+
       if (!(b & 0x80)) {
         if ((shift < 32) && (b & 0x40)) {
-          val |= ~0UL << shift;
+          val |= (~0UL << shift);
         }
+
+        // dump decoded result
+        pwasm_s32_dump_decode(src, i + 1, val);
 
         // write result
         *dst = val;
@@ -305,8 +346,6 @@ pwasm_s32_decode(
         // return length (success)
         return i + 1;
       }
-
-      shift += 7;
     }
   }
 
@@ -566,7 +605,7 @@ pwasm_block_type_is_result_type(
     (block_type >= -4) ||
 
     // void
-    (block_type == -64)
+    (block_type == PWASM_BLOCK_TYPE_VOID)
   );
 }
 
@@ -640,7 +679,7 @@ pwasm_block_type_is_valid(
  *
  * Returns `false` on error.
  */
-static inline bool
+bool
 pwasm_block_type_params_get_size(
   const pwasm_mod_t * const mod,
   const int32_t block_type,
@@ -674,7 +713,7 @@ pwasm_block_type_params_get_size(
  *
  * Returns `false` on error.
  */
-static inline bool
+bool
 pwasm_block_type_params_get_nth(
   const pwasm_mod_t * const mod,
   const int32_t block_type,
@@ -710,17 +749,18 @@ pwasm_block_type_params_get_nth(
  *
  * Returns `false` on error.
  */
-static inline bool
+bool
 pwasm_block_type_results_get_size(
   const pwasm_mod_t * const mod,
   const int32_t block_type,
   size_t * const ret
 ) {
+  D("block_type = %d", block_type);
   switch (pwasm_block_type_get_kind(mod, block_type)) {
   case PWASM_BLOCK_TYPE_KIND_RESULT:
     if (ret) {
       // save result
-      *ret = (block_type == -64) ? 0 : 1;
+      *ret = (block_type == PWASM_BLOCK_TYPE_VOID) ? 0 : 1;
     }
 
     // return success
@@ -728,7 +768,7 @@ pwasm_block_type_results_get_size(
   case PWASM_BLOCK_TYPE_KIND_IMPORT:
     if (ret) {
       // save result
-      *ret = mod->types[block_type].params.len;
+      *ret = mod->types[block_type].results.len;
     }
 
     // return success
@@ -744,7 +784,7 @@ pwasm_block_type_results_get_size(
  *
  * Returns `false` on error.
  */
-static inline bool
+bool
 pwasm_block_type_results_get_nth(
   const pwasm_mod_t * const mod,
   const int32_t block_type,
@@ -754,7 +794,7 @@ pwasm_block_type_results_get_nth(
   switch (pwasm_block_type_get_kind(mod, block_type)) {
   case PWASM_BLOCK_TYPE_KIND_RESULT:
     // check type
-    if (block_type == -64) {
+    if (block_type == PWASM_BLOCK_TYPE_VOID) {
       // return failure
       return false;
     }
@@ -794,6 +834,343 @@ pwasm_block_type_results_get_nth(
     // return failure
     return false;
   }
+}
+
+/**
+ * Check to see if there is enough space to fill buffer with null-
+ * terminated string description of block type.
+ *
+ * Returns `true` on if there is enough space, or `false` otherwise.
+ */
+static bool
+pwasm_block_type_to_buf_check_size(
+  const pwasm_mod_t * const mod,
+  const int32_t block_type,
+  const size_t buf_len
+) {
+  size_t sum = 0;
+
+  // '['
+  sum += 1;
+
+  // get params.size, check for error
+  size_t num_params;
+  if (!pwasm_block_type_params_get_size(mod, block_type, &num_params)) {
+    return false;
+  }
+
+  for (size_t i = 0; i < num_params; i++) {
+    // ', '
+    sum += (i > 0) ? 2 : 0;
+
+    uint32_t val_type;
+    if (!pwasm_block_type_params_get_nth(mod, block_type, i, &val_type)) {
+      return false;
+    }
+
+    // get value type name
+    const char *name = pwasm_value_type_get_name(val_type);
+
+    sum += strlen(name);
+  }
+
+  // '] -> ['
+  sum += 6;
+
+  // get results.size, check for error
+  size_t num_results;
+  if (!pwasm_block_type_results_get_size(mod, block_type, &num_results)) {
+    return false;
+  }
+
+  for (size_t i = 0; i < num_results; i++) {
+    // ', '
+    sum += (i > 0) ? 2 : 0;
+
+    uint32_t val_type;
+    if (!pwasm_block_type_results_get_nth(mod, block_type, i, &val_type)) {
+      return false;
+    }
+
+    // get value type name
+    const char *name = pwasm_value_type_get_name(val_type);
+
+    sum += strlen(name);
+  }
+
+  // ']', '\0'
+  sum += 2;
+
+  // return result
+  return sum < buf_len;
+}
+
+/**
+ * Fill buffer with null-terminated string description of block type.
+ *
+ * Returns `true` on success or `false` on error.
+ */
+bool
+pwasm_block_type_to_buf(
+  const pwasm_mod_t * const mod,
+  const int32_t block_type,
+  char * const buf,
+  const size_t buf_len
+) {
+  size_t ofs = 0;
+
+  // check buffer size
+  if (!pwasm_block_type_to_buf_check_size(mod, block_type, buf_len)) {
+    // buffer too small, return false
+    return false;
+  }
+
+  // push  '['
+  buf[ofs++] = '[';
+
+  // get params.size, check for error
+  size_t num_params;
+  if (!pwasm_block_type_params_get_size(mod, block_type, &num_params)) {
+    return false;
+  }
+
+  for (size_t i = 0; i < num_params; i++) {
+    // push ', '
+    if (i > 0) {
+      memcpy(buf + ofs, ", ", 2);
+      ofs += 2;
+    }
+
+    // get value type, check for error
+    uint32_t val_type;
+    if (!pwasm_block_type_params_get_nth(mod, block_type, i, &val_type)) {
+      return false;
+    }
+
+    // get value type name and length of value type name
+    const char *name = pwasm_value_type_get_name(val_type);
+    const size_t len = strlen(name);
+
+    // push value type name
+    memcpy(buf + ofs, name, len);
+    ofs += len;
+  }
+
+  memcpy(buf + ofs, "] -> [", 6);
+  ofs += 6;
+
+  // get results.size, check for error
+  size_t num_results;
+  if (!pwasm_block_type_results_get_size(mod, block_type, &num_results)) {
+    return false;
+  }
+
+  for (size_t i = 0; i < num_results; i++) {
+    // ', '
+    if (i > 0) {
+      memcpy(buf + ofs, ", ", 2);
+      ofs += 2;
+    }
+
+    uint32_t val_type;
+    if (!pwasm_block_type_results_get_nth(mod, block_type, i, &val_type)) {
+      return false;
+    }
+
+    // get value type name
+    const char *name = pwasm_value_type_get_name(val_type);
+    const size_t len = strlen(name);
+
+    memcpy(buf + ofs, name, len);
+    ofs += len;
+  }
+
+  // push ']', null-terminate
+  buf[ofs] = ']';
+  buf[ofs + 1] = 0;
+
+  // return result
+  return true;
+}
+
+/**
+ * Compare parameters of two block types.
+ *
+ * Returns `false` if an error occurred.
+ *
+ * Otherwise, returns `true` and sets `ret_same` to the comparison
+ * result (`true` if the parameters of both block types are the same,
+ * and `false` otherwise).
+ */
+static bool
+pwasm_block_type_compare_params(
+  const pwasm_mod_t * const mod,
+  const int32_t a,
+  const int32_t b,
+  bool * const ret_same
+) {
+  size_t num_diffs = 0;
+
+  // get a.params.size, check for error
+  size_t a_size;
+  if (!pwasm_block_type_params_get_size(mod, a, &a_size)) {
+    return false;
+  }
+
+  // get b.params.size, check for error
+  size_t b_size;
+  if (!pwasm_block_type_params_get_size(mod, b, &b_size)) {
+    return false;
+  }
+
+  // compare sizes
+  if (a_size != b_size) {
+    // set comparison result, return success
+    *ret_same = false;
+    return true;
+  }
+
+  // compare types
+  for (size_t i = 0; i < a_size; i++) {
+    // get a.params[i], check for error
+    uint32_t a_val_type;
+    if (!pwasm_block_type_params_get_nth(mod, a, i, &a_val_type)) {
+      return false;
+    }
+
+    // get b.params[i], check for error
+    uint32_t b_val_type;
+    if (!pwasm_block_type_params_get_nth(mod, b, i, &b_val_type)) {
+      return false;
+    }
+
+    // check for difference
+    num_diffs += (a_val_type != b_val_type);
+  }
+
+  // set comparison
+  *ret_same = (num_diffs > 0);
+
+  // return success
+  return true;
+}
+
+/**
+ * Compare results of two block types.
+ *
+ * Returns `false` if an error occurred.
+ *
+ * Otherwise, returns `true` and sets `ret_same` to the comparison
+ * result (`true` if the results of both block types are the same, and
+ * `false` otherwise).
+ */
+static bool
+pwasm_block_type_compare_results(
+  const pwasm_mod_t * const mod,
+  const int32_t a,
+  const int32_t b,
+  bool * const ret_same
+) {
+  size_t num_diffs = 0;
+
+  // get a.results.size, check for error
+  size_t a_size;
+  if (!pwasm_block_type_results_get_size(mod, a, &a_size)) {
+    return false;
+  }
+
+  // get b.results.size, check for error
+  size_t b_size;
+  if (!pwasm_block_type_results_get_size(mod, b, &b_size)) {
+    return false;
+  }
+
+  // compare sizes
+  if (a_size != b_size) {
+    // set comparison result, return success
+    *ret_same = false;
+    return true;
+  }
+
+  // compare types
+  for (size_t i = 0; i < a_size; i++) {
+    // get a.results[i], check for error
+    uint32_t a_type;
+    if (!pwasm_block_type_results_get_nth(mod, a, i, &a_type)) {
+      return false;
+    }
+
+    // get b.results[i], check for error
+    uint32_t b_type;
+    if (!pwasm_block_type_results_get_nth(mod, b, i, &b_type)) {
+      return false;
+    }
+
+    // check for difference
+    num_diffs += (a_type != b_type);
+  }
+
+  #ifdef PWASM_DEBUG
+  if (num_diffs != 0) {
+    // convert a to string
+    char a_buf[512];
+    if (!pwasm_block_type_to_buf(mod, a, a_buf, sizeof(a_buf))) {
+      D("couldn't convert block_type %c to buf", 'a');
+      return false;
+    }
+
+    // convert b to string
+    char b_buf[512];
+    if (!pwasm_block_type_to_buf(mod, b, b_buf, sizeof(b_buf))) {
+      D("couldn't convert block_type %c to buf", 'b');
+      return false;
+    }
+
+    // dump bufs
+    D("a = %s, b = %s", a_buf, b_buf);
+  }
+  #endif /* PWASM_DEBUG */
+
+  // save result to destination
+  *ret_same = (num_diffs == 0);
+
+  // return success
+  return true;
+}
+
+/**
+ * Compare parameters and results of two block types.
+ *
+ * Returns `false` if an error occurred.
+ *
+ * Otherwise, returns `true` and sets `ret_same` to the comparison
+ * result (`true` if the parameters and results of the block types are
+ * the same, and `false` otherwise).
+ */
+bool
+pwasm_block_type_compare(
+  const pwasm_mod_t * const mod,
+  const int32_t a,
+  const int32_t b,
+  bool * const ret_same
+) {
+  // compare params
+  bool same_params;
+  if (!pwasm_block_type_compare_params(mod, a, b, &same_params)) {
+    return false;
+  }
+
+  // compare results
+  bool same_results;
+  if (!pwasm_block_type_compare_results(mod, a, b, &same_results)) {
+    return false;
+  }
+
+  // set comparison result
+  *ret_same = (same_params && same_results);
+
+  // return success
+  return true;
 }
 
 // generated by: bin/gen.rb op-data
@@ -5448,35 +5825,19 @@ pwasm_parse_inst(
     {
       // TODO
       // // parse block type, check for error
-      // int32_t block_type;
-      // const size_t len = pwasm_s32_decode(&block_type, curr);
-      // if (!len) {
-      //   cbs->on_error("missing result type immediate", cb_data);
-      //   return 0;
-      // }
-
-      // check length
-      if (!curr.len) {
-        cbs->on_error("missing result type immediate", cb_data);
+      int32_t type;
+      const size_t len = pwasm_s32_decode(&type, curr);
+      if (!len) {
+        cbs->on_error("missing block type", cb_data);
         return 0;
       }
 
-      // get block result type, check for error
-      const uint8_t type = curr.ptr[0];
-      if (!pwasm_is_valid_result_type(type)) {
-        #ifdef PWASM_DEBUG
-        const char * const op_name = pwasm_op_get_name(in.op);
-        D("op = %s(%u), result type = %u", op_name, in.op, type);
-        #endif /* PWASM_DEBUG */
-        cbs->on_error("invalid result type", cb_data);
-      }
-
       // save result type
-      in.v_block.type = type;
+      in.v_block.block_type = type;
 
       // advance
-      curr = pwasm_buf_step(curr, 1);
-      num_bytes += 1;
+      curr = pwasm_buf_step(curr, len);
+      num_bytes += len;
     }
 
     break;
@@ -8263,26 +8624,6 @@ pwasm_checker_type_get_name(
 #endif /* PWASM_DEBUG */
 
 /**
- * Convert a result type to a checker type.
- *
- * Returns PWASM_CHECKER_TYPE_LAST if the result type is invalid.
- */
-static pwasm_checker_type_t
-pwasm_result_type_to_checker_type(
-  const pwasm_result_type_t type
-) {
-  switch (type) {
-  #define PWASM_CHECKER_TYPE(a, b, c) \
-    case PWASM_RESULT_TYPE_ ## c: \
-      return PWASM_CHECKER_TYPE_ ## a;
-  PWASM_CHECKER_TYPES
-  #undef PWASM_CHECKER_TYPE
-  default:
-    return PWASM_CHECKER_TYPE_LAST;
-  }
-}
-
-/**
  * Convert a value type to a checker type.
  *
  * Returns PWASM_CHECKER_TYPE_LAST if the result type is invalid.
@@ -8311,8 +8652,8 @@ typedef struct {
   // control operator
   pwasm_op_t op;
 
-  // result type
-  pwasm_result_type_t type;
+  // block type
+  int32_t block_type;
 
   // value stack height at entry
   size_t size;
@@ -8325,6 +8666,7 @@ typedef struct {
  * Code checker data.
  */
 typedef struct {
+  const pwasm_mod_t *mod; // mod
   const pwasm_mod_check_cbs_t cbs; // callbacks
   void *cb_data; // user data
   pwasm_vec_t types; // vec(pwasm_checker_type_t)
@@ -8337,7 +8679,7 @@ typedef struct {
 static bool
 pwasm_checker_init(
   pwasm_checker_t * const checker,
-  pwasm_mem_ctx_t * const mem_ctx,
+  const pwasm_mod_t * const mod,
   const pwasm_mod_check_cbs_t * const src_cbs,
   void *cb_data
 ) {
@@ -8351,20 +8693,21 @@ pwasm_checker_init(
 
   // init type stack, check for error
   pwasm_vec_t types;
-  if (!pwasm_vec_init(mem_ctx, &types, type_size)) {
+  if (!pwasm_vec_init(mod->mem_ctx, &types, type_size)) {
     cbs.on_error("checker type stack init failed", cb_data);
     return false;
   }
 
   // init ctrl stack, check for error
   pwasm_vec_t ctrls;
-  if (!pwasm_vec_init(mem_ctx, &ctrls, ctrl_size)) {
+  if (!pwasm_vec_init(mod->mem_ctx, &ctrls, ctrl_size)) {
     cbs.on_error("checker type stack init failed", cb_data);
     return false;
   }
 
   // populate result
   const pwasm_checker_t tmp = {
+    .mod = mod,
     .cbs = cbs,
     .cb_data = cb_data,
     .types = types,
@@ -8423,10 +8766,17 @@ pwasm_checker_dump_ctrls(
   D("checker.types.len = %zu", num_rows);
   for (size_t i = 0; i < num_rows; i++) {
     const pwasm_checker_ctrl_t ctrl = rows[i];
-    D("checker.ctrls[%zu] = { op = %s, type = %s, size = %zu, unreachable = %s }",
+
+    // get control frame block type
+    char buf[512];
+    if (!pwasm_block_type_to_buf(checker->mod, ctrl.block_type, buf, sizeof(buf))) {
+      memcpy(buf, "<invalid block type>", 21);
+    }
+
+    D("checker.ctrls[%zu] = { op = %s, block_type = %s, size = %zu, unreachable = %s }",
       i,
       pwasm_op_get_name(ctrl.op),
-      pwasm_result_type_get_name(ctrl.type),
+      buf,
       ctrl.size,
       ctrl.unreachable ? "true" : "false"
     );
@@ -8642,9 +8992,27 @@ pwasm_checker_ctrl_pop(
   }
 
   D("types.size = %zu", pwasm_checker_type_get_size(checker));
-  if (ctrl->type != PWASM_RESULT_TYPE_VOID) {
-    // convert checker type to expected result type
-    const pwasm_checker_type_t exp_type = pwasm_result_type_to_checker_type(ctrl->type);
+
+  // get number of results
+  size_t num_results;
+  if (!pwasm_block_type_results_get_size(checker->mod, ctrl->block_type, &num_results)) {
+    pwasm_checker_fail(checker, "checker: couldn't get block type result size");
+    return false;
+  }
+
+  for (size_t i = 0; i < num_results; i++) {
+    // get offset
+    const size_t ofs = num_results - 1 - i;
+
+    // get value type, check for error
+    pwasm_value_type_t val_type;
+    if (!pwasm_block_type_results_get_nth(checker->mod, ctrl->block_type, ofs, &val_type)) {
+      pwasm_checker_fail(checker, "checker: couldn't get block type result");
+      return false;
+    }
+
+    // convert value type to checker type
+    const pwasm_checker_type_t exp_type = pwasm_value_type_to_checker_type(val_type);
 
     // pop result, check for error
     pwasm_checker_type_t got_type;
@@ -9066,13 +9434,45 @@ pwasm_checker_check_branch(
     return false;
   }
 
-  if ((ctrl->type != PWASM_RESULT_TYPE_VOID) && (ctrl->op != PWASM_OP_LOOP)) {
-    // convert result type to checker type
-    const pwasm_checker_type_t type = pwasm_result_type_to_checker_type(ctrl->type);
-
-    // pop expected type from type stack, check for error
-    if (!pwasm_checker_type_pop_expected(checker, type, NULL)) {
+  if (ctrl->op != PWASM_OP_LOOP) {
+    // get number of results
+    size_t num_results;
+    if (!pwasm_block_type_results_get_size(checker->mod, ctrl->block_type, &num_results)) {
+      pwasm_checker_fail(checker, "checker: couldn't get block type result size");
       return false;
+    }
+
+    #ifdef PWASM_DEBUG
+    {
+      char buf[512];
+      if (!pwasm_block_type_to_buf(checker->mod, ctrl->block_type, buf, sizeof(buf))) {
+        pwasm_checker_fail(checker, "checker: block_type_to_buf failed");
+        return false;
+      }
+      D("block_type = %s", buf);
+    }
+    #endif /* PWASM_DEBUG */
+
+    // pop results from stack
+    for (size_t i = 0; i < num_results; i++) {
+      // get offset
+      const size_t ofs = num_results - 1 - i;
+
+      // get value type, check for error
+      pwasm_value_type_t val_type;
+      if (!pwasm_block_type_results_get_nth(checker->mod, ctrl->block_type, ofs, &val_type)) {
+        pwasm_checker_fail(checker, "checker: couldn't get block type result");
+        return false;
+      }
+
+      // convert value type to checker type
+      const pwasm_checker_type_t exp_type = pwasm_value_type_to_checker_type(val_type);
+
+      // pop expected value type from type stack, check for error
+      pwasm_checker_type_t got_type;
+      if (!pwasm_checker_type_pop_expected(checker, exp_type, &got_type)) {
+        return false;
+      }
     }
   }
 
@@ -9587,13 +9987,9 @@ static bool
 pwasm_checker_check(
   pwasm_checker_t * const checker,
   const pwasm_mod_t * const mod,
-  const pwasm_type_t * const type,
+  const uint32_t func_type_id,
   const pwasm_func_t func
 ) {
-  // FIXME: not currently used, will be used to fix return and also to
-  // implement multi-result blocks
-  (void) type;
-
   // temporarily disabled
   // return true;
 
@@ -9610,6 +10006,26 @@ pwasm_checker_check(
 
   // clear checker
   pwasm_checker_clear(checker);
+
+  #if 0
+  {
+    // build control frame for outer block
+    const pwasm_checker_ctrl_t ctrl = {
+      .op   = PWASM_OP_BLOCK,
+      .block_type = func_type_id,
+      .size = pwasm_checker_type_get_size(checker),
+    };
+
+    // push control frame, check for error
+    if (!pwasm_checker_ctrl_push(checker, ctrl)) {
+      // return failure
+      D("%s: ctrl_push failed", "func");
+      return false;
+    }
+  }
+  #else
+  (void) func_type_id;
+  #endif /* 0 */
 
   for (size_t i = 0; i < func.expr.len - 1; i++) {
     // get instruction and index immediate
@@ -9634,7 +10050,7 @@ pwasm_checker_check(
         // build control frame
         const pwasm_checker_ctrl_t ctrl = {
           .op   = in.op,
-          .type = in.v_block.type,
+          .block_type = in.v_block.block_type,
           .size = pwasm_checker_type_get_size(checker),
         };
 
@@ -9659,7 +10075,7 @@ pwasm_checker_check(
         // build control frame
         const pwasm_checker_ctrl_t ctrl = {
           .op   = in.op,
-          .type = in.v_block.type,
+          .block_type = in.v_block.block_type,
           .size = pwasm_checker_type_get_size(checker),
         };
 
@@ -9712,11 +10128,26 @@ pwasm_checker_check(
           return false;
         }
 
-        if (ctrl.type != PWASM_RESULT_TYPE_VOID) {
-          // convert block result to checker type
-          const pwasm_checker_type_t type = pwasm_result_type_to_checker_type(ctrl.type);
+        // get number of results
+        size_t num_results;
+        if (!pwasm_block_type_results_get_size(checker->mod, ctrl.block_type, &num_results)) {
+          pwasm_checker_fail(checker, "checker: end: couldn't get block type result size");
+          return false;
+        }
 
-          // push result to type stack, check for error
+        // push result types to type stack
+        for (size_t j = 0; j < num_results; j++) {
+          // get value type, check for error
+          pwasm_value_type_t val_type;
+          if (!pwasm_block_type_results_get_nth(checker->mod, ctrl.block_type, j, &val_type)) {
+            pwasm_checker_fail(checker, "checker: end: couldn't get block type result");
+            return false;
+          }
+
+          // convert value type to checker type
+          const pwasm_checker_type_t type = pwasm_value_type_to_checker_type(val_type);
+
+          // push type, check for error
           if (!pwasm_checker_type_push(checker, type)) {
             // return failure
             D("%s: type_push failed", pwasm_op_get_name(in.op));
@@ -9779,7 +10210,7 @@ pwasm_checker_check(
           return false;
         }
 
-        const pwasm_result_type_t last_type = (last_ctrl->op == PWASM_OP_LOOP) ? PWASM_RESULT_TYPE_VOID : last_ctrl->type;
+        const int32_t last_block_type = (last_ctrl->op == PWASM_OP_LOOP) ? PWASM_BLOCK_TYPE_VOID : last_ctrl->block_type;
 
         for (uint32_t i = 0; i < num_labels - 1; i++) {
           // get branch target, check bounds
@@ -9797,17 +10228,44 @@ pwasm_checker_check(
             return false;
           }
 
-          // get result type of target control frame
-          const pwasm_result_type_t type = (ctrl->op == PWASM_OP_LOOP) ? PWASM_RESULT_TYPE_VOID : ctrl->type;
+          // get block type of target control frame
+          const int32_t block_type = (ctrl->op == PWASM_OP_LOOP) ? PWASM_BLOCK_TYPE_VOID : ctrl->block_type;
 
-          if (type != last_type) {
-            pwasm_checker_fail(checker, "br_table: invalid label result type");
+          // compare target/last block type results, check for error
+          bool same;
+          if (!pwasm_block_type_compare_results(checker->mod, block_type, last_block_type, &same)) {
+            pwasm_checker_fail(checker, "br_table: couldn't compare label block types");
+            return false;
+          }
+
+          // check compare result
+          if (!same) {
+            // log error, return failure
+            pwasm_checker_fail(checker, "br_table: invalid label block type results");
             return false;
           }
         }
 
-        if (last_type != PWASM_RESULT_TYPE_VOID) {
-          const pwasm_checker_type_t type = pwasm_result_type_to_checker_type(last_type);
+        // get number of results, check for error
+        size_t num_results;
+        if (!pwasm_block_type_results_get_size(checker->mod, last_block_type, &num_results)) {
+          pwasm_checker_fail(checker, "br_table: couldn't get block type num results");
+          return false;
+        }
+
+        // pop results
+        for (size_t j = 0; j < num_results; j++) {
+          // calculate offset
+          const size_t ofs = (num_results - 1 - j);
+
+          // get value type, check for error
+          uint32_t val_type;
+          if (!pwasm_block_type_results_get_nth(checker->mod, last_block_type, ofs, &val_type)) {
+          }
+
+          // convert value type to checker type
+          const pwasm_checker_type_t type = pwasm_value_type_to_checker_type(val_type);
+
           // pop expected type, check for error
           if (!pwasm_checker_type_pop_expected(checker, type, NULL)) {
             D("%s: type_pop_expected failed (val)", pwasm_op_get_name(in.op));
@@ -10638,13 +11096,13 @@ typedef struct {
 static bool
 pwasm_mod_check_init(
   pwasm_mod_check_t * const check,
-  pwasm_mem_ctx_t * const mem_ctx,
+  const pwasm_mod_t * const mod,
   const pwasm_mod_check_cbs_t * const cbs,
   void *cb_data
 ) {
   // init code checker, check for error
   pwasm_checker_t checker;
-  if (!pwasm_checker_init(&checker, mem_ctx, cbs, cb_data)) {
+  if (!pwasm_checker_init(&checker, mod, cbs, cb_data)) {
     // return failure
     return false;
   }
@@ -11242,8 +11700,8 @@ pwasm_mod_check_code(
   const size_t func_ofs,
   const pwasm_func_t func
 ) {
-  const pwasm_type_t * const type = mod->types + mod->funcs[func_ofs];
-  return pwasm_checker_check(&(check->checker), mod, type, func);
+  const uint32_t type_id = mod->funcs[func_ofs];
+  return pwasm_checker_check(&(check->checker), mod, type_id, func);
 }
 
 /**
@@ -11348,7 +11806,7 @@ pwasm_mod_check(
 ) {
   // init mod check context
   pwasm_mod_check_t check;
-  if (!pwasm_mod_check_init(&check, mod->mem_ctx, cbs, cb_data)) {
+  if (!pwasm_mod_check_init(&check, mod, cbs, cb_data)) {
     return false;
   }
 
@@ -13507,16 +13965,32 @@ pwasm_new_interp_eval_expr(
       if (depth) {
         const pwasm_ctl_stack_entry_t ctl_tail = ctl_stack[depth - 1];
 
-        if (insts[ctl_tail.ofs].v_block.type == PWASM_RESULT_TYPE_VOID) {
-          // reset value stack, pop control stack
-          stack->pos = ctl_tail.depth;
-          depth--;
-        } else {
-          // pop result, reset value stack, pop control stack
-          stack->ptr[ctl_tail.depth] = stack->ptr[stack->pos - 1];
-          stack->pos = ctl_tail.depth + 1;
-          depth--;
+        // get mod, block type
+        const pwasm_mod_t * const mod = frame.mod->mod;
+        const int32_t block_type = insts[ctl_tail.ofs].v_block.block_type;
+
+        // get block type result count, check for error
+        size_t num_results;
+        if (!pwasm_block_type_results_get_size(mod, block_type, &num_results)) {
+          // log error, return failure
+          pwasm_env_fail(frame.env, "end: get block num_results failed");
+          return false;
         }
+
+        // TODO: subtract params as well?
+
+        // pop results
+        for (size_t j = 0; j < num_results; j++) {
+          // calculate stack source and destination offsets
+          const size_t src_ofs = stack->pos - 1 - (num_results - 1 - j);
+          const size_t dst_ofs = ctl_tail.depth + j;
+          stack->ptr[dst_ofs] = stack->ptr[src_ofs];
+        }
+
+        // reset value stack, pop control stack
+        // FIXME: subtract params as well?
+        stack->pos = ctl_tail.depth + num_results;
+        depth--;
       } else {
         // return success
         // FIXME: is this correct?
@@ -13543,14 +14017,29 @@ pwasm_new_interp_eval_expr(
           // reset control stack
           i = ctl_tail.ofs;
           stack->pos = ctl_tail.depth;
-        } else if (insts[ctl_tail.ofs].v_block.type == PWASM_RESULT_TYPE_VOID) {
-          // reset value stack, pop control stack
-          stack->pos = ctl_tail.depth;
-          depth--;
         } else {
-          // pop result, reset value stack, pop control stack
-          stack->ptr[ctl_tail.depth] = stack->ptr[stack->pos - 1];
-          stack->pos = ctl_tail.depth + 1;
+          // get mod, block type
+          const pwasm_mod_t * const mod = frame.mod->mod;
+          const int32_t block_type = insts[ctl_tail.ofs].v_block.block_type;
+
+          // get block type result count, check for error
+          size_t num_results;
+          if (!pwasm_block_type_results_get_size(mod, block_type, &num_results)) {
+            // log error, return failure
+            pwasm_env_fail(frame.env, "br: get block num_results failed");
+            return false;
+          }
+
+          // pop results
+          for (size_t j = 0; j < num_results; j++) {
+            // calculate stack source and destination offsets
+            const size_t src_ofs = stack->pos - 1 - (num_results - 1 - j);
+            const size_t dst_ofs = ctl_tail.depth + 1 + j;
+            stack->ptr[dst_ofs] = stack->ptr[src_ofs];
+          }
+
+          // reset value stack, pop control stack
+          stack->pos = ctl_tail.depth + num_results;
           depth--;
         }
       }
@@ -13566,14 +14055,29 @@ pwasm_new_interp_eval_expr(
         if (ctl_tail.type == CTL_LOOP) {
           i = ctl_tail.ofs;
           stack->pos = ctl_tail.depth;
-        } else if (insts[ctl_tail.ofs].v_block.type == PWASM_RESULT_TYPE_VOID) {
-          // reset value stack, pop control stack
-          stack->pos = ctl_tail.depth;
-          depth--;
         } else {
-          // pop result, reset value stack, pop control stack
-          stack->ptr[ctl_tail.depth] = stack->ptr[stack->pos - 1];
-          stack->pos = ctl_tail.depth + 1;
+          // get mod, block type
+          const pwasm_mod_t * const mod = frame.mod->mod;
+          const int32_t block_type = insts[ctl_tail.ofs].v_block.block_type;
+
+          // get block type result count, check for error
+          size_t num_results;
+          if (!pwasm_block_type_results_get_size(mod, block_type, &num_results)) {
+            // log error, return failure
+            pwasm_env_fail(frame.env, "br_if: get block num_results failed");
+            return false;
+          }
+
+          // pop results
+          for (size_t j = 0; j < num_results; j++) {
+            // calculate stack source and destination offsets
+            const size_t src_ofs = stack->pos - 1 - (num_results - 1 - j);
+            const size_t dst_ofs = ctl_tail.depth + 1 + j;
+            stack->ptr[dst_ofs] = stack->ptr[src_ofs];
+          }
+
+          // reset value stack, pop control stack
+          stack->pos = ctl_tail.depth + num_results;
           depth--;
         }
       }
@@ -13605,16 +14109,29 @@ pwasm_new_interp_eval_expr(
           // skip past end inst
           i += in.v_block.end_ofs + 1;
 
-          if (insts[ctl_tail.ofs].v_block.type == PWASM_RESULT_TYPE_VOID) {
-            // reset value stack, pop control stack
-            stack->pos = ctl_tail.depth;
-            depth--;
-          } else {
-            // pop result, reset value stack, pop control stack
-            stack->ptr[ctl_tail.depth] = stack->ptr[stack->pos - 1];
-            stack->pos = ctl_tail.depth + 1;
-            depth--;
+          // get mod, block type
+          const pwasm_mod_t * const mod = frame.mod->mod;
+          const int32_t block_type = insts[ctl_tail.ofs].v_block.block_type;
+
+          // get block type result count, check for error
+          size_t num_results;
+          if (!pwasm_block_type_results_get_size(mod, block_type, &num_results)) {
+            // log error, return failure
+            pwasm_env_fail(frame.env, "br_if: get block num_results failed");
+            return false;
           }
+
+          // pop results
+          for (size_t j = 0; j < num_results; j++) {
+            // calculate stack source and destination offsets
+            const size_t src_ofs = stack->pos - 1 - (num_results - 1 - j);
+            const size_t dst_ofs = ctl_tail.depth + 1 + j;
+            stack->ptr[dst_ofs] = stack->ptr[src_ofs];
+          }
+
+          // reset value stack, pop control stack
+          stack->pos = ctl_tail.depth + num_results;
+          depth--;
         }
       }
 

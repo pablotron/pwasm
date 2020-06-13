@@ -224,6 +224,49 @@ wat_get_inst_index_prefix(
 }
 
 static void
+wat_write_block_type(
+  cmd_wat_t * const wat,
+  const pwasm_mod_t * const mod,
+  const int32_t block_type
+) {
+  // get num_params, check for error
+  size_t num_params;
+  if (!pwasm_block_type_params_get_size(mod, block_type, &num_params)) {
+    errx(EXIT_FAILURE, "Couldn't get block num_params");
+  }
+
+  // write params
+  for (size_t i = 0; i < num_params; i++) {
+    // get type, check for error
+    pwasm_value_type_t val_type;
+    if (!pwasm_block_type_params_get_nth(mod, block_type, i, &val_type)) {
+      errx(EXIT_FAILURE, "Couldn't get block param %zu", i);
+    }
+
+    // write param
+    fprintf(wat->io, " (param %s)", pwasm_value_type_get_name(val_type));
+  }
+
+  // get num_results, check for error
+  size_t num_results;
+  if (!pwasm_block_type_results_get_size(mod, block_type, &num_results)) {
+    errx(EXIT_FAILURE, "Couldn't get block num_results");
+  }
+
+  // write results
+  for (size_t i = 0; i < num_results; i++) {
+    // get type, check for error
+    pwasm_value_type_t val_type;
+    if (!pwasm_block_type_results_get_nth(mod, block_type, i, &val_type)) {
+      errx(EXIT_FAILURE, "Couldn't get block result %zu", i);
+    }
+
+    // write result
+    fprintf(wat->io, " (result %s)", pwasm_value_type_get_name(val_type));
+  }
+}
+
+static void
 wat_write_inst_imm(
   cmd_wat_t * const wat,
   const pwasm_mod_t * const mod,
@@ -239,10 +282,8 @@ wat_write_inst_imm(
     // do nothing
     break;
   case PWASM_IMM_BLOCK:
-    // write block result type
-    if (in.v_block.type != PWASM_RESULT_TYPE_VOID) {
-      fprintf(wat->io, " (result %s)", pwasm_result_type_get_name(in.v_block.type));
-    }
+    // write block type
+    wat_write_block_type(wat, mod, in.v_block.block_type);
     break;
   case PWASM_IMM_INDEX:
   case PWASM_IMM_LANE_INDEX:

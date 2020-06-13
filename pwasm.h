@@ -765,8 +765,8 @@ typedef struct {
      * Data for `block`, `loop`, and `if` instructions.
      */
     struct {
-      /// block result type (TODO: replace with int32_t block_type)
-      pwasm_result_type_t type;
+      /// block result type
+      int32_t block_type;
 
       /// offset to `else` instruction (`if` only).
       size_t else_ofs;
@@ -1472,6 +1472,86 @@ size_t pwasm_mod_init(
 void pwasm_mod_fini(pwasm_mod_t *mod);
 
 /**
+ * Get the number of parameters for the given block type.
+ *
+ * @ingroup type
+ *
+ * @param[in]   mod         Module
+ * @param[in]   block_type  Block type
+ * @param[out]  ret_size    Number of parameters
+ *
+ * @return `true` on success or `false` on error.
+ *
+ * @see pwasm_block_type_params_get_nth()
+ */
+_Bool pwasm_block_type_params_get_size(
+  const pwasm_mod_t * const mod,
+  const int32_t block_type,
+  size_t * const ret_size
+);
+
+/**
+ * Get the type of the Nth parameter of the given block type.
+ *
+ * @ingroup type
+ *
+ * @param[in]   mod         Module
+ * @param[in]   block_type  Block type
+ * @param[in]   pos         Offset
+ * @param[out]  ret_type    Return type
+ *
+ * @return `true` on success or `false` on error.
+ *
+ * @see pwasm_block_type_params_get_size()
+ */
+_Bool pwasm_block_type_params_get_nth(
+  const pwasm_mod_t * const mod,
+  const int32_t block_type,
+  const size_t pos,
+  uint32_t * const ret_type
+);
+
+/**
+ * Get the number of results for the given block type.
+ *
+ * @ingroup type
+ *
+ * @param[in]   mod         Module
+ * @param[in]   block_type  Block type
+ * @param[out]  ret_size    Number of results
+ *
+ * @return `true` on success or `false` on error.
+ *
+ * @see pwasm_block_type_results_get_nth()
+ */
+_Bool pwasm_block_type_results_get_size(
+  const pwasm_mod_t * const mod,
+  const int32_t block_type,
+  size_t * const ret_size
+);
+
+/**
+ * Get the type of the Nth result of the given block type.
+ *
+ * @ingroup type
+ *
+ * @param[in]   mod         Module
+ * @param[in]   block_type  Block type
+ * @param[in]   pos         Offset
+ * @param[out]  ret_type    Return type
+ *
+ * @return `true` on success or `false` on error.
+ *
+ * @see pwasm_block_type_results_get_size()
+ */
+_Bool pwasm_block_type_results_get_nth(
+  const pwasm_mod_t * const mod,
+  const int32_t block_type,
+  const size_t pos,
+  uint32_t * const ret_type
+);
+
+/**
  * Module builder state.
  * @ingroup mod
  * @see pwasm_builder_init()
@@ -1705,7 +1785,7 @@ typedef struct {
  */
 #define PWASM_PEEK(stack, ofs) ((stack)->ptr[(stack)->pos - 1 - (ofs)])
 
-/** Forward declaration */
+/** forward declaration */
 typedef struct pwasm_env_t pwasm_env_t;
 
 /** forward declaration */
