@@ -8462,7 +8462,6 @@ pwasm_checker_dump(
   pwasm_checker_dump_types(checker);
 }
 
-
 // forward references
 static const pwasm_checker_ctrl_t *pwasm_checker_ctrl_peek(const pwasm_checker_t *, const size_t);
 
@@ -9055,7 +9054,7 @@ pwasm_checker_check_branch(
   const uint32_t id
 ) {
   // check branch target
-  if (id >= pwasm_checker_ctrl_get_size(checker)) {
+  if (id > pwasm_checker_ctrl_get_size(checker)) {
     pwasm_checker_fail(checker, "label out of bounds");
     return false;
   }
@@ -9063,6 +9062,7 @@ pwasm_checker_check_branch(
   // get target control frame, check for error
   const pwasm_checker_ctrl_t *ctrl = pwasm_checker_ctrl_peek(checker, id);
   if (!ctrl) {
+    pwasm_checker_fail(checker, "null control entry");
     return false;
   }
 
@@ -9587,8 +9587,13 @@ static bool
 pwasm_checker_check(
   pwasm_checker_t * const checker,
   const pwasm_mod_t * const mod,
+  const pwasm_type_t * const type,
   const pwasm_func_t func
 ) {
+  // FIXME: not currently used, will be used to fix return and also to
+  // implement multi-result blocks
+  (void) type;
+
   // temporarily disabled
   // return true;
 
@@ -10608,6 +10613,7 @@ pwasm_checker_check(
 
       break;
     default:
+      D("ignoring op: 0x%08x", in.op);
       // ignore
       break;
     }
@@ -10820,8 +10826,11 @@ static bool
 pwasm_mod_check_custom_section(
   const pwasm_mod_t * const mod,
   const pwasm_mod_check_t * const check,
+  const size_t section_ofs,
   const pwasm_custom_section_t section
 ) {
+  (void) section_ofs;
+
   // is the custom section name valid utf8?
   if (!pwasm_mod_check_is_valid_utf8(mod, section.name)) {
     // Note: this is a warning rather than an error because the wasm
@@ -10870,8 +10879,11 @@ static bool
 pwasm_mod_check_type(
   const pwasm_mod_t * const mod,
   const pwasm_mod_check_t * const check,
+  const size_t type_ofs,
   const pwasm_type_t type
 ) {
+  (void) type_ofs;
+
   // check parameters
   if (!pwasm_mod_check_type_vals(mod, check, type.params)) {
     return false;
@@ -10906,8 +10918,10 @@ static inline bool
 pwasm_mod_check_func(
   const pwasm_mod_t * const mod,
   const pwasm_mod_check_t * const check,
+  const size_t func_ofs,
   const uint32_t id
 ) {
+  (void) func_ofs;
   return pwasm_mod_check_type_id(mod, check, id);
 }
 
@@ -10925,8 +10939,11 @@ static bool
 pwasm_mod_check_global(
   const pwasm_mod_t * const mod,
   const pwasm_mod_check_t * const check,
+  const size_t global_ofs,
   const pwasm_global_t global
 ) {
+  (void) global_ofs;
+
   // check init expr
   if (!pwasm_mod_check_const_expr(mod, check, global.expr)) {
     return false;
@@ -10950,10 +10967,12 @@ static bool
 pwasm_mod_check_elem(
   const pwasm_mod_t * const mod,
   const pwasm_mod_check_t * const check,
+  const size_t elem_ofs,
   const pwasm_elem_t elem
 ) {
   // get the maximum table ID
   const size_t max_tables = mod->max_indices[PWASM_IMPORT_TYPE_TABLE];
+  (void) elem_ofs;
 
   // check table index
   if (elem.table_id >= max_tables) {
@@ -10984,9 +11003,11 @@ static bool
 pwasm_mod_check_segment(
   const pwasm_mod_t * const mod,
   const pwasm_mod_check_t * const check,
+  const size_t segment_ofs,
   const pwasm_segment_t segment
 ) {
   const size_t max_mems = mod->max_indices[PWASM_IMPORT_TYPE_MEM];
+  (void) segment_ofs;
 
   // check memory index
   if (segment.mem_id >= max_mems) {
@@ -11020,9 +11041,11 @@ static bool
 pwasm_mod_check_mem(
   const pwasm_mod_t * const mod,
   const pwasm_mod_check_t * const check,
+  const size_t mem_ofs,
   const pwasm_limits_t mem
 ) {
   (void) mod;
+  (void) mem_ofs;
 
   // check limits
   if (!pwasm_mod_check_limits(mem, check)) {
@@ -11062,9 +11085,11 @@ static bool
 pwasm_mod_check_table(
   const pwasm_mod_t * const mod,
   const pwasm_mod_check_t * const check,
+  const size_t table_ofs,
   const pwasm_table_t table
 ) {
   (void) mod;
+  (void) table_ofs;
 
   // check element type
   // (note: redundant, since this is checked during parsing)
@@ -11096,9 +11121,11 @@ static bool
 pwasm_mod_check_import(
   const pwasm_mod_t * const mod,
   const pwasm_mod_check_t * const check,
+  const size_t import_ofs,
   const pwasm_import_t import
 ) {
   (void) mod;
+  (void) import_ofs;
 
   // is the import module name valid utf8?
   if (!pwasm_mod_check_is_valid_utf8(mod, import.module)) {
@@ -11115,14 +11142,16 @@ pwasm_mod_check_import(
   // check import data
   switch (import.type) {
   case PWASM_IMPORT_TYPE_FUNC:
-    return pwasm_mod_check_func(mod, check, import.func);
+    return pwasm_mod_check_type_id(mod, check, import.func);
   case PWASM_IMPORT_TYPE_TABLE:
-    return pwasm_mod_check_table(mod, check, import.table);
+    // FIXME: should i be passing 0 or import_ofs here?
+    return pwasm_mod_check_table(mod, check, 0, import.table);
   case PWASM_IMPORT_TYPE_GLOBAL:
     // nothing to check
     return true;
   case PWASM_IMPORT_TYPE_MEM:
-    return pwasm_mod_check_mem(mod, check, import.mem);
+    // FIXME: should i be passing 0 or import_ofs here?
+    return pwasm_mod_check_mem(mod, check, 0, import.mem);
   default:
     check->cbs.on_error("invalid import type", check->cb_data);
     return false;
@@ -11167,8 +11196,11 @@ static bool
 pwasm_mod_check_export(
   const pwasm_mod_t * const mod,
   const pwasm_mod_check_t * const check,
+  const size_t export_ofs,
   const pwasm_export_t export
 ) {
+  (void) export_ofs;
+
   // is the export name valid utf8?
   if (!pwasm_mod_check_is_valid_utf8(mod, export.name)) {
     check->cbs.on_error("export name is not UTF-8", check->cb_data);
@@ -11207,9 +11239,11 @@ static bool
 pwasm_mod_check_code(
   const pwasm_mod_t * const mod,
   pwasm_mod_check_t * const check,
+  const size_t func_ofs,
   const pwasm_func_t func
 ) {
-  return pwasm_checker_check(&(check->checker), mod, func);
+  const pwasm_type_t * const type = mod->types + mod->funcs[func_ofs];
+  return pwasm_checker_check(&(check->checker), mod, type, func);
 }
 
 /**
@@ -11281,7 +11315,7 @@ pwasm_mod_check_start(
     pwasm_mod_check_t * const check \
   ) { \
     for (size_t i = 0; i < mod->num_ ## NAME ## s; i++) { \
-      if (!pwasm_mod_check_ ## NAME (mod, check, mod->NAME ## s[i])) { \
+      if (!pwasm_mod_check_ ## NAME (mod, check, i, mod->NAME ## s[i])) { \
         return false; \
       } \
     } \
