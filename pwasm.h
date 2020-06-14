@@ -627,7 +627,6 @@ const char *pwasm_op_get_name(const pwasm_op_t);
  */
 pwasm_imm_t pwasm_op_get_imm(const pwasm_op_t);
 
-
 /**
  * @defgroup util Utilities
  */

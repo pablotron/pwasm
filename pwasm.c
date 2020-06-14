@@ -50,7 +50,6 @@
 #define LEN(ary) (sizeof(ary) / sizeof((ary)[0]))
 
 #ifdef PWASM_DEBUG
-// FIXME: limit to DEBUG
 #include <stdio.h>
 #define D(fmt, ...) fprintf( \
   stderr, \
@@ -5899,14 +5898,14 @@ pwasm_parse_inst(
         uint32_t table_id = 0;
         const size_t len = pwasm_u32_decode(&table_id, curr);
         if (!len) {
-          cbs->on_error("bad call_indirect table index", cb_data);
+          cbs->on_error("call_indirect immediate: bad table index", cb_data);
           return 0;
         }
 
         // check table ID, check for error
         // FIXME: should this be handled in validation layer?
         if (table_id != 0) {
-          cbs->on_error("non-zero call_indirect table index", cb_data);
+          cbs->on_error("call_indirect immediate: non-zero table index", cb_data);
           return 0;
         }
 
@@ -6482,12 +6481,12 @@ pwasm_parse_import(
   pwasm_slice_t (*on_bytes)(const uint8_t *, size_t, void *) = (cbs && cbs->on_bytes) ? cbs->on_bytes : NULL;
 
   // parse module name, check for error
-  // FIXME: handle on_error here
   pwasm_slice_t names[2] = { 0 };
   for (size_t i = 0; i < 2; i++) {
     pwasm_buf_t buf;
     const size_t len = pwasm_parse_buf(&buf, curr, &buf_cbs, cb_data);
     if (!len) {
+      buf_cbs.on_error("invalid import module name length", cb_data);
       return 0;
     }
 
@@ -6495,6 +6494,7 @@ pwasm_parse_import(
       // add bytes, check for error
       names[i] = on_bytes(buf.ptr, buf.len, cb_data);
       if (!names[i].len) {
+        buf_cbs.on_error("empty import module name", cb_data);
         return 0;
       }
     }
@@ -7720,8 +7720,6 @@ pwasm_mod_parse_type(
  * maximum of +src_len+ bytes.
  *
  * Returns number of bytes consumed, or 0 on error.
- *
- * FIXME: copied from pwasm_parse_import
  */
 static size_t
 pwasm_mod_parse_import(
@@ -8464,7 +8462,7 @@ pwasm_mod_init(
     .on_error = mem_ctx->cbs->on_error,
   };
 
-  // check mod (FIXME: this should be done inline in the future)
+  // check module
   if (!pwasm_mod_check(mod, &cbs, mem_ctx->cb_data)) {
     // return failure
     return 0;
@@ -11865,9 +11863,6 @@ pwasm_mod_check(
     return false;
   }
 
-  // FIXME: disabled (until i fix tests)
-  // return true;
-
   // check start function
   if (!pwasm_mod_check_start(mod, &check)) {
     // return failure
@@ -12821,8 +12816,6 @@ pwasm_new_interp_add_native(
     .funcs    = funcs,
     .globals  = globals,
     .mems     = mems,
-    // FIXME: i don't think we need tables for now
-    .tables   = { 0, 0 },
   };
 
   // append native mod, check for error
@@ -14074,8 +14067,6 @@ pwasm_new_interp_eval_expr(
       } else {
         // return success
         // FIXME: is this correct?
-        // TODO: should walk expr.len - 1, and rely on checker to
-        // verify that last instruction is END
         return true;
       }
 
@@ -14085,6 +14076,7 @@ pwasm_new_interp_eval_expr(
         // decriment control stack
         depth -= in.v_index;
         if (!depth) {
+          // return success
           // FIXME: is this correct?
           return true;
         }
@@ -14128,6 +14120,7 @@ pwasm_new_interp_eval_expr(
         // decriment control stack
         depth -= in.v_index;
         if (!depth) {
+          // return success
           // FIXME: is this correct?
           return true;
         }
@@ -14176,6 +14169,7 @@ pwasm_new_interp_eval_expr(
         // decriment control stack
         depth -= id;
         if (!depth) {
+          // return success
           // FIXME: is this correct?
           return true;
         }
@@ -14217,7 +14211,8 @@ pwasm_new_interp_eval_expr(
 
       break;
     case PWASM_OP_RETURN:
-      // FIXME: is this all i need?
+      // return success
+      // FIXME: is this correct?
       return true;
     case PWASM_OP_CALL:
       // call function, check for error

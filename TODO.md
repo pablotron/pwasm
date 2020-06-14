@@ -8,6 +8,10 @@ See the "Tag Definitions" section below for a brief description of each
 tag.
 
 * [ ] code: remove fixed-size stack in `eval_expr`
+* [ ] code, test: add tests to verify local indices bounds checks, and
+      remove them from `eval_expr`
+* [ ] code, test: check `call_immediate` table ID in validation layer
+      instead of parser
 * [ ] code, test: check stack size at start of call
 * [ ] code, test: add invalid code tests (e.g. checker assertion tests)
 * [ ] code, test: fix memory leaks on parse/validation/exec errors
