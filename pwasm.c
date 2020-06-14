@@ -9146,7 +9146,7 @@ pwasm_checker_get_local_type(
 ) {
   // check local index
   if (id >= func.frame_size) {
-    pwasm_checker_fail(checker, "local index out of bound");
+    pwasm_checker_fail(checker, "local index out of bounds");
     return false;
   }
 
@@ -14306,15 +14306,8 @@ pwasm_new_interp_eval_expr(
     case PWASM_OP_LOCAL_GET:
       {
         // get local index
+        // (note: checked in pwasm_checker_get_local_type())
         const uint32_t id = in.v_index;
-
-        // check local index
-        // TODO: remove, handled by checker
-        if (id >= frame.locals.len) {
-          // log error, return failure
-          pwasm_env_fail(frame.env, "local index out of bounds");
-          return false;
-        }
 
         // push local value
         stack->ptr[stack->pos++] = stack->ptr[frame.locals.ofs + id];
@@ -14324,15 +14317,8 @@ pwasm_new_interp_eval_expr(
     case PWASM_OP_LOCAL_SET:
       {
         // get local index
+        // (note: checked in pwasm_checker_get_local_type())
         const uint32_t id = in.v_index;
-
-        // check local index
-        // TODO: remove, handled by checker
-        if (id >= frame.locals.len) {
-          // log error, return failure
-          pwasm_env_fail(frame.env, "local index out of bounds");
-          return false;
-        }
 
         // set local value, pop stack
         stack->ptr[frame.locals.ofs + id] = stack->ptr[stack->pos - 1];
@@ -14343,15 +14329,8 @@ pwasm_new_interp_eval_expr(
     case PWASM_OP_LOCAL_TEE:
       {
         // get local index
+        // (note: checked in pwasm_checker_get_local_type())
         const uint32_t id = in.v_index;
-
-        // check local index
-        // TODO: remove, handled by checker
-        if (id >= frame.locals.len) {
-          // log error, return failure
-          pwasm_env_fail(frame.env, "local index out of bounds");
-          return false;
-        }
 
         // set local value, keep stack (tee)
         stack->ptr[frame.locals.ofs + id] = stack->ptr[stack->pos - 1];
