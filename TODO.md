@@ -37,7 +37,6 @@ tag.
 * [ ] code: add `uint64_t pwasm_platform_get_value()` (e.g. compile-time limits, flags, etc)
 
 ## In Progress
-* [ ] code, test: check multi-parameter blocks
 
 ## Done
 
@@ -103,7 +102,8 @@ Items in this section have been completed.
 * [x] add {i32,i64,f32,f64}.const tests
 * [x] code: support multi-result blocks
 * [x] code, test: test `br` to outermost block (according to `return` documentation this should work)
-* [x] code: remove `PWASM_RESULT_TYPE_*`
+* [x] code: remove `PWASM_RESULT_TYPE_*` (moved to `cli/result-type.h`)
+* [x] code, test: check multi-parameter blocks (`data/wat/15-multi.wat`)
 
 ## Tag Definitions
 

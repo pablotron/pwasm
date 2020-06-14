@@ -7460,7 +7460,7 @@ BUILDER_VECS
 }
 
 #define BUILDER_VEC(name, type, prev) \
-  pwasm_slice_t \
+  static pwasm_slice_t \
   pwasm_builder_push_ ## name ## s( \
     pwasm_builder_t * const builder, \
     const type * const src_ptr, \
@@ -7479,7 +7479,7 @@ BUILDER_VECS
 BUILDER_VECS
 #undef BUILDER_VEC
 
-size_t
+static size_t
 pwasm_builder_get_size(
   const pwasm_builder_t * const builder
 ) {
@@ -7592,7 +7592,7 @@ pwasm_builder_resolve_jumps(
   return true;
 }
 
-bool
+static bool
 pwasm_builder_build_mod(
   const pwasm_builder_t * const builder,
   pwasm_mod_t * const dst
