@@ -8,8 +8,6 @@ See the "Tag Definitions" section below for a brief description of each
 tag.
 
 * [ ] code: remove fixed-size stack in `eval_expr`
-* [ ] code, test: add tests to verify local indices bounds checks, and
-      remove them from `eval_expr`
 * [ ] code, test: check `call_immediate` table ID in validation layer
       instead of parser
 * [ ] code, test: check stack size at start of call
@@ -109,6 +107,8 @@ Items in this section have been completed.
 * [x] code: remove `PWASM_RESULT_TYPE_*` (moved to `cli/result-type.h`)
 * [x] code, test: check multi-parameter blocks (`data/wat/15-multi.wat`)
 * [x] code: implement `pwasm_new_interp_init_segments()`
+* [x] code, test: add tests to verify local indices bounds checks, and
+      remove them from `eval_expr`
 
 ## Tag Definitions
 
