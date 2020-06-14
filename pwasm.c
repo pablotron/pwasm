@@ -4207,6 +4207,20 @@ pwasm_null_on_error(
   D("null error: %s", text);
 }
 
+/**
+ * no-op on_warning callback (used as a fallback to avoid having to do
+ * null ptr checks on warning).
+ */
+static void
+pwasm_null_on_warning(
+  const char * const text,
+  void * const cb_data
+) {
+  (void) text;
+  (void) cb_data;
+  D("null warning: %s", text);
+}
+
 typedef struct {
   void (*on_error)(const char *, void *);
 } pwasm_parse_buf_cbs_t;
@@ -8671,7 +8685,7 @@ pwasm_checker_init(
   const size_t ctrl_size = sizeof(pwasm_checker_ctrl_t);
 
   const pwasm_mod_check_cbs_t cbs = {
-    .on_warning = (src_cbs && src_cbs->on_warning) ? src_cbs->on_warning : pwasm_null_on_error,
+    .on_warning = (src_cbs && src_cbs->on_warning) ? src_cbs->on_warning : pwasm_null_on_warning,
     .on_error = (src_cbs && src_cbs->on_error) ? src_cbs->on_error : pwasm_null_on_error,
   };
 
@@ -11089,7 +11103,7 @@ pwasm_mod_check_init(
   // populate result
   pwasm_mod_check_t tmp = {
     .cbs = {
-      .on_warning = (cbs && cbs->on_warning) ? cbs->on_warning : pwasm_null_on_error,
+      .on_warning = (cbs && cbs->on_warning) ? cbs->on_warning : pwasm_null_on_warning,
       .on_error = (cbs && cbs->on_error) ? cbs->on_error : pwasm_null_on_error,
     },
     .cb_data = cb_data,
@@ -11326,10 +11340,9 @@ pwasm_mod_check_type(
   }
 
   // check result count
-  // FIXME: should this be an error?
+  // NOTE: disabled, because blocks can have multiple results
   if (type.results.len > 1) {
-    check->cbs.on_warning("function type result count > 1", check->cb_data);
-    return false;
+    // check->cbs.on_warning("function type result count > 1", check->cb_data);
   }
 
   // return success
