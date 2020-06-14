@@ -10658,7 +10658,7 @@ TEST_CALLS[] = {{
   .text   = "multi.test_block_params(0)",
   .mod    = "multi",
   .func   = "test_block_params",
-  .result = { 1584, 1 },
+  .result = { 1585, 1 },
   .type   = RESULT_TYPE_I32,
 }}; // sentinel
 
