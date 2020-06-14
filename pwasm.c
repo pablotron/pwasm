@@ -5811,17 +5811,16 @@ pwasm_parse_inst(
     break;
   case PWASM_IMM_BLOCK:
     {
-      // TODO
-      // // parse block type, check for error
-      int32_t type;
-      const size_t len = pwasm_s32_decode(&type, curr);
+      // parse block type, check for error
+      int32_t block_type;
+      const size_t len = pwasm_s32_decode(&block_type, curr);
       if (!len) {
         cbs->on_error("missing block type", cb_data);
         return 0;
       }
 
-      // save result type
-      in.v_block.block_type = type;
+      // save block type
+      in.v_block.block_type = block_type;
 
       // advance
       curr = pwasm_buf_step(curr, len);
@@ -6231,7 +6230,9 @@ pwasm_parse_const_expr(
   const pwasm_parse_expr_cbs_t * const cbs,
   void * const cb_data
 ) {
-  // TODO: limit to constant insts
+  // Note: parsing a constant expression is identical to parsing a
+  // normal expression; the instruction limiting for constant
+  // expressions is handled in the validation layer
   return pwasm_parse_expr(dst, src, cbs, cb_data);
 }
 
@@ -11806,7 +11807,12 @@ pwasm_mod_check_start(
   return true;
 }
 
-// TODO: start, type
+/**
+ * Mod checks.
+ *
+ * Note: The start function check is handled separately in
+ * pwasm_mod_check().
+ */
 #define MOD_CHECKS \
   MOD_CHECK(custom_section) \
   MOD_CHECK(type) \
@@ -12615,8 +12621,6 @@ pwasm_new_interp_add_native_funcs(
   const size_t dst_ofs = pwasm_vec_get_size(dst);
   const size_t u32s_ofs = pwasm_vec_get_size(&(interp->u32s));
 
-  // TODO: add native import functions (do we want this?)
-
   pwasm_new_interp_func_t tmp[PWASM_BATCH_SIZE];
   size_t tmp_ofs = 0;
 
@@ -13290,7 +13294,7 @@ pwasm_new_interp_init_elems(
   const size_t num_elems = frame.mod->mod->num_elems;
   pwasm_stack_t * const stack = frame.env->stack;
 
-  // TODO: init table elements
+  // init table elements
   for (size_t i = 0; i < num_elems; i++) {
     const pwasm_elem_t elem = elems[i];
 

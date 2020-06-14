@@ -12,6 +12,7 @@ tag.
       remove them from `eval_expr`
 * [ ] code, test: check `call_immediate` table ID in validation layer
       instead of parser
+* [ ] code: implement `pwasm_new_interp_init_segments()`
 * [ ] code, test: check stack size at start of call
 * [ ] code, test: add invalid code tests (e.g. checker assertion tests)
 * [ ] code, test: fix memory leaks on parse/validation/exec errors
