@@ -559,31 +559,6 @@ PWASM_VALUE_TYPE_DEFS
   }
 }
 
-const char *
-pwasm_result_type_get_name(
-  const pwasm_result_type_t v
-) {
-  switch (v) {
-#define PWASM_RESULT_TYPE(a, b, c) case a : return c;
-PWASM_RESULT_TYPE_DEFS
-#undef PWASM_RESULT_TYPE
-  default:
-    return pwasm_result_type_get_name(PWASM_RESULT_TYPE_LAST);
-  }
-}
-
-/**
- * Is this value a valid block result type?
- *
- * From section 5.3.2 of the WebAssembly documentation.
- */
-static inline bool
-pwasm_is_valid_result_type(
-  const uint8_t v
-) {
-  return ((v == 0x40) || (v == 0x7F) || (v == 0x7E) || (v == 0x7D) || (v == 0x7C));
-}
-
 /**
  * Kinds of block types.
  */

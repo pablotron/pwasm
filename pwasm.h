@@ -105,49 +105,6 @@ PWASM_VALUE_TYPE_DEFS
 const char *pwasm_value_type_get_name(const pwasm_value_type_t type);
 
 /**
- * Result types.
- *
- * Macro used to define the `pwasm_result_type_t` enumeration and the
- * internal result type names.
- *
- * @ingroup type
- */
-#define PWASM_RESULT_TYPE_DEFS \
-  PWASM_RESULT_TYPE(0x7F, I32, "i32") \
-  PWASM_RESULT_TYPE(0x7D, I64, "i64") \
-  PWASM_RESULT_TYPE(0x7E, F32, "f32") \
-  PWASM_RESULT_TYPE(0x7C, F64, "f64") \
-  PWASM_RESULT_TYPE(0x7B, V128, "v128") \
-  PWASM_RESULT_TYPE(0x40, VOID, "void") \
-  PWASM_RESULT_TYPE(0x00, LAST, "unknown result type")
-
-/**
- * Block result types
- * @ingroup type
- */
-typedef enum {
-#define PWASM_RESULT_TYPE(a, b, c) PWASM_RESULT_TYPE_ ## b = (a),
-PWASM_RESULT_TYPE_DEFS
-#undef PWASM_RESULT_TYPE
-} pwasm_result_type_t;
-
-/**
- * Get name of result type.
- *
- * @ingroup type
- *
- * @param type Block result type
- *
- * @return Pointer to the `NULL`-terminated result type name, or a
- * pointer to the string "unknown result type" if given an invalid
- * result type.
- *
- * @note The strings returned by this function should not be freed.
- * @note This function never returns a `NULL` pointer.
- */
-const char *pwasm_result_type_get_name(const pwasm_result_type_t type);
-
-/**
  * Import/export types.
  *
  * Macro used to define the `pwasm_import_type_t` enumeration and the
