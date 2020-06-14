@@ -4157,41 +4157,6 @@ pwasm_depth_sub(
   return ok;
 }
 
-#define CTL_TYPES \
-  CTL_TYPE(BLOCK) \
-  CTL_TYPE(LOOP) \
-  CTL_TYPE(IF) \
-  CTL_TYPE(ELSE)
-
-typedef enum {
-#define CTL_TYPE(a) CTL_ ## a,
-CTL_TYPES
-#undef CTL_TYPE
-  CTL_LAST,
-} pwasm_ctl_type_t;
-
-/*
- * static pwasm_ctl_type_t
- * pwasm_op_get_ctl_type(
- *   const pwasm_op_t op
- * ) {
- *   switch (op) {
- *   #define CTL_TYPE(a) case PWASM_OP_ ## a: return CTL_ ## a;
- *   CTL_TYPES
- *   #undef CTL_TYPE
- *   default:
- *     return CTL_LAST;
- *   }
- * }
- */
-
-typedef struct {
-  pwasm_ctl_type_t type; // stack entry type
-  size_t depth; // value stack depth
-  size_t ofs; // inst ofs
-  uint32_t func_type;
-} pwasm_ctl_stack_entry_t;
-
 /**
  * no-op on_error callback (used as a fallback to avoid having to do
  * null ptr checks on error).
@@ -12218,6 +12183,100 @@ pwasm_call(
 }
 
 //
+// control stack: used by new interpreter to manage control frames
+//
+
+#define CTRL_TYPES \
+  CTRL_TYPE(BLOCK) \
+  CTRL_TYPE(LOOP) \
+  CTRL_TYPE(IF) \
+  CTRL_TYPE(ELSE)
+
+typedef enum {
+#define CTRL_TYPE(a) CTRL_ ## a,
+CTRL_TYPES
+#undef CTRL_TYPE
+  CTRL_LAST,
+} pwasm_ctrl_stack_entry_type_t;
+
+typedef struct {
+  pwasm_ctrl_stack_entry_type_t type; // stack entry type
+  size_t depth; // value stack depth
+  size_t ofs; // inst ofs
+  uint32_t func_type;
+} pwasm_ctrl_stack_entry_t;
+
+typedef struct {
+  pwasm_vec_t stack;
+} pwasm_ctrl_stack_t;
+
+static bool
+pwasm_ctrl_stack_init(
+  pwasm_ctrl_stack_t * const stack,
+  pwasm_mem_ctx_t * const mem_ctx
+) {
+  const size_t stride = sizeof(pwasm_ctrl_stack_entry_t);
+  return pwasm_vec_init(mem_ctx, &(stack->stack), stride);
+}
+
+static void
+pwasm_ctrl_stack_fini(
+  pwasm_ctrl_stack_t * const stack
+) {
+  pwasm_vec_fini(&(stack->stack));
+}
+
+#if 0
+static size_t
+pwasm_ctrl_stack_get_size(
+  const pwasm_ctrl_stack_t * const stack
+) {
+  return pwasm_vec_get_size(&(stack->stack));
+}
+#endif /* 0 */
+
+static const void *
+pwasm_ctrl_stack_peek_tail(
+  const pwasm_ctrl_stack_t * const stack,
+  const size_t ofs
+) {
+  return pwasm_vec_peek_tail(&(stack->stack), ofs);
+}
+
+static bool
+pwasm_ctrl_stack_pop(
+  pwasm_ctrl_stack_t * const stack,
+  void * const dst
+) {
+  // pop final entry, return result
+  return pwasm_vec_pop(&(stack->stack), dst);
+}
+
+static bool
+pwasm_ctrl_stack_popn(
+  pwasm_ctrl_stack_t * const stack,
+  const size_t num
+) {
+  // pop entries
+  for (size_t i = 0; i < num; i++) {
+    if (!pwasm_vec_pop(&(stack->stack), NULL)) {
+      return false;
+    }
+  }
+
+  // return success
+  return true;
+}
+
+static bool
+pwasm_ctrl_stack_push(
+  pwasm_ctrl_stack_t * const stack,
+  const pwasm_ctrl_stack_entry_t entry
+) {
+  return pwasm_vec_push(&(stack->stack), 1, &entry, NULL);
+}
+
+//
 // new interpreter
 //
 
@@ -12451,6 +12510,7 @@ typedef struct {
   #define PWASM_NEW_INTERP_VEC(NAME, TYPE) pwasm_vec_t NAME;
   PWASM_NEW_INTERP_VECS
   #undef PWASM_NEW_INTERP_VEC
+  pwasm_ctrl_stack_t ctrl_stack;
 } pwasm_new_interp_t;
 
 typedef struct {
@@ -12495,6 +12555,12 @@ pwasm_new_interp_init(
   PWASM_NEW_INTERP_VECS
   #undef PWASM_NEW_INTERP_VEC
 
+  // init control stack, check for error
+  if (!pwasm_ctrl_stack_init(&(interp->ctrl_stack), mem_ctx)) {
+    // return failure
+    return false;
+  }
+
   // save interpreter, return success
   env->env_data = interp;
   return true;
@@ -12528,6 +12594,9 @@ pwasm_new_interp_fini(
 
   // finalize tables
   pwasm_new_interp_fini_tables(env);
+
+  // fini control stack, check for error
+  pwasm_ctrl_stack_fini(&(data->ctrl_stack));
 
   // free vectors
   #define PWASM_NEW_INTERP_VEC(NAME, TYPE) pwasm_vec_fini(&(data->NAME));
@@ -14003,12 +14072,12 @@ pwasm_new_interp_eval_expr(
   pwasm_new_interp_frame_t frame,
   const pwasm_slice_t expr
 ) {
+  pwasm_new_interp_t * const interp = frame.env->env_data;
+  pwasm_ctrl_stack_t * const ctrl_stack = &(interp->ctrl_stack);
   pwasm_stack_t * const stack = frame.env->stack;
   const pwasm_inst_t * const insts = frame.mod->mod->insts + expr.ofs;
 
-  // FIXME: move to frame, fix depth
-  pwasm_ctl_stack_entry_t ctl_stack[PWASM_STACK_CHECK_MAX_DEPTH];
-  size_t depth = 0;
+  size_t ctrl_depth = 0;
 
   // D("expr = { .ofs = %zu, .len = %zu }, num_insts = %zu", expr.ofs, expr.len, frame.mod->num_insts);
 
@@ -14034,11 +14103,21 @@ pwasm_new_interp_eval_expr(
           return false;
         }
 
-        ctl_stack[depth++] = (pwasm_ctl_stack_entry_t) {
-          .type   = CTL_BLOCK,
+        // create control stack entry
+        const pwasm_ctrl_stack_entry_t ctrl_entry = {
+          .type   = CTRL_BLOCK,
           .depth  = stack->pos - num_params,
           .ofs    = i,
         };
+
+        // push control stack entry, check for error
+        if (!pwasm_ctrl_stack_push(ctrl_stack, ctrl_entry)) {
+          pwasm_env_fail(frame.env, "block: ctrl_stack_push failed");
+          return false;
+        }
+
+        // increment control depth
+        ctrl_depth++;
       }
 
       break;
@@ -14052,11 +14131,21 @@ pwasm_new_interp_eval_expr(
           return false;
         }
 
-        ctl_stack[depth++] = (pwasm_ctl_stack_entry_t) {
-          .type   = CTL_LOOP,
+        // create control stack entry
+        const pwasm_ctrl_stack_entry_t ctrl_entry = {
+          .type   = CTRL_LOOP,
           .depth  = stack->pos - num_params,
           .ofs    = i,
         };
+
+        // push control stack entry, check for error
+        if (!pwasm_ctrl_stack_push(ctrl_stack, ctrl_entry)) {
+          pwasm_env_fail(frame.env, "block: ctrl_stack_push failed");
+          return false;
+        }
+
+        // increment control depth
+        ctrl_depth++;
       }
 
       break;
@@ -14076,12 +14165,21 @@ pwasm_new_interp_eval_expr(
           return false;
         }
 
-        // push to control stack
-        ctl_stack[depth++] = (pwasm_ctl_stack_entry_t) {
-          .type   = CTL_IF,
+        // create control stack entry
+        const pwasm_ctrl_stack_entry_t ctrl_entry = {
+          .type   = CTRL_IF,
           .depth  = stack->pos - num_params,
           .ofs    = i,
         };
+
+        // push control stack entry, check for error
+        if (!pwasm_ctrl_stack_push(ctrl_stack, ctrl_entry)) {
+          pwasm_env_fail(frame.env, "block: ctrl_stack_push failed");
+          return false;
+        }
+
+        // increment control depth
+        ctrl_depth++;
 
         // increment instruction pointer
         i += tail ? 0 : else_ofs;
@@ -14094,12 +14192,20 @@ pwasm_new_interp_eval_expr(
 
       break;
     case PWASM_OP_END:
-      if (depth) {
-        const pwasm_ctl_stack_entry_t ctl_tail = ctl_stack[depth - 1];
+      if (ctrl_depth) {
+        // pop control stack, check for error
+        pwasm_ctrl_stack_entry_t ctrl_tail;
+        if (!pwasm_ctrl_stack_pop(ctrl_stack, &ctrl_tail)) {
+          pwasm_env_fail(frame.env, "end: ctrl_stack pop failed");
+          return false;
+        }
+
+        // decriment control stack depth
+        ctrl_depth--;
 
         // get mod, block type
         const pwasm_mod_t * const mod = frame.mod->mod;
-        const int32_t block_type = insts[ctl_tail.ofs].v_block.block_type;
+        const int32_t block_type = insts[ctrl_tail.ofs].v_block.block_type;
 
         // get block type result count, check for error
         size_t num_results;
@@ -14113,13 +14219,12 @@ pwasm_new_interp_eval_expr(
         for (size_t j = 0; j < num_results; j++) {
           // calculate stack source and destination offsets
           const size_t src_ofs = stack->pos - 1 - (num_results - 1 - j);
-          const size_t dst_ofs = ctl_tail.depth + j;
+          const size_t dst_ofs = ctrl_tail.depth + j;
           stack->ptr[dst_ofs] = stack->ptr[src_ofs];
         }
 
-        // reset value stack, pop control stack
-        stack->pos = ctl_tail.depth + num_results;
-        depth--;
+        // reset value stack
+        stack->pos = ctrl_tail.depth + num_results;
       } else {
         // return success
         // FIXME: is this correct?
@@ -14129,24 +14234,36 @@ pwasm_new_interp_eval_expr(
       break;
     case PWASM_OP_BR:
       {
-        // decriment control stack
-        depth -= in.v_index;
-        if (!depth) {
+        // pop control stack, check for error
+        if (!pwasm_ctrl_stack_popn(ctrl_stack, in.v_index)) {
+          // log error, return failure
+          pwasm_env_fail(frame.env, "br: ctrl_stack_popn failed");
+          return false;
+        }
+
+        // decriment control stack depth
+        ctrl_depth -= in.v_index;
+        if (!ctrl_depth) {
           // return success
           // FIXME: is this correct?
           return true;
         }
 
-        const pwasm_ctl_stack_entry_t ctl_tail = ctl_stack[depth - 1];
+        // get control stack tail, check for error
+        const pwasm_ctrl_stack_entry_t *ctrl_tail = pwasm_ctrl_stack_peek_tail(ctrl_stack, 0);
+        if (!ctrl_tail) {
+          pwasm_env_fail(frame.env, "br: ctrl_stack_peek_tail failed");
+          return false;
+        }
 
-        if (ctl_tail.type == CTL_LOOP) {
+        if (ctrl_tail->type == CTRL_LOOP) {
           // reset control stack
-          i = ctl_tail.ofs;
-          stack->pos = ctl_tail.depth;
+          i = ctrl_tail->ofs;
+          stack->pos = ctrl_tail->depth;
         } else {
           // get mod, block type
           const pwasm_mod_t * const mod = frame.mod->mod;
-          const int32_t block_type = insts[ctl_tail.ofs].v_block.block_type;
+          const int32_t block_type = insts[ctrl_tail->ofs].v_block.block_type;
 
           // get block type result count, check for error
           size_t num_results;
@@ -14160,36 +14277,57 @@ pwasm_new_interp_eval_expr(
           for (size_t j = 0; j < num_results; j++) {
             // calculate stack source and destination offsets
             const size_t src_ofs = stack->pos - 1 - (num_results - 1 - j);
-            const size_t dst_ofs = ctl_tail.depth + 1 + j;
+            const size_t dst_ofs = ctrl_tail->depth + 1 + j;
             stack->ptr[dst_ofs] = stack->ptr[src_ofs];
           }
 
-          // reset value stack, pop control stack
-          stack->pos = ctl_tail.depth + num_results;
-          depth--;
+          // reset value stack
+          stack->pos = ctrl_tail->depth + num_results;
+
+          // pop control stack, check for error
+          if (!pwasm_ctrl_stack_pop(ctrl_stack, NULL)) {
+            // log error, return failure
+            pwasm_env_fail(frame.env, "br: ctrl_stack_pop failed");
+            return false;
+          }
+
+          // decriment control stack depth
+          ctrl_depth--;
         }
       }
 
       break;
     case PWASM_OP_BR_IF:
       if (stack->ptr[--stack->pos].i32) {
-        // decriment control stack
-        depth -= in.v_index;
-        if (!depth) {
+        // pop control stack, check for error
+        if (!pwasm_ctrl_stack_popn(ctrl_stack, in.v_index)) {
+          // log error, return failure
+          pwasm_env_fail(frame.env, "br_if: ctrl_stack_popn failed");
+          return false;
+        }
+
+        // decriment control stack depth
+        ctrl_depth -= in.v_index;
+        if (!ctrl_depth) {
           // return success
           // FIXME: is this correct?
           return true;
         }
 
-        const pwasm_ctl_stack_entry_t ctl_tail = ctl_stack[depth - 1];
+        // get control stack tail, check for error
+        const pwasm_ctrl_stack_entry_t *ctrl_tail = pwasm_ctrl_stack_peek_tail(ctrl_stack, 0);
+        if (!ctrl_tail) {
+          pwasm_env_fail(frame.env, "br_if: ctrl_stack_peek_tail failed");
+          return false;
+        }
 
-        if (ctl_tail.type == CTL_LOOP) {
-          i = ctl_tail.ofs;
-          stack->pos = ctl_tail.depth;
+        if (ctrl_tail->type == CTRL_LOOP) {
+          i = ctrl_tail->ofs;
+          stack->pos = ctrl_tail->depth;
         } else {
           // get mod, block type
           const pwasm_mod_t * const mod = frame.mod->mod;
-          const int32_t block_type = insts[ctl_tail.ofs].v_block.block_type;
+          const int32_t block_type = insts[ctrl_tail->ofs].v_block.block_type;
 
           // get block type result count, check for error
           size_t num_results;
@@ -14203,13 +14341,22 @@ pwasm_new_interp_eval_expr(
           for (size_t j = 0; j < num_results; j++) {
             // calculate stack source and destination offsets
             const size_t src_ofs = stack->pos - 1 - (num_results - 1 - j);
-            const size_t dst_ofs = ctl_tail.depth + 1 + j;
+            const size_t dst_ofs = ctrl_tail->depth + 1 + j;
             stack->ptr[dst_ofs] = stack->ptr[src_ofs];
           }
 
-          // reset value stack, pop control stack
-          stack->pos = ctl_tail.depth + num_results;
-          depth--;
+          // reset value stack
+          stack->pos = ctrl_tail->depth + num_results;
+
+          // pop control stack, check for error
+          if (!pwasm_ctrl_stack_pop(ctrl_stack, NULL)) {
+            // log error, return failure
+            pwasm_env_fail(frame.env, "br: ctrl_stack_pop failed");
+            return false;
+          }
+
+          // decriment control stack depth
+          ctrl_depth--;
         }
       }
 
@@ -14222,26 +14369,38 @@ pwasm_new_interp_eval_expr(
         const size_t labels_ofs = labels.ofs + MIN(val, labels.len - 1);
         const uint32_t id = frame.mod->mod->u32s[labels_ofs];
 
-        // decriment control stack
-        depth -= id;
-        if (!depth) {
+        // pop control stack, check for error
+        if (!pwasm_ctrl_stack_popn(ctrl_stack, id)) {
+          // log error, return failure
+          pwasm_env_fail(frame.env, "br_if: ctrl_stack_popn failed");
+          return false;
+        }
+
+        // decriment control stack depth
+        ctrl_depth -= id;
+        if (!ctrl_depth) {
           // return success
           // FIXME: is this correct?
           return true;
         }
 
-        const pwasm_ctl_stack_entry_t ctl_tail = ctl_stack[depth - 1];
+        // get control stack tail, check for error
+        const pwasm_ctrl_stack_entry_t *ctrl_tail = pwasm_ctrl_stack_peek_tail(ctrl_stack, 0);
+        if (!ctrl_tail) {
+          pwasm_env_fail(frame.env, "br_if: ctrl_stack_peek_tail failed");
+          return false;
+        }
 
-        if (ctl_tail.type == CTL_LOOP) {
-          i = ctl_tail.ofs;
-          stack->pos = ctl_tail.depth;
+        if (ctrl_tail->type == CTRL_LOOP) {
+          i = ctrl_tail->ofs;
+          stack->pos = ctrl_tail->depth;
         } else {
           // skip past end inst
           i += in.v_block.end_ofs + 1;
 
           // get mod, block type
           const pwasm_mod_t * const mod = frame.mod->mod;
-          const int32_t block_type = insts[ctl_tail.ofs].v_block.block_type;
+          const int32_t block_type = insts[ctrl_tail->ofs].v_block.block_type;
 
           // get block type result count, check for error
           size_t num_results;
@@ -14255,13 +14414,22 @@ pwasm_new_interp_eval_expr(
           for (size_t j = 0; j < num_results; j++) {
             // calculate stack source and destination offsets
             const size_t src_ofs = stack->pos - 1 - (num_results - 1 - j);
-            const size_t dst_ofs = ctl_tail.depth + 1 + j;
+            const size_t dst_ofs = ctrl_tail->depth + 1 + j;
             stack->ptr[dst_ofs] = stack->ptr[src_ofs];
           }
 
-          // reset value stack, pop control stack
-          stack->pos = ctl_tail.depth + num_results;
-          depth--;
+          // reset value stack
+          stack->pos = ctrl_tail->depth + num_results;
+
+          // pop control stack, check for error
+          if (!pwasm_ctrl_stack_pop(ctrl_stack, NULL)) {
+            // log error, return failure
+            pwasm_env_fail(frame.env, "br: ctrl_stack_pop failed");
+            return false;
+          }
+
+          // decriment control stack depth
+          ctrl_depth--;
         }
       }
 
