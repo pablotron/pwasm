@@ -7,7 +7,6 @@ Each entry in this list is prefixed with category tags.
 See the "Tag Definitions" section below for a brief description of each
 tag.
 
-* [ ] code, test: check multi-parameter blocks
 * [ ] code: remove fixed-size stack in `eval_expr`
 * [ ] code, test: check stack size at start of call
 * [ ] code, test: add invalid code tests (e.g. checker assertion tests)
@@ -38,6 +37,7 @@ tag.
 * [ ] code: add `uint64_t pwasm_platform_get_value()` (e.g. compile-time limits, flags, etc)
 
 ## In Progress
+* [ ] code, test: check multi-parameter blocks
 
 ## Done
 
