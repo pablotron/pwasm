@@ -1,6 +1,13 @@
 ;;
 ;; i64.const tests
 ;;
+;; Note: If I'm reading the spec correctly, i32 and i64 literals in the
+;; text format are signed, and unspecified (which defaults to unsigned)
+;; in the binary format.
+;;
+;; If so, then these tests should all generate ;; negative values, even
+;; though I want the values to be large literal values.
+;;
 (module
   ;;
   ;; test_high_byte
