@@ -8956,6 +8956,63 @@ pwasm_checker_type_shrink(
   return true;
 }
 
+static bool
+pwasm_checker_type_check_params(
+  pwasm_checker_t * const checker,
+  const int32_t block_type
+) {
+  // get block.params.size, check for error
+  size_t num_params;
+  if (!pwasm_block_type_params_get_size(checker->mod, block_type, &num_params)) {
+    pwasm_checker_fail(checker, "get block type parameter count failed");
+    return false;
+  }
+
+  // pop expected parameters in reverse order
+  for (size_t i = 0; i < num_params; i++) {
+    // calc offset
+    const size_t ofs = (num_params - 1 - i);
+
+    // get value type
+    pwasm_value_type_t val_type;
+    if (!pwasm_block_type_params_get_nth(checker->mod, block_type, ofs, &val_type)) {
+      pwasm_checker_fail(checker, "pop: get Nth block type param failed");
+      return false;
+    }
+
+    // convert value type to checker type
+    const pwasm_checker_type_t exp_type = pwasm_value_type_to_checker_type(val_type);
+
+    // pop result, check for error
+    pwasm_checker_type_t got_type;
+    if (!pwasm_checker_type_pop_expected(checker, exp_type, &got_type)) {
+      return false;
+    }
+  }
+
+  // push expected parameters back to type stack
+  for (size_t i = 0; i < num_params; i++) {
+    // get value type
+    pwasm_value_type_t val_type;
+    if (!pwasm_block_type_params_get_nth(checker->mod, block_type, i, &val_type)) {
+      pwasm_checker_fail(checker, "push: get Nth block type param failed");
+      return false;
+    }
+
+    // convert value type to checker type
+    const pwasm_checker_type_t exp_type = pwasm_value_type_to_checker_type(val_type);
+
+    // push type to type stack
+    if (!pwasm_checker_type_push(checker, exp_type)) {
+      pwasm_checker_fail(checker, "push: push block type param failed");
+      return false;
+    }
+  }
+
+  // return success
+  return true;
+}
+
 /**
  * Push entry to control stack.
  */
@@ -10040,11 +10097,28 @@ pwasm_checker_check(
     case PWASM_OP_BLOCK:
     case PWASM_OP_LOOP:
       {
+        // get block type
+        const int32_t block_type = in.v_block.block_type;
+
+        // check params
+        if (!pwasm_checker_type_check_params(checker, block_type)) {
+          // return failure
+          return false;
+        }
+
+        // get block.params.size
+        size_t num_params;
+        if (!pwasm_block_type_params_get_size(checker->mod, block_type, &num_params)) {
+          // log error, return failure
+          pwasm_checker_fail(checker, "get block params");
+          return false;
+        }
+
         // build control frame
         const pwasm_checker_ctrl_t ctrl = {
           .op   = in.op,
           .block_type = in.v_block.block_type,
-          .size = pwasm_checker_type_get_size(checker),
+          .size = pwasm_checker_type_get_size(checker) - num_params,
         };
 
         // push control frame, check for error
@@ -10065,11 +10139,28 @@ pwasm_checker_check(
           return false;
         }
 
+        // get block type
+        const int32_t block_type = in.v_block.block_type;
+
+        // check params
+        if (!pwasm_checker_type_check_params(checker, block_type)) {
+          // return failure
+          return false;
+        }
+
+        // get block.params.size
+        size_t num_params;
+        if (!pwasm_block_type_params_get_size(checker->mod, block_type, &num_params)) {
+          // log error, return failure
+          pwasm_checker_fail(checker, "get block params");
+          return false;
+        }
+
         // build control frame
         const pwasm_checker_ctrl_t ctrl = {
           .op   = in.op,
           .block_type = in.v_block.block_type,
-          .size = pwasm_checker_type_get_size(checker),
+          .size = pwasm_checker_type_get_size(checker) - num_params,
         };
 
         // push control frame, check for error
@@ -13885,19 +13976,39 @@ pwasm_new_interp_eval_expr(
       // do nothing
       break;
     case PWASM_OP_BLOCK:
-      ctl_stack[depth++] = (pwasm_ctl_stack_entry_t) {
-        .type   = CTL_BLOCK,
-        .depth  = stack->pos,
-        .ofs    = i,
-      };
+      {
+        // get block.params.size, check for error
+        size_t num_params;
+        if (!pwasm_block_type_params_get_size(frame.mod->mod, in.v_block.block_type, &num_params)) {
+          // log error, return failure
+          pwasm_env_fail(frame.env, "block: get num block params failed");
+          return false;
+        }
+
+        ctl_stack[depth++] = (pwasm_ctl_stack_entry_t) {
+          .type   = CTL_BLOCK,
+          .depth  = stack->pos - num_params,
+          .ofs    = i,
+        };
+      }
 
       break;
     case PWASM_OP_LOOP:
-      ctl_stack[depth++] = (pwasm_ctl_stack_entry_t) {
-        .type   = CTL_LOOP,
-        .depth  = stack->pos,
-        .ofs    = i,
-      };
+      {
+        // get block.params.size, check for error
+        size_t num_params;
+        if (!pwasm_block_type_params_get_size(frame.mod->mod, in.v_block.block_type, &num_params)) {
+          // log error, return failure
+          pwasm_env_fail(frame.env, "block: get num block params failed");
+          return false;
+        }
+
+        ctl_stack[depth++] = (pwasm_ctl_stack_entry_t) {
+          .type   = CTL_LOOP,
+          .depth  = stack->pos - num_params,
+          .ofs    = i,
+        };
+      }
 
       break;
     case PWASM_OP_IF:
@@ -13908,10 +14019,18 @@ pwasm_new_interp_eval_expr(
         // get else/end offset
         const size_t else_ofs = in.v_block.else_ofs ? in.v_block.else_ofs : in.v_block.end_ofs;
 
+        // get block.params.size, check for error
+        size_t num_params;
+        if (!pwasm_block_type_params_get_size(frame.mod->mod, in.v_block.block_type, &num_params)) {
+          // log error, return failure
+          pwasm_env_fail(frame.env, "block: get num block params failed");
+          return false;
+        }
+
         // push to control stack
         ctl_stack[depth++] = (pwasm_ctl_stack_entry_t) {
           .type   = CTL_IF,
-          .depth  = stack->pos,
+          .depth  = stack->pos - num_params,
           .ofs    = i,
         };
 
@@ -13941,8 +14060,6 @@ pwasm_new_interp_eval_expr(
           return false;
         }
 
-        // TODO: subtract params as well?
-
         // pop results
         for (size_t j = 0; j < num_results; j++) {
           // calculate stack source and destination offsets
@@ -13952,7 +14069,6 @@ pwasm_new_interp_eval_expr(
         }
 
         // reset value stack, pop control stack
-        // FIXME: subtract params as well?
         stack->pos = ctl_tail.depth + num_results;
         depth--;
       } else {
