@@ -617,7 +617,7 @@ pwasm_block_type_is_import_type(
   const pwasm_mod_t * const mod,
   const int32_t block_type
 ) {
-  return (block_type > 0) && ((uint32_t) block_type < mod->num_types);
+  return (block_type >= 0) && ((uint32_t) block_type < mod->num_types);
 }
 
 /**
@@ -755,7 +755,6 @@ pwasm_block_type_results_get_size(
   const int32_t block_type,
   size_t * const ret
 ) {
-  D("block_type = %d", block_type);
   switch (pwasm_block_type_get_kind(mod, block_type)) {
   case PWASM_BLOCK_TYPE_KIND_RESULT:
     if (ret) {
@@ -4213,9 +4212,10 @@ CTL_TYPES
  */
 
 typedef struct {
-  pwasm_ctl_type_t type; // return value type
+  pwasm_ctl_type_t type; // stack entry type
   size_t depth; // value stack depth
   size_t ofs; // inst ofs
+  uint32_t func_type;
 } pwasm_ctl_stack_entry_t;
 
 /**
@@ -7523,7 +7523,16 @@ pwasm_builder_resolve_jumps(
     // clear stack
     pwasm_vec_clear(&stack);
 
-    for (size_t j = 0; j < func.expr.len - 1; j++) {
+    {
+      // push control offset
+      const size_t expr_ofs = 0;
+      if (!pwasm_vec_push(&stack, 1, &expr_ofs, NULL)) {
+        pwasm_fail(builder->mem_ctx, "builder control stack push");
+        return false;
+      }
+    }
+
+    for (size_t j = 0; j < func.expr.len; j++) {
       const pwasm_inst_t in = insts[func.expr.ofs + j];
 
       switch (in.op) {
@@ -9987,7 +9996,6 @@ static bool
 pwasm_checker_check(
   pwasm_checker_t * const checker,
   const pwasm_mod_t * const mod,
-  const uint32_t func_type_id,
   const pwasm_func_t func
 ) {
   // temporarily disabled
@@ -10007,12 +10015,11 @@ pwasm_checker_check(
   // clear checker
   pwasm_checker_clear(checker);
 
-  #if 0
   {
     // build control frame for outer block
     const pwasm_checker_ctrl_t ctrl = {
       .op   = PWASM_OP_BLOCK,
-      .block_type = func_type_id,
+      .block_type = func.type_id,
       .size = pwasm_checker_type_get_size(checker),
     };
 
@@ -10023,11 +10030,8 @@ pwasm_checker_check(
       return false;
     }
   }
-  #else
-  (void) func_type_id;
-  #endif /* 0 */
 
-  for (size_t i = 0; i < func.expr.len - 1; i++) {
+  for (size_t i = 0; i < func.expr.len; i++) {
     // get instruction and index immediate
     const pwasm_inst_t in = insts[i];
     const uint32_t id = in.v_index;
@@ -10849,7 +10853,7 @@ pwasm_checker_check(
       break;
     case PWASM_OP_I64_TRUNC_SAT_F64_S:
     case PWASM_OP_I64_TRUNC_SAT_F64_U:
-      if (!pwasm_checker_check_cvtop(checker, PWASM_CHECKER_TYPE_I32, PWASM_CHECKER_TYPE_F64)) {
+      if (!pwasm_checker_check_cvtop(checker, PWASM_CHECKER_TYPE_I64, PWASM_CHECKER_TYPE_F64)) {
         return false;
       }
 
@@ -11284,11 +11288,8 @@ static bool
 pwasm_mod_check_custom_section(
   const pwasm_mod_t * const mod,
   const pwasm_mod_check_t * const check,
-  const size_t section_ofs,
   const pwasm_custom_section_t section
 ) {
-  (void) section_ofs;
-
   // is the custom section name valid utf8?
   if (!pwasm_mod_check_is_valid_utf8(mod, section.name)) {
     // Note: this is a warning rather than an error because the wasm
@@ -11337,11 +11338,8 @@ static bool
 pwasm_mod_check_type(
   const pwasm_mod_t * const mod,
   const pwasm_mod_check_t * const check,
-  const size_t type_ofs,
   const pwasm_type_t type
 ) {
-  (void) type_ofs;
-
   // check parameters
   if (!pwasm_mod_check_type_vals(mod, check, type.params)) {
     return false;
@@ -11376,10 +11374,8 @@ static inline bool
 pwasm_mod_check_func(
   const pwasm_mod_t * const mod,
   const pwasm_mod_check_t * const check,
-  const size_t func_ofs,
   const uint32_t id
 ) {
-  (void) func_ofs;
   return pwasm_mod_check_type_id(mod, check, id);
 }
 
@@ -11397,11 +11393,8 @@ static bool
 pwasm_mod_check_global(
   const pwasm_mod_t * const mod,
   const pwasm_mod_check_t * const check,
-  const size_t global_ofs,
   const pwasm_global_t global
 ) {
-  (void) global_ofs;
-
   // check init expr
   if (!pwasm_mod_check_const_expr(mod, check, global.expr)) {
     return false;
@@ -11425,12 +11418,10 @@ static bool
 pwasm_mod_check_elem(
   const pwasm_mod_t * const mod,
   const pwasm_mod_check_t * const check,
-  const size_t elem_ofs,
   const pwasm_elem_t elem
 ) {
   // get the maximum table ID
   const size_t max_tables = mod->max_indices[PWASM_IMPORT_TYPE_TABLE];
-  (void) elem_ofs;
 
   // check table index
   if (elem.table_id >= max_tables) {
@@ -11461,11 +11452,9 @@ static bool
 pwasm_mod_check_segment(
   const pwasm_mod_t * const mod,
   const pwasm_mod_check_t * const check,
-  const size_t segment_ofs,
   const pwasm_segment_t segment
 ) {
   const size_t max_mems = mod->max_indices[PWASM_IMPORT_TYPE_MEM];
-  (void) segment_ofs;
 
   // check memory index
   if (segment.mem_id >= max_mems) {
@@ -11499,11 +11488,9 @@ static bool
 pwasm_mod_check_mem(
   const pwasm_mod_t * const mod,
   const pwasm_mod_check_t * const check,
-  const size_t mem_ofs,
   const pwasm_limits_t mem
 ) {
   (void) mod;
-  (void) mem_ofs;
 
   // check limits
   if (!pwasm_mod_check_limits(mem, check)) {
@@ -11543,11 +11530,9 @@ static bool
 pwasm_mod_check_table(
   const pwasm_mod_t * const mod,
   const pwasm_mod_check_t * const check,
-  const size_t table_ofs,
   const pwasm_table_t table
 ) {
   (void) mod;
-  (void) table_ofs;
 
   // check element type
   // (note: redundant, since this is checked during parsing)
@@ -11579,11 +11564,9 @@ static bool
 pwasm_mod_check_import(
   const pwasm_mod_t * const mod,
   const pwasm_mod_check_t * const check,
-  const size_t import_ofs,
   const pwasm_import_t import
 ) {
   (void) mod;
-  (void) import_ofs;
 
   // is the import module name valid utf8?
   if (!pwasm_mod_check_is_valid_utf8(mod, import.module)) {
@@ -11602,14 +11585,12 @@ pwasm_mod_check_import(
   case PWASM_IMPORT_TYPE_FUNC:
     return pwasm_mod_check_type_id(mod, check, import.func);
   case PWASM_IMPORT_TYPE_TABLE:
-    // FIXME: should i be passing 0 or import_ofs here?
-    return pwasm_mod_check_table(mod, check, 0, import.table);
+    return pwasm_mod_check_table(mod, check, import.table);
   case PWASM_IMPORT_TYPE_GLOBAL:
     // nothing to check
     return true;
   case PWASM_IMPORT_TYPE_MEM:
-    // FIXME: should i be passing 0 or import_ofs here?
-    return pwasm_mod_check_mem(mod, check, 0, import.mem);
+    return pwasm_mod_check_mem(mod, check, import.mem);
   default:
     check->cbs.on_error("invalid import type", check->cb_data);
     return false;
@@ -11654,11 +11635,8 @@ static bool
 pwasm_mod_check_export(
   const pwasm_mod_t * const mod,
   const pwasm_mod_check_t * const check,
-  const size_t export_ofs,
   const pwasm_export_t export
 ) {
-  (void) export_ofs;
-
   // is the export name valid utf8?
   if (!pwasm_mod_check_is_valid_utf8(mod, export.name)) {
     check->cbs.on_error("export name is not UTF-8", check->cb_data);
@@ -11697,11 +11675,9 @@ static bool
 pwasm_mod_check_code(
   const pwasm_mod_t * const mod,
   pwasm_mod_check_t * const check,
-  const size_t func_ofs,
   const pwasm_func_t func
 ) {
-  const uint32_t type_id = mod->funcs[func_ofs];
-  return pwasm_checker_check(&(check->checker), mod, type_id, func);
+  return pwasm_checker_check(&(check->checker), mod, func);
 }
 
 /**
@@ -11773,7 +11749,7 @@ pwasm_mod_check_start(
     pwasm_mod_check_t * const check \
   ) { \
     for (size_t i = 0; i < mod->num_ ## NAME ## s; i++) { \
-      if (!pwasm_mod_check_ ## NAME (mod, check, i, mod->NAME ## s[i])) { \
+      if (!pwasm_mod_check_ ## NAME (mod, check, mod->NAME ## s[i])) { \
         return false; \
       } \
     } \
@@ -14002,14 +13978,12 @@ pwasm_new_interp_eval_expr(
       break;
     case PWASM_OP_BR:
       {
-        // check branch index
-        // TODO: remove, handled by checker
-        if (in.v_index >= depth - 1) {
-          return false;
-        }
-
         // decriment control stack
         depth -= in.v_index;
+        if (!depth) {
+          // FIXME: is this correct?
+          return true;
+        }
 
         const pwasm_ctl_stack_entry_t ctl_tail = ctl_stack[depth - 1];
 
@@ -14049,6 +14023,10 @@ pwasm_new_interp_eval_expr(
       if (stack->ptr[--stack->pos].i32) {
         // decriment control stack
         depth -= in.v_index;
+        if (!depth) {
+          // FIXME: is this correct?
+          return true;
+        }
 
         const pwasm_ctl_stack_entry_t ctl_tail = ctl_stack[depth - 1];
 
@@ -14091,14 +14069,12 @@ pwasm_new_interp_eval_expr(
         const size_t labels_ofs = labels.ofs + MIN(val, labels.len - 1);
         const uint32_t id = frame.mod->mod->u32s[labels_ofs];
 
-        // check for branch index overflow
-        // TODO: remove, handled by checker
-        if (id >= depth - 1) {
-          return false;
-        }
-
         // decriment control stack
         depth -= id;
+        if (!depth) {
+          // FIXME: is this correct?
+          return true;
+        }
 
         const pwasm_ctl_stack_entry_t ctl_tail = ctl_stack[depth - 1];
 
@@ -18180,6 +18156,7 @@ pwasm_new_interp_call_func(
 
   const bool ok = pwasm_new_interp_eval_expr(frame, expr);
   if (!ok) {
+    D("eval_expr() failed, func_ofs = %u", func_ofs);
     // return failure
     return false;
   }
