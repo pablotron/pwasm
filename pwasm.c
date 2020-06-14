@@ -13326,13 +13326,65 @@ pwasm_new_interp_init_elems(
   return true;
 }
 
+// forward reference
+static pwasm_env_mem_t *pwasm_new_interp_get_mem(pwasm_env_t * const, const uint32_t);
+
 static bool
 pwasm_new_interp_init_segments(
   pwasm_new_interp_frame_t frame
 ) {
-  (void) frame;
+  pwasm_new_interp_t * const interp = frame.env->env_data;
+  const uint32_t * const u32s = pwasm_vec_get_data(&(interp->u32s));
+  const pwasm_segment_t * const segments = frame.mod->mod->segments;
+  const size_t num_segments = frame.mod->mod->num_segments;
+  pwasm_stack_t * const stack = frame.env->stack;
 
-  // TODO: init data segments
+  // init memory elements
+  for (size_t i = 0; i < num_segments; i++) {
+    const pwasm_segment_t segment = segments[i];
+
+    // get interpreter memory ID
+    const uint32_t mem_id = u32s[frame.mod->mems.ofs + segment.mem_id];
+
+    // get memory, check for error
+    pwasm_env_mem_t * const mem = pwasm_new_interp_get_mem(frame.env, mem_id);
+    if (!mem) {
+      // return failure
+      return false;
+    }
+
+    // evaluate offset expression, check for error
+    stack->pos = 0;
+    if (!pwasm_new_interp_eval_expr(frame, segment.expr)) {
+      // return failure
+      return false;
+    }
+
+    // check that const expr has at least one result
+    if (!stack->pos) {
+      pwasm_env_fail(frame.env, "constant expression must return segment offset");
+      return false;
+    }
+
+    // get destination offset
+    const uint32_t dst_ofs = stack->ptr[stack->pos - 1].i32;
+
+    // check destination length
+    // FIXME: should we resize here?
+    if (dst_ofs + segment.data.len > mem->buf.len) {
+      pwasm_env_fail(frame.env, "segment destination out of bounds");
+      return false;
+    }
+
+    // D("mem = %u, ofs = %u, len = %zu", mem_id, dst_ofs, segment.data.len);
+
+    // get dst, src pointers
+    uint8_t * const dst = (uint8_t*) mem->buf.ptr + dst_ofs;
+    const uint8_t * const src = frame.mod->mod->bytes + segment.data.ofs;
+
+    // copy data
+    memcpy(dst, src, segment.data.len);
+  }
 
   // return success
   return true;

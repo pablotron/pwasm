@@ -12,7 +12,6 @@ tag.
       remove them from `eval_expr`
 * [ ] code, test: check `call_immediate` table ID in validation layer
       instead of parser
-* [ ] code: implement `pwasm_new_interp_init_segments()`
 * [ ] code, test: check stack size at start of call
 * [ ] code, test: add invalid code tests (e.g. checker assertion tests)
 * [ ] code, test: fix memory leaks on parse/validation/exec errors
@@ -109,6 +108,7 @@ Items in this section have been completed.
 * [x] code, test: test `br` to outermost block (according to `return` documentation this should work)
 * [x] code: remove `PWASM_RESULT_TYPE_*` (moved to `cli/result-type.h`)
 * [x] code, test: check multi-parameter blocks (`data/wat/15-multi.wat`)
+* [x] code: implement `pwasm_new_interp_init_segments()`
 
 ## Tag Definitions
 
