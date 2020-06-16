@@ -1,4 +1,6 @@
 #include "../tests.h"
+#include "../../pwasm.h"
+#include "../../pwasm-compile.h"
 
 void test_compile(
   cli_test_ctx_t * const test_ctx,

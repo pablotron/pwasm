@@ -2890,12 +2890,12 @@ _Bool pwasm_call(
 const pwasm_env_cbs_t *pwasm_new_interpreter_get_cbs(void);
 
 /**
- * @defgroup aot-jit AOT JIT Functions
+ * @defgroup jit JIT Functions
  */
 
 /**
- * JIT compiler function.
- * @ingroup type
+ * JIT compiler function pointer.
+ * @ingroup jit
  *
  * @param env       Execution environment.
  * @param mod       Module.
@@ -2909,21 +2909,20 @@ typedef void *(pwasm_compile_func_t)(
   const size_t func_ofs
 );
 
-/*
+/**
  * Get AOT JIT environment callbacks.
  *
  * Populate environment variable callbacks for an ahead-of-time (AOT),
  * just in time (JIT) environment.
  *
- * @ingroup aot-jit
+ * @ingroup jit
  *
  * @param[out]  cbs     Pointer to execution environment callbacks.
  * @param[in]   compile Pointer to compile function.
  *
  * @see pwasm_env_init()
  */
-void
-pwasm_aot_jit_get_cbs(
+void pwasm_aot_jit_get_cbs(
   pwasm_env_cbs_t * const cbs,
   pwasm_compile_func_t compile
 );

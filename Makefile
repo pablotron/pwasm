@@ -25,7 +25,8 @@ LIBS=-lm
 # LIBS=-lm -lubsan
 
 APP=pwasm
-OBJS=pwasm.o cli/main.o cli/cmds.o cli/tests.o cli/utils.o \
+OBJS=pwasm.o pwasm-compile.o \
+     cli/main.o cli/cmds.o cli/tests.o cli/utils.o \
      cli/cmds/help.o cli/cmds/test.o cli/cmds/wat.o \
      cli/cmds/customs.o cli/cmds/cat.o cli/cmds/func.o \
      cli/cmds/imports.o cli/cmds/exports.o \
