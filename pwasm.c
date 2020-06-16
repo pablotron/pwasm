@@ -18448,6 +18448,7 @@ pwasm_new_interp_call_func(
   // get expr instructions slice
   const pwasm_slice_t expr = mod->codes[func_ofs].expr;
 
+  // evaluate expr, check for error
   const bool ok = pwasm_new_interp_eval_expr(frame, expr);
   if (!ok) {
     D("eval_expr() failed, func_ofs = %u", func_ofs);
@@ -18856,4 +18857,6661 @@ NEW_PWASM_INTERP_CBS = {
 const pwasm_env_cbs_t *
 pwasm_new_interpreter_get_cbs(void) {
   return &NEW_PWASM_INTERP_CBS;
+}
+
+//
+// aot jit
+//
+
+typedef enum {
+  PWASM_AOT_JIT_MOD_TYPE_MOD,
+  PWASM_AOT_JIT_MOD_TYPE_NATIVE,
+  PWASM_AOT_JIT_MOD_TYPE_LAST,
+} pwasm_aot_jit_mod_type_t;
+
+typedef struct {
+  // module name
+  pwasm_buf_t name;
+
+  // module type (internal or native)
+  pwasm_aot_jit_mod_type_t type;
+
+  // references to the u32s vector in the parent environment
+  pwasm_slice_t funcs;
+  pwasm_slice_t globals;
+  pwasm_slice_t mems;
+  pwasm_slice_t tables;
+
+  // pointers to compiled functions
+  void **fns;
+
+  union {
+    const pwasm_native_t * const native;
+    const pwasm_mod_t * const mod;
+  };
+} pwasm_aot_jit_mod_t;
+
+typedef struct {
+  // mod offset in parent environment
+  uint32_t mod_ofs;
+
+  // func offset in parent mod
+  uint32_t func_ofs;
+} pwasm_aot_jit_func_t;
+
+typedef struct {
+  pwasm_env_mem_t * const mem; // memory pointer
+  const size_t ofs; // absolute offset, in bytes
+  const size_t size; // size, in bytes
+} pwasm_aot_jit_mem_chunk_t;
+
+/*
+ * static void
+ * pwasm_aot_jit_dump_mem_chunk(
+ *   const pwasm_aot_jit_mem_chunk_t chunk
+ * ) {
+ *   D("{ .mem = %p, .ofs = %zu, .size = %zu }", (void*) chunk.mem, chunk.ofs, chunk.size);
+ * }
+ */
+
+typedef struct {
+  // mod offset in parent environment
+  uint32_t mod_ofs;
+
+  // table offset in parent mod
+  uint32_t table_ofs;
+
+  // limits from initial mod
+  const pwasm_limits_t limits;
+
+  // vec of u32 values
+  uint32_t *vals;
+
+  // array of u64s indicating set elements
+  uint64_t *masks;
+
+  // maximum number of elements
+  size_t max_vals;
+} pwasm_aot_jit_table_t;
+
+static pwasm_aot_jit_table_t
+pwasm_aot_jit_table_init(
+  pwasm_env_t * const env,
+  const uint32_t mod_ofs,
+  const uint32_t table_ofs,
+  pwasm_limits_t limits
+) {
+  (void) env;
+  return (pwasm_aot_jit_table_t) {
+    .mod_ofs    = mod_ofs,
+    .table_ofs  = table_ofs,
+    .limits     = limits,
+    .vals       = NULL,
+    .masks      = NULL,
+    .max_vals   = 0,
+  };
+}
+
+static void
+pwasm_aot_jit_table_fini(
+  pwasm_env_t * const env,
+  pwasm_aot_jit_table_t * const table
+) {
+  if (!table->max_vals) {
+    return;
+  }
+
+  if (table->max_vals > 0) {
+    // free memory and masks
+    pwasm_realloc(env->mem_ctx, table->vals, 0);
+    pwasm_realloc(env->mem_ctx, table->masks, 0);
+    table->vals = NULL;
+    table->masks = NULL;
+    table->max_vals = 0;
+  }
+}
+
+static bool
+pwasm_aot_jit_table_grow(
+  pwasm_env_t * const env,
+  pwasm_aot_jit_table_t * const table,
+  const size_t src_new_len
+) {
+  // check existing capacity
+  if (src_new_len <= table->max_vals) {
+    return true;
+  }
+
+  // clamp to minimum size
+  const size_t new_len = (table->limits.min > src_new_len) ? table->limits.min : src_new_len;
+
+  // check table maximum limit
+  if (table->limits.has_max && src_new_len > table->limits.max) {
+    D("src_new_len = %zu, max = %u", src_new_len, table->limits.max);
+    pwasm_env_fail(env, "length greater than table limit");
+    return false;
+  }
+
+  // reallocate vals, check for error
+  uint32_t *tmp_vals = pwasm_realloc(env->mem_ctx, table->vals, new_len * sizeof(uint32_t));
+  if (!tmp_vals && new_len > 0) {
+    pwasm_env_fail(env, "vals pwasm_realloc() failed");
+    return false;
+  }
+
+  // reallocate masks, check for error
+  const size_t new_num_masks = (new_len / 64) + ((new_len & 0x3F) ? 1 : 0);
+  uint64_t *tmp_masks = pwasm_realloc(env->mem_ctx, table->masks, new_num_masks * sizeof(uint64_t));
+  if (!tmp_vals && new_len > 0) {
+    pwasm_env_fail(env, "masks pwasm_realloc() failed");
+    return false;
+  }
+
+  // clear masks
+  for (size_t i = table->max_vals; i < new_len; i++) {
+    tmp_masks[i >> 6] &= ~(((uint64_t) 1) << (i & 0x3F));
+  }
+
+  // update vals, masks, and max_len
+  table->vals = tmp_vals;
+  table->masks = tmp_masks;
+  table->max_vals = new_len;
+
+  // return success
+  return true;
+}
+
+static bool
+pwasm_aot_jit_table_set(
+  pwasm_env_t * const env,
+  pwasm_aot_jit_table_t * const table,
+  const size_t ofs,
+  const uint32_t * const vals,
+  const size_t num_vals
+) {
+  if (!pwasm_aot_jit_table_grow(env, table, ofs + num_vals)) {
+    // return failure
+    return false;
+  }
+
+  // copy values
+  memcpy(table->vals + ofs, vals, num_vals * sizeof(uint32_t));
+
+  // set masks
+  for (size_t i = ofs; i < ofs + num_vals; i++) {
+    table->masks[i >> 6] |= ((uint64_t) 1) << (i & 0x3F);
+  }
+
+  // return success
+  return true;
+}
+
+/**
+ * Get element (u32) from table.
+ *
+ * At the moment the only supported types are function references, so
+ * this returns a u32 offset into the parent environment's funcs table.
+ */
+static bool
+pwasm_aot_jit_table_get_elem(
+  pwasm_env_t * const env,
+  pwasm_aot_jit_table_t * const table,
+  const size_t ofs,
+  uint32_t * const ret_val
+) {
+  // check element offset
+  if (ofs >= table->max_vals) {
+    D("ofs = %zu, table->max_vals = %zu", ofs, table->max_vals);
+    // log error, return failure
+    pwasm_env_fail(env, "table element offset out of bounds");
+    return false;
+  }
+
+  // check element mask
+  const bool set = table->masks[ofs >> 6] & ((uint64_t) 1) << (ofs & 0x3F);
+  if (!set) {
+    // log error, return failure
+    pwasm_env_fail(env, "table element is not set");
+    return false;
+  }
+
+  if (ret_val) {
+    // write value to destination
+    *ret_val = table->vals[ofs];
+  }
+
+  // return success
+  return true;
+}
+
+#define PWASM_AOT_JIT_VECS \
+  PWASM_AOT_JIT_VEC(u32s, uint32_t) \
+  PWASM_AOT_JIT_VEC(mods, pwasm_aot_jit_mod_t) \
+  PWASM_AOT_JIT_VEC(funcs, pwasm_aot_jit_func_t) \
+  PWASM_AOT_JIT_VEC(globals, pwasm_env_global_t) \
+  PWASM_AOT_JIT_VEC(mems, pwasm_env_mem_t) \
+  PWASM_AOT_JIT_VEC(tables, pwasm_aot_jit_table_t)
+
+typedef struct {
+  #define PWASM_AOT_JIT_VEC(NAME, TYPE) pwasm_vec_t NAME;
+  PWASM_AOT_JIT_VECS
+  #undef PWASM_AOT_JIT_VEC
+  pwasm_ctrl_stack_t ctrl_stack;
+} pwasm_aot_jit_t;
+
+typedef struct {
+  pwasm_env_t * const env;
+  pwasm_aot_jit_mod_t * const mod;
+
+  // memory for this frame
+  const uint32_t mem_id;
+
+  // function parameters
+  const pwasm_slice_t params;
+
+  // offset and length of locals on the stack
+  // NOTE: the offset and length include function parameters
+  pwasm_slice_t locals;
+} pwasm_aot_jit_frame_t;
+
+static bool
+pwasm_aot_jit_init(
+  pwasm_env_t * const env
+) {
+  const size_t interp_size = sizeof(pwasm_aot_jit_t);
+  pwasm_mem_ctx_t * const mem_ctx = env->mem_ctx;
+
+  // allocate interpreter data store
+  pwasm_aot_jit_t *interp = pwasm_realloc(mem_ctx, NULL, interp_size);
+  if (!interp) {
+    // log error, return failure
+    D("pwasm_realloc() failed (size = %zu)", interp_size);
+    pwasm_env_fail(env, "interpreter memory allocation failed");
+    return false;
+  }
+
+  #define PWASM_AOT_JIT_VEC(NAME, TYPE) \
+    /* allocate vector, check for error */ \
+    if (!pwasm_vec_init(mem_ctx, &(interp->NAME), sizeof(TYPE))) { \
+      /* log error, return failure */ \
+      D("pwasm_vec_init() failed (stride = %zu)", sizeof(TYPE)); \
+      pwasm_env_fail(env, "interpreter " #NAME " vector init failed"); \
+      return false; \
+    }
+  PWASM_AOT_JIT_VECS
+  #undef PWASM_AOT_JIT_VEC
+
+  // init control stack, check for error
+  if (!pwasm_ctrl_stack_init(&(interp->ctrl_stack), mem_ctx)) {
+    // return failure
+    return false;
+  }
+
+  // save interpreter, return success
+  env->env_data = interp;
+  return true;
+}
+
+static void
+pwasm_aot_jit_fini_tables(
+  pwasm_env_t * const env
+) {
+  pwasm_aot_jit_t * const interp = env->env_data;
+  pwasm_vec_t * const vec = &(interp->tables);
+  pwasm_aot_jit_table_t *rows = (pwasm_aot_jit_table_t*) pwasm_vec_get_data(vec);
+  const size_t num_rows = pwasm_vec_get_size(vec);
+
+  for (size_t i = 0; i < num_rows; i++) {
+    pwasm_aot_jit_table_fini(env, rows + i);
+  }
+}
+
+static void
+pwasm_aot_jit_fini(
+  pwasm_env_t * const env
+) {
+  pwasm_mem_ctx_t * const mem_ctx = env->mem_ctx;
+
+  // get interpreter data
+  pwasm_aot_jit_t *data = env->env_data;
+  if (!data) {
+    return;
+  }
+
+  // finalize tables
+  pwasm_aot_jit_fini_tables(env);
+
+  // fini control stack, check for error
+  pwasm_ctrl_stack_fini(&(data->ctrl_stack));
+
+  // free vectors
+  #define PWASM_AOT_JIT_VEC(NAME, TYPE) pwasm_vec_fini(&(data->NAME));
+  PWASM_AOT_JIT_VECS
+  #undef PWASM_AOT_JIT_VEC
+
+  // free backing data
+  pwasm_realloc(mem_ctx, data, 0);
+  env->env_data = NULL;
+}
+
+/**
+ * Given an environment and a table handle, return a pointer to the
+ * table instance.
+ *
+ * Returns `NULL` if the table handle is invalid.
+ */
+static pwasm_aot_jit_table_t *
+pwasm_aot_jit_get_table(
+  pwasm_env_t * const env,
+  const uint32_t table_id
+) {
+  pwasm_aot_jit_t * const interp = env->env_data;
+  pwasm_vec_t * const vec = &(interp->tables);
+  const pwasm_aot_jit_table_t * const rows = pwasm_vec_get_data(vec);
+  const size_t num_rows = pwasm_vec_get_size(vec);
+
+  // check that table_id is in bounds
+  if (!table_id || table_id > num_rows) {
+    // log error, return failure
+    D("bad table_id: %u, num_rows = %zu", table_id, num_rows);
+    pwasm_env_fail(env, "interpreter table index out of bounds");
+    return NULL;
+  }
+
+  // return pointer to table
+  return (pwasm_aot_jit_table_t*) rows + (table_id - 1);
+}
+
+static bool
+pwasm_aot_jit_push_u32s(
+  pwasm_env_t * const env,
+  const size_t ofs,
+  const size_t len
+) {
+  pwasm_aot_jit_t * const interp = env->env_data;
+  pwasm_vec_t * const u32s = &(interp->u32s);
+  const pwasm_slice_t slice = { ofs, len };
+
+  uint32_t ids[PWASM_BATCH_SIZE];
+  size_t num = 0;
+
+  for (size_t i = 0; i < slice.len; i++) {
+    ids[num++] = slice.ofs + i;
+
+    if (num == LEN(ids)) {
+      // clear count
+      num = 0;
+
+      // append results, check for error
+      if (!pwasm_vec_push(u32s, LEN(ids), ids, NULL)) {
+        // log error, return failure
+        pwasm_env_fail(env, "append offsets failed");
+        return false;
+      }
+    }
+  }
+
+  if (num > 0) {
+    // append results, check for error
+    if (!pwasm_vec_push(u32s, num, ids, NULL)) {
+      // log error, return failure
+      pwasm_env_fail(env, "append remaining offsets failed");
+      return false;
+    }
+  }
+
+  // return success
+  return true;
+}
+
+static bool
+pwasm_aot_jit_add_native_funcs(
+  pwasm_env_t * const env,
+  const uint32_t mod_ofs,
+  const pwasm_native_t * const mod,
+  pwasm_slice_t * const ret
+) {
+  pwasm_aot_jit_t * const interp = env->env_data;
+  pwasm_vec_t * const dst = &(interp->funcs);
+  const size_t dst_ofs = pwasm_vec_get_size(dst);
+  const size_t u32s_ofs = pwasm_vec_get_size(&(interp->u32s));
+
+  pwasm_aot_jit_func_t tmp[PWASM_BATCH_SIZE];
+  size_t tmp_ofs = 0;
+
+  for (size_t i = 0; i < mod->num_funcs; i++) {
+    tmp[tmp_ofs++] = (pwasm_aot_jit_func_t) {
+      .mod_ofs  = mod_ofs,
+      .func_ofs = i,
+    };
+
+    if (tmp_ofs == LEN(tmp)) {
+      // clear count
+      tmp_ofs = 0;
+
+      // append results, check for error
+      if (!pwasm_vec_push(dst, LEN(tmp), tmp, NULL)) {
+        // log error, return failure
+        pwasm_env_fail(env, "append native functions failed");
+        return false;
+      }
+    }
+  }
+
+  if (tmp_ofs > 0) {
+    // append remaining results
+    if (!pwasm_vec_push(dst, tmp_ofs, tmp, NULL)) {
+      // log error, return failure
+      pwasm_env_fail(env, "append remaining native functions failed");
+      return false;
+    }
+  }
+
+  // add IDs
+  if (!pwasm_aot_jit_push_u32s(env, u32s_ofs, mod->num_funcs)) {
+    // return failure
+    return false;
+  }
+
+  // populate result
+  *ret = (pwasm_slice_t) {
+    .ofs = dst_ofs,
+    .len = mod->num_funcs,
+  };
+
+  // return success
+  return true;
+}
+
+static bool
+pwasm_aot_jit_add_native_globals(
+  pwasm_env_t * const env,
+  const uint32_t mod_ofs,
+  const pwasm_native_t * const mod,
+  pwasm_slice_t * const ret
+) {
+  pwasm_aot_jit_t * const interp = env->env_data;
+  pwasm_vec_t * const dst = &(interp->globals);
+  const size_t dst_ofs = pwasm_vec_get_size(dst);
+  const size_t u32s_ofs = pwasm_vec_get_size(&(interp->u32s));
+  (void) mod_ofs;
+
+  pwasm_env_global_t tmp[PWASM_BATCH_SIZE];
+  size_t tmp_ofs = 0;
+
+  for (size_t i = 0; i < mod->num_globals; i++) {
+    tmp[tmp_ofs++] = (pwasm_env_global_t) {
+      .type = mod->globals[i].type,
+      .val  = mod->globals[i].val,
+    };
+
+    if (tmp_ofs == LEN(tmp)) {
+      // clear count
+      tmp_ofs = 0;
+
+      // append results, check for error
+      if (!pwasm_vec_push(dst, LEN(tmp), tmp, NULL)) {
+        // log error, return failure
+        pwasm_env_fail(env, "append native globals failed");
+        return false;
+      }
+    }
+  }
+
+  if (tmp_ofs > 0) {
+    // append remaining results
+    if (!pwasm_vec_push(dst, tmp_ofs, tmp, NULL)) {
+      // log error, return failure
+      pwasm_env_fail(env, "append remaining native globals failed");
+      return false;
+    }
+  }
+
+  // add IDs
+  if (!pwasm_aot_jit_push_u32s(env, u32s_ofs, mod->num_globals)) {
+    // return failure
+    return false;
+  }
+
+  // populate result
+  *ret = (pwasm_slice_t) {
+    .ofs = dst_ofs,
+    .len = mod->num_globals,
+  };
+
+  // return success
+  return true;
+}
+
+static bool
+pwasm_aot_jit_add_native_mems(
+  pwasm_env_t * const env,
+  const uint32_t mod_ofs,
+  const pwasm_native_t * const mod,
+  pwasm_slice_t * const ret
+) {
+  pwasm_aot_jit_t * const interp = env->env_data;
+  pwasm_vec_t * const dst = &(interp->mems);
+  const size_t dst_ofs = pwasm_vec_get_size(dst);
+  (void) mod_ofs;
+
+  pwasm_env_mem_t tmp[PWASM_BATCH_SIZE];
+  size_t tmp_ofs = 0;
+
+  for (size_t i = 0; i < mod->num_mems; i++) {
+    tmp[tmp_ofs++] = (pwasm_env_mem_t) {
+      .buf    = mod->mems[i].buf,
+      .limits = mod->mems[i].limits,
+    };
+
+    if (tmp_ofs == LEN(tmp)) {
+      // clear count
+      tmp_ofs = 0;
+
+      // append results, check for error
+      if (!pwasm_vec_push(dst, LEN(tmp), tmp, NULL)) {
+        // log error, return failure
+        pwasm_env_fail(env, "append native mems failed");
+        return false;
+      }
+    }
+  }
+
+  if (tmp_ofs > 0) {
+    // append remaining results
+    if (!pwasm_vec_push(dst, tmp_ofs, tmp, NULL)) {
+      // log error, return failure
+      pwasm_env_fail(env, "append remaining native mems failed");
+      return false;
+    }
+  }
+
+  // populate result
+  *ret = (pwasm_slice_t) {
+    .ofs = dst_ofs,
+    .len = mod->num_mems,
+  };
+
+  // return success
+  return true;
+}
+
+static uint32_t
+pwasm_aot_jit_add_native(
+  pwasm_env_t * const env,
+  const char * const name,
+  const pwasm_native_t * const mod
+) {
+  pwasm_aot_jit_t * const interp = env->env_data;
+  const size_t mod_ofs = pwasm_vec_get_size(&(interp->mods));
+
+  // add native functions, check for error
+  pwasm_slice_t funcs;
+  if (!pwasm_aot_jit_add_native_funcs(env, mod_ofs, mod, &funcs)) {
+    // return failure
+    return 0;
+  }
+
+  // add native globals, check for error
+  pwasm_slice_t globals;
+  if (!pwasm_aot_jit_add_native_globals(env, mod_ofs, mod, &globals)) {
+    // return failure
+    return 0;
+  }
+
+  // add native mems, check for error
+  pwasm_slice_t mems;
+  if (!pwasm_aot_jit_add_native_mems(env, mod_ofs, mod, &mems)) {
+    // return failure
+    return 0;
+  }
+
+  // build row
+  const pwasm_aot_jit_mod_t interp_mod = {
+    .type     = PWASM_AOT_JIT_MOD_TYPE_NATIVE,
+    .name     = pwasm_buf_str(name),
+    .native   = mod,
+
+    .funcs    = funcs,
+    .globals  = globals,
+    .mems     = mems,
+  };
+
+  // append native mod, check for error
+  if (!pwasm_vec_push(&(interp->mods), 1, &interp_mod, NULL)) {
+    // log error, return failure
+    pwasm_env_fail(env, "append native mod failed");
+    return 0;
+  }
+
+  // convert offset to ID by adding 1
+  return mod_ofs + 1;
+}
+
+/*
+ * Resolve imports of a given type.
+ *
+ * On success, a slice of import IDs is stored in +ret+, and this
+ * function returns true.
+ *
+ * Returns false on error.
+ */
+static bool
+pwasm_aot_jit_add_mod_imports(
+  pwasm_env_t * const env,
+  const pwasm_mod_t * const mod,
+  const pwasm_import_type_t type,
+  pwasm_slice_t * const ret
+) {
+  pwasm_aot_jit_t * const interp = env->env_data;
+  pwasm_vec_t * const u32s = &(interp->u32s);
+  const size_t ret_ofs = pwasm_vec_get_size(u32s);
+
+  uint32_t ids[PWASM_BATCH_SIZE];
+  size_t num_ids = 0;
+
+  // loop over imports and resolve each one
+  for (size_t i = 0; i < mod->num_imports; i++) {
+    // get import, check type
+    const pwasm_import_t import = mod->imports[i];
+    if (import.type != type) {
+      continue;
+    }
+
+    const pwasm_buf_t mod_buf = {
+      .ptr = mod->bytes + import.module.ofs,
+      .len = import.module.len,
+    };
+
+    // find mod, check for error
+    const uint32_t mod_id = pwasm_env_find_mod(env, mod_buf);
+    if (!mod_id) {
+      // return failure
+      return false;
+    }
+
+    const pwasm_buf_t name_buf = {
+      .ptr = mod->bytes + import.name.ofs,
+      .len = import.name.len,
+    };
+
+    // find import ID, check for error
+    const uint32_t id = pwasm_env_find_import(env, mod_id, import.type, name_buf);
+    if (!id) {
+      // return failure
+      return false;
+    }
+
+    // add item to results, increment count
+    ids[num_ids++] = id;
+
+    if (num_ids == LEN(ids)) {
+      // clear count
+      num_ids = 0;
+
+      // append results, check for error
+      if (!pwasm_vec_push(u32s, LEN(ids), ids, NULL)) {
+        // log error, return failure
+        pwasm_env_fail(env, "append import ids failed");
+        return false;
+      }
+    }
+  }
+
+  if (num_ids > 0) {
+    // append remaining results
+    if (!pwasm_vec_push(u32s, num_ids, ids, NULL)) {
+      // log error, return failure
+      pwasm_env_fail(env, "append remaining native imports failed");
+      return false;
+    }
+  }
+
+  // populate result
+  *ret = (pwasm_slice_t) {
+    .ofs = ret_ofs,
+    .len = pwasm_vec_get_size(u32s) - ret_ofs,
+  };
+
+  // return success
+  return true;
+}
+
+static bool
+pwasm_aot_jit_add_mod_funcs(
+  pwasm_env_t * const env,
+  const uint32_t mod_ofs,
+  const pwasm_mod_t * const mod,
+  pwasm_slice_t * const ret
+) {
+  pwasm_aot_jit_t * const interp = env->env_data;
+  pwasm_vec_t * const dst = &(interp->funcs);
+  const size_t funcs_ofs = pwasm_vec_get_size(dst);
+
+  // add imported functions, check for error
+  pwasm_slice_t imports;
+  if (!pwasm_aot_jit_add_mod_imports(env, mod, PWASM_IMPORT_TYPE_FUNC, &imports)) {
+    return false;
+  }
+
+  pwasm_aot_jit_func_t tmp[PWASM_BATCH_SIZE];
+  size_t tmp_ofs = 0;
+
+  for (size_t i = 0; i < mod->num_funcs; i++) {
+    tmp[tmp_ofs++] = (pwasm_aot_jit_func_t) {
+      .mod_ofs  = mod_ofs,
+      .func_ofs = i,
+    };
+
+    if (tmp_ofs == LEN(tmp)) {
+      // clear count
+      tmp_ofs = 0;
+
+      // append results, check for error
+      if (!pwasm_vec_push(dst, LEN(tmp), tmp, NULL)) {
+        // log error, return failure
+        pwasm_env_fail(env, "append functions failed");
+        return false;
+      }
+    }
+  }
+
+  if (tmp_ofs > 0) {
+    // append remaining results
+    if (!pwasm_vec_push(dst, tmp_ofs, tmp, NULL)) {
+      // log error, return failure
+      pwasm_env_fail(env, "append remaining functions failed");
+      return false;
+    }
+  }
+
+  if (!pwasm_aot_jit_push_u32s(env, funcs_ofs, mod->num_funcs)) {
+    return false;
+  }
+
+  // populate result
+  *ret = (pwasm_slice_t) {
+    .ofs = imports.ofs,
+    .len = imports.len + mod->num_funcs,
+  };
+
+  // return success
+  return true;
+}
+
+static bool
+pwasm_aot_jit_add_mod_globals(
+  pwasm_env_t * const env,
+  const uint32_t mod_ofs,
+  const pwasm_mod_t * const mod,
+  pwasm_slice_t * const ret
+) {
+  pwasm_aot_jit_t * const interp = env->env_data;
+  pwasm_vec_t * const dst = &(interp->globals);
+  const size_t globals_ofs = pwasm_vec_get_size(dst);
+  (void) mod_ofs;
+
+  // add imported globals, check for error
+  pwasm_slice_t imports;
+  if (!pwasm_aot_jit_add_mod_imports(env, mod, PWASM_IMPORT_TYPE_GLOBAL, &imports)) {
+    return false;
+  }
+
+  pwasm_env_global_t tmp[PWASM_BATCH_SIZE];
+  size_t tmp_ofs = 0;
+
+  for (size_t i = 0; i < mod->num_globals; i++) {
+    tmp[tmp_ofs++] = (pwasm_env_global_t) {
+      .type  = mod->globals[i].type,
+      // .val = // FIXME: uninitialized
+    };
+
+    if (tmp_ofs == LEN(tmp)) {
+      // clear count
+      tmp_ofs = 0;
+
+      // append results, check for error
+      if (!pwasm_vec_push(dst, LEN(tmp), tmp, NULL)) {
+        // log error, return failure
+        pwasm_env_fail(env, "append globals failed");
+        return false;
+      }
+    }
+  }
+
+  if (tmp_ofs > 0) {
+    // append remaining results
+    if (!pwasm_vec_push(dst, tmp_ofs, tmp, NULL)) {
+      // log error, return failure
+      pwasm_env_fail(env, "append remaining globals failed");
+      return false;
+    }
+  }
+
+  // add IDs
+  if (!pwasm_aot_jit_push_u32s(env, globals_ofs, mod->num_globals)) {
+    // return failure
+    return false;
+  }
+
+  // populate result
+  *ret = (pwasm_slice_t) {
+    .ofs = imports.ofs,
+    .len = imports.len + mod->num_globals,
+  };
+
+  // return success
+  return true;
+}
+
+static bool
+pwasm_aot_jit_add_mod_mems(
+  pwasm_env_t * const env,
+  const uint32_t mod_ofs,
+  const pwasm_mod_t * const mod,
+  pwasm_slice_t * const ret
+) {
+  pwasm_aot_jit_t * const interp = env->env_data;
+  pwasm_vec_t * const dst = &(interp->mems);
+  const size_t mems_ofs = pwasm_vec_get_size(dst);
+  (void) mod_ofs;
+
+  // add imported mems, check for error
+  pwasm_slice_t imports;
+  if (!pwasm_aot_jit_add_mod_imports(env, mod, PWASM_IMPORT_TYPE_MEM, &imports)) {
+    return false;
+  }
+
+  pwasm_env_mem_t tmp[PWASM_BATCH_SIZE];
+  size_t tmp_ofs = 0;
+
+  for (size_t i = 0; i < mod->num_mems; i++) {
+    // allocate buffer
+    const size_t num_bytes = mod->mems[i].min * PWASM_PAGE_SIZE;
+    uint8_t * const ptr = pwasm_realloc(env->mem_ctx, NULL, num_bytes);
+    if (!ptr && num_bytes) {
+      // log error, return failure
+      pwasm_env_fail(env, "allocate memory buffer failed");
+      return false;
+    }
+
+    tmp[tmp_ofs++] = (pwasm_env_mem_t) {
+      .limits = mod->mems[i],
+      .buf = (pwasm_buf_t) {
+        .ptr = ptr,
+        .len = num_bytes,
+      },
+    };
+
+    if (tmp_ofs == LEN(tmp)) {
+      // clear count
+      tmp_ofs = 0;
+
+      // append results, check for error
+      if (!pwasm_vec_push(dst, LEN(tmp), tmp, NULL)) {
+        // log error, return failure
+        pwasm_env_fail(env, "append mems failed");
+        return false;
+      }
+    }
+  }
+
+  if (tmp_ofs > 0) {
+    // append remaining results
+    if (!pwasm_vec_push(dst, tmp_ofs, tmp, NULL)) {
+      // log error, return failure
+      pwasm_env_fail(env, "append remaining mems failed");
+      return false;
+    }
+  }
+
+  if (!pwasm_aot_jit_push_u32s(env, mems_ofs, mod->num_mems)) {
+    return false;
+  }
+
+  // populate result
+  *ret = (pwasm_slice_t) {
+    .ofs = imports.ofs,
+    .len = imports.len + mod->num_mems,
+  };
+
+  // return success
+  return true;
+}
+
+static bool
+pwasm_aot_jit_add_mod_tables(
+  pwasm_env_t * const env,
+  const uint32_t mod_ofs,
+  const pwasm_mod_t * const mod,
+  pwasm_slice_t * const ret
+) {
+  pwasm_aot_jit_t * const interp = env->env_data;
+  pwasm_vec_t * const dst = &(interp->tables);
+  pwasm_vec_t * const u32s = &(interp->u32s);
+
+  // add imported tables, check for error
+  pwasm_slice_t imports = { 0, 0 };
+  if (!pwasm_aot_jit_add_mod_imports(env, mod, PWASM_IMPORT_TYPE_TABLE, &imports)) {
+    return false;
+  }
+
+  uint32_t tmp[PWASM_BATCH_SIZE];
+  size_t tmp_ofs = 0;
+
+  for (size_t i = 0; i < mod->num_tables; i++) {
+    // init table
+    pwasm_aot_jit_table_t table = pwasm_aot_jit_table_init(env, mod_ofs, i, mod->tables[i].limits);
+
+    // append initialized table to interpreter, check for error
+    size_t tmp_pos;
+    if (!pwasm_vec_push(dst, 1, &table, &tmp_pos)) {
+      // log error, return failure
+      pwasm_env_fail(env, "append tables failed");
+      return false;
+    }
+
+    // append to table offsets, increment count
+    tmp[tmp_ofs] = tmp_pos;
+    tmp_ofs++;
+
+    if (tmp_ofs == LEN(tmp)) {
+      // clear count
+      tmp_ofs = 0;
+
+      // append IDs, check for error
+      if (!pwasm_vec_push(u32s, LEN(tmp), tmp, NULL)) {
+        // log error, return failure
+        pwasm_env_fail(env, "append table ids failed");
+        return false;
+      }
+    }
+  }
+
+  if (tmp_ofs > 0) {
+    // flush IDs, check for error
+    if (!pwasm_vec_push(u32s, tmp_ofs, tmp, NULL)) {
+      // log error, return failure
+      pwasm_env_fail(env, "append remaining table IDs failed");
+      return false;
+    }
+  }
+
+  // populate result
+  *ret = (pwasm_slice_t) {
+    .ofs = imports.ofs,
+    .len = imports.len + mod->num_tables,
+  };
+
+  // return success
+  return true;
+}
+
+// forward declarations
+static bool pwasm_aot_jit_eval_expr(
+  pwasm_aot_jit_frame_t frame,
+  const pwasm_slice_t
+);
+
+static bool pwasm_aot_jit_call(pwasm_env_t *, const uint32_t);
+
+static bool
+pwasm_aot_jit_init_globals(
+  pwasm_aot_jit_frame_t frame
+) {
+  pwasm_aot_jit_t * const interp = frame.env->env_data;
+  pwasm_env_global_t *env_globals = (pwasm_env_global_t*) pwasm_vec_get_data(&(interp->globals));
+  pwasm_stack_t * const stack = frame.env->stack;
+  const pwasm_global_t * const mod_globals = frame.mod->mod->globals;
+  const uint32_t * interp_u32s = (uint32_t*) pwasm_vec_get_data(&(interp->u32s)) + frame.mod->globals.ofs;
+  const size_t num_globals = frame.mod->mod->num_globals;
+  const pwasm_val_t zero = { .i64 = 0 };
+
+  for (size_t i = 0; i < num_globals; i++) {
+    // clear stack
+    stack->pos = 0;
+
+    // evaluate init
+    if (!pwasm_aot_jit_eval_expr(frame, mod_globals[i].expr)) {
+      // return failure
+      return false;
+    }
+
+    // get destination offset, save value to global
+    const uint32_t ofs = interp_u32s[i];
+    env_globals[ofs].val = stack->pos ? stack->ptr[0] : zero;
+  }
+
+  // return success
+  return true;
+}
+
+static bool
+pwasm_aot_jit_init_elem_funcs(
+  pwasm_aot_jit_frame_t frame,
+  const uint32_t ofs,
+  const pwasm_elem_t elem
+) {
+  // get table and mod to interpreter func ID map
+  pwasm_aot_jit_t * const interp = frame.env->env_data;
+  const uint32_t *u32s = pwasm_vec_get_data(&(interp->u32s));
+  const uint32_t table_ofs = u32s[frame.mod->tables.ofs + elem.table_id];
+  D("frame.mod->tables.ofs = %zu, elem.table_id = %u, table_ofs = %u", frame.mod->tables.ofs, elem.table_id, table_ofs);
+  const uint32_t * const funcs = u32s + frame.mod->funcs.ofs;
+  pwasm_aot_jit_table_t * const table = pwasm_aot_jit_get_table(frame.env, table_ofs + 1);
+  if (!table) {
+    return false;
+  }
+
+  uint32_t tmp[PWASM_BATCH_SIZE];
+  size_t tmp_ofs = 0;
+
+  for (size_t i = 0; i < elem.funcs.len; i++) {
+    // remap function id from module ID to interpreter ID
+    const uint32_t func_id = frame.mod->mod->u32s[elem.funcs.ofs + i];
+    tmp[tmp_ofs++] = funcs[func_id];
+
+    if (tmp_ofs == LEN(tmp)) {
+      // get destination offset
+      const size_t dst_ofs = ofs + i - LEN(tmp);
+
+      // set table elements, check for error
+      if (!pwasm_aot_jit_table_set(frame.env, table, dst_ofs, tmp, LEN(tmp))) {
+        // return failure
+        return false;
+      }
+
+      // reset offset
+      tmp_ofs = 0;
+    }
+  }
+
+  if (tmp_ofs > 0) {
+    // get destination offset
+    const size_t dst_ofs = ofs + elem.funcs.len - tmp_ofs;
+
+    // flush table elements, check for error
+    if (!pwasm_aot_jit_table_set(frame.env, table, dst_ofs, tmp, tmp_ofs)) {
+      // return failure
+      return false;
+    }
+  }
+
+  // return success
+  return true;
+}
+
+static bool
+pwasm_aot_jit_init_elems(
+  pwasm_aot_jit_frame_t frame
+) {
+  const pwasm_elem_t * const elems = frame.mod->mod->elems;
+  const size_t num_elems = frame.mod->mod->num_elems;
+  pwasm_stack_t * const stack = frame.env->stack;
+
+  // init table elements
+  for (size_t i = 0; i < num_elems; i++) {
+    const pwasm_elem_t elem = elems[i];
+
+    // evaluate offset expression, check for error
+    stack->pos = 0;
+    if (!pwasm_aot_jit_eval_expr(frame, elem.expr)) {
+      // return failure
+      return false;
+    }
+
+    // check that const expr has at least one result
+    // FIXME: should this be done in check()?
+    if (!stack->pos) {
+      pwasm_env_fail(frame.env, "constant expression must return table offset");
+      return false;
+    }
+
+    // get destination offset
+    const uint32_t ofs = stack->ptr[stack->pos - 1].i32;
+
+    // populate table elements, check for error
+    if (!pwasm_aot_jit_init_elem_funcs(frame, ofs, elem)) {
+      // return failure
+      return false;
+    }
+  }
+
+  // return success
+  return true;
+}
+
+// forward reference
+static pwasm_env_mem_t *pwasm_aot_jit_get_mem(pwasm_env_t * const, const uint32_t);
+
+static bool
+pwasm_aot_jit_init_segments(
+  pwasm_aot_jit_frame_t frame
+) {
+  pwasm_aot_jit_t * const interp = frame.env->env_data;
+  const uint32_t * const u32s = pwasm_vec_get_data(&(interp->u32s));
+  const pwasm_segment_t * const segments = frame.mod->mod->segments;
+  const size_t num_segments = frame.mod->mod->num_segments;
+  pwasm_stack_t * const stack = frame.env->stack;
+
+  // init memory elements
+  for (size_t i = 0; i < num_segments; i++) {
+    const pwasm_segment_t segment = segments[i];
+
+    // get interpreter memory ID
+    const uint32_t mem_id = u32s[frame.mod->mems.ofs + segment.mem_id];
+
+    // get memory, check for error
+    pwasm_env_mem_t * const mem = pwasm_aot_jit_get_mem(frame.env, mem_id);
+    if (!mem) {
+      // return failure
+      return false;
+    }
+
+    // evaluate offset expression, check for error
+    stack->pos = 0;
+    if (!pwasm_aot_jit_eval_expr(frame, segment.expr)) {
+      // return failure
+      return false;
+    }
+
+    // check that const expr has at least one result
+    if (!stack->pos) {
+      pwasm_env_fail(frame.env, "constant expression must return segment offset");
+      return false;
+    }
+
+    // get destination offset
+    const uint32_t dst_ofs = stack->ptr[stack->pos - 1].i32;
+
+    // check destination length
+    // FIXME: should we resize here?
+    if (dst_ofs + segment.data.len > mem->buf.len) {
+      pwasm_env_fail(frame.env, "segment destination out of bounds");
+      return false;
+    }
+
+    // D("mem = %u, ofs = %u, len = %zu", mem_id, dst_ofs, segment.data.len);
+
+    // get dst, src pointers
+    uint8_t * const dst = (uint8_t*) mem->buf.ptr + dst_ofs;
+    const uint8_t * const src = frame.mod->mod->bytes + segment.data.ofs;
+
+    // copy data
+    memcpy(dst, src, segment.data.len);
+  }
+
+  // return success
+  return true;
+}
+
+static void *
+pwasm_aot_jit_compile_func(
+  pwasm_env_t * const env,
+  const pwasm_mod_t * const mod,
+  const size_t func_ofs
+) {
+  if (!env->cbs->compile) {
+    // return failure
+    return NULL;
+  }
+
+  return env->cbs->compile(env, mod, func_ofs);
+}
+
+static bool
+pwasm_aot_jit_compile_funcs(
+  pwasm_aot_jit_frame_t frame
+) {
+  const pwasm_mod_t * const mod = frame.mod->mod;
+  const size_t num_codes = mod->num_codes;
+  const size_t num_bytes = num_codes * sizeof(void*);
+
+  if (num_bytes > 0) {
+    // allocate function pointers
+    void **fns = pwasm_realloc(frame.env->mem_ctx, NULL, num_bytes);
+    if (!fns) {
+      pwasm_env_fail(frame.env, "allocate function pointer list failed");
+      return false;
+    }
+
+    // walk/compile functions
+    for (size_t i = 0; i < num_codes; i++) {
+      // compile function, check for error
+      void *fn = pwasm_aot_jit_compile_func(frame.env, mod, i);
+      if (!fn) {
+        // return failure
+        return false;
+      }
+
+      // save function pointer
+      fns[i] = fn;
+    }
+
+    // save function pointers
+    frame.mod->fns = fns;
+  } else {
+    // no functions, save null pointer
+    frame.mod->fns = NULL;
+  }
+
+  // return success
+  return true;
+}
+
+static bool
+pwasm_aot_jit_init_start(
+  pwasm_aot_jit_frame_t frame
+) {
+  (void) frame;
+
+  // check for start function
+  if (!frame.mod->mod->has_start) {
+    // return success
+    return true;
+  }
+
+  // get start function ID in mod, map to interpreter func ID
+  pwasm_aot_jit_t * const interp = frame.env->env_data;
+  const uint32_t * const u32s = pwasm_vec_get_data(&(interp->u32s));
+  const uint32_t start = frame.mod->mod->start;
+  const uint32_t func_id = u32s[frame.mod->funcs.ofs + start] + 1;
+
+  // call start function, return result
+  return pwasm_aot_jit_call(frame.env, func_id);
+}
+
+static uint32_t
+pwasm_aot_jit_add_mod(
+  pwasm_env_t * const env,
+  const char * const name,
+  const pwasm_mod_t * const mod
+) {
+  pwasm_aot_jit_t * const interp = env->env_data;
+  const size_t mod_ofs = pwasm_vec_get_size(&(interp->mods));
+
+  // add mod funcs, check for error
+  pwasm_slice_t funcs;
+  if (!pwasm_aot_jit_add_mod_funcs(env, mod_ofs, mod, &funcs)) {
+    // return failure
+    return 0;
+  }
+
+  // add mod globals, check for error
+  pwasm_slice_t globals;
+  if (!pwasm_aot_jit_add_mod_globals(env, mod_ofs, mod, &globals)) {
+    // return failure
+    return 0;
+  }
+
+  // add mod mems, check for error
+  pwasm_slice_t mems;
+  if (!pwasm_aot_jit_add_mod_mems(env, mod_ofs, mod, &mems)) {
+    // return failure
+    return 0;
+  }
+
+  // add mod tables, check for error
+  pwasm_slice_t tables;
+  if (!pwasm_aot_jit_add_mod_tables(env, mod_ofs, mod, &tables)) {
+    // return failure
+    return 0;
+  }
+
+  // build mod instance
+  pwasm_aot_jit_mod_t interp_mod = {
+    .type     = PWASM_AOT_JIT_MOD_TYPE_MOD,
+    .name     = pwasm_buf_str(name),
+    .mod      = mod,
+
+    .funcs    = funcs,
+    .globals  = globals,
+    .mems     = mems,
+    .tables   = tables,
+  };
+
+  // append mod, check for error
+  if (!pwasm_vec_push(&(interp->mods), 1, &interp_mod, NULL)) {
+    // log error, return failure
+    pwasm_env_fail(env, "append mod failed");
+    return 0;
+  }
+
+  // set up a temporary frame to init globals, tables, and mems
+  pwasm_aot_jit_frame_t frame = {
+    .env = env,
+    .mod = &interp_mod,
+  };
+
+  // init globals, mems, tables, and start (in that order)
+  // source: https://webassembly.github.io/spec/core/exec/modules.html#exec-instantiation)
+
+  // init globals, check for error
+  if (!pwasm_aot_jit_init_globals(frame)) {
+    // return failure
+    return 0;
+  }
+
+  // init tables, check for error
+  if (!pwasm_aot_jit_init_elems(frame)) {
+    // return failure
+    return 0;
+  }
+
+  // init segments, check for error
+  if (!pwasm_aot_jit_init_segments(frame)) {
+    // return failure
+    return 0;
+  }
+
+  // compile funcs, check for error
+  if (!pwasm_aot_jit_compile_funcs(frame)) {
+    // return failure
+    return 0;
+  }
+
+  // call start func, check for error
+  if (!pwasm_aot_jit_init_start(frame)) {
+    // return failure
+    return 0;
+  }
+
+  // return success, convert offset to ID by adding 1
+  return mod_ofs + 1;
+}
+
+static uint32_t
+pwasm_aot_jit_find_mod(
+  pwasm_env_t * const env,
+  const pwasm_buf_t name
+) {
+  pwasm_aot_jit_t * const interp = env->env_data;
+  const pwasm_aot_jit_mod_t *rows = pwasm_vec_get_data(&(interp->mods));
+  const size_t num_rows = pwasm_vec_get_size(&(interp->mods));
+
+  for (size_t i = 0; i < num_rows; i++) {
+    if (
+      (rows[i].name.len == name.len) &&
+      !memcmp(name.ptr, rows[i].name.ptr, name.len)
+    ) {
+      // return offset + 1 (prevent zero IDs)
+      return i + 1;
+    }
+  }
+
+  // log error, return failure
+  pwasm_env_fail(env, "module not found");
+  return 0;
+}
+
+static uint32_t
+pwasm_aot_jit_find_func(
+  pwasm_env_t * const env,
+  const uint32_t mod_id,
+  const pwasm_buf_t name
+) {
+  pwasm_aot_jit_t * const interp = env->env_data;
+  const pwasm_vec_t * const vec = &(interp->mods);
+  const pwasm_aot_jit_mod_t * const mods = pwasm_vec_get_data(vec);
+  const uint32_t * const u32s = pwasm_vec_get_data(&(interp->u32s));
+
+  // check mod_id
+  if (mod_id > pwasm_vec_get_size(&(interp->mods))) {
+    pwasm_env_fail(env, "invalid mod ID");
+    return 0;
+  }
+
+  // get mod
+  const pwasm_aot_jit_mod_t mod = mods[mod_id - 1];
+
+  switch (mod.type) {
+  case PWASM_AOT_JIT_MOD_TYPE_MOD:
+    for (size_t i = 0; i < mod.mod->num_exports; i++) {
+      const pwasm_export_t row = mod.mod->exports[i];
+
+      if (
+        (row.type == PWASM_IMPORT_TYPE_FUNC) &&
+        (row.name.len == name.len) &&
+        !memcmp(mod.mod->bytes + row.name.ofs, name.ptr, name.len)
+      ) {
+        // return offset + 1 (prevent zero IDs)
+        return u32s[mod.funcs.ofs + row.id] + 1;
+      }
+    }
+
+    break;
+  case PWASM_AOT_JIT_MOD_TYPE_NATIVE:
+    for (size_t i = 0; i < mod.native->num_funcs; i++) {
+      const pwasm_native_func_t row = mod.native->funcs[i];
+      const pwasm_buf_t row_buf = pwasm_buf_str(row.name);
+
+      if (
+        row_buf.ptr &&
+        (row_buf.len == name.len) &&
+        !memcmp(row_buf.ptr, name.ptr, name.len)
+      ) {
+        D("u32s = %p, mod->funcs.ofs = %zu, i = %zu", (void*) u32s, mod.funcs.ofs, i);
+        // return offset + 1 (prevent zero IDs)
+        return u32s[mod.funcs.ofs + i] + 1;
+      }
+    }
+
+    break;
+  default:
+    // log error, return failure
+    pwasm_env_fail(env, "unknown module type (bug?)");
+    return 0;
+  }
+
+  // log error, return failure
+  pwasm_env_fail(env, "function not found");
+  return 0;
+}
+
+static uint32_t
+pwasm_aot_jit_find_mem(
+  pwasm_env_t * const env,
+  const uint32_t mod_id,
+  const pwasm_buf_t name
+) {
+  pwasm_aot_jit_t * const interp = env->env_data;
+  const pwasm_vec_t * const vec = &(interp->mods);
+  const pwasm_aot_jit_mod_t * const mods = pwasm_vec_get_data(vec);
+  const uint32_t * const u32s = pwasm_vec_get_data(&(interp->u32s));
+
+  // check mod_id
+  if (mod_id > pwasm_vec_get_size(&(interp->mods))) {
+    pwasm_env_fail(env, "invalid mod ID");
+    return 0;
+  }
+
+  // get mod
+  const pwasm_aot_jit_mod_t * const mod = mods + (mod_id - 1);
+
+  switch (mod->type) {
+  case PWASM_AOT_JIT_MOD_TYPE_MOD:
+    for (size_t i = 0; i < mod->mod->num_exports; i++) {
+      const pwasm_export_t row = mod->mod->exports[i];
+
+      if (
+        (row.type == PWASM_IMPORT_TYPE_MEM) &&
+        (row.name.len == name.len) &&
+        !memcmp(mod->mod->bytes + row.name.ofs, name.ptr, name.len)
+      ) {
+        // return offset + 1 (prevent zero IDs)
+        return u32s[mod->mems.ofs + row.id] + 1;
+      }
+    }
+
+    break;
+  case PWASM_AOT_JIT_MOD_TYPE_NATIVE:
+    for (size_t i = 0; i < mod->native->num_funcs; i++) {
+      const pwasm_native_mem_t row = mod->native->mems[i];
+      const pwasm_buf_t row_buf = pwasm_buf_str(row.name);
+
+      if (
+        row_buf.ptr &&
+        (row_buf.len == name.len) &&
+        !memcmp(row_buf.ptr, name.ptr, name.len)
+      ) {
+        // return offset + 1 (prevent zero IDs)
+        return u32s[mod->mems.ofs + i] + 1;
+      }
+    }
+
+    break;
+  default:
+    // log error, return failure
+    pwasm_env_fail(env, "unknown module type (bug?)");
+    return 0;
+  }
+
+  // log error, return failure
+  pwasm_env_fail(env, "memory not found");
+  return 0;
+}
+
+static pwasm_env_mem_t *
+pwasm_aot_jit_get_mem(
+  pwasm_env_t * const env,
+  const uint32_t mem_id
+) {
+  pwasm_aot_jit_t * const interp = env->env_data;
+  const pwasm_env_mem_t *rows = pwasm_vec_get_data(&(interp->mems));
+  const size_t num_rows = pwasm_vec_get_size(&(interp->mems));
+  D("num mems: %zu", num_rows);
+
+  // check that mem_id is in bounds
+  if (!mem_id || mem_id > num_rows) {
+    // log error, return failure
+    D("bad mem_id: %u", mem_id);
+    pwasm_env_fail(env, "memory index out of bounds");
+    return NULL;
+  }
+
+  // return pointer to memory
+  return (pwasm_env_mem_t*) rows + (mem_id - 1);
+}
+
+/*
+ * Get the absolute memory offset from the immediate offset and the
+ * offset operand.
+ */
+static bool
+pwasm_aot_jit_get_mem_chunk(
+  pwasm_env_t * const env,
+  const uint32_t mem_id,
+  const pwasm_inst_t in,
+  const uint32_t arg_ofs,
+  pwasm_aot_jit_mem_chunk_t * const ret
+) {
+  pwasm_env_mem_t * const mem = pwasm_aot_jit_get_mem(env, mem_id);
+  size_t ofs = in.v_mem.offset + arg_ofs;
+  size_t size = pwasm_op_get_num_bytes(in.op);
+  const bool ok = mem && size && (ofs + size < mem->buf.len);
+
+  if (!ok) {
+    // dissect error
+    if (!mem) {
+      D("mem_id = %u", mem_id);
+      pwasm_env_fail(env, "invalid memory index");
+    } else if (!size) {
+      D("op = %s", pwasm_op_get_name(in.op));
+      pwasm_env_fail(env, "invalid memory instruction");
+    } else {
+      D("ofs = %zu, size = %zu", ofs, size);
+      pwasm_env_fail(env, "invalid memory address");
+    }
+
+    // return failure
+    return false;
+  }
+
+  const pwasm_aot_jit_mem_chunk_t tmp = {
+    .mem  = mem,
+    .ofs  = ofs,
+    .size = size,
+  };
+
+  // populate result
+  memcpy(ret, &tmp, sizeof(pwasm_aot_jit_mem_chunk_t));
+
+  // return success
+  return true;
+}
+
+static bool
+pwasm_aot_jit_mem_load(
+  pwasm_env_t * const env,
+  const uint32_t mem_id,
+  const pwasm_inst_t in,
+  const uint32_t arg_ofs,
+  pwasm_val_t * const ret_val
+) {
+  // get memory chunk, check for error
+  pwasm_aot_jit_mem_chunk_t chunk;
+  if (!pwasm_aot_jit_get_mem_chunk(env, mem_id, in, arg_ofs, &chunk)) {
+    return false;
+  }
+
+  // pwasm_aot_jit_dump_mem_chunk(chunk);
+  // D("load i32 = %u", ((pwasm_val_t*) (chunk.mem->buf.ptr + chunk.ofs))->i32);
+
+  // clear temp val
+  pwasm_val_t tmp;
+  memset(&tmp, 0, sizeof(pwasm_val_t));
+
+  // copy to temp
+  memcpy(&tmp, chunk.mem->buf.ptr + chunk.ofs, chunk.size);
+
+  // copy temp to destination
+  memcpy(ret_val, &tmp, sizeof(pwasm_val_t));
+
+  // return success
+  return true;
+}
+
+static bool
+pwasm_aot_jit_mem_store(
+  pwasm_env_t * const env,
+  const uint32_t mem_id,
+  const pwasm_inst_t in,
+  const uint32_t arg_ofs,
+  const pwasm_val_t val
+) {
+  // get memory chunk, check for error
+  pwasm_aot_jit_mem_chunk_t chunk;
+  if (!pwasm_aot_jit_get_mem_chunk(env, mem_id, in, arg_ofs, &chunk)) {
+    return false;
+  }
+
+  // pwasm_aot_jit_dump_mem_chunk(chunk);
+  // D("chunk.size = %zu", chunk.size);
+
+  // copy to result
+  memcpy((uint8_t*) chunk.mem->buf.ptr + chunk.ofs, &val, chunk.size);
+
+  // return success
+  return true;
+}
+
+static bool
+pwasm_aot_jit_mem_size(
+  pwasm_env_t * const env,
+  const uint32_t mem_id,
+  uint32_t * const ret_val
+) {
+  // get memory, check for error
+  pwasm_env_mem_t * const mem = pwasm_aot_jit_get_mem(env, mem_id);
+  if (!mem) {
+    // return failure
+    return false;
+  }
+
+  if (ret_val) {
+    // save result
+    *ret_val = mem->buf.len / PWASM_PAGE_SIZE;
+  }
+
+  // return success
+  return true;
+}
+
+static bool
+pwasm_aot_jit_mem_grow(
+  pwasm_env_t * const env,
+  const uint32_t mem_id,
+  const uint32_t grow,
+  uint32_t * const ret_val
+) {
+  // get memory, check for error
+  pwasm_env_mem_t * const mem = pwasm_aot_jit_get_mem(env, mem_id);
+  if (!mem) {
+    // return failure (trap)
+    return false;
+  }
+
+  // get current size, in number of pages
+  const uint32_t old_size = mem->buf.len / PWASM_PAGE_SIZE;
+  const uint32_t new_size = old_size + grow;
+
+  // check upper bound
+  if (mem->limits.has_max && new_size > mem->limits.max) {
+    // at this point we save a -1 to the return value pointer to
+    // indicate failure, then return true from the function so that it
+    // doesn't trap.
+    //
+    // see https://webassembly.github.io/spec/core/exec/instructions.html#exec-memory-size
+
+    if (ret_val) {
+      // return -1 to indicate failure
+      *ret_val = -1;
+    }
+
+    // return "success"
+    return true;
+  }
+
+  if (new_size > 0) {
+    // get old pointer and number of bytes
+    void *old_ptr = (void*) mem->buf.ptr;
+    const size_t num_bytes = new_size * PWASM_PAGE_SIZE;
+
+    // resize buffer, check for error
+    uint8_t * const ptr = pwasm_realloc(env->mem_ctx, old_ptr, num_bytes);
+    if (!ptr && num_bytes) {
+      // at this point we save a -1 to the return value pointer to
+      // indicate failure, then return true from the function so that it
+      // doesn't trap.
+      //
+      // see https://webassembly.github.io/spec/core/exec/instructions.html#exec-memory-size
+
+      if (ret_val) {
+        // return -1 to indicate failure
+        *ret_val = -1;
+      }
+
+      // return "success"
+      return true;
+    }
+
+    // update buffer attributes
+    mem->buf.ptr = ptr;
+    mem->buf.len = num_bytes;
+  }
+
+  if (ret_val) {
+    // update return value
+    *ret_val = old_size;
+  }
+
+  // return success
+  return true;
+}
+
+static bool
+pwasm_aot_jit_get_elem(
+  pwasm_env_t * const env,
+  const uint32_t table_id,
+  const uint32_t elem_ofs,
+  uint32_t * const ret_val
+) {
+  pwasm_aot_jit_table_t * const table = pwasm_aot_jit_get_table(env, table_id);
+  if (!table) {
+    return false;
+  }
+  return pwasm_aot_jit_table_get_elem(env, table, elem_ofs, ret_val);
+}
+
+static uint32_t
+pwasm_aot_jit_find_import(
+  pwasm_env_t * const env,
+  const uint32_t mod_id,
+  const pwasm_import_type_t type,
+  const pwasm_buf_t name
+) {
+  switch (type) {
+  case PWASM_IMPORT_TYPE_FUNC:
+    return pwasm_env_find_func(env, mod_id, name);
+  case PWASM_IMPORT_TYPE_MEM:
+    return pwasm_env_find_mem(env, mod_id, name);
+  case PWASM_IMPORT_TYPE_GLOBAL:
+    return pwasm_env_find_global(env, mod_id, name);
+  case PWASM_IMPORT_TYPE_TABLE:
+    return pwasm_env_find_table(env, mod_id, name);
+  default:
+    // log error, return failure
+    pwasm_env_fail(env, "invalid import type");
+    return 0;
+  }
+}
+
+static inline bool
+pwasm_aot_jit_check_global(
+  pwasm_env_t * const env,
+  const uint32_t id
+) {
+  pwasm_aot_jit_t * const interp = env->env_data;
+  const size_t num_rows = pwasm_vec_get_size(&(interp->globals));
+
+  if (!id || id > num_rows) {
+    // log error, return failure
+    D("global index = %u", id);
+    pwasm_env_fail(env, "global index out of bounds");
+    return false;
+  }
+
+  // return success
+  return true;
+}
+
+static bool
+pwasm_aot_jit_get_global(
+  pwasm_env_t * const env,
+  const uint32_t id,
+  pwasm_val_t * const ret_val
+) {
+  pwasm_aot_jit_t * const interp = env->env_data;
+  const pwasm_env_global_t *rows = pwasm_vec_get_data(&(interp->globals));
+
+  if (!pwasm_aot_jit_check_global(env, id)) {
+    return false;
+  }
+
+  if (ret_val) {
+    // copy value to destination
+    *ret_val = rows[id - 1].val;
+  }
+
+  // return success
+  return true;
+}
+
+static bool
+pwasm_aot_jit_set_global(
+  pwasm_env_t * const env,
+  const uint32_t id,
+  const pwasm_val_t val
+) {
+  pwasm_aot_jit_t * const interp = env->env_data;
+  pwasm_env_global_t *rows = (pwasm_env_global_t*) pwasm_vec_get_data(&(interp->globals));
+
+  if (!pwasm_aot_jit_check_global(env, id)) {
+    return false;
+  }
+
+  if (!rows[id - 1].type.mutable) {
+    pwasm_env_fail(env, "write to immutable global");
+    return false;
+  }
+
+  // set global value
+  rows[id - 1].val = val;
+
+  // return success
+  return true;
+}
+
+/*
+ * Convert an internal global ID to an externally visible global handle.
+ *
+ * Returns 0 on error.
+ */
+static uint32_t
+pwasm_aot_jit_get_global_index(
+  pwasm_env_t * const env,
+  pwasm_aot_jit_mod_t * const mod,
+  uint32_t id
+) {
+  pwasm_aot_jit_t * const interp = env->env_data;
+  const pwasm_vec_t * const vec = &(interp->u32s);
+  const uint32_t * const u32s = ((uint32_t*) pwasm_vec_get_data(vec)) + mod->globals.ofs;
+  return (id < mod->globals.len) ? u32s[id] + 1 : 0;
+}
+
+// forward references
+static bool pwasm_aot_jit_call_func(pwasm_env_t *, pwasm_aot_jit_mod_t *, uint32_t);
+static bool pwasm_aot_jit_call_indirect(pwasm_aot_jit_frame_t, pwasm_inst_t, uint32_t);
+
+static bool
+pwasm_aot_jit_eval_expr(
+  pwasm_aot_jit_frame_t frame,
+  const pwasm_slice_t expr
+) {
+  pwasm_aot_jit_t * const interp = frame.env->env_data;
+  pwasm_ctrl_stack_t * const ctrl_stack = &(interp->ctrl_stack);
+  pwasm_stack_t * const stack = frame.env->stack;
+  const pwasm_inst_t * const insts = frame.mod->mod->insts + expr.ofs;
+
+  size_t ctrl_depth = 0;
+
+  // D("expr = { .ofs = %zu, .len = %zu }, num_insts = %zu", expr.ofs, expr.len, frame.mod->num_insts);
+
+  for (size_t i = 0; i < expr.len; i++) {
+    const pwasm_inst_t in = insts[i];
+    // D("0x%02X %s", in.op, pwasm_op_get_name(in.op));
+
+    switch (in.op) {
+    case PWASM_OP_UNREACHABLE:
+      // FIXME: raise trap?
+      pwasm_env_fail(frame.env, "unreachable instruction reached");
+      return false;
+    case PWASM_OP_NOP:
+      // do nothing
+      break;
+    case PWASM_OP_BLOCK:
+      {
+        // get block.params.size, check for error
+        size_t num_params;
+        if (!pwasm_block_type_params_get_size(frame.mod->mod, in.v_block.block_type, &num_params)) {
+          // log error, return failure
+          pwasm_env_fail(frame.env, "block: get num block params failed");
+          return false;
+        }
+
+        // create control stack entry
+        const pwasm_ctrl_stack_entry_t ctrl_entry = {
+          .type   = CTRL_BLOCK,
+          .depth  = stack->pos - num_params,
+          .ofs    = i,
+        };
+
+        // push control stack entry, check for error
+        if (!pwasm_ctrl_stack_push(ctrl_stack, ctrl_entry)) {
+          pwasm_env_fail(frame.env, "block: ctrl_stack_push failed");
+          return false;
+        }
+
+        // increment control depth
+        ctrl_depth++;
+      }
+
+      break;
+    case PWASM_OP_LOOP:
+      {
+        // get block.params.size, check for error
+        size_t num_params;
+        if (!pwasm_block_type_params_get_size(frame.mod->mod, in.v_block.block_type, &num_params)) {
+          // log error, return failure
+          pwasm_env_fail(frame.env, "block: get num block params failed");
+          return false;
+        }
+
+        // create control stack entry
+        const pwasm_ctrl_stack_entry_t ctrl_entry = {
+          .type   = CTRL_LOOP,
+          .depth  = stack->pos - num_params,
+          .ofs    = i,
+        };
+
+        // push control stack entry, check for error
+        if (!pwasm_ctrl_stack_push(ctrl_stack, ctrl_entry)) {
+          pwasm_env_fail(frame.env, "block: ctrl_stack_push failed");
+          return false;
+        }
+
+        // increment control depth
+        ctrl_depth++;
+      }
+
+      break;
+    case PWASM_OP_IF:
+      {
+        // pop last value from value stack
+        const uint32_t tail = stack->ptr[--stack->pos].i32;
+
+        // get else/end offset
+        const size_t else_ofs = in.v_block.else_ofs ? in.v_block.else_ofs : in.v_block.end_ofs;
+
+        // get block.params.size, check for error
+        size_t num_params;
+        if (!pwasm_block_type_params_get_size(frame.mod->mod, in.v_block.block_type, &num_params)) {
+          // log error, return failure
+          pwasm_env_fail(frame.env, "block: get num block params failed");
+          return false;
+        }
+
+        // create control stack entry
+        const pwasm_ctrl_stack_entry_t ctrl_entry = {
+          .type   = CTRL_IF,
+          .depth  = stack->pos - num_params,
+          .ofs    = i,
+        };
+
+        // push control stack entry, check for error
+        if (!pwasm_ctrl_stack_push(ctrl_stack, ctrl_entry)) {
+          pwasm_env_fail(frame.env, "block: ctrl_stack_push failed");
+          return false;
+        }
+
+        // increment control depth
+        ctrl_depth++;
+
+        // increment instruction pointer
+        i += tail ? 0 : else_ofs;
+      }
+
+      break;
+    case PWASM_OP_ELSE:
+      // skip to end inst
+      i += insts[i].v_block.end_ofs - 1;
+
+      break;
+    case PWASM_OP_END:
+      if (ctrl_depth) {
+        // pop control stack, check for error
+        pwasm_ctrl_stack_entry_t ctrl_tail;
+        if (!pwasm_ctrl_stack_pop(ctrl_stack, &ctrl_tail)) {
+          pwasm_env_fail(frame.env, "end: ctrl_stack pop failed");
+          return false;
+        }
+
+        // decriment control stack depth
+        ctrl_depth--;
+
+        // get mod, block type
+        const pwasm_mod_t * const mod = frame.mod->mod;
+        const int32_t block_type = insts[ctrl_tail.ofs].v_block.block_type;
+
+        // get block type result count, check for error
+        size_t num_results;
+        if (!pwasm_block_type_results_get_size(mod, block_type, &num_results)) {
+          // log error, return failure
+          pwasm_env_fail(frame.env, "end: get block num_results failed");
+          return false;
+        }
+
+        // pop results
+        for (size_t j = 0; j < num_results; j++) {
+          // calculate stack source and destination offsets
+          const size_t src_ofs = stack->pos - 1 - (num_results - 1 - j);
+          const size_t dst_ofs = ctrl_tail.depth + j;
+          stack->ptr[dst_ofs] = stack->ptr[src_ofs];
+        }
+
+        // reset value stack
+        stack->pos = ctrl_tail.depth + num_results;
+      } else {
+        // return success
+        // FIXME: is this correct?
+        return true;
+      }
+
+      break;
+    case PWASM_OP_BR:
+      {
+        // pop control stack, check for error
+        if (!pwasm_ctrl_stack_popn(ctrl_stack, in.v_index)) {
+          // log error, return failure
+          pwasm_env_fail(frame.env, "br: ctrl_stack_popn failed");
+          return false;
+        }
+
+        // decriment control stack depth
+        ctrl_depth -= in.v_index;
+        if (!ctrl_depth) {
+          // return success
+          // FIXME: is this correct?
+          return true;
+        }
+
+        // get control stack tail, check for error
+        const pwasm_ctrl_stack_entry_t *ctrl_tail = pwasm_ctrl_stack_peek_tail(ctrl_stack, 0);
+        if (!ctrl_tail) {
+          pwasm_env_fail(frame.env, "br: ctrl_stack_peek_tail failed");
+          return false;
+        }
+
+        if (ctrl_tail->type == CTRL_LOOP) {
+          // reset control stack
+          i = ctrl_tail->ofs;
+          stack->pos = ctrl_tail->depth;
+        } else {
+          // get mod, block type
+          const pwasm_mod_t * const mod = frame.mod->mod;
+          const int32_t block_type = insts[ctrl_tail->ofs].v_block.block_type;
+
+          // get block type result count, check for error
+          size_t num_results;
+          if (!pwasm_block_type_results_get_size(mod, block_type, &num_results)) {
+            // log error, return failure
+            pwasm_env_fail(frame.env, "br: get block num_results failed");
+            return false;
+          }
+
+          // pop results
+          for (size_t j = 0; j < num_results; j++) {
+            // calculate stack source and destination offsets
+            const size_t src_ofs = stack->pos - 1 - (num_results - 1 - j);
+            const size_t dst_ofs = ctrl_tail->depth + 1 + j;
+            stack->ptr[dst_ofs] = stack->ptr[src_ofs];
+          }
+
+          // reset value stack
+          stack->pos = ctrl_tail->depth + num_results;
+
+          // pop control stack, check for error
+          if (!pwasm_ctrl_stack_pop(ctrl_stack, NULL)) {
+            // log error, return failure
+            pwasm_env_fail(frame.env, "br: ctrl_stack_pop failed");
+            return false;
+          }
+
+          // decriment control stack depth
+          ctrl_depth--;
+        }
+      }
+
+      break;
+    case PWASM_OP_BR_IF:
+      if (stack->ptr[--stack->pos].i32) {
+        // pop control stack, check for error
+        if (!pwasm_ctrl_stack_popn(ctrl_stack, in.v_index)) {
+          // log error, return failure
+          pwasm_env_fail(frame.env, "br_if: ctrl_stack_popn failed");
+          return false;
+        }
+
+        // decriment control stack depth
+        ctrl_depth -= in.v_index;
+        if (!ctrl_depth) {
+          // return success
+          // FIXME: is this correct?
+          return true;
+        }
+
+        // get control stack tail, check for error
+        const pwasm_ctrl_stack_entry_t *ctrl_tail = pwasm_ctrl_stack_peek_tail(ctrl_stack, 0);
+        if (!ctrl_tail) {
+          pwasm_env_fail(frame.env, "br_if: ctrl_stack_peek_tail failed");
+          return false;
+        }
+
+        if (ctrl_tail->type == CTRL_LOOP) {
+          i = ctrl_tail->ofs;
+          stack->pos = ctrl_tail->depth;
+        } else {
+          // get mod, block type
+          const pwasm_mod_t * const mod = frame.mod->mod;
+          const int32_t block_type = insts[ctrl_tail->ofs].v_block.block_type;
+
+          // get block type result count, check for error
+          size_t num_results;
+          if (!pwasm_block_type_results_get_size(mod, block_type, &num_results)) {
+            // log error, return failure
+            pwasm_env_fail(frame.env, "br_if: get block num_results failed");
+            return false;
+          }
+
+          // pop results
+          for (size_t j = 0; j < num_results; j++) {
+            // calculate stack source and destination offsets
+            const size_t src_ofs = stack->pos - 1 - (num_results - 1 - j);
+            const size_t dst_ofs = ctrl_tail->depth + 1 + j;
+            stack->ptr[dst_ofs] = stack->ptr[src_ofs];
+          }
+
+          // reset value stack
+          stack->pos = ctrl_tail->depth + num_results;
+
+          // pop control stack, check for error
+          if (!pwasm_ctrl_stack_pop(ctrl_stack, NULL)) {
+            // log error, return failure
+            pwasm_env_fail(frame.env, "br: ctrl_stack_pop failed");
+            return false;
+          }
+
+          // decriment control stack depth
+          ctrl_depth--;
+        }
+      }
+
+      break;
+    case PWASM_OP_BR_TABLE:
+      {
+        // get value from stack, branch labels, label offset, and then index
+        const uint32_t val = stack->ptr[--stack->pos].i32;
+        const pwasm_slice_t labels = in.v_br_table;
+        const size_t labels_ofs = labels.ofs + MIN(val, labels.len - 1);
+        const uint32_t id = frame.mod->mod->u32s[labels_ofs];
+
+        // pop control stack, check for error
+        if (!pwasm_ctrl_stack_popn(ctrl_stack, id)) {
+          // log error, return failure
+          pwasm_env_fail(frame.env, "br_if: ctrl_stack_popn failed");
+          return false;
+        }
+
+        // decriment control stack depth
+        ctrl_depth -= id;
+        if (!ctrl_depth) {
+          // return success
+          // FIXME: is this correct?
+          return true;
+        }
+
+        // get control stack tail, check for error
+        const pwasm_ctrl_stack_entry_t *ctrl_tail = pwasm_ctrl_stack_peek_tail(ctrl_stack, 0);
+        if (!ctrl_tail) {
+          pwasm_env_fail(frame.env, "br_if: ctrl_stack_peek_tail failed");
+          return false;
+        }
+
+        if (ctrl_tail->type == CTRL_LOOP) {
+          i = ctrl_tail->ofs;
+          stack->pos = ctrl_tail->depth;
+        } else {
+          // skip past end inst
+          i += in.v_block.end_ofs + 1;
+
+          // get mod, block type
+          const pwasm_mod_t * const mod = frame.mod->mod;
+          const int32_t block_type = insts[ctrl_tail->ofs].v_block.block_type;
+
+          // get block type result count, check for error
+          size_t num_results;
+          if (!pwasm_block_type_results_get_size(mod, block_type, &num_results)) {
+            // log error, return failure
+            pwasm_env_fail(frame.env, "br_if: get block num_results failed");
+            return false;
+          }
+
+          // pop results
+          for (size_t j = 0; j < num_results; j++) {
+            // calculate stack source and destination offsets
+            const size_t src_ofs = stack->pos - 1 - (num_results - 1 - j);
+            const size_t dst_ofs = ctrl_tail->depth + 1 + j;
+            stack->ptr[dst_ofs] = stack->ptr[src_ofs];
+          }
+
+          // reset value stack
+          stack->pos = ctrl_tail->depth + num_results;
+
+          // pop control stack, check for error
+          if (!pwasm_ctrl_stack_pop(ctrl_stack, NULL)) {
+            // log error, return failure
+            pwasm_env_fail(frame.env, "br: ctrl_stack_pop failed");
+            return false;
+          }
+
+          // decriment control stack depth
+          ctrl_depth--;
+        }
+      }
+
+      break;
+    case PWASM_OP_RETURN:
+      // return success
+      // FIXME: is this correct?
+      return true;
+    case PWASM_OP_CALL:
+      // call function, check for error
+      if (!pwasm_aot_jit_call_func(frame.env, frame.mod, in.v_index)) {
+        // return failure
+        return false;
+      }
+
+      break;
+    case PWASM_OP_CALL_INDIRECT:
+      {
+        // pop element index from value stack
+        const uint32_t elem_ofs = stack->ptr[--stack->pos].i32;
+
+        // call function, check for error
+        if (!pwasm_aot_jit_call_indirect(frame, in, elem_ofs)) {
+          // return failure
+          return false;
+        }
+      }
+
+      break;
+    case PWASM_OP_DROP:
+      stack->pos--;
+
+      break;
+    case PWASM_OP_SELECT:
+      {
+        const size_t ofs = stack->ptr[stack->pos - 1].i32 ? 3 : 2;
+        stack->ptr[stack->pos - 3] = stack->ptr[stack->pos - ofs];
+        stack->pos -= 2;
+      }
+
+      break;
+    case PWASM_OP_LOCAL_GET:
+      {
+        // get local index
+        // (note: checked in pwasm_checker_get_local_type())
+        const uint32_t id = in.v_index;
+
+        // push local value
+        stack->ptr[stack->pos++] = stack->ptr[frame.locals.ofs + id];
+      }
+
+      break;
+    case PWASM_OP_LOCAL_SET:
+      {
+        // get local index
+        // (note: checked in pwasm_checker_get_local_type())
+        const uint32_t id = in.v_index;
+
+        // set local value, pop stack
+        stack->ptr[frame.locals.ofs + id] = stack->ptr[stack->pos - 1];
+        stack->pos--;
+      }
+
+      break;
+    case PWASM_OP_LOCAL_TEE:
+      {
+        // get local index
+        // (note: checked in pwasm_checker_get_local_type())
+        const uint32_t id = in.v_index;
+
+        // set local value, keep stack (tee)
+        stack->ptr[frame.locals.ofs + id] = stack->ptr[stack->pos - 1];
+      }
+
+      break;
+    case PWASM_OP_GLOBAL_GET:
+      {
+        // get global index
+        const uint32_t id = pwasm_aot_jit_get_global_index(frame.env, frame.mod, in.v_index);
+
+        // get global value, check for error
+        pwasm_val_t val;
+        if (!pwasm_env_get_global(frame.env, id, &val)) {
+          // return failure
+          return false;
+        }
+
+        // push global value
+        stack->ptr[stack->pos++] = val;
+      }
+
+      break;
+    case PWASM_OP_GLOBAL_SET:
+      {
+        // get global index
+        const uint32_t id = pwasm_aot_jit_get_global_index(frame.env, frame.mod, in.v_index);
+
+        // set global value, check for error
+        if (!pwasm_env_set_global(frame.env, id, PWASM_PEEK(stack, 0))) {
+          // return failure
+          return false;
+        }
+
+        // pop stack
+        stack->pos--;
+      }
+
+      break;
+    case PWASM_OP_I32_LOAD:
+    case PWASM_OP_I64_LOAD:
+    case PWASM_OP_F32_LOAD:
+    case PWASM_OP_F64_LOAD:
+    case PWASM_OP_I32_LOAD8_S:
+    case PWASM_OP_I32_LOAD8_U:
+    case PWASM_OP_I32_LOAD16_S:
+    case PWASM_OP_I32_LOAD16_U:
+    case PWASM_OP_I64_LOAD8_S:
+    case PWASM_OP_I64_LOAD8_U:
+    case PWASM_OP_I64_LOAD16_S:
+    case PWASM_OP_I64_LOAD16_U:
+    case PWASM_OP_I64_LOAD32_S:
+    case PWASM_OP_I64_LOAD32_U:
+    case PWASM_OP_V128_LOAD:
+      {
+        // get offset operand
+        const uint32_t ofs = stack->ptr[stack->pos - 1].i32;
+
+        // load value, check for error
+        pwasm_val_t val;
+        if (!pwasm_env_mem_load(frame.env, frame.mem_id, in, ofs, &val)) {
+          return false;
+        }
+
+        // pop ofs operand, push val
+        stack->ptr[stack->pos - 1] = val;
+      }
+
+      break;
+    case PWASM_OP_I32_STORE:
+    case PWASM_OP_I64_STORE:
+    case PWASM_OP_F32_STORE:
+    case PWASM_OP_F64_STORE:
+    case PWASM_OP_I32_STORE8:
+    case PWASM_OP_I32_STORE16:
+    case PWASM_OP_I64_STORE8:
+    case PWASM_OP_I64_STORE16:
+    case PWASM_OP_I64_STORE32:
+    case PWASM_OP_V128_STORE:
+      {
+        // get offset operand and value
+        const uint32_t ofs = stack->ptr[stack->pos - 2].i32;
+        const pwasm_val_t val = stack->ptr[stack->pos - 1];
+        stack->pos -= 2;
+
+        // store value, check for error
+        if (!pwasm_env_mem_store(frame.env, frame.mem_id, in, ofs, val)) {
+          return false;
+        }
+      }
+
+      break;
+    case PWASM_OP_MEMORY_SIZE:
+      {
+        // get memory size, check for error
+        uint32_t size;
+        if (!pwasm_env_mem_size(frame.env, frame.mem_id, &size)) {
+          return false;
+        }
+
+        // push size to stack
+        stack->ptr[stack->pos++].i32 = size;
+      }
+
+      break;
+    case PWASM_OP_MEMORY_GROW:
+      {
+        // get grow operand
+        const uint32_t grow = stack->ptr[stack->pos - 1].i32;
+
+        // grow memory, check for error
+        uint32_t size;
+        if (!pwasm_env_mem_grow(frame.env, frame.mem_id, grow, &size)) {
+          return false;
+        }
+
+        // pop operand, push result
+        stack->ptr[stack->pos - 1].i32 = size;
+      }
+
+      break;
+    case PWASM_OP_I32_CONST:
+      stack->ptr[stack->pos++].i32 = in.v_i32;
+
+      break;
+    case PWASM_OP_I64_CONST:
+      stack->ptr[stack->pos++].i64 = in.v_i64;
+
+      break;
+    case PWASM_OP_F32_CONST:
+      stack->ptr[stack->pos++].f32 = in.v_f32;
+
+      break;
+    case PWASM_OP_F64_CONST:
+      stack->ptr[stack->pos++].f64 = in.v_f64;
+
+      break;
+    case PWASM_OP_I32_EQZ:
+      stack->ptr[stack->pos - 1].i32 = (stack->ptr[stack->pos - 1].i32 == 0);
+
+      break;
+    case PWASM_OP_I32_EQ:
+      {
+        const uint32_t a = stack->ptr[stack->pos - 2].i32;
+        const uint32_t b = stack->ptr[stack->pos - 1].i32;
+        stack->ptr[stack->pos - 2].i32 = (a == b);
+        stack->pos--;
+      }
+
+      break;
+    case PWASM_OP_I32_NE:
+      {
+        const uint32_t a = stack->ptr[stack->pos - 2].i32;
+        const uint32_t b = stack->ptr[stack->pos - 1].i32;
+        stack->ptr[stack->pos - 2].i32 = (a != b);
+        stack->pos--;
+      }
+
+      break;
+    case PWASM_OP_I32_LT_S:
+      {
+        const int32_t a = (int32_t) stack->ptr[stack->pos - 2].i32;
+        const int32_t b = (int32_t) stack->ptr[stack->pos - 1].i32;
+        stack->ptr[stack->pos - 2].i32 = (a < b);
+        stack->pos--;
+      }
+
+      break;
+    case PWASM_OP_I32_LT_U:
+      {
+        const uint32_t a = stack->ptr[stack->pos - 2].i32;
+        const uint32_t b = stack->ptr[stack->pos - 1].i32;
+        stack->ptr[stack->pos - 2].i32 = (a < b);
+        stack->pos--;
+      }
+
+      break;
+    case PWASM_OP_I32_GT_S:
+      {
+        const int32_t a = (int32_t) stack->ptr[stack->pos - 2].i32;
+        const int32_t b = (int32_t) stack->ptr[stack->pos - 1].i32;
+        stack->ptr[stack->pos - 2].i32 = (a > b);
+        stack->pos--;
+      }
+
+      break;
+    case PWASM_OP_I32_GT_U:
+      {
+        const uint32_t a = stack->ptr[stack->pos - 2].i32;
+        const uint32_t b = stack->ptr[stack->pos - 1].i32;
+        stack->ptr[stack->pos - 2].i32 = (a > b);
+        stack->pos--;
+      }
+
+      break;
+    case PWASM_OP_I32_LE_S:
+      {
+        const int32_t a = (int32_t) stack->ptr[stack->pos - 2].i32;
+        const int32_t b = (int32_t) stack->ptr[stack->pos - 1].i32;
+        stack->ptr[stack->pos - 2].i32 = (a <= b);
+        stack->pos--;
+      }
+
+      break;
+    case PWASM_OP_I32_LE_U:
+      {
+        const uint32_t a = stack->ptr[stack->pos - 2].i32;
+        const uint32_t b = stack->ptr[stack->pos - 1].i32;
+        stack->ptr[stack->pos - 2].i32 = (a <= b);
+        stack->pos--;
+      }
+
+      break;
+    case PWASM_OP_I32_GE_S:
+      {
+        const int32_t a = (int32_t) stack->ptr[stack->pos - 2].i32;
+        const int32_t b = (int32_t) stack->ptr[stack->pos - 1].i32;
+        stack->ptr[stack->pos - 2].i32 = (a >= b);
+        stack->pos--;
+      }
+
+      break;
+    case PWASM_OP_I32_GE_U:
+      {
+        const uint32_t a = stack->ptr[stack->pos - 2].i32;
+        const uint32_t b = stack->ptr[stack->pos - 1].i32;
+        stack->ptr[stack->pos - 2].i32 = (a >= b);
+        stack->pos--;
+      }
+
+      break;
+    case PWASM_OP_I64_EQZ:
+      stack->ptr[stack->pos - 1].i32 = (stack->ptr[stack->pos - 1].i64 == 0);
+
+      break;
+    case PWASM_OP_I64_EQ:
+      {
+        const uint64_t a = stack->ptr[stack->pos - 2].i64;
+        const uint64_t b = stack->ptr[stack->pos - 1].i64;
+        stack->ptr[stack->pos - 2].i32 = (a == b);
+        stack->pos--;
+      }
+
+      break;
+    case PWASM_OP_I64_NE:
+      {
+        const uint64_t a = stack->ptr[stack->pos - 2].i64;
+        const uint64_t b = stack->ptr[stack->pos - 1].i64;
+        stack->ptr[stack->pos - 2].i32 = (a != b);
+        stack->pos--;
+      }
+
+      break;
+    case PWASM_OP_I64_LT_S:
+      {
+        const int64_t a = (int64_t) stack->ptr[stack->pos - 2].i64;
+        const int64_t b = (int64_t) stack->ptr[stack->pos - 1].i64;
+        stack->ptr[stack->pos - 2].i32 = (a < b);
+        stack->pos--;
+      }
+
+      break;
+    case PWASM_OP_I64_LT_U:
+      {
+        const uint64_t a = stack->ptr[stack->pos - 2].i64;
+        const uint64_t b = stack->ptr[stack->pos - 1].i64;
+        stack->ptr[stack->pos - 2].i32 = (a < b);
+        stack->pos--;
+      }
+
+      break;
+    case PWASM_OP_I64_GT_S:
+      {
+        const int64_t a = (int64_t) stack->ptr[stack->pos - 2].i64;
+        const int64_t b = (int64_t) stack->ptr[stack->pos - 1].i64;
+        stack->ptr[stack->pos - 2].i32 = (a > b);
+        stack->pos--;
+      }
+
+      break;
+    case PWASM_OP_I64_GT_U:
+      {
+        const uint64_t a = stack->ptr[stack->pos - 2].i64;
+        const uint64_t b = stack->ptr[stack->pos - 1].i64;
+        stack->ptr[stack->pos - 2].i32 = (a > b);
+        stack->pos--;
+      }
+
+      break;
+    case PWASM_OP_I64_LE_S:
+      {
+        const int64_t a = (int64_t) stack->ptr[stack->pos - 2].i64;
+        const int64_t b = (int64_t) stack->ptr[stack->pos - 1].i64;
+        stack->ptr[stack->pos - 2].i32 = (a <= b);
+        stack->pos--;
+      }
+
+      break;
+    case PWASM_OP_I64_LE_U:
+      {
+        const uint64_t a = stack->ptr[stack->pos - 2].i64;
+        const uint64_t b = stack->ptr[stack->pos - 1].i64;
+        stack->ptr[stack->pos - 2].i32 = (a <= b);
+        stack->pos--;
+      }
+
+      break;
+    case PWASM_OP_I64_GE_S:
+      {
+        const int64_t a = (int64_t) stack->ptr[stack->pos - 2].i64;
+        const int64_t b = (int64_t) stack->ptr[stack->pos - 1].i64;
+        stack->ptr[stack->pos - 2].i32 = (a >= b);
+        stack->pos--;
+      }
+
+      break;
+    case PWASM_OP_I64_GE_U:
+      {
+        const uint64_t a = stack->ptr[stack->pos - 2].i64;
+        const uint64_t b = stack->ptr[stack->pos - 1].i64;
+        stack->ptr[stack->pos - 2].i32 = (a >= b);
+        stack->pos--;
+      }
+
+      break;
+    case PWASM_OP_F32_EQ:
+      {
+        const float a = stack->ptr[stack->pos - 2].f32;
+        const float b = stack->ptr[stack->pos - 1].f32;
+        stack->ptr[stack->pos - 2].i32 = (a == b);
+        stack->pos--;
+      }
+
+      break;
+    case PWASM_OP_F32_NE:
+      {
+        const float a = stack->ptr[stack->pos - 2].f32;
+        const float b = stack->ptr[stack->pos - 1].f32;
+        stack->ptr[stack->pos - 2].i32 = (a != b);
+        stack->pos--;
+      }
+
+      break;
+    case PWASM_OP_F32_LT:
+      {
+        const float a = stack->ptr[stack->pos - 2].f32;
+        const float b = stack->ptr[stack->pos - 1].f32;
+        stack->ptr[stack->pos - 2].i32 = (a < b);
+        stack->pos--;
+      }
+
+      break;
+    case PWASM_OP_F32_GT:
+      {
+        const float a = stack->ptr[stack->pos - 2].f32;
+        const float b = stack->ptr[stack->pos - 1].f32;
+        stack->ptr[stack->pos - 2].i32 = (a > b);
+        stack->pos--;
+      }
+
+      break;
+    case PWASM_OP_F32_LE:
+      {
+        const float a = stack->ptr[stack->pos - 2].f32;
+        const float b = stack->ptr[stack->pos - 1].f32;
+        stack->ptr[stack->pos - 2].i32 = (a <= b);
+        stack->pos--;
+      }
+
+      break;
+    case PWASM_OP_F32_GE:
+      {
+        const float a = stack->ptr[stack->pos - 2].f32;
+        const float b = stack->ptr[stack->pos - 1].f32;
+        stack->ptr[stack->pos - 2].i32 = (a >= b);
+        stack->pos--;
+      }
+
+      break;
+    case PWASM_OP_F64_EQ:
+      {
+        const double a = stack->ptr[stack->pos - 2].f64;
+        const double b = stack->ptr[stack->pos - 1].f64;
+        stack->ptr[stack->pos - 2].i32 = (a == b);
+        stack->pos--;
+      }
+
+      break;
+    case PWASM_OP_F64_NE:
+      {
+        const double a = stack->ptr[stack->pos - 2].f64;
+        const double b = stack->ptr[stack->pos - 1].f64;
+        stack->ptr[stack->pos - 2].i32 = (a != b);
+        stack->pos--;
+      }
+
+      break;
+    case PWASM_OP_F64_LT:
+      {
+        const double a = stack->ptr[stack->pos - 2].f64;
+        const double b = stack->ptr[stack->pos - 1].f64;
+        stack->ptr[stack->pos - 2].i32 = (a < b);
+        stack->pos--;
+      }
+
+      break;
+    case PWASM_OP_F64_GT:
+      {
+        const double a = stack->ptr[stack->pos - 2].f64;
+        const double b = stack->ptr[stack->pos - 1].f64;
+        stack->ptr[stack->pos - 2].i32 = (a > b);
+        stack->pos--;
+      }
+
+      break;
+    case PWASM_OP_F64_LE:
+      {
+        const double a = stack->ptr[stack->pos - 2].f64;
+        const double b = stack->ptr[stack->pos - 1].f64;
+        stack->ptr[stack->pos - 2].i32 = (a <= b);
+        stack->pos--;
+      }
+
+      break;
+    case PWASM_OP_F64_GE:
+      {
+        const double a = stack->ptr[stack->pos - 2].f64;
+        const double b = stack->ptr[stack->pos - 1].f64;
+        stack->ptr[stack->pos - 2].i32 = (a >= b);
+        stack->pos--;
+      }
+
+      break;
+    case PWASM_OP_I32_CLZ:
+      {
+        const uint32_t a = stack->ptr[stack->pos - 1].i32;
+        stack->ptr[stack->pos - 1].i32 = a ? __builtin_clz(a) : 32;
+      }
+
+      break;
+    case PWASM_OP_I32_CTZ:
+      {
+        const uint32_t a = stack->ptr[stack->pos - 1].i32;
+        stack->ptr[stack->pos - 1].i32 = a ? __builtin_ctz(a) : 32;
+      }
+
+      break;
+    case PWASM_OP_I32_POPCNT:
+      {
+        const int val = __builtin_popcount(stack->ptr[stack->pos - 1].i32);
+        stack->ptr[stack->pos - 1].i32 = val;
+      }
+
+      break;
+    case PWASM_OP_I32_ADD:
+      {
+        const uint32_t a = stack->ptr[stack->pos - 2].i32;
+        const uint32_t b = stack->ptr[stack->pos - 1].i32;
+        stack->ptr[stack->pos - 2].i32 = a + b;
+        stack->pos--;
+      }
+
+      break;
+    case PWASM_OP_I32_SUB:
+      {
+        const uint32_t a = stack->ptr[stack->pos - 2].i32;
+        const uint32_t b = stack->ptr[stack->pos - 1].i32;
+        stack->ptr[stack->pos - 2].i32 = a - b;
+        stack->pos--;
+      }
+
+      break;
+    case PWASM_OP_I32_MUL:
+      {
+        const uint32_t a = stack->ptr[stack->pos - 2].i32;
+        const uint32_t b = stack->ptr[stack->pos - 1].i32;
+        stack->ptr[stack->pos - 2].i32 = a * b;
+        stack->pos--;
+      }
+
+      break;
+    case PWASM_OP_I32_DIV_S:
+      {
+        const int32_t a = (int32_t) stack->ptr[stack->pos - 2].i32;
+        const int32_t b = (int32_t) stack->ptr[stack->pos - 1].i32;
+
+        if (!b) {
+          // log error, return failure
+          pwasm_env_fail(frame.env, "i32.div_s: division by zero");
+          return false;
+        }
+
+        stack->ptr[stack->pos - 2].i32 = a / b;
+        stack->pos--;
+      }
+
+      break;
+    case PWASM_OP_I32_DIV_U:
+      {
+        const uint32_t a = stack->ptr[stack->pos - 2].i32;
+        const uint32_t b = stack->ptr[stack->pos - 1].i32;
+
+        if (!b) {
+          // log error, return failure
+          pwasm_env_fail(frame.env, "i32.div_u: division by zero");
+          return false;
+        }
+
+        stack->ptr[stack->pos - 2].i32 = a / b;
+        stack->pos--;
+      }
+
+      break;
+    case PWASM_OP_I32_REM_S:
+      {
+        const int32_t a = (int32_t) stack->ptr[stack->pos - 2].i32;
+        const int32_t b = (int32_t) stack->ptr[stack->pos - 1].i32;
+
+        if (!b) {
+          // log error, return failure
+          pwasm_env_fail(frame.env, "i32.rem_s: division by zero");
+          return false;
+        }
+
+        stack->ptr[stack->pos - 2].i32 = a % b;
+        stack->pos--;
+      }
+
+      break;
+    case PWASM_OP_I32_REM_U:
+      {
+        const uint32_t a = stack->ptr[stack->pos - 2].i32;
+        const uint32_t b = stack->ptr[stack->pos - 1].i32;
+
+        if (!b) {
+          // log error, return failure
+          pwasm_env_fail(frame.env, "i32.rem_u: division by zero");
+          return false;
+        }
+
+        stack->ptr[stack->pos - 2].i32 = a % b;
+        stack->pos--;
+      }
+
+      break;
+    case PWASM_OP_I32_AND:
+      {
+        const uint32_t a = stack->ptr[stack->pos - 2].i32;
+        const uint32_t b = stack->ptr[stack->pos - 1].i32;
+        stack->ptr[stack->pos - 2].i32 = a & b;
+        stack->pos--;
+      }
+
+      break;
+    case PWASM_OP_I32_OR:
+      {
+        const uint32_t a = stack->ptr[stack->pos - 2].i32;
+        const uint32_t b = stack->ptr[stack->pos - 1].i32;
+        stack->ptr[stack->pos - 2].i32 = a | b;
+        stack->pos--;
+      }
+
+      break;
+    case PWASM_OP_I32_XOR:
+      {
+        const uint32_t a = stack->ptr[stack->pos - 2].i32;
+        const uint32_t b = stack->ptr[stack->pos - 1].i32;
+        stack->ptr[stack->pos - 2].i32 = a ^ b;
+        stack->pos--;
+      }
+
+      break;
+    case PWASM_OP_I32_SHL:
+      {
+        const uint32_t a = stack->ptr[stack->pos - 2].i32;
+        const uint32_t b = stack->ptr[stack->pos - 1].i32 & 0x1F;
+        stack->ptr[stack->pos - 2].i32 = a << b;
+        stack->pos--;
+      }
+
+      break;
+    case PWASM_OP_I32_SHR_S:
+      {
+        const int32_t a = (int32_t) stack->ptr[stack->pos - 2].i32;
+        const uint32_t b = stack->ptr[stack->pos - 1].i32 & 0x1F;
+        stack->ptr[stack->pos - 2].i32 = a >> b;
+        stack->pos--;
+      }
+
+      break;
+    case PWASM_OP_I32_SHR_U:
+      {
+        const uint32_t a = stack->ptr[stack->pos - 2].i32;
+        const uint32_t b = stack->ptr[stack->pos - 1].i32 & 0x1F;
+        stack->ptr[stack->pos - 2].i32 = a >> b;
+        stack->pos--;
+      }
+
+      break;
+    case PWASM_OP_I32_ROTL:
+      {
+        const uint32_t a = stack->ptr[stack->pos - 2].i32;
+        const uint32_t b = stack->ptr[stack->pos - 1].i32 & 0x1F;
+        stack->ptr[stack->pos - 2].i32 = (a << b) | (a >> (32 - b));
+        stack->pos--;
+      }
+
+      break;
+    case PWASM_OP_I32_ROTR:
+      {
+        const uint32_t a = stack->ptr[stack->pos - 2].i32;
+        const uint32_t b = stack->ptr[stack->pos - 1].i32 & 0x1F;
+        stack->ptr[stack->pos - 2].i32 = (a << (32 - b)) | (a >> b);
+        stack->pos--;
+      }
+
+      break;
+    case PWASM_OP_I64_CLZ:
+      {
+        const uint64_t a = stack->ptr[stack->pos - 1].i64;
+        stack->ptr[stack->pos - 1].i64 = a ? __builtin_clzl(a) : 64;
+      }
+
+      break;
+    case PWASM_OP_I64_CTZ:
+      {
+        const uint64_t a = stack->ptr[stack->pos - 1].i64;
+        stack->ptr[stack->pos - 1].i64 = a ? __builtin_ctzl(a) : 64;
+      }
+
+      break;
+    case PWASM_OP_I64_POPCNT:
+      {
+        const int val = __builtin_popcountl(stack->ptr[stack->pos - 1].i64);
+        stack->ptr[stack->pos - 1].i64 = val;
+      }
+
+      break;
+    case PWASM_OP_I64_ADD:
+      {
+        const uint64_t a = stack->ptr[stack->pos - 2].i64;
+        const uint64_t b = stack->ptr[stack->pos - 1].i64;
+        stack->ptr[stack->pos - 2].i64 = a + b;
+        stack->pos--;
+      }
+
+      break;
+    case PWASM_OP_I64_SUB:
+      {
+        const uint64_t a = stack->ptr[stack->pos - 2].i64;
+        const uint64_t b = stack->ptr[stack->pos - 1].i64;
+        stack->ptr[stack->pos - 2].i64 = a - b;
+        stack->pos--;
+      }
+
+      break;
+    case PWASM_OP_I64_MUL:
+      {
+        const uint64_t a = stack->ptr[stack->pos - 2].i64;
+        const uint64_t b = stack->ptr[stack->pos - 1].i64;
+        stack->ptr[stack->pos - 2].i64 = a * b;
+        stack->pos--;
+      }
+
+      break;
+    case PWASM_OP_I64_DIV_S:
+      {
+        const int64_t a = (int64_t) stack->ptr[stack->pos - 2].i64;
+        const int64_t b = (int64_t) stack->ptr[stack->pos - 1].i64;
+
+        if (!b) {
+          // log error, return failure
+          pwasm_env_fail(frame.env, "i64.div_s: division by zero");
+          return false;
+        }
+
+        stack->ptr[stack->pos - 2].i64 = a / b;
+        stack->pos--;
+      }
+
+      break;
+    case PWASM_OP_I64_DIV_U:
+      {
+        const uint64_t a = stack->ptr[stack->pos - 2].i64;
+        const uint64_t b = stack->ptr[stack->pos - 1].i64;
+
+        if (!b) {
+          // log error, return failure
+          pwasm_env_fail(frame.env, "i64.div_u: division by zero");
+          return false;
+        }
+
+        stack->ptr[stack->pos - 2].i64 = a / b;
+        stack->pos--;
+      }
+
+      break;
+    case PWASM_OP_I64_REM_S:
+      {
+        const int64_t a = (int64_t) stack->ptr[stack->pos - 2].i64;
+        const int64_t b = (int64_t) stack->ptr[stack->pos - 1].i64;
+
+        if (!b) {
+          // log error, return failure
+          pwasm_env_fail(frame.env, "i64.rem_s: division by zero");
+          return false;
+        }
+
+        stack->ptr[stack->pos - 2].i64 = a % b;
+        stack->pos--;
+      }
+
+      break;
+    case PWASM_OP_I64_REM_U:
+      {
+        const uint64_t a = stack->ptr[stack->pos - 2].i64;
+        const uint64_t b = stack->ptr[stack->pos - 1].i64;
+
+        if (!b) {
+          // log error, return failure
+          pwasm_env_fail(frame.env, "i64.rem_u: division by zero");
+          return false;
+        }
+
+        stack->ptr[stack->pos - 2].i64 = a % b;
+        stack->pos--;
+      }
+
+      break;
+    case PWASM_OP_I64_AND:
+      {
+        const uint64_t a = stack->ptr[stack->pos - 2].i64;
+        const uint64_t b = stack->ptr[stack->pos - 1].i64;
+        stack->ptr[stack->pos - 2].i64 = a & b;
+        stack->pos--;
+      }
+
+      break;
+    case PWASM_OP_I64_OR:
+      {
+        const uint64_t a = stack->ptr[stack->pos - 2].i64;
+        const uint64_t b = stack->ptr[stack->pos - 1].i64;
+        stack->ptr[stack->pos - 2].i64 = a | b;
+        stack->pos--;
+      }
+
+      break;
+    case PWASM_OP_I64_XOR:
+      {
+        const uint64_t a = stack->ptr[stack->pos - 2].i64;
+        const uint64_t b = stack->ptr[stack->pos - 1].i64;
+        stack->ptr[stack->pos - 2].i64 = a ^ b;
+        stack->pos--;
+      }
+
+      break;
+    case PWASM_OP_I64_SHL:
+      {
+        const uint64_t a = stack->ptr[stack->pos - 2].i64;
+        const uint64_t b = stack->ptr[stack->pos - 1].i64 & 0x3F;
+        stack->ptr[stack->pos - 2].i64 = a << b;
+        stack->pos--;
+      }
+
+      break;
+    case PWASM_OP_I64_SHR_S:
+      {
+        const int64_t a = (int64_t) stack->ptr[stack->pos - 2].i64;
+        const uint64_t b = stack->ptr[stack->pos - 1].i64 & 0x3F;
+        stack->ptr[stack->pos - 2].i64 = a >> b;
+        stack->pos--;
+      }
+
+      break;
+    case PWASM_OP_I64_SHR_U:
+      {
+        const uint64_t a = stack->ptr[stack->pos - 2].i64;
+        const uint64_t b = stack->ptr[stack->pos - 1].i64 & 0x3F;
+        stack->ptr[stack->pos - 2].i64 = a >> b;
+        stack->pos--;
+      }
+
+      break;
+    case PWASM_OP_I64_ROTL:
+      {
+        const uint64_t a = stack->ptr[stack->pos - 2].i64;
+        const uint64_t b = stack->ptr[stack->pos - 1].i64 & 0x3F;
+        stack->ptr[stack->pos - 2].i64 = (a << b) | (a >> (64 - b));
+        stack->pos--;
+      }
+
+      break;
+    case PWASM_OP_I64_ROTR:
+      {
+        const uint64_t a = stack->ptr[stack->pos - 2].i64;
+        const uint64_t b = stack->ptr[stack->pos - 1].i64 & 0x3F;
+        stack->ptr[stack->pos - 2].i64 = (a << (64 - b)) | (a >> b);
+        stack->pos--;
+      }
+
+      break;
+    case PWASM_OP_F32_ABS:
+      {
+        const float a = stack->ptr[stack->pos - 1].f32;
+        stack->ptr[stack->pos - 1].f32 = fabsf(a);
+      }
+
+      break;
+    case PWASM_OP_F32_NEG:
+      {
+        const float a = stack->ptr[stack->pos - 1].f32;
+        stack->ptr[stack->pos - 1].f32 = -a;
+      }
+
+      break;
+    case PWASM_OP_F32_CEIL:
+      {
+        const float a = stack->ptr[stack->pos - 1].f32;
+        stack->ptr[stack->pos - 1].f32 = ceilf(a);
+      }
+
+      break;
+    case PWASM_OP_F32_FLOOR:
+      {
+        const float a = stack->ptr[stack->pos - 1].f32;
+        stack->ptr[stack->pos - 1].f32 = floorf(a);
+      }
+
+      break;
+    case PWASM_OP_F32_TRUNC:
+      {
+        const float a = stack->ptr[stack->pos - 1].f32;
+        stack->ptr[stack->pos - 1].f32 = truncf(a);
+      }
+
+      break;
+    case PWASM_OP_F32_NEAREST:
+      {
+        const float a = stack->ptr[stack->pos - 1].f32;
+        stack->ptr[stack->pos - 1].f32 = roundf(a);
+      }
+
+      break;
+    case PWASM_OP_F32_SQRT:
+      {
+        const float a = stack->ptr[stack->pos - 1].f32;
+        stack->ptr[stack->pos - 1].f32 = sqrtf(a);
+      }
+
+      break;
+    case PWASM_OP_F32_ADD:
+      {
+        const float a = stack->ptr[stack->pos - 2].f32;
+        const float b = stack->ptr[stack->pos - 1].f32;
+        stack->ptr[stack->pos - 2].f32 = a + b;
+        stack->pos--;
+      }
+
+      break;
+    case PWASM_OP_F32_SUB:
+      {
+        const float a = stack->ptr[stack->pos - 2].f32;
+        const float b = stack->ptr[stack->pos - 1].f32;
+        stack->ptr[stack->pos - 2].f32 = a - b;
+        stack->pos--;
+      }
+
+      break;
+    case PWASM_OP_F32_MUL:
+      {
+        const float a = stack->ptr[stack->pos - 2].f32;
+        const float b = stack->ptr[stack->pos - 1].f32;
+        stack->ptr[stack->pos - 2].f32 = a * b;
+        stack->pos--;
+      }
+
+      break;
+    case PWASM_OP_F32_DIV:
+      {
+        const float a = stack->ptr[stack->pos - 2].f32;
+        const float b = stack->ptr[stack->pos - 1].f32;
+        stack->ptr[stack->pos - 2].f32 = a / b;
+        stack->pos--;
+      }
+
+      break;
+    case PWASM_OP_F32_MIN:
+      {
+        const float a = stack->ptr[stack->pos - 2].f32;
+        const float b = stack->ptr[stack->pos - 1].f32;
+        stack->ptr[stack->pos - 2].f32 = fminf(a, b);
+        stack->pos--;
+      }
+
+      break;
+    case PWASM_OP_F32_MAX:
+      {
+        const float a = stack->ptr[stack->pos - 2].f32;
+        const float b = stack->ptr[stack->pos - 1].f32;
+        stack->ptr[stack->pos - 2].f32 = fmaxf(a, b);
+        stack->pos--;
+      }
+
+      break;
+    case PWASM_OP_F32_COPYSIGN:
+      {
+        const float a = stack->ptr[stack->pos - 2].f32;
+        const float b = stack->ptr[stack->pos - 1].f32;
+        stack->ptr[stack->pos - 2].f32 = copysignf(a, b);
+        stack->pos--;
+      }
+
+      break;
+    case PWASM_OP_F64_ABS:
+      {
+        const double a = stack->ptr[stack->pos - 1].f64;
+        stack->ptr[stack->pos - 1].f64 = fabs(a);
+      }
+
+      break;
+    case PWASM_OP_F64_NEG:
+      {
+        const double a = stack->ptr[stack->pos - 1].f64;
+        stack->ptr[stack->pos - 1].f64 = -a;
+      }
+
+      break;
+    case PWASM_OP_F64_CEIL:
+      {
+        const double a = stack->ptr[stack->pos - 1].f64;
+        stack->ptr[stack->pos - 1].f64 = ceil(a);
+      }
+
+      break;
+    case PWASM_OP_F64_FLOOR:
+      {
+        const double a = stack->ptr[stack->pos - 1].f64;
+        stack->ptr[stack->pos - 1].f64 = floor(a);
+      }
+
+      break;
+    case PWASM_OP_F64_TRUNC:
+      {
+        const double a = stack->ptr[stack->pos - 1].f64;
+        stack->ptr[stack->pos - 1].f64 = trunc(a);
+      }
+
+      break;
+    case PWASM_OP_F64_NEAREST:
+      {
+        const double a = stack->ptr[stack->pos - 1].f64;
+        stack->ptr[stack->pos - 1].f64 = round(a);
+      }
+
+      break;
+    case PWASM_OP_F64_SQRT:
+      {
+        const double a = stack->ptr[stack->pos - 1].f64;
+        stack->ptr[stack->pos - 1].f64 = sqrt(a);
+      }
+
+      break;
+    case PWASM_OP_F64_ADD:
+      {
+        const double a = stack->ptr[stack->pos - 2].f64;
+        const double b = stack->ptr[stack->pos - 1].f64;
+        stack->ptr[stack->pos - 2].f64 = a + b;
+        stack->pos--;
+      }
+
+      break;
+    case PWASM_OP_F64_SUB:
+      {
+        const double a = stack->ptr[stack->pos - 2].f64;
+        const double b = stack->ptr[stack->pos - 1].f64;
+        stack->ptr[stack->pos - 2].f64 = a - b;
+        stack->pos--;
+      }
+
+      break;
+    case PWASM_OP_F64_MUL:
+      {
+        const double a = stack->ptr[stack->pos - 2].f64;
+        const double b = stack->ptr[stack->pos - 1].f64;
+        stack->ptr[stack->pos - 2].f64 = a * b;
+        stack->pos--;
+      }
+
+      break;
+    case PWASM_OP_F64_DIV:
+      {
+        const double a = stack->ptr[stack->pos - 2].f64;
+        const double b = stack->ptr[stack->pos - 1].f64;
+        stack->ptr[stack->pos - 2].f64 = a / b;
+        stack->pos--;
+      }
+
+      break;
+    case PWASM_OP_F64_MIN:
+      {
+        const double a = stack->ptr[stack->pos - 2].f64;
+        const double b = stack->ptr[stack->pos - 1].f64;
+        stack->ptr[stack->pos - 2].f64 = fmin(a, b);
+        stack->pos--;
+      }
+
+      break;
+    case PWASM_OP_F64_MAX:
+      {
+        const double a = stack->ptr[stack->pos - 2].f64;
+        const double b = stack->ptr[stack->pos - 1].f64;
+        stack->ptr[stack->pos - 2].f64 = fmax(a, b);
+        stack->pos--;
+      }
+
+      break;
+    case PWASM_OP_F64_COPYSIGN:
+      {
+        const double a = stack->ptr[stack->pos - 2].f64;
+        const double b = stack->ptr[stack->pos - 1].f64;
+        stack->ptr[stack->pos - 2].f64 = copysign(a, b);
+        stack->pos--;
+      }
+
+      break;
+    case PWASM_OP_I32_WRAP_I64:
+      {
+        const uint64_t a = stack->ptr[stack->pos - 1].i64;
+        stack->ptr[stack->pos - 1].i32 = (uint32_t) a;
+      }
+
+      break;
+    case PWASM_OP_I32_TRUNC_F32_S:
+      {
+        const float a = stack->ptr[stack->pos - 1].f32;
+        stack->ptr[stack->pos - 1].i32 = (int32_t) a;
+      }
+
+      break;
+    case PWASM_OP_I32_TRUNC_F32_U:
+      {
+        const float a = stack->ptr[stack->pos - 1].f32;
+        stack->ptr[stack->pos - 1].i32 = (uint32_t) a;
+      }
+
+      break;
+    case PWASM_OP_I32_TRUNC_F64_S:
+      {
+        const double a = stack->ptr[stack->pos - 1].f64;
+        stack->ptr[stack->pos - 1].i32 = (int32_t) a;
+      }
+
+      break;
+    case PWASM_OP_I32_TRUNC_F64_U:
+      {
+        const double a = stack->ptr[stack->pos - 1].f64;
+        stack->ptr[stack->pos - 1].i32 = (uint32_t) a;
+      }
+
+      break;
+    case PWASM_OP_I64_EXTEND_I32_S:
+      {
+        const int32_t a = (int32_t) stack->ptr[stack->pos - 1].i32;
+        stack->ptr[stack->pos - 1].i64 = (int64_t) a;
+      }
+
+      break;
+    case PWASM_OP_I64_EXTEND_I32_U:
+      {
+        const uint32_t a = stack->ptr[stack->pos - 1].i32;
+        stack->ptr[stack->pos - 1].i64 = (uint64_t) a;
+      }
+
+      break;
+    case PWASM_OP_I64_TRUNC_F32_S:
+      {
+        const float a = stack->ptr[stack->pos - 1].f32;
+        stack->ptr[stack->pos - 1].i64 = (int64_t) a;
+      }
+
+      break;
+    case PWASM_OP_I64_TRUNC_F32_U:
+      {
+        const float a = stack->ptr[stack->pos - 1].f32;
+        stack->ptr[stack->pos - 1].i64 = (uint64_t) a;
+      }
+
+      break;
+    case PWASM_OP_I64_TRUNC_F64_S:
+      {
+        const double a = stack->ptr[stack->pos - 1].f64;
+        stack->ptr[stack->pos - 1].i64 = (int64_t) a;
+      }
+
+      break;
+    case PWASM_OP_I64_TRUNC_F64_U:
+      {
+        const double a = stack->ptr[stack->pos - 1].f64;
+        stack->ptr[stack->pos - 1].i64 = (uint64_t) a;
+      }
+
+      break;
+    case PWASM_OP_F32_CONVERT_I32_S:
+      {
+        const int32_t a = (int32_t) stack->ptr[stack->pos - 1].i32;
+        stack->ptr[stack->pos - 1].f32 = (float) a;
+      }
+
+      break;
+    case PWASM_OP_F32_CONVERT_I32_U:
+      {
+        const uint32_t a = (uint32_t) stack->ptr[stack->pos - 1].i32;
+        stack->ptr[stack->pos - 1].f32 = (float) a;
+      }
+
+      break;
+    case PWASM_OP_F32_CONVERT_I64_S:
+      {
+        const int64_t a = (int64_t) stack->ptr[stack->pos - 1].i64;
+        stack->ptr[stack->pos - 1].f32 = (float) a;
+      }
+
+      break;
+    case PWASM_OP_F32_CONVERT_I64_U:
+      {
+        const uint64_t a = (uint64_t) stack->ptr[stack->pos - 1].i64;
+        stack->ptr[stack->pos - 1].f32 = (float) a;
+      }
+
+      break;
+    case PWASM_OP_F32_DEMOTE_F64:
+      {
+        const double a = stack->ptr[stack->pos - 1].f64;
+        stack->ptr[stack->pos - 1].f32 = (float) a;
+      }
+
+      break;
+    case PWASM_OP_F64_CONVERT_I32_S:
+      {
+        const int32_t a = (int32_t) stack->ptr[stack->pos - 1].i32;
+        stack->ptr[stack->pos - 1].f64 = (double) a;
+      }
+
+      break;
+    case PWASM_OP_F64_CONVERT_I32_U:
+      {
+        const uint32_t a = (uint32_t) stack->ptr[stack->pos - 1].i32;
+        stack->ptr[stack->pos - 1].f64 = (double) a;
+      }
+
+      break;
+    case PWASM_OP_F64_CONVERT_I64_S:
+      {
+        const int64_t a = (int64_t) stack->ptr[stack->pos - 1].i64;
+        stack->ptr[stack->pos - 1].f64 = (double) a;
+      }
+
+      break;
+    case PWASM_OP_F64_CONVERT_I64_U:
+      {
+        const uint64_t a = (uint64_t) stack->ptr[stack->pos - 1].i64;
+        stack->ptr[stack->pos - 1].f64 = (double) a;
+      }
+
+      break;
+    case PWASM_OP_F64_PROMOTE_F32:
+      {
+        const float a = stack->ptr[stack->pos - 1].f32;
+        stack->ptr[stack->pos - 1].f64 = a;
+      }
+
+      break;
+    case PWASM_OP_I32_REINTERPRET_F32:
+      {
+        const union {
+          uint32_t i32;
+          float f32;
+        } v = { .f32 = stack->ptr[stack->pos - 1].f32 };
+        stack->ptr[stack->pos - 1].i32 = v.i32;
+      }
+
+      break;
+    case PWASM_OP_I64_REINTERPRET_F64:
+      {
+        const union {
+          uint64_t i64;
+          double f64;
+        } v = { .f64 = stack->ptr[stack->pos - 1].f64 };
+        stack->ptr[stack->pos - 1].i64 = v.i64;
+      }
+
+      break;
+    case PWASM_OP_F32_REINTERPRET_I32:
+      {
+        const union {
+          uint32_t i32;
+          float f32;
+        } v = { .i32 = stack->ptr[stack->pos - 1].i32 };
+        stack->ptr[stack->pos - 1].f32 = v.f32;
+      }
+
+      break;
+    case PWASM_OP_F64_REINTERPRET_I64:
+      {
+        const union {
+          uint64_t i64;
+          double f64;
+        } v = { .i64 = stack->ptr[stack->pos - 1].i64 };
+        stack->ptr[stack->pos - 1].f64 = v.f64;
+      }
+
+      break;
+    case PWASM_OP_I32_EXTEND8_S:
+      {
+        const int32_t val = (int8_t) stack->ptr[stack->pos - 1].i32;
+        stack->ptr[stack->pos - 1].i32 = (uint32_t) val;
+      }
+
+      break;
+    case PWASM_OP_I32_EXTEND16_S:
+      {
+        const int32_t val = (int16_t) stack->ptr[stack->pos - 1].i32;
+        stack->ptr[stack->pos - 1].i32 = (uint32_t) val;
+      }
+
+      break;
+    case PWASM_OP_I64_EXTEND8_S:
+      {
+        const int64_t val = (int8_t) stack->ptr[stack->pos - 1].i64;
+        stack->ptr[stack->pos - 1].i64 = (uint64_t) val;
+      }
+
+      break;
+    case PWASM_OP_I64_EXTEND16_S:
+      {
+        const int64_t val = (int16_t) stack->ptr[stack->pos - 1].i64;
+        stack->ptr[stack->pos - 1].i64 = (uint64_t) val;
+      }
+
+      break;
+    case PWASM_OP_I64_EXTEND32_S:
+      {
+        const int64_t val = (int32_t) stack->ptr[stack->pos - 1].i64;
+        stack->ptr[stack->pos - 1].i64 = (uint64_t) val;
+      }
+
+      break;
+    case PWASM_OP_I32_TRUNC_SAT_F32_S:
+      {
+        const float a = stack->ptr[stack->pos - 1].f32;
+        stack->ptr[stack->pos - 1].i32 = (int32_t) CLAMP(a, INT32_MIN, INT32_MAX);
+      }
+
+      break;
+    case PWASM_OP_I32_TRUNC_SAT_F32_U:
+      {
+        const float a = stack->ptr[stack->pos - 1].f32;
+        stack->ptr[stack->pos - 1].i32 = (uint32_t) CLAMP(a, 0, UINT32_MAX);
+      }
+
+      break;
+    case PWASM_OP_I32_TRUNC_SAT_F64_S:
+      {
+        const double a = stack->ptr[stack->pos - 1].f64;
+        stack->ptr[stack->pos - 1].i32 = (int32_t) CLAMP(a, INT32_MIN, INT32_MAX);
+      }
+
+      break;
+    case PWASM_OP_I32_TRUNC_SAT_F64_U:
+      {
+        const double a = stack->ptr[stack->pos - 1].f64;
+        stack->ptr[stack->pos - 1].i32 = (uint32_t) CLAMP(a, 0, UINT32_MAX);
+      }
+
+      break;
+    case PWASM_OP_I64_TRUNC_SAT_F32_S:
+      {
+        const float a = stack->ptr[stack->pos - 1].f32;
+        stack->ptr[stack->pos - 1].i64 = (int64_t) CLAMP(a, INT64_MIN, INT64_MAX);
+      }
+
+      break;
+    case PWASM_OP_I64_TRUNC_SAT_F32_U:
+      {
+        const float a = stack->ptr[stack->pos - 1].f32;
+        stack->ptr[stack->pos - 1].i64 = (uint64_t) CLAMP(a, 0, UINT64_MAX);
+      }
+
+      break;
+    case PWASM_OP_I64_TRUNC_SAT_F64_S:
+      {
+        const double a = stack->ptr[stack->pos - 1].f64;
+        stack->ptr[stack->pos - 1].i64 = (int64_t) CLAMP(a, INT64_MIN, INT64_MAX);
+      }
+
+      break;
+    case PWASM_OP_I64_TRUNC_SAT_F64_U:
+      {
+        const double a = stack->ptr[stack->pos - 1].f64;
+        stack->ptr[stack->pos - 1].i64 = (uint64_t) CLAMP(a, 0, UINT64_MAX);
+      }
+
+      break;
+    case PWASM_OP_V128_CONST:
+      stack->ptr[stack->pos++].v128 = in.v_v128;
+
+      break;
+    case PWASM_OP_I8X16_SPLAT:
+      {
+        const uint8_t a = stack->ptr[stack->pos - 1].i32;
+        memset(stack->ptr[stack->pos - 1].v128.i8, a, 16);
+      }
+
+      break;
+    case PWASM_OP_I8X16_EXTRACT_LANE_S:
+      {
+        const pwasm_v128_t a = stack->ptr[stack->pos - 1].v128;
+        stack->ptr[stack->pos - 1].i32 = (int8_t) a.i8[in.v_index];
+      }
+
+      break;
+    case PWASM_OP_I8X16_EXTRACT_LANE_U:
+      {
+        const pwasm_v128_t a = stack->ptr[stack->pos - 1].v128;
+        stack->ptr[stack->pos - 1].i32 = a.i8[in.v_index];
+      }
+
+      break;
+    case PWASM_OP_I8X16_REPLACE_LANE:
+      {
+        const uint8_t a = stack->ptr[stack->pos - 1].i32;
+        stack->ptr[stack->pos - 2].v128.i8[in.v_index] = a;
+        stack->pos--;
+      }
+
+      break;
+    case PWASM_OP_I16X8_SPLAT:
+      {
+        const uint16_t a = stack->ptr[stack->pos - 1].i32;
+        stack->ptr[stack->pos - 1].v128.i16[0] = a;
+        stack->ptr[stack->pos - 1].v128.i16[1] = a;
+        stack->ptr[stack->pos - 1].v128.i16[2] = a;
+        stack->ptr[stack->pos - 1].v128.i16[3] = a;
+        stack->ptr[stack->pos - 1].v128.i16[4] = a;
+        stack->ptr[stack->pos - 1].v128.i16[5] = a;
+        stack->ptr[stack->pos - 1].v128.i16[6] = a;
+        stack->ptr[stack->pos - 1].v128.i16[7] = a;
+      }
+
+      break;
+    case PWASM_OP_I16X8_EXTRACT_LANE_S:
+      {
+        const pwasm_v128_t a = stack->ptr[stack->pos - 1].v128;
+        stack->ptr[stack->pos - 1].i32 = (int16_t) a.i16[in.v_index];
+      }
+
+      break;
+    case PWASM_OP_I16X8_EXTRACT_LANE_U:
+      {
+        const pwasm_v128_t a = stack->ptr[stack->pos - 1].v128;
+        stack->ptr[stack->pos - 1].i32 = a.i16[in.v_index];
+      }
+
+      break;
+    case PWASM_OP_I16X8_REPLACE_LANE:
+      {
+        const uint16_t a = stack->ptr[stack->pos - 1].i32;
+        stack->ptr[stack->pos - 2].v128.i16[in.v_index] = a;
+        stack->pos--;
+      }
+
+      break;
+    case PWASM_OP_I32X4_SPLAT:
+      {
+        const uint32_t a = stack->ptr[stack->pos - 1].i32;
+        stack->ptr[stack->pos - 1].v128.i32[0] = a;
+        stack->ptr[stack->pos - 1].v128.i32[1] = a;
+        stack->ptr[stack->pos - 1].v128.i32[2] = a;
+        stack->ptr[stack->pos - 1].v128.i32[3] = a;
+      }
+
+      break;
+    case PWASM_OP_I32X4_EXTRACT_LANE:
+      {
+        const pwasm_v128_t a = stack->ptr[stack->pos - 1].v128;
+        stack->ptr[stack->pos - 1].i32 = a.i32[in.v_index];
+      }
+
+      break;
+    case PWASM_OP_I32X4_REPLACE_LANE:
+      {
+        const uint32_t a = stack->ptr[stack->pos - 1].i32;
+        stack->ptr[stack->pos - 2].v128.i32[in.v_index] = a;
+        stack->pos--;
+      }
+
+      break;
+    case PWASM_OP_I64X2_SPLAT:
+      {
+        const uint64_t a = stack->ptr[stack->pos - 1].i64;
+        D("a = 0x%016lx", a);
+        stack->ptr[stack->pos - 1].v128.i64[0] = a;
+        stack->ptr[stack->pos - 1].v128.i64[1] = a;
+      }
+
+      break;
+    case PWASM_OP_I64X2_EXTRACT_LANE:
+      {
+        const pwasm_v128_t a = stack->ptr[stack->pos - 1].v128;
+        stack->ptr[stack->pos - 1].i64 = a.i64[in.v_index];
+      }
+
+      break;
+    case PWASM_OP_I64X2_REPLACE_LANE:
+      {
+        const uint64_t a = stack->ptr[stack->pos - 1].i64;
+        stack->ptr[stack->pos - 2].v128.i64[in.v_index] = a;
+        stack->pos--;
+      }
+
+      break;
+    case PWASM_OP_F32X4_SPLAT:
+      {
+        const float a = stack->ptr[stack->pos - 1].f32;
+        stack->ptr[stack->pos - 1].v128.f32[0] = a;
+        stack->ptr[stack->pos - 1].v128.f32[1] = a;
+        stack->ptr[stack->pos - 1].v128.f32[2] = a;
+        stack->ptr[stack->pos - 1].v128.f32[3] = a;
+      }
+
+      break;
+    case PWASM_OP_F32X4_EXTRACT_LANE:
+      {
+        const pwasm_v128_t a = stack->ptr[stack->pos - 1].v128;
+        stack->ptr[stack->pos - 1].f32 = a.f32[in.v_index];
+      }
+
+      break;
+    case PWASM_OP_F32X4_REPLACE_LANE:
+      {
+        const float a = stack->ptr[stack->pos - 1].f32;
+        stack->ptr[stack->pos - 2].v128.f32[in.v_index] = a;
+        stack->pos--;
+      }
+
+      break;
+    case PWASM_OP_F64X2_SPLAT:
+      {
+        const double a = stack->ptr[stack->pos - 1].f64;
+        stack->ptr[stack->pos - 1].v128.f64[0] = a;
+        stack->ptr[stack->pos - 1].v128.f64[1] = a;
+      }
+
+      break;
+    case PWASM_OP_F64X2_EXTRACT_LANE:
+      {
+        const pwasm_v128_t a = stack->ptr[stack->pos - 1].v128;
+        stack->ptr[stack->pos - 1].f64 = a.f64[in.v_index];
+      }
+
+      break;
+    case PWASM_OP_F64X2_REPLACE_LANE:
+      {
+        const double a = stack->ptr[stack->pos - 1].f64;
+        stack->ptr[stack->pos - 2].v128.f64[in.v_index] = a;
+        stack->pos--;
+      }
+
+      break;
+    case PWASM_OP_I8X16_EQ:
+      {
+        const pwasm_v128_t a = stack->ptr[stack->pos - 2].v128;
+        const pwasm_v128_t b = stack->ptr[stack->pos - 1].v128;
+
+        pwasm_v128_t c;
+        for (size_t j = 0; j < 16; j++) {
+          c.i8[j] = (a.i8[j] == b.i8[j]) ? 0xFF : 0;
+        }
+
+        stack->ptr[stack->pos - 2].v128 = c;
+        stack->pos--;
+      }
+
+      break;
+    case PWASM_OP_I8X16_NE:
+      {
+        const pwasm_v128_t a = stack->ptr[stack->pos - 2].v128;
+        const pwasm_v128_t b = stack->ptr[stack->pos - 1].v128;
+
+        pwasm_v128_t c;
+        for (size_t j = 0; j < 16; j++) {
+          c.i8[j] = (a.i8[j] != b.i8[j]) ? 0xFF : 0;
+        }
+
+        stack->ptr[stack->pos - 2].v128 = c;
+        stack->pos--;
+      }
+
+      break;
+    case PWASM_OP_I8X16_LT_S:
+      {
+        const pwasm_v128_t a = stack->ptr[stack->pos - 2].v128;
+        const pwasm_v128_t b = stack->ptr[stack->pos - 1].v128;
+
+        pwasm_v128_t c;
+        for (size_t j = 0; j < 16; j++) {
+          const int8_t av = a.i8[j];
+          const int8_t bv = b.i8[j];
+          c.i8[j] = (av < bv) ? 0xFF : 0;
+        }
+
+        stack->ptr[stack->pos - 2].v128 = c;
+        stack->pos--;
+      }
+
+      break;
+    case PWASM_OP_I8X16_LT_U:
+      {
+        const pwasm_v128_t a = stack->ptr[stack->pos - 2].v128;
+        const pwasm_v128_t b = stack->ptr[stack->pos - 1].v128;
+
+        pwasm_v128_t c;
+        for (size_t j = 0; j < 16; j++) {
+          const uint8_t av = a.i8[j];
+          const uint8_t bv = b.i8[j];
+          c.i8[j] = (av < bv) ? 0xFF : 0;
+        }
+
+        stack->ptr[stack->pos - 2].v128 = c;
+        stack->pos--;
+      }
+
+      break;
+    case PWASM_OP_I8X16_GT_S:
+      {
+        const pwasm_v128_t a = stack->ptr[stack->pos - 2].v128;
+        const pwasm_v128_t b = stack->ptr[stack->pos - 1].v128;
+
+        pwasm_v128_t c;
+        for (size_t j = 0; j < 16; j++) {
+          const int8_t av = a.i8[j];
+          const int8_t bv = b.i8[j];
+          c.i8[j] = (av > bv) ? 0xFF : 0;
+        }
+
+        stack->ptr[stack->pos - 2].v128 = c;
+        stack->pos--;
+      }
+
+      break;
+    case PWASM_OP_I8X16_GT_U:
+      {
+        const pwasm_v128_t a = stack->ptr[stack->pos - 2].v128;
+        const pwasm_v128_t b = stack->ptr[stack->pos - 1].v128;
+
+        pwasm_v128_t c;
+        for (size_t j = 0; j < 16; j++) {
+          const uint8_t av = a.i8[j];
+          const uint8_t bv = b.i8[j];
+          c.i8[j] = (av > bv) ? 0xFF : 0;
+        }
+
+        stack->ptr[stack->pos - 2].v128 = c;
+        stack->pos--;
+      }
+
+      break;
+    case PWASM_OP_I8X16_LE_S:
+      {
+        const pwasm_v128_t a = stack->ptr[stack->pos - 2].v128;
+        const pwasm_v128_t b = stack->ptr[stack->pos - 1].v128;
+
+        pwasm_v128_t c;
+        for (size_t j = 0; j < 16; j++) {
+          const int8_t av = a.i8[j];
+          const int8_t bv = b.i8[j];
+          c.i8[j] = (av <= bv) ? 0xFF : 0;
+        }
+
+        stack->ptr[stack->pos - 2].v128 = c;
+        stack->pos--;
+      }
+
+      break;
+    case PWASM_OP_I8X16_LE_U:
+      {
+        const pwasm_v128_t a = stack->ptr[stack->pos - 2].v128;
+        const pwasm_v128_t b = stack->ptr[stack->pos - 1].v128;
+
+        pwasm_v128_t c;
+        for (size_t j = 0; j < 16; j++) {
+          const uint8_t av = a.i8[j];
+          const uint8_t bv = b.i8[j];
+          c.i8[j] = (av <= bv) ? 0xFF : 0;
+        }
+
+        stack->ptr[stack->pos - 2].v128 = c;
+        stack->pos--;
+      }
+
+      break;
+    case PWASM_OP_I8X16_GE_S:
+      {
+        const pwasm_v128_t a = stack->ptr[stack->pos - 2].v128;
+        const pwasm_v128_t b = stack->ptr[stack->pos - 1].v128;
+
+        pwasm_v128_t c;
+        for (size_t j = 0; j < 16; j++) {
+          const int8_t av = a.i8[j];
+          const int8_t bv = b.i8[j];
+          c.i8[j] = (av >= bv) ? 0xFF : 0;
+        }
+
+        stack->ptr[stack->pos - 2].v128 = c;
+        stack->pos--;
+      }
+
+      break;
+    case PWASM_OP_I8X16_GE_U:
+      {
+        const pwasm_v128_t a = stack->ptr[stack->pos - 2].v128;
+        const pwasm_v128_t b = stack->ptr[stack->pos - 1].v128;
+
+        pwasm_v128_t c;
+        for (size_t j = 0; j < 16; j++) {
+          const uint8_t av = a.i8[j];
+          const uint8_t bv = b.i8[j];
+          c.i8[j] = (av >= bv) ? 0xFF : 0;
+        }
+
+        stack->ptr[stack->pos - 2].v128 = c;
+        stack->pos--;
+      }
+
+      break;
+    case PWASM_OP_I16X8_EQ:
+      {
+        const pwasm_v128_t a = stack->ptr[stack->pos - 2].v128;
+        const pwasm_v128_t b = stack->ptr[stack->pos - 1].v128;
+
+        pwasm_v128_t c;
+        for (size_t j = 0; j < 8; j++) {
+          c.i16[j] = (a.i16[j] == b.i16[j]) ? 0xFFFF : 0;
+        }
+
+        stack->ptr[stack->pos - 2].v128 = c;
+        stack->pos--;
+      }
+
+      break;
+    case PWASM_OP_I16X8_NE:
+      {
+        const pwasm_v128_t a = stack->ptr[stack->pos - 2].v128;
+        const pwasm_v128_t b = stack->ptr[stack->pos - 1].v128;
+
+        pwasm_v128_t c;
+        for (size_t j = 0; j < 8; j++) {
+          c.i16[j] = (a.i16[j] != b.i16[j]) ? 0xFFFF : 0;
+        }
+
+        stack->ptr[stack->pos - 2].v128 = c;
+        stack->pos--;
+      }
+
+      break;
+    case PWASM_OP_I16X8_LT_S:
+      {
+        const pwasm_v128_t a = stack->ptr[stack->pos - 2].v128;
+        const pwasm_v128_t b = stack->ptr[stack->pos - 1].v128;
+
+        pwasm_v128_t c;
+        for (size_t j = 0; j < 8; j++) {
+          const int16_t av = a.i16[j];
+          const int16_t bv = b.i16[j];
+          c.i16[j] = (av < bv) ? 0xFFFF : 0;
+        }
+
+        stack->ptr[stack->pos - 2].v128 = c;
+        stack->pos--;
+      }
+
+      break;
+    case PWASM_OP_I16X8_LT_U:
+      {
+        const pwasm_v128_t a = stack->ptr[stack->pos - 2].v128;
+        const pwasm_v128_t b = stack->ptr[stack->pos - 1].v128;
+
+        pwasm_v128_t c;
+        for (size_t j = 0; j < 8; j++) {
+          const uint16_t av = a.i16[j];
+          const uint16_t bv = b.i16[j];
+          c.i16[j] = (av < bv) ? 0xFFFF : 0;
+        }
+
+        stack->ptr[stack->pos - 2].v128 = c;
+        stack->pos--;
+      }
+
+      break;
+    case PWASM_OP_I16X8_GT_S:
+      {
+        const pwasm_v128_t a = stack->ptr[stack->pos - 2].v128;
+        const pwasm_v128_t b = stack->ptr[stack->pos - 1].v128;
+
+        pwasm_v128_t c;
+        for (size_t j = 0; j < 8; j++) {
+          const int16_t av = a.i16[j];
+          const int16_t bv = b.i16[j];
+          c.i16[j] = (av > bv) ? 0xFFFF : 0;
+        }
+
+        stack->ptr[stack->pos - 2].v128 = c;
+        stack->pos--;
+      }
+
+      break;
+    case PWASM_OP_I16X8_GT_U:
+      {
+        const pwasm_v128_t a = stack->ptr[stack->pos - 2].v128;
+        const pwasm_v128_t b = stack->ptr[stack->pos - 1].v128;
+
+        pwasm_v128_t c;
+        for (size_t j = 0; j < 8; j++) {
+          const uint16_t av = a.i16[j];
+          const uint16_t bv = b.i16[j];
+          c.i16[j] = (av > bv) ? 0xFFFF : 0;
+        }
+
+        stack->ptr[stack->pos - 2].v128 = c;
+        stack->pos--;
+      }
+
+      break;
+    case PWASM_OP_I16X8_LE_S:
+      {
+        const pwasm_v128_t a = stack->ptr[stack->pos - 2].v128;
+        const pwasm_v128_t b = stack->ptr[stack->pos - 1].v128;
+
+        pwasm_v128_t c;
+        for (size_t j = 0; j < 8; j++) {
+          const int16_t av = a.i16[j];
+          const int16_t bv = b.i16[j];
+          c.i16[j] = (av <= bv) ? 0xFFFF : 0;
+        }
+
+        stack->ptr[stack->pos - 2].v128 = c;
+        stack->pos--;
+      }
+
+      break;
+    case PWASM_OP_I16X8_LE_U:
+      {
+        const pwasm_v128_t a = stack->ptr[stack->pos - 2].v128;
+        const pwasm_v128_t b = stack->ptr[stack->pos - 1].v128;
+
+        pwasm_v128_t c;
+        for (size_t j = 0; j < 8; j++) {
+          const uint16_t av = a.i16[j];
+          const uint16_t bv = b.i16[j];
+          c.i16[j] = (av <= bv) ? 0xFFFF : 0;
+        }
+
+        stack->ptr[stack->pos - 2].v128 = c;
+        stack->pos--;
+      }
+
+      break;
+    case PWASM_OP_I16X8_GE_S:
+      {
+        const pwasm_v128_t a = stack->ptr[stack->pos - 2].v128;
+        const pwasm_v128_t b = stack->ptr[stack->pos - 1].v128;
+
+        pwasm_v128_t c;
+        for (size_t j = 0; j < 8; j++) {
+          const int16_t av = a.i16[j];
+          const int16_t bv = b.i16[j];
+          c.i16[j] = (av >= bv) ? 0xFFFF : 0;
+        }
+
+        stack->ptr[stack->pos - 2].v128 = c;
+        stack->pos--;
+      }
+
+      break;
+    case PWASM_OP_I16X8_GE_U:
+      {
+        const pwasm_v128_t a = stack->ptr[stack->pos - 2].v128;
+        const pwasm_v128_t b = stack->ptr[stack->pos - 1].v128;
+
+        pwasm_v128_t c;
+        for (size_t j = 0; j < 8; j++) {
+          const uint16_t av = a.i16[j];
+          const uint16_t bv = b.i16[j];
+          c.i16[j] = (av >= bv) ? 0xFFFF : 0;
+        }
+
+        stack->ptr[stack->pos - 2].v128 = c;
+        stack->pos--;
+      }
+
+      break;
+    case PWASM_OP_I32X4_EQ:
+      {
+        const pwasm_v128_t a = stack->ptr[stack->pos - 2].v128;
+        const pwasm_v128_t b = stack->ptr[stack->pos - 1].v128;
+
+        pwasm_v128_t c;
+        for (size_t j = 0; j < 4; j++) {
+          c.i32[j] = (a.i32[j] == b.i32[j]) ? 0xFFFFFFFF : 0;
+        }
+
+        stack->ptr[stack->pos - 2].v128 = c;
+        stack->pos--;
+      }
+
+      break;
+    case PWASM_OP_I32X4_NE:
+      {
+        const pwasm_v128_t a = stack->ptr[stack->pos - 2].v128;
+        const pwasm_v128_t b = stack->ptr[stack->pos - 1].v128;
+
+        pwasm_v128_t c;
+        for (size_t j = 0; j < 4; j++) {
+          c.i32[j] = (a.i32[j] != b.i32[j]) ? 0xFFFFFFFF : 0;
+        }
+
+        stack->ptr[stack->pos - 2].v128 = c;
+        stack->pos--;
+      }
+
+      break;
+    case PWASM_OP_I32X4_LT_S:
+      {
+        const pwasm_v128_t a = stack->ptr[stack->pos - 2].v128;
+        const pwasm_v128_t b = stack->ptr[stack->pos - 1].v128;
+
+        pwasm_v128_t c;
+        for (size_t j = 0; j < 4; j++) {
+          const int32_t av = a.i32[j];
+          const int32_t bv = b.i32[j];
+          c.i32[j] = (av < bv) ? 0xFFFFFFFF : 0;
+        }
+
+        stack->ptr[stack->pos - 2].v128 = c;
+        stack->pos--;
+      }
+
+      break;
+    case PWASM_OP_I32X4_LT_U:
+      {
+        const pwasm_v128_t a = stack->ptr[stack->pos - 2].v128;
+        const pwasm_v128_t b = stack->ptr[stack->pos - 1].v128;
+
+        pwasm_v128_t c;
+        for (size_t j = 0; j < 4; j++) {
+          const uint32_t av = a.i32[j];
+          const uint32_t bv = b.i32[j];
+          c.i32[j] = (av < bv) ? 0xFFFFFFFF : 0;
+        }
+
+        stack->ptr[stack->pos - 2].v128 = c;
+        stack->pos--;
+      }
+
+      break;
+    case PWASM_OP_I32X4_GT_S:
+      {
+        const pwasm_v128_t a = stack->ptr[stack->pos - 2].v128;
+        const pwasm_v128_t b = stack->ptr[stack->pos - 1].v128;
+
+        pwasm_v128_t c;
+        for (size_t j = 0; j < 4; j++) {
+          const int32_t av = a.i32[j];
+          const int32_t bv = b.i32[j];
+          c.i32[j] = (av > bv) ? 0xFFFFFFFF : 0;
+        }
+
+        stack->ptr[stack->pos - 2].v128 = c;
+        stack->pos--;
+      }
+
+      break;
+    case PWASM_OP_I32X4_GT_U:
+      {
+        const pwasm_v128_t a = stack->ptr[stack->pos - 2].v128;
+        const pwasm_v128_t b = stack->ptr[stack->pos - 1].v128;
+
+        pwasm_v128_t c;
+        for (size_t j = 0; j < 4; j++) {
+          const uint32_t av = a.i32[j];
+          const uint32_t bv = b.i32[j];
+          c.i32[j] = (av > bv) ? 0xFFFFFFFF : 0;
+        }
+
+        stack->ptr[stack->pos - 2].v128 = c;
+        stack->pos--;
+      }
+
+      break;
+    case PWASM_OP_I32X4_LE_S:
+      {
+        const pwasm_v128_t a = stack->ptr[stack->pos - 2].v128;
+        const pwasm_v128_t b = stack->ptr[stack->pos - 1].v128;
+
+        pwasm_v128_t c;
+        for (size_t j = 0; j < 4; j++) {
+          const int32_t av = a.i32[j];
+          const int32_t bv = b.i32[j];
+          c.i32[j] = (av <= bv) ? 0xFFFFFFFF : 0;
+        }
+
+        stack->ptr[stack->pos - 2].v128 = c;
+        stack->pos--;
+      }
+
+      break;
+    case PWASM_OP_I32X4_LE_U:
+      {
+        const pwasm_v128_t a = stack->ptr[stack->pos - 2].v128;
+        const pwasm_v128_t b = stack->ptr[stack->pos - 1].v128;
+
+        pwasm_v128_t c;
+        for (size_t j = 0; j < 4; j++) {
+          const uint32_t av = a.i32[j];
+          const uint32_t bv = b.i32[j];
+          c.i32[j] = (av <= bv) ? 0xFFFFFFFF : 0;
+        }
+
+        stack->ptr[stack->pos - 2].v128 = c;
+        stack->pos--;
+      }
+
+      break;
+    case PWASM_OP_I32X4_GE_S:
+      {
+        const pwasm_v128_t a = stack->ptr[stack->pos - 2].v128;
+        const pwasm_v128_t b = stack->ptr[stack->pos - 1].v128;
+
+        pwasm_v128_t c;
+        for (size_t j = 0; j < 4; j++) {
+          const int32_t av = a.i32[j];
+          const int32_t bv = b.i32[j];
+          c.i32[j] = (av >= bv) ? 0xFFFFFFFF : 0;
+        }
+
+        stack->ptr[stack->pos - 2].v128 = c;
+        stack->pos--;
+      }
+
+      break;
+    case PWASM_OP_I32X4_GE_U:
+      {
+        const pwasm_v128_t a = stack->ptr[stack->pos - 2].v128;
+        const pwasm_v128_t b = stack->ptr[stack->pos - 1].v128;
+
+        pwasm_v128_t c;
+        for (size_t j = 0; j < 4; j++) {
+          const uint32_t av = a.i32[j];
+          const uint32_t bv = b.i32[j];
+          c.i32[j] = (av >= bv) ? 0xFFFFFFFF : 0;
+        }
+
+        stack->ptr[stack->pos - 2].v128 = c;
+        stack->pos--;
+      }
+
+      break;
+    case PWASM_OP_F32X4_EQ:
+      {
+        const pwasm_v128_t a = stack->ptr[stack->pos - 2].v128;
+        const pwasm_v128_t b = stack->ptr[stack->pos - 1].v128;
+
+        pwasm_v128_t c;
+        for (size_t j = 0; j < 4; j++) {
+          c.i32[j] = (a.f32[j] == b.f32[j]) ? 0xFFFFFFFF : 0;
+        }
+
+        stack->ptr[stack->pos - 2].v128 = c;
+        stack->pos--;
+      }
+
+      break;
+    case PWASM_OP_F32X4_NE:
+      {
+        const pwasm_v128_t a = stack->ptr[stack->pos - 2].v128;
+        const pwasm_v128_t b = stack->ptr[stack->pos - 1].v128;
+
+        pwasm_v128_t c;
+        for (size_t j = 0; j < 4; j++) {
+          c.i32[j] = (a.f32[j] != b.f32[j]) ? 0xFFFFFFFF : 0;
+        }
+
+        stack->ptr[stack->pos - 2].v128 = c;
+        stack->pos--;
+      }
+
+      break;
+    case PWASM_OP_F32X4_LT:
+      {
+        const pwasm_v128_t a = stack->ptr[stack->pos - 2].v128;
+        const pwasm_v128_t b = stack->ptr[stack->pos - 1].v128;
+
+        pwasm_v128_t c;
+        for (size_t j = 0; j < 4; j++) {
+          c.i32[j] = (a.f32[j] < b.f32[j]) ? 0xFFFFFFFF : 0;
+        }
+
+        stack->ptr[stack->pos - 2].v128 = c;
+        stack->pos--;
+      }
+
+      break;
+    case PWASM_OP_F32X4_GT:
+      {
+        const pwasm_v128_t a = stack->ptr[stack->pos - 2].v128;
+        const pwasm_v128_t b = stack->ptr[stack->pos - 1].v128;
+
+        pwasm_v128_t c;
+        for (size_t j = 0; j < 4; j++) {
+          c.i32[j] = (a.f32[j] > b.f32[j]) ? 0xFFFFFFFF : 0;
+        }
+
+        stack->ptr[stack->pos - 2].v128 = c;
+        stack->pos--;
+      }
+
+      break;
+    case PWASM_OP_F32X4_LE:
+      {
+        const pwasm_v128_t a = stack->ptr[stack->pos - 2].v128;
+        const pwasm_v128_t b = stack->ptr[stack->pos - 1].v128;
+
+        pwasm_v128_t c;
+        for (size_t j = 0; j < 4; j++) {
+          c.i32[j] = (a.f32[j] <= b.f32[j]) ? 0xFFFFFFFF : 0;
+        }
+
+        stack->ptr[stack->pos - 2].v128 = c;
+        stack->pos--;
+      }
+
+      break;
+    case PWASM_OP_F32X4_GE:
+      {
+        const pwasm_v128_t a = stack->ptr[stack->pos - 2].v128;
+        const pwasm_v128_t b = stack->ptr[stack->pos - 1].v128;
+
+        pwasm_v128_t c;
+        for (size_t j = 0; j < 4; j++) {
+          c.i32[j] = (a.f32[j] >= b.f32[j]) ? 0xFFFFFFFF : 0;
+        }
+
+        stack->ptr[stack->pos - 2].v128 = c;
+        stack->pos--;
+      }
+
+      break;
+    case PWASM_OP_F64X2_EQ:
+      {
+        const pwasm_v128_t a = stack->ptr[stack->pos - 2].v128;
+        const pwasm_v128_t b = stack->ptr[stack->pos - 1].v128;
+
+        pwasm_v128_t c;
+        for (size_t j = 0; j < 2; j++) {
+          c.i64[j] = (a.f64[j] == b.f64[j]) ? 0xFFFFFFFFFFFFFFFF : 0;
+        }
+
+        stack->ptr[stack->pos - 2].v128 = c;
+        stack->pos--;
+      }
+
+      break;
+    case PWASM_OP_F64X2_NE:
+      {
+        const pwasm_v128_t a = stack->ptr[stack->pos - 2].v128;
+        const pwasm_v128_t b = stack->ptr[stack->pos - 1].v128;
+
+        pwasm_v128_t c;
+        for (size_t j = 0; j < 2; j++) {
+          c.i64[j] = (a.f64[j] != b.f64[j]) ? 0xFFFFFFFFFFFFFFFF : 0;
+        }
+
+        stack->ptr[stack->pos - 2].v128 = c;
+        stack->pos--;
+      }
+
+      break;
+    case PWASM_OP_F64X2_LT:
+      {
+        const pwasm_v128_t a = stack->ptr[stack->pos - 2].v128;
+        const pwasm_v128_t b = stack->ptr[stack->pos - 1].v128;
+
+        pwasm_v128_t c;
+        for (size_t j = 0; j < 2; j++) {
+          c.i64[j] = (a.f64[j] < b.f64[j]) ? 0xFFFFFFFFFFFFFFFF : 0;
+        }
+
+        stack->ptr[stack->pos - 2].v128 = c;
+        stack->pos--;
+      }
+
+      break;
+    case PWASM_OP_F64X2_GT:
+      {
+        const pwasm_v128_t a = stack->ptr[stack->pos - 2].v128;
+        const pwasm_v128_t b = stack->ptr[stack->pos - 1].v128;
+
+        pwasm_v128_t c;
+        for (size_t j = 0; j < 2; j++) {
+          c.i64[j] = (a.f64[j] > b.f64[j]) ? 0xFFFFFFFFFFFFFFFF : 0;
+        }
+
+        stack->ptr[stack->pos - 2].v128 = c;
+        stack->pos--;
+      }
+
+      break;
+    case PWASM_OP_F64X2_LE:
+      {
+        const pwasm_v128_t a = stack->ptr[stack->pos - 2].v128;
+        const pwasm_v128_t b = stack->ptr[stack->pos - 1].v128;
+
+        pwasm_v128_t c;
+        for (size_t j = 0; j < 2; j++) {
+          c.i64[j] = (a.f64[j] <= b.f64[j]) ? 0xFFFFFFFFFFFFFFFF : 0;
+        }
+
+        stack->ptr[stack->pos - 2].v128 = c;
+        stack->pos--;
+      }
+
+      break;
+    case PWASM_OP_F64X2_GE:
+      {
+        const pwasm_v128_t a = stack->ptr[stack->pos - 2].v128;
+        const pwasm_v128_t b = stack->ptr[stack->pos - 1].v128;
+
+        pwasm_v128_t c;
+        for (size_t j = 0; j < 2; j++) {
+          c.i64[j] = (a.f64[j] >= b.f64[j]) ? 0xFFFFFFFFFFFFFFFF : 0;
+        }
+
+        stack->ptr[stack->pos - 2].v128 = c;
+        stack->pos--;
+      }
+
+      break;
+    case PWASM_OP_V128_NOT:
+      {
+        const pwasm_v128_t a = stack->ptr[stack->pos - 1].v128;
+
+        pwasm_v128_t b;
+        b.i64[0] = ~a.i64[0];
+        b.i64[1] = ~a.i64[1];
+        stack->ptr[stack->pos - 1].v128 = b;
+      }
+
+      break;
+    case PWASM_OP_V128_AND:
+      {
+        const pwasm_v128_t a = stack->ptr[stack->pos - 2].v128;
+        const pwasm_v128_t b = stack->ptr[stack->pos - 1].v128;
+
+        pwasm_v128_t c;
+        c.i64[0] = a.i64[0] & b.i64[0];
+        c.i64[1] = a.i64[1] & b.i64[1];
+
+        stack->ptr[stack->pos - 2].v128 = c;
+        stack->pos--;
+      }
+
+      break;
+    case PWASM_OP_V128_OR:
+      {
+        const pwasm_v128_t a = stack->ptr[stack->pos - 2].v128;
+        const pwasm_v128_t b = stack->ptr[stack->pos - 1].v128;
+
+        pwasm_v128_t c;
+        c.i64[0] = a.i64[0] | b.i64[0];
+        c.i64[1] = a.i64[1] | b.i64[1];
+
+        stack->ptr[stack->pos - 2].v128 = c;
+        stack->pos--;
+      }
+
+      break;
+    case PWASM_OP_V128_XOR:
+      {
+        const pwasm_v128_t a = stack->ptr[stack->pos - 2].v128;
+        const pwasm_v128_t b = stack->ptr[stack->pos - 1].v128;
+
+        pwasm_v128_t c;
+        c.i64[0] = a.i64[0] ^ b.i64[0];
+        c.i64[1] = a.i64[1] ^ b.i64[1];
+
+        stack->ptr[stack->pos - 2].v128 = c;
+        stack->pos--;
+      }
+
+      break;
+    case PWASM_OP_V128_BITSELECT:
+      {
+        const pwasm_v128_t a = stack->ptr[stack->pos - 3].v128;
+        const pwasm_v128_t b = stack->ptr[stack->pos - 2].v128;
+        const pwasm_v128_t m = stack->ptr[stack->pos - 1].v128;
+
+        pwasm_v128_t c;
+        c.i64[0] = (a.i64[0] & m.i64[0]) | (b.i64[0] & ~m.i64[0]);
+        c.i64[1] = (a.i64[1] & m.i64[1]) | (b.i64[1] & ~m.i64[1]);
+
+        stack->ptr[stack->pos - 3].v128 = c;
+        stack->pos -= 2;
+      }
+
+      break;
+    case PWASM_OP_I8X16_NEG:
+      {
+        const pwasm_v128_t a = stack->ptr[stack->pos - 1].v128;
+
+        pwasm_v128_t b;
+        for (size_t j = 0; j < 16; j++) {
+          b.i8[j] = -a.i8[j];
+        }
+
+        stack->ptr[stack->pos - 1].v128 = b;
+      }
+
+      break;
+    case PWASM_OP_I8X16_ANY_TRUE:
+      {
+        const pwasm_v128_t a = stack->ptr[stack->pos - 1].v128;
+
+        stack->ptr[stack->pos - 1].i32 = (
+          a.i8[0] ||  a.i8[1] ||  a.i8[2] ||  a.i8[3] ||
+          a.i8[4] ||  a.i8[5] ||  a.i8[6] ||  a.i8[7] ||
+          a.i8[8] ||  a.i8[9] ||  a.i8[10] || a.i8[11] ||
+          a.i8[12] || a.i8[13] || a.i8[14] || a.i8[15]
+        ) ? 1 : 0;
+      }
+
+      break;
+    case PWASM_OP_I8X16_ALL_TRUE:
+      {
+        const pwasm_v128_t a = stack->ptr[stack->pos - 1].v128;
+
+        stack->ptr[stack->pos - 1].i32 = (
+          a.i8[0] &&  a.i8[1] &&  a.i8[2] &&  a.i8[3] &&
+          a.i8[4] &&  a.i8[5] &&  a.i8[6] &&  a.i8[7] &&
+          a.i8[8] &&  a.i8[9] &&  a.i8[10] && a.i8[11] &&
+          a.i8[12] && a.i8[13] && a.i8[14] && a.i8[15]
+        ) ? 1 : 0;
+      }
+
+      break;
+    case PWASM_OP_I8X16_SHL:
+      {
+        const pwasm_v128_t a = stack->ptr[stack->pos - 2].v128;
+        const uint32_t b = stack->ptr[stack->pos - 1].i32 & 0x7;
+
+        pwasm_v128_t c;
+        for (size_t j = 0; j < 16; j++) {
+          c.i8[j] = (a.i8[j] << b);
+        }
+
+        stack->ptr[stack->pos - 2].v128 = c;
+        stack->pos--;
+      }
+
+      break;
+    case PWASM_OP_I8X16_SHR_S:
+      {
+        const pwasm_v128_t a = stack->ptr[stack->pos - 2].v128;
+        const uint32_t b = stack->ptr[stack->pos - 1].i32 & 0x7;
+
+        pwasm_v128_t c;
+        for (size_t j = 0; j < 16; j++) {
+          int8_t av = a.i8[j];
+          c.i8[j] = (av >> b);
+        }
+
+        stack->ptr[stack->pos - 2].v128 = c;
+        stack->pos--;
+      }
+
+      break;
+    case PWASM_OP_I8X16_SHR_U:
+      {
+        const pwasm_v128_t a = stack->ptr[stack->pos - 2].v128;
+        const uint32_t b = stack->ptr[stack->pos - 1].i32 & 0x7;
+
+        pwasm_v128_t c;
+        for (size_t j = 0; j < 16; j++) {
+          uint8_t av = a.i8[j];
+          c.i8[j] = (av >> b);
+        }
+
+        stack->ptr[stack->pos - 2].v128 = c;
+        stack->pos--;
+      }
+
+      break;
+    case PWASM_OP_I8X16_ADD:
+      {
+        const pwasm_v128_t a = stack->ptr[stack->pos - 2].v128;
+        const pwasm_v128_t b = stack->ptr[stack->pos - 1].v128;
+
+        pwasm_v128_t c;
+        for (size_t j = 0; j < 16; j++) {
+          c.i8[j] = a.i8[j] + b.i8[j];
+        }
+
+        stack->ptr[stack->pos - 2].v128 = c;
+        stack->pos--;
+      }
+
+      break;
+    case PWASM_OP_I8X16_ADD_SATURATE_S:
+      {
+        const pwasm_v128_t a = stack->ptr[stack->pos - 2].v128;
+        const pwasm_v128_t b = stack->ptr[stack->pos - 1].v128;
+
+        pwasm_v128_t c;
+        for (size_t j = 0; j < 16; j++) {
+          const int8_t av = a.i8[j];
+          const int8_t bv = b.i8[j];
+          const int32_t v = av + bv;
+          c.i8[j] = CLAMP(v, INT8_MIN, INT8_MAX);
+        }
+
+        stack->ptr[stack->pos - 2].v128 = c;
+        stack->pos--;
+      }
+
+      break;
+    case PWASM_OP_I8X16_ADD_SATURATE_U:
+      {
+        const pwasm_v128_t a = stack->ptr[stack->pos - 2].v128;
+        const pwasm_v128_t b = stack->ptr[stack->pos - 1].v128;
+
+        pwasm_v128_t c;
+        for (size_t j = 0; j < 16; j++) {
+          const uint8_t av = a.i8[j];
+          const uint8_t bv = b.i8[j];
+          const uint32_t v = av + bv;
+          c.i8[j] = MIN(v, UINT8_MAX);
+        }
+
+        stack->ptr[stack->pos - 2].v128 = c;
+        stack->pos--;
+      }
+
+      break;
+    case PWASM_OP_I8X16_SUB:
+      {
+        const pwasm_v128_t a = stack->ptr[stack->pos - 2].v128;
+        const pwasm_v128_t b = stack->ptr[stack->pos - 1].v128;
+
+        pwasm_v128_t c;
+        for (size_t j = 0; j < 16; j++) {
+          c.i8[j] = a.i8[j] - b.i8[j];
+        }
+
+        stack->ptr[stack->pos - 2].v128 = c;
+        stack->pos--;
+      }
+
+      break;
+    case PWASM_OP_I8X16_SUB_SATURATE_S:
+      {
+        const pwasm_v128_t a = stack->ptr[stack->pos - 2].v128;
+        const pwasm_v128_t b = stack->ptr[stack->pos - 1].v128;
+
+        pwasm_v128_t c;
+        for (size_t j = 0; j < 16; j++) {
+          const int8_t av = a.i8[j];
+          const int8_t bv = b.i8[j];
+          const int32_t v = av - bv;
+          c.i8[j] = CLAMP(v, INT8_MIN, INT8_MAX);
+        }
+
+        stack->ptr[stack->pos - 2].v128 = c;
+        stack->pos--;
+      }
+
+      break;
+    case PWASM_OP_I8X16_SUB_SATURATE_U:
+      {
+        const pwasm_v128_t a = stack->ptr[stack->pos - 2].v128;
+        const pwasm_v128_t b = stack->ptr[stack->pos - 1].v128;
+
+        pwasm_v128_t c;
+        for (size_t j = 0; j < 16; j++) {
+          const uint8_t av = a.i8[j];
+          const uint8_t bv = b.i8[j];
+          c.i8[j] = (av > bv) ? (av - bv) : 0;
+        }
+
+        stack->ptr[stack->pos - 2].v128 = c;
+        stack->pos--;
+      }
+
+      break;
+    case PWASM_OP_I8X16_MIN_S:
+      {
+        const pwasm_v128_t a = stack->ptr[stack->pos - 2].v128;
+        const pwasm_v128_t b = stack->ptr[stack->pos - 1].v128;
+
+        pwasm_v128_t c;
+        for (size_t j = 0; j < 16; j++) {
+          const int8_t av = a.i8[j];
+          const int8_t bv = b.i8[j];
+          c.i8[j] = MIN(av, bv);
+        }
+
+        stack->ptr[stack->pos - 2].v128 = c;
+        stack->pos--;
+      }
+
+      break;
+    case PWASM_OP_I8X16_MIN_U:
+      {
+        const pwasm_v128_t a = stack->ptr[stack->pos - 2].v128;
+        const pwasm_v128_t b = stack->ptr[stack->pos - 1].v128;
+
+        pwasm_v128_t c;
+        for (size_t j = 0; j < 16; j++) {
+          const uint8_t av = a.i8[j];
+          const uint8_t bv = b.i8[j];
+          c.i8[j] = MIN(av, bv);
+        }
+
+        stack->ptr[stack->pos - 2].v128 = c;
+        stack->pos--;
+      }
+
+      break;
+    case PWASM_OP_I8X16_MAX_S:
+      {
+        const pwasm_v128_t a = stack->ptr[stack->pos - 2].v128;
+        const pwasm_v128_t b = stack->ptr[stack->pos - 1].v128;
+
+        pwasm_v128_t c;
+        for (size_t j = 0; j < 16; j++) {
+          const int8_t av = a.i8[j];
+          const int8_t bv = b.i8[j];
+          c.i8[j] = MAX(av, bv);
+        }
+
+        stack->ptr[stack->pos - 2].v128 = c;
+        stack->pos--;
+      }
+
+      break;
+    case PWASM_OP_I8X16_MAX_U:
+      {
+        const pwasm_v128_t a = stack->ptr[stack->pos - 2].v128;
+        const pwasm_v128_t b = stack->ptr[stack->pos - 1].v128;
+
+        pwasm_v128_t c;
+        for (size_t j = 0; j < 16; j++) {
+          const uint8_t av = a.i8[j];
+          const uint8_t bv = b.i8[j];
+          c.i8[j] = MAX(av, bv);
+        }
+
+        stack->ptr[stack->pos - 2].v128 = c;
+        stack->pos--;
+      }
+
+      break;
+    case PWASM_OP_I16X8_NEG:
+      {
+        const pwasm_v128_t a = stack->ptr[stack->pos - 1].v128;
+
+        pwasm_v128_t b;
+        for (size_t j = 0; j < 8; j++) {
+          b.i16[j] = -a.i16[j];
+        }
+
+        stack->ptr[stack->pos - 1].v128 = b;
+      }
+
+      break;
+    case PWASM_OP_I16X8_ANY_TRUE:
+      {
+        const pwasm_v128_t a = stack->ptr[stack->pos - 1].v128;
+
+        stack->ptr[stack->pos - 1].i32 = (
+          a.i16[0] || a.i16[1] || a.i16[2] || a.i16[3] ||
+          a.i16[4] || a.i16[5] || a.i16[6] || a.i16[7]
+        ) ? 1 : 0;
+      }
+
+      break;
+    case PWASM_OP_I16X8_ALL_TRUE:
+      {
+        const pwasm_v128_t a = stack->ptr[stack->pos - 1].v128;
+
+        stack->ptr[stack->pos - 1].i32 = (
+          a.i16[0] && a.i16[1] && a.i16[2] && a.i16[3] &&
+          a.i16[4] && a.i16[5] && a.i16[6] && a.i16[7]
+        ) ? 1 : 0;
+      }
+
+      break;
+    case PWASM_OP_I16X8_SHL:
+      {
+        const pwasm_v128_t a = stack->ptr[stack->pos - 2].v128;
+        const uint32_t b = stack->ptr[stack->pos - 1].i32 & 0xF;
+
+        pwasm_v128_t c;
+        for (size_t j = 0; j < 8; j++) {
+          c.i16[j] = (a.i16[j] << b);
+        }
+
+        stack->ptr[stack->pos - 2].v128 = c;
+        stack->pos--;
+      }
+
+      break;
+    case PWASM_OP_I16X8_SHR_S:
+      {
+        const pwasm_v128_t a = stack->ptr[stack->pos - 2].v128;
+        const uint32_t b = stack->ptr[stack->pos - 1].i32 & 0xF;
+
+        pwasm_v128_t c;
+        for (size_t j = 0; j < 8; j++) {
+          int16_t av = a.i16[j];
+          c.i16[j] = (av >> b);
+        }
+
+        stack->ptr[stack->pos - 2].v128 = c;
+        stack->pos--;
+      }
+
+      break;
+    case PWASM_OP_I16X8_SHR_U:
+      {
+        const pwasm_v128_t a = stack->ptr[stack->pos - 2].v128;
+        const uint32_t b = stack->ptr[stack->pos - 1].i32 & 0xF;
+
+        pwasm_v128_t c;
+        for (size_t j = 0; j < 8; j++) {
+          uint16_t av = a.i16[j];
+          c.i16[j] = (av >> b);
+        }
+
+        stack->ptr[stack->pos - 2].v128 = c;
+        stack->pos--;
+      }
+
+      break;
+    case PWASM_OP_I16X8_ADD:
+      {
+        const pwasm_v128_t a = stack->ptr[stack->pos - 2].v128;
+        const pwasm_v128_t b = stack->ptr[stack->pos - 1].v128;
+
+        pwasm_v128_t c;
+        for (size_t j = 0; j < 8; j++) {
+          c.i16[j] = a.i16[j] + b.i16[j];
+        }
+
+        stack->ptr[stack->pos - 2].v128 = c;
+        stack->pos--;
+      }
+
+      break;
+    case PWASM_OP_I16X8_ADD_SATURATE_S:
+      {
+        const pwasm_v128_t a = stack->ptr[stack->pos - 2].v128;
+        const pwasm_v128_t b = stack->ptr[stack->pos - 1].v128;
+
+        pwasm_v128_t c;
+        for (size_t j = 0; j < 8; j++) {
+          const int16_t av = a.i16[j];
+          const int16_t bv = b.i16[j];
+          const int32_t v = av + bv;
+          c.i16[j] = CLAMP(v, INT16_MIN, INT16_MAX);
+        }
+
+        stack->ptr[stack->pos - 2].v128 = c;
+        stack->pos--;
+      }
+
+      break;
+    case PWASM_OP_I16X8_ADD_SATURATE_U:
+      {
+        const pwasm_v128_t a = stack->ptr[stack->pos - 2].v128;
+        const pwasm_v128_t b = stack->ptr[stack->pos - 1].v128;
+
+        pwasm_v128_t c;
+        for (size_t j = 0; j < 8; j++) {
+          const uint16_t av = a.i16[j];
+          const uint16_t bv = b.i16[j];
+          const uint32_t v = av + bv;
+          c.i16[j] = MIN(v, UINT16_MAX);
+        }
+
+        stack->ptr[stack->pos - 2].v128 = c;
+        stack->pos--;
+      }
+
+      break;
+    case PWASM_OP_I16X8_SUB:
+      {
+        const pwasm_v128_t a = stack->ptr[stack->pos - 2].v128;
+        const pwasm_v128_t b = stack->ptr[stack->pos - 1].v128;
+
+        pwasm_v128_t c;
+        for (size_t j = 0; j < 8; j++) {
+          c.i16[j] = a.i16[j] - b.i16[j];
+        }
+
+        stack->ptr[stack->pos - 2].v128 = c;
+        stack->pos--;
+      }
+
+      break;
+    case PWASM_OP_I16X8_SUB_SATURATE_S:
+      {
+        const pwasm_v128_t a = stack->ptr[stack->pos - 2].v128;
+        const pwasm_v128_t b = stack->ptr[stack->pos - 1].v128;
+
+        pwasm_v128_t c;
+        for (size_t j = 0; j < 8; j++) {
+          const int16_t av = a.i16[j];
+          const int16_t bv = b.i16[j];
+          const int32_t v = av - bv;
+          c.i16[j] = CLAMP(v, INT16_MIN, INT16_MAX);
+        }
+
+        stack->ptr[stack->pos - 2].v128 = c;
+        stack->pos--;
+      }
+
+      break;
+    case PWASM_OP_I16X8_SUB_SATURATE_U:
+      {
+        const pwasm_v128_t a = stack->ptr[stack->pos - 2].v128;
+        const pwasm_v128_t b = stack->ptr[stack->pos - 1].v128;
+
+        pwasm_v128_t c;
+        for (size_t j = 0; j < 8; j++) {
+          const uint16_t av = a.i16[j];
+          const uint16_t bv = b.i16[j];
+          c.i16[j] = (av > bv) ? (av - bv) : 0;
+        }
+
+        stack->ptr[stack->pos - 2].v128 = c;
+        stack->pos--;
+      }
+
+      break;
+    case PWASM_OP_I16X8_MUL:
+      {
+        const pwasm_v128_t a = stack->ptr[stack->pos - 2].v128;
+        const pwasm_v128_t b = stack->ptr[stack->pos - 1].v128;
+
+        pwasm_v128_t c;
+        for (size_t j = 0; j < 8; j++) {
+          const uint16_t av = a.i16[j];
+          const uint16_t bv = b.i16[j];
+          c.i16[j] = av * bv;
+        }
+
+        stack->ptr[stack->pos - 2].v128 = c;
+        stack->pos--;
+      }
+
+      break;
+    case PWASM_OP_I16X8_MIN_S:
+      {
+        const pwasm_v128_t a = stack->ptr[stack->pos - 2].v128;
+        const pwasm_v128_t b = stack->ptr[stack->pos - 1].v128;
+
+        pwasm_v128_t c;
+        for (size_t j = 0; j < 8; j++) {
+          const int16_t av = a.i16[j];
+          const int16_t bv = b.i16[j];
+          c.i16[j] = MIN(av, bv);
+        }
+
+        stack->ptr[stack->pos - 2].v128 = c;
+        stack->pos--;
+      }
+
+      break;
+    case PWASM_OP_I16X8_MIN_U:
+      {
+        const pwasm_v128_t a = stack->ptr[stack->pos - 2].v128;
+        const pwasm_v128_t b = stack->ptr[stack->pos - 1].v128;
+
+        pwasm_v128_t c;
+        for (size_t j = 0; j < 8; j++) {
+          const uint16_t av = a.i16[j];
+          const uint16_t bv = b.i16[j];
+          c.i16[j] = MIN(av, bv);
+        }
+
+        stack->ptr[stack->pos - 2].v128 = c;
+        stack->pos--;
+      }
+
+      break;
+    case PWASM_OP_I16X8_MAX_S:
+      {
+        const pwasm_v128_t a = stack->ptr[stack->pos - 2].v128;
+        const pwasm_v128_t b = stack->ptr[stack->pos - 1].v128;
+
+        pwasm_v128_t c;
+        for (size_t j = 0; j < 8; j++) {
+          const int16_t av = a.i16[j];
+          const int16_t bv = b.i16[j];
+          c.i16[j] = MAX(av, bv);
+        }
+
+        stack->ptr[stack->pos - 2].v128 = c;
+        stack->pos--;
+      }
+
+      break;
+    case PWASM_OP_I16X8_MAX_U:
+      {
+        const pwasm_v128_t a = stack->ptr[stack->pos - 2].v128;
+        const pwasm_v128_t b = stack->ptr[stack->pos - 1].v128;
+
+        pwasm_v128_t c;
+        for (size_t j = 0; j < 8; j++) {
+          const uint16_t av = a.i16[j];
+          const uint16_t bv = b.i16[j];
+          c.i16[j] = MAX(av, bv);
+        }
+
+        stack->ptr[stack->pos - 2].v128 = c;
+        stack->pos--;
+      }
+
+      break;
+    case PWASM_OP_I32X4_NEG:
+      {
+        const pwasm_v128_t a = stack->ptr[stack->pos - 1].v128;
+
+        pwasm_v128_t b;
+        for (size_t j = 0; j < 4; j++) {
+          b.i32[j] = -a.i32[j];
+        }
+
+        stack->ptr[stack->pos - 1].v128 = b;
+      }
+
+      break;
+    case PWASM_OP_I32X4_ANY_TRUE:
+      {
+        const pwasm_v128_t a = stack->ptr[stack->pos - 1].v128;
+
+        stack->ptr[stack->pos - 1].i32 = (
+          a.i32[0] || a.i32[1] || a.i32[2] || a.i32[3]
+        ) ? 1 : 0;
+      }
+
+      break;
+    case PWASM_OP_I32X4_ALL_TRUE:
+      {
+        const pwasm_v128_t a = stack->ptr[stack->pos - 1].v128;
+
+        stack->ptr[stack->pos - 1].i32 = (
+          a.i32[0] && a.i32[1] && a.i32[2] && a.i32[3]
+        ) ? 1 : 0;
+      }
+
+      break;
+    case PWASM_OP_I32X4_SHL:
+      {
+        const pwasm_v128_t a = stack->ptr[stack->pos - 2].v128;
+        const uint32_t b = stack->ptr[stack->pos - 1].i32 & 0x1F;
+
+        pwasm_v128_t c;
+        for (size_t j = 0; j < 4; j++) {
+          c.i32[j] = (a.i32[j] << b);
+        }
+
+        stack->ptr[stack->pos - 2].v128 = c;
+        stack->pos--;
+      }
+
+      break;
+    case PWASM_OP_I32X4_SHR_S:
+      {
+        const pwasm_v128_t a = stack->ptr[stack->pos - 2].v128;
+        const uint32_t b = stack->ptr[stack->pos - 1].i32 & 0x1F;
+
+        pwasm_v128_t c;
+        for (size_t j = 0; j < 4; j++) {
+          int32_t av = a.i32[j];
+          c.i32[j] = (av >> b);
+        }
+
+        stack->ptr[stack->pos - 2].v128 = c;
+        stack->pos--;
+      }
+
+      break;
+    case PWASM_OP_I32X4_SHR_U:
+      {
+        const pwasm_v128_t a = stack->ptr[stack->pos - 2].v128;
+        const uint32_t b = stack->ptr[stack->pos - 1].i32 & 0x1F;
+
+        pwasm_v128_t c;
+        for (size_t j = 0; j < 4; j++) {
+          uint32_t av = a.i32[j];
+          c.i32[j] = (av >> b);
+        }
+
+        stack->ptr[stack->pos - 2].v128 = c;
+        stack->pos--;
+      }
+
+      break;
+    case PWASM_OP_I32X4_ADD:
+      {
+        const pwasm_v128_t a = stack->ptr[stack->pos - 2].v128;
+        const pwasm_v128_t b = stack->ptr[stack->pos - 1].v128;
+
+        pwasm_v128_t c;
+        for (size_t j = 0; j < 4; j++) {
+          c.i32[j] = a.i32[j] + b.i32[j];
+        }
+
+        stack->ptr[stack->pos - 2].v128 = c;
+        stack->pos--;
+      }
+
+      break;
+    case PWASM_OP_I32X4_SUB:
+      {
+        const pwasm_v128_t a = stack->ptr[stack->pos - 2].v128;
+        const pwasm_v128_t b = stack->ptr[stack->pos - 1].v128;
+
+        pwasm_v128_t c;
+        for (size_t j = 0; j < 4; j++) {
+          c.i32[j] = a.i32[j] - b.i32[j];
+        }
+
+        stack->ptr[stack->pos - 2].v128 = c;
+        stack->pos--;
+      }
+
+      break;
+    case PWASM_OP_I32X4_MUL:
+      {
+        const pwasm_v128_t a = stack->ptr[stack->pos - 2].v128;
+        const pwasm_v128_t b = stack->ptr[stack->pos - 1].v128;
+
+        pwasm_v128_t c;
+        for (size_t j = 0; j < 4; j++) {
+          c.i32[j] = a.i32[j] * b.i32[j];
+        }
+
+        stack->ptr[stack->pos - 2].v128 = c;
+        stack->pos--;
+      }
+
+      break;
+    case PWASM_OP_I32X4_MIN_S:
+      {
+        const pwasm_v128_t a = stack->ptr[stack->pos - 2].v128;
+        const pwasm_v128_t b = stack->ptr[stack->pos - 1].v128;
+
+        pwasm_v128_t c;
+        for (size_t j = 0; j < 4; j++) {
+          const int32_t av = a.i32[j];
+          const int32_t bv = b.i32[j];
+          c.i32[j] = MIN(av, bv);
+        }
+
+        stack->ptr[stack->pos - 2].v128 = c;
+        stack->pos--;
+      }
+
+      break;
+    case PWASM_OP_I32X4_MIN_U:
+      {
+        const pwasm_v128_t a = stack->ptr[stack->pos - 2].v128;
+        const pwasm_v128_t b = stack->ptr[stack->pos - 1].v128;
+
+        pwasm_v128_t c;
+        for (size_t j = 0; j < 4; j++) {
+          const uint32_t av = a.i32[j];
+          const uint32_t bv = b.i32[j];
+          c.i32[j] = MIN(av, bv);
+        }
+
+        stack->ptr[stack->pos - 2].v128 = c;
+        stack->pos--;
+      }
+
+      break;
+    case PWASM_OP_I32X4_MAX_S:
+      {
+        const pwasm_v128_t a = stack->ptr[stack->pos - 2].v128;
+        const pwasm_v128_t b = stack->ptr[stack->pos - 1].v128;
+
+        pwasm_v128_t c;
+        for (size_t j = 0; j < 4; j++) {
+          const int32_t av = a.i32[j];
+          const int32_t bv = b.i32[j];
+          c.i32[j] = MAX(av, bv);
+        }
+
+        stack->ptr[stack->pos - 2].v128 = c;
+        stack->pos--;
+      }
+
+      break;
+    case PWASM_OP_I32X4_MAX_U:
+      {
+        const pwasm_v128_t a = stack->ptr[stack->pos - 2].v128;
+        const pwasm_v128_t b = stack->ptr[stack->pos - 1].v128;
+
+        pwasm_v128_t c;
+        for (size_t j = 0; j < 4; j++) {
+          const uint32_t av = a.i32[j];
+          const uint32_t bv = b.i32[j];
+          c.i32[j] = MAX(av, bv);
+        }
+
+        stack->ptr[stack->pos - 2].v128 = c;
+        stack->pos--;
+      }
+
+      break;
+    case PWASM_OP_I64X2_NEG:
+      {
+        const pwasm_v128_t a = stack->ptr[stack->pos - 1].v128;
+
+        pwasm_v128_t b;
+        for (size_t j = 0; j < 2; j++) {
+          b.i64[j] = -a.i64[j];
+        }
+
+        stack->ptr[stack->pos - 1].v128 = b;
+      }
+
+      break;
+    case PWASM_OP_I64X2_SHL:
+      {
+        const pwasm_v128_t a = stack->ptr[stack->pos - 2].v128;
+        const uint32_t b = stack->ptr[stack->pos - 1].i32 & 0x3F;
+
+        pwasm_v128_t c;
+        for (size_t j = 0; j < 2; j++) {
+          c.i64[j] = (a.i64[j] << b);
+        }
+
+        stack->ptr[stack->pos - 2].v128 = c;
+        stack->pos--;
+      }
+
+      break;
+    case PWASM_OP_I64X2_SHR_S:
+      {
+        const pwasm_v128_t a = stack->ptr[stack->pos - 2].v128;
+        const uint32_t b = stack->ptr[stack->pos - 1].i32 & 0x3F;
+
+        pwasm_v128_t c;
+        for (size_t j = 0; j < 2; j++) {
+          int64_t av = a.i64[j];
+          c.i64[j] = (av >> b);
+        }
+
+        stack->ptr[stack->pos - 2].v128 = c;
+        stack->pos--;
+      }
+
+      break;
+    case PWASM_OP_I64X2_SHR_U:
+      {
+        const pwasm_v128_t a = stack->ptr[stack->pos - 2].v128;
+        const uint32_t b = stack->ptr[stack->pos - 1].i32 & 0x3F;
+
+        pwasm_v128_t c;
+        for (size_t j = 0; j < 2; j++) {
+          uint64_t av = a.i64[j];
+          c.i64[j] = (av >> b);
+        }
+
+        stack->ptr[stack->pos - 2].v128 = c;
+        stack->pos--;
+      }
+
+      break;
+    case PWASM_OP_I64X2_ADD:
+      {
+        const pwasm_v128_t a = stack->ptr[stack->pos - 2].v128;
+        const pwasm_v128_t b = stack->ptr[stack->pos - 1].v128;
+
+        pwasm_v128_t c;
+        for (size_t j = 0; j < 2; j++) {
+          c.i64[j] = a.i64[j] + b.i64[j];
+        }
+
+        stack->ptr[stack->pos - 2].v128 = c;
+        stack->pos--;
+      }
+
+      break;
+    case PWASM_OP_I64X2_SUB:
+      {
+        const pwasm_v128_t a = stack->ptr[stack->pos - 2].v128;
+        const pwasm_v128_t b = stack->ptr[stack->pos - 1].v128;
+
+        pwasm_v128_t c;
+        for (size_t j = 0; j < 2; j++) {
+          c.i64[j] = a.i64[j] - b.i64[j];
+        }
+
+        stack->ptr[stack->pos - 2].v128 = c;
+        stack->pos--;
+      }
+
+      break;
+    case PWASM_OP_I64X2_MUL:
+      {
+        const pwasm_v128_t a = stack->ptr[stack->pos - 2].v128;
+        const pwasm_v128_t b = stack->ptr[stack->pos - 1].v128;
+
+        pwasm_v128_t c;
+        for (size_t j = 0; j < 2; j++) {
+          c.i64[j] = a.i64[j] * b.i64[j];
+        }
+
+        stack->ptr[stack->pos - 2].v128 = c;
+        stack->pos--;
+      }
+
+      break;
+    case PWASM_OP_F32X4_ABS:
+      {
+        const pwasm_v128_t a = stack->ptr[stack->pos - 1].v128;
+
+        pwasm_v128_t b;
+        for (size_t j = 0; j < 4; j++) {
+          b.f32[j] = fabsf(a.f32[j]);
+        }
+
+        stack->ptr[stack->pos - 1].v128 = b;
+      }
+
+      break;
+    case PWASM_OP_F32X4_NEG:
+      {
+        const pwasm_v128_t a = stack->ptr[stack->pos - 1].v128;
+
+        pwasm_v128_t b;
+        for (size_t j = 0; j < 4; j++) {
+          b.f32[j] = -a.f32[j];
+        }
+
+        stack->ptr[stack->pos - 1].v128 = b;
+      }
+
+      break;
+    case PWASM_OP_F32X4_SQRT:
+      {
+        const pwasm_v128_t a = stack->ptr[stack->pos - 1].v128;
+
+        pwasm_v128_t b;
+        for (size_t j = 0; j < 4; j++) {
+          b.f32[j] = sqrtf(a.f32[j]);
+        }
+
+        stack->ptr[stack->pos - 1].v128 = b;
+      }
+
+      break;
+    case PWASM_OP_F32X4_ADD:
+      {
+        const pwasm_v128_t a = stack->ptr[stack->pos - 2].v128;
+        const pwasm_v128_t b = stack->ptr[stack->pos - 1].v128;
+
+        pwasm_v128_t c;
+        for (size_t j = 0; j < 4; j++) {
+          c.f32[j] = a.f32[j] + b.f32[j];
+        }
+
+        stack->ptr[stack->pos - 2].v128 = c;
+        stack->pos--;
+      }
+
+      break;
+    case PWASM_OP_F32X4_SUB:
+      {
+        const pwasm_v128_t a = stack->ptr[stack->pos - 2].v128;
+        const pwasm_v128_t b = stack->ptr[stack->pos - 1].v128;
+
+        pwasm_v128_t c;
+        for (size_t j = 0; j < 4; j++) {
+          c.f32[j] = a.f32[j] - b.f32[j];
+        }
+
+        stack->ptr[stack->pos - 2].v128 = c;
+        stack->pos--;
+      }
+
+      break;
+    case PWASM_OP_F32X4_MUL:
+      {
+        const pwasm_v128_t a = stack->ptr[stack->pos - 2].v128;
+        const pwasm_v128_t b = stack->ptr[stack->pos - 1].v128;
+
+        pwasm_v128_t c;
+        for (size_t j = 0; j < 4; j++) {
+          c.f32[j] = a.f32[j] * b.f32[j];
+        }
+
+        stack->ptr[stack->pos - 2].v128 = c;
+        stack->pos--;
+      }
+
+      break;
+    case PWASM_OP_F32X4_DIV:
+      {
+        const pwasm_v128_t a = stack->ptr[stack->pos - 2].v128;
+        const pwasm_v128_t b = stack->ptr[stack->pos - 1].v128;
+
+        pwasm_v128_t c;
+        for (size_t j = 0; j < 4; j++) {
+          c.f32[j] = a.f32[j] / b.f32[j];
+        }
+
+        stack->ptr[stack->pos - 2].v128 = c;
+        stack->pos--;
+      }
+
+      break;
+    case PWASM_OP_F32X4_MIN:
+      {
+        const pwasm_v128_t a = stack->ptr[stack->pos - 2].v128;
+        const pwasm_v128_t b = stack->ptr[stack->pos - 1].v128;
+
+        pwasm_v128_t c;
+        for (size_t j = 0; j < 4; j++) {
+          c.f32[j] = fminf(a.f32[j], b.f32[j]);
+        }
+
+        stack->ptr[stack->pos - 2].v128 = c;
+        stack->pos--;
+      }
+
+      break;
+    case PWASM_OP_F32X4_MAX:
+      {
+        const pwasm_v128_t a = stack->ptr[stack->pos - 2].v128;
+        const pwasm_v128_t b = stack->ptr[stack->pos - 1].v128;
+
+        pwasm_v128_t c;
+        for (size_t j = 0; j < 4; j++) {
+          c.f32[j] = fmaxf(a.f32[j], b.f32[j]);
+        }
+
+        stack->ptr[stack->pos - 2].v128 = c;
+        stack->pos--;
+      }
+
+      break;
+    case PWASM_OP_F64X2_ABS:
+      {
+        const pwasm_v128_t a = stack->ptr[stack->pos - 1].v128;
+
+        pwasm_v128_t b;
+        for (size_t j = 0; j < 2; j++) {
+          b.f64[j] = fabs(a.f64[j]);
+        }
+
+        stack->ptr[stack->pos - 1].v128 = b;
+      }
+
+      break;
+    case PWASM_OP_F64X2_NEG:
+      {
+        const pwasm_v128_t a = stack->ptr[stack->pos - 1].v128;
+
+        pwasm_v128_t b;
+        for (size_t j = 0; j < 2; j++) {
+          b.f64[j] = -a.f64[j];
+        }
+
+        stack->ptr[stack->pos - 1].v128 = b;
+      }
+
+      break;
+    case PWASM_OP_F64X2_SQRT:
+      {
+        const pwasm_v128_t a = stack->ptr[stack->pos - 1].v128;
+
+        pwasm_v128_t b;
+        for (size_t j = 0; j < 2; j++) {
+          b.f64[j] = sqrt(a.f64[j]);
+        }
+
+        stack->ptr[stack->pos - 1].v128 = b;
+      }
+
+      break;
+    case PWASM_OP_F64X2_ADD:
+      {
+        const pwasm_v128_t a = stack->ptr[stack->pos - 2].v128;
+        const pwasm_v128_t b = stack->ptr[stack->pos - 1].v128;
+
+        pwasm_v128_t c;
+        for (size_t j = 0; j < 2; j++) {
+          c.f64[j] = a.f64[j] + b.f64[j];
+        }
+
+        stack->ptr[stack->pos - 2].v128 = c;
+        stack->pos--;
+      }
+
+      break;
+    case PWASM_OP_F64X2_SUB:
+      {
+        const pwasm_v128_t a = stack->ptr[stack->pos - 2].v128;
+        const pwasm_v128_t b = stack->ptr[stack->pos - 1].v128;
+
+        pwasm_v128_t c;
+        for (size_t j = 0; j < 2; j++) {
+          c.f64[j] = a.f64[j] - b.f64[j];
+        }
+
+        stack->ptr[stack->pos - 2].v128 = c;
+        stack->pos--;
+      }
+
+      break;
+    case PWASM_OP_F64X2_MUL:
+      {
+        const pwasm_v128_t a = stack->ptr[stack->pos - 2].v128;
+        const pwasm_v128_t b = stack->ptr[stack->pos - 1].v128;
+
+        pwasm_v128_t c;
+        for (size_t j = 0; j < 2; j++) {
+          c.f64[j] = a.f64[j] * b.f64[j];
+        }
+
+        stack->ptr[stack->pos - 2].v128 = c;
+        stack->pos--;
+      }
+
+      break;
+    case PWASM_OP_F64X2_DIV:
+      {
+        const pwasm_v128_t a = stack->ptr[stack->pos - 2].v128;
+        const pwasm_v128_t b = stack->ptr[stack->pos - 1].v128;
+
+        pwasm_v128_t c;
+        for (size_t j = 0; j < 2; j++) {
+          c.f64[j] = a.f64[j] / b.f64[j];
+        }
+
+        stack->ptr[stack->pos - 2].v128 = c;
+        stack->pos--;
+      }
+
+      break;
+    case PWASM_OP_F64X2_MIN:
+      {
+        const pwasm_v128_t a = stack->ptr[stack->pos - 2].v128;
+        const pwasm_v128_t b = stack->ptr[stack->pos - 1].v128;
+
+        pwasm_v128_t c;
+        for (size_t j = 0; j < 2; j++) {
+          c.f64[j] = fmin(a.f64[j], b.f64[j]);
+        }
+
+        stack->ptr[stack->pos - 2].v128 = c;
+        stack->pos--;
+      }
+
+      break;
+    case PWASM_OP_F64X2_MAX:
+      {
+        const pwasm_v128_t a = stack->ptr[stack->pos - 2].v128;
+        const pwasm_v128_t b = stack->ptr[stack->pos - 1].v128;
+
+        pwasm_v128_t c;
+        for (size_t j = 0; j < 2; j++) {
+          c.f64[j] = fmax(a.f64[j], b.f64[j]);
+        }
+
+        stack->ptr[stack->pos - 2].v128 = c;
+        stack->pos--;
+      }
+
+      break;
+    case PWASM_OP_I32X4_TRUNC_SAT_F32X4_S:
+      {
+        const pwasm_v128_t a = stack->ptr[stack->pos - 1].v128;
+
+        pwasm_v128_t b;
+        for (size_t j = 0; j < 4; j++) {
+          int32_t v = CLAMP(a.f32[j], INT32_MIN, INT32_MAX);
+          b.i32[j] = v;
+        }
+
+        stack->ptr[stack->pos - 1].v128 = b;
+      }
+
+      break;
+    case PWASM_OP_I32X4_TRUNC_SAT_F32X4_U:
+      {
+        const pwasm_v128_t a = stack->ptr[stack->pos - 1].v128;
+
+        pwasm_v128_t b;
+        for (size_t j = 0; j < 4; j++) {
+          b.i32[j] = MIN(a.f32[j], UINT32_MAX);
+        }
+
+        stack->ptr[stack->pos - 1].v128 = b;
+      }
+
+      break;
+    case PWASM_OP_F32X4_CONVERT_I32X4_S:
+      {
+        const pwasm_v128_t a = stack->ptr[stack->pos - 1].v128;
+
+        pwasm_v128_t b;
+        for (size_t j = 0; j < 4; j++) {
+          int32_t v = a.i32[j];
+          b.f32[j] = v;
+        }
+
+        stack->ptr[stack->pos - 1].v128 = b;
+      }
+
+      break;
+    case PWASM_OP_F32X4_CONVERT_I32X4_U:
+      {
+        const pwasm_v128_t a = stack->ptr[stack->pos - 1].v128;
+
+        pwasm_v128_t b;
+        for (size_t j = 0; j < 4; j++) {
+          uint32_t v = a.i32[j];
+          b.f32[j] = v;
+        }
+
+        stack->ptr[stack->pos - 1].v128 = b;
+      }
+
+      break;
+    case PWASM_OP_V8X16_SWIZZLE:
+      {
+        const pwasm_v128_t a = stack->ptr[stack->pos - 2].v128;
+        const pwasm_v128_t b = stack->ptr[stack->pos - 1].v128;
+
+        pwasm_v128_t c;
+        for (size_t j = 0; j < 16; j++) {
+          const uint32_t ofs = (b.i8[j] < 16) ? b.i8[j] : 0;
+          c.i8[j] = a.i8[ofs];
+        }
+
+        stack->ptr[stack->pos - 2].v128 = c;
+        stack->pos--;
+      }
+
+      break;
+    case PWASM_OP_V8X16_SHUFFLE:
+      {
+        const pwasm_v128_t a = stack->ptr[stack->pos - 2].v128;
+        const pwasm_v128_t b = stack->ptr[stack->pos - 1].v128;
+
+        pwasm_v128_t c;
+        for (size_t j = 0; j < 16; j++) {
+          const uint8_t ofs = in.v_v128.i8[j] & 0x1F;
+          c.i8[j] = (ofs < 16) ? a.i8[ofs] : b.i8[ofs - 16];
+        }
+
+        stack->ptr[stack->pos - 2].v128 = c;
+        stack->pos--;
+      }
+
+      break;
+    case PWASM_OP_V8X16_LOAD_SPLAT:
+      {
+        // get offset operand
+        const uint32_t ofs = stack->ptr[stack->pos - 1].i32;
+
+        // load value, check for error
+        pwasm_val_t a;
+        if (!pwasm_env_mem_load(frame.env, frame.mem_id, in, ofs, &a)) {
+          return false;
+        }
+
+        // splat
+        pwasm_v128_t b;
+        for (size_t j = 0; j < 16; j++) {
+          b.i8[j] = a.v128.i8[0];
+        }
+
+        // push val
+        stack->ptr[stack->pos - 1].v128 = b;
+      }
+
+      break;
+    case PWASM_OP_V16X8_LOAD_SPLAT:
+      {
+        // get offset operand
+        const uint32_t ofs = stack->ptr[stack->pos - 1].i32;
+
+        // load value, check for error
+        pwasm_val_t a;
+        if (!pwasm_env_mem_load(frame.env, frame.mem_id, in, ofs, &a)) {
+          return false;
+        }
+
+        // splat
+        pwasm_v128_t b;
+        for (size_t j = 0; j < 8; j++) {
+          b.i16[j] = a.v128.i16[0];
+        }
+
+        // push val
+        stack->ptr[stack->pos - 1].v128 = b;
+      }
+
+      break;
+    case PWASM_OP_V32X4_LOAD_SPLAT:
+      {
+        // get offset operand
+        const uint32_t ofs = stack->ptr[stack->pos - 1].i32;
+
+        // load value, check for error
+        pwasm_val_t a;
+        if (!pwasm_env_mem_load(frame.env, frame.mem_id, in, ofs, &a)) {
+          return false;
+        }
+
+        // splat
+        pwasm_v128_t b;
+        for (size_t j = 0; j < 4; j++) {
+          b.i32[j] = a.v128.i32[0];
+        }
+
+        // push val
+        stack->ptr[stack->pos - 1].v128 = b;
+      }
+
+      break;
+    case PWASM_OP_V64X2_LOAD_SPLAT:
+      {
+        // get offset operand
+        const uint32_t ofs = stack->ptr[stack->pos - 1].i32;
+
+        // load value, check for error
+        pwasm_val_t a;
+        if (!pwasm_env_mem_load(frame.env, frame.mem_id, in, ofs, &a)) {
+          return false;
+        }
+
+        // splat
+        pwasm_v128_t b;
+        for (size_t j = 0; j < 2; j++) {
+          b.i64[j] = a.v128.i64[0];
+        }
+
+        // push val
+        stack->ptr[stack->pos - 1].v128 = b;
+      }
+
+      break;
+    case PWASM_OP_I8X16_NARROW_I16X8_S:
+      {
+        const pwasm_v128_t a = stack->ptr[stack->pos - 2].v128;
+        const pwasm_v128_t b = stack->ptr[stack->pos - 1].v128;
+
+        pwasm_v128_t c;
+        for (size_t j = 0; j < 8; j++) {
+          const int16_t v = a.i16[j];
+          c.i8[j] = CLAMP(v, INT8_MIN, INT8_MAX);
+        }
+
+        for (size_t j = 0; j < 8; j++) {
+          const int16_t v = b.i16[j];
+          c.i8[j + 8] = CLAMP(v, INT8_MIN, INT8_MAX);
+        }
+
+        stack->ptr[stack->pos - 2].v128 = c;
+        stack->pos--;
+      }
+
+      break;
+    case PWASM_OP_I8X16_NARROW_I16X8_U:
+      {
+        const pwasm_v128_t a = stack->ptr[stack->pos - 2].v128;
+        const pwasm_v128_t b = stack->ptr[stack->pos - 1].v128;
+
+        pwasm_v128_t c;
+        for (size_t j = 0; j < 8; j++) {
+          const int16_t v = a.i16[j];
+          c.i8[j] = CLAMP(v, 0, UINT8_MAX);
+        }
+
+        for (size_t j = 0; j < 8; j++) {
+          const int16_t v = b.i16[j];
+          c.i8[j + 8] = CLAMP(v, 0, UINT8_MAX);
+        }
+
+        stack->ptr[stack->pos - 2].v128 = c;
+        stack->pos--;
+      }
+
+      break;
+    case PWASM_OP_I16X8_NARROW_I32X4_S:
+      {
+        const pwasm_v128_t a = stack->ptr[stack->pos - 2].v128;
+        const pwasm_v128_t b = stack->ptr[stack->pos - 1].v128;
+
+        pwasm_v128_t c;
+        for (size_t j = 0; j < 4; j++) {
+          const int32_t v = a.i32[j];
+          c.i16[j] = CLAMP(v, INT16_MIN, INT16_MAX);
+        }
+
+        for (size_t j = 0; j < 4; j++) {
+          const int32_t v = b.i32[j];
+          c.i16[j + 4] = CLAMP(v, INT16_MIN, INT16_MAX);
+        }
+
+        stack->ptr[stack->pos - 2].v128 = c;
+        stack->pos--;
+      }
+
+      break;
+    case PWASM_OP_I16X8_NARROW_I32X4_U:
+      {
+        const pwasm_v128_t a = stack->ptr[stack->pos - 2].v128;
+        const pwasm_v128_t b = stack->ptr[stack->pos - 1].v128;
+
+        pwasm_v128_t c;
+        for (size_t j = 0; j < 4; j++) {
+          const int32_t v = a.i32[j];
+          c.i16[j] = CLAMP(v, 0, UINT16_MAX);
+        }
+
+        for (size_t j = 0; j < 4; j++) {
+          const int32_t v = b.i32[j];
+          c.i16[j + 4] = CLAMP(v, 0, UINT16_MAX);
+        }
+
+        stack->ptr[stack->pos - 2].v128 = c;
+        stack->pos--;
+      }
+
+      break;
+    case PWASM_OP_I16X8_WIDEN_LOW_I8X16_S:
+      {
+        const pwasm_v128_t a = stack->ptr[stack->pos - 1].v128;
+
+        pwasm_v128_t b;
+        for (size_t j = 0; j < 8; j++) {
+          const int8_t v = a.i8[j];
+          b.i16[j] = (int16_t) v;
+        }
+
+        stack->ptr[stack->pos - 1].v128 = b;
+      }
+
+      break;
+    case PWASM_OP_I16X8_WIDEN_HIGH_I8X16_S:
+      {
+        const pwasm_v128_t a = stack->ptr[stack->pos - 1].v128;
+
+        pwasm_v128_t b;
+        for (size_t j = 0; j < 8; j++) {
+          const int8_t v = a.i8[8 + j];
+          b.i16[j] = (int16_t) v;
+        }
+
+        stack->ptr[stack->pos - 1].v128 = b;
+      }
+
+      break;
+    case PWASM_OP_I16X8_WIDEN_LOW_I8X16_U:
+      {
+        const pwasm_v128_t a = stack->ptr[stack->pos - 1].v128;
+
+        pwasm_v128_t b;
+        for (size_t j = 0; j < 8; j++) {
+          b.i16[j] = a.i8[j];
+        }
+
+        stack->ptr[stack->pos - 1].v128 = b;
+      }
+
+      break;
+    case PWASM_OP_I16X8_WIDEN_HIGH_I8X16_U:
+      {
+        const pwasm_v128_t a = stack->ptr[stack->pos - 1].v128;
+
+        pwasm_v128_t b;
+        for (size_t j = 0; j < 8; j++) {
+          b.i16[j] = a.i8[8 + j];
+        }
+
+        stack->ptr[stack->pos - 1].v128 = b;
+      }
+
+      break;
+    case PWASM_OP_I32X4_WIDEN_LOW_I16X8_S:
+      {
+        const pwasm_v128_t a = stack->ptr[stack->pos - 1].v128;
+
+        pwasm_v128_t b;
+        for (size_t j = 0; j < 4; j++) {
+          const int16_t v = a.i16[j];
+          b.i32[j] = (int32_t) v;
+        }
+
+        stack->ptr[stack->pos - 1].v128 = b;
+      }
+
+      break;
+    case PWASM_OP_I32X4_WIDEN_HIGH_I16X8_S:
+      {
+        const pwasm_v128_t a = stack->ptr[stack->pos - 1].v128;
+
+        pwasm_v128_t b;
+        for (size_t j = 0; j < 4; j++) {
+          const int16_t v = a.i16[4 + j];
+          b.i32[j] = (int32_t) v;
+        }
+
+        stack->ptr[stack->pos - 1].v128 = b;
+      }
+
+      break;
+    case PWASM_OP_I32X4_WIDEN_LOW_I16X8_U:
+      {
+        const pwasm_v128_t a = stack->ptr[stack->pos - 1].v128;
+
+        pwasm_v128_t b;
+        for (size_t j = 0; j < 4; j++) {
+          b.i32[j] = a.i16[j];
+        }
+
+        stack->ptr[stack->pos - 1].v128 = b;
+      }
+
+      break;
+    case PWASM_OP_I32X4_WIDEN_HIGH_I16X8_U:
+      {
+        const pwasm_v128_t a = stack->ptr[stack->pos - 1].v128;
+
+        pwasm_v128_t b;
+        for (size_t j = 0; j < 4; j++) {
+          b.i32[j] = a.i16[4 + j];
+        }
+
+        stack->ptr[stack->pos - 1].v128 = b;
+      }
+
+      break;
+    case PWASM_OP_I16X8_LOAD8X8_S:
+      {
+        // get offset operand
+        const uint32_t ofs = stack->ptr[stack->pos - 1].i32;
+
+        // load value, check for error
+        pwasm_val_t a;
+        if (!pwasm_env_mem_load(frame.env, frame.mem_id, in, ofs, &a)) {
+          return false;
+        }
+
+        // splat
+        pwasm_v128_t b;
+        for (size_t j = 0; j < 8; j++) {
+          const int8_t v = a.v128.i8[j];
+          b.i16[j] = (int16_t) v;
+        }
+
+        // push val
+        stack->ptr[stack->pos - 1].v128 = b;
+      }
+
+      break;
+    case PWASM_OP_I16X8_LOAD8X8_U:
+      {
+        // get offset operand
+        const uint32_t ofs = stack->ptr[stack->pos - 1].i32;
+
+        // load value, check for error
+        pwasm_val_t a;
+        if (!pwasm_env_mem_load(frame.env, frame.mem_id, in, ofs, &a)) {
+          return false;
+        }
+
+        // splat
+        pwasm_v128_t b;
+        for (size_t j = 0; j < 8; j++) {
+          b.i16[j] = a.v128.i8[j];
+        }
+
+        // push val
+        stack->ptr[stack->pos - 1].v128 = b;
+      }
+
+      break;
+    case PWASM_OP_I32X4_LOAD16X4_S:
+      {
+        // get offset operand
+        const uint32_t ofs = stack->ptr[stack->pos - 1].i32;
+
+        // load value, check for error
+        pwasm_val_t a;
+        if (!pwasm_env_mem_load(frame.env, frame.mem_id, in, ofs, &a)) {
+          return false;
+        }
+
+        // splat
+        pwasm_v128_t b;
+        for (size_t j = 0; j < 4; j++) {
+          const int16_t v = a.v128.i16[j];
+          b.i32[j] = (int32_t) v;
+        }
+
+        // push val
+        stack->ptr[stack->pos - 1].v128 = b;
+      }
+
+      break;
+    case PWASM_OP_I32X4_LOAD16X4_U:
+      {
+        // get offset operand
+        const uint32_t ofs = stack->ptr[stack->pos - 1].i32;
+
+        // load value, check for error
+        pwasm_val_t a;
+        if (!pwasm_env_mem_load(frame.env, frame.mem_id, in, ofs, &a)) {
+          return false;
+        }
+
+        // splat
+        pwasm_v128_t b;
+        for (size_t j = 0; j < 4; j++) {
+          b.i32[j] = a.v128.i16[j];
+        }
+
+        // push val
+        stack->ptr[stack->pos - 1].v128 = b;
+      }
+
+      break;
+    case PWASM_OP_I64X2_LOAD32X2_S:
+      {
+        // get offset operand
+        const uint32_t ofs = stack->ptr[stack->pos - 1].i32;
+
+        // load value, check for error
+        pwasm_val_t a;
+        if (!pwasm_env_mem_load(frame.env, frame.mem_id, in, ofs, &a)) {
+          return false;
+        }
+
+        // splat
+        pwasm_v128_t b;
+        for (size_t j = 0; j < 2; j++) {
+          const int32_t v = a.v128.i32[j];
+          b.i64[j] = (int64_t) v;
+        }
+
+        // push val
+        stack->ptr[stack->pos - 1].v128 = b;
+      }
+
+      break;
+    case PWASM_OP_I64X2_LOAD32X2_U:
+      {
+        // get offset operand
+        const uint32_t ofs = stack->ptr[stack->pos - 1].i32;
+
+        // load value, check for error
+        pwasm_val_t a;
+        if (!pwasm_env_mem_load(frame.env, frame.mem_id, in, ofs, &a)) {
+          return false;
+        }
+
+        // splat
+        pwasm_v128_t b;
+        for (size_t j = 0; j < 2; j++) {
+          b.i64[j] = a.v128.i32[j];
+        }
+
+        // push val
+        stack->ptr[stack->pos - 1].v128 = b;
+      }
+
+      break;
+    case PWASM_OP_V128_ANDNOT:
+      {
+        const pwasm_v128_t a = stack->ptr[stack->pos - 2].v128;
+        const pwasm_v128_t b = stack->ptr[stack->pos - 1].v128;
+
+        pwasm_v128_t c;
+        c.i64[0] = a.i64[0] & ~b.i64[0];
+        c.i64[1] = a.i64[1] & ~b.i64[1];
+
+        stack->ptr[stack->pos - 2].v128 = c;
+        stack->pos--;
+      }
+
+      break;
+    case PWASM_OP_I8X16_AVGR_U:
+      {
+        const pwasm_v128_t a = stack->ptr[stack->pos - 2].v128;
+        const pwasm_v128_t b = stack->ptr[stack->pos - 1].v128;
+
+        pwasm_v128_t c;
+        for (size_t j = 0; j < 16; j++) {
+          const uint8_t av = a.i8[j];
+          const uint8_t bv = b.i8[j];
+          c.i8[j] = (av + bv + 1) / 2;
+        }
+
+        stack->ptr[stack->pos - 2].v128 = c;
+        stack->pos--;
+      }
+
+      break;
+    case PWASM_OP_I16X8_AVGR_U:
+      {
+        const pwasm_v128_t a = stack->ptr[stack->pos - 2].v128;
+        const pwasm_v128_t b = stack->ptr[stack->pos - 1].v128;
+
+        pwasm_v128_t c;
+        for (size_t j = 0; j < 8; j++) {
+          const uint16_t av = a.i16[j];
+          const uint16_t bv = b.i16[j];
+          c.i16[j] = (av + bv + 1) / 2;
+        }
+
+        stack->ptr[stack->pos - 2].v128 = c;
+        stack->pos--;
+      }
+
+      break;
+    case PWASM_OP_I8X16_ABS:
+      {
+        const pwasm_v128_t a = stack->ptr[stack->pos - 1].v128;
+
+        pwasm_v128_t b;
+        for (size_t j = 0; j < 16; j++) {
+          const int8_t v = a.i8[j];
+          b.i8[j] = (v < 0) ? -v : v;
+        }
+
+        stack->ptr[stack->pos - 1].v128 = b;
+      }
+
+      break;
+    case PWASM_OP_I16X8_ABS:
+      {
+        const pwasm_v128_t a = stack->ptr[stack->pos - 1].v128;
+
+        pwasm_v128_t b;
+        for (size_t j = 0; j < 8; j++) {
+          const int16_t v = a.i16[j];
+          b.i16[j] = (v < 0) ? -v : v;
+        }
+
+        stack->ptr[stack->pos - 1].v128 = b;
+      }
+
+      break;
+    case PWASM_OP_I32X4_ABS:
+      {
+        const pwasm_v128_t a = stack->ptr[stack->pos - 1].v128;
+
+        pwasm_v128_t b;
+        for (size_t j = 0; j < 4; j++) {
+          const int32_t v = a.i32[j];
+          b.i32[j] = (v < 0) ? -v : v;
+        }
+
+        stack->ptr[stack->pos - 1].v128 = b;
+      }
+
+      break;
+    default:
+      // log error, return failure
+      pwasm_env_fail(frame.env, "unknown instruction");
+      return false;
+    }
+  }
+
+  // return success (i think?)
+  return true;
+}
+
+/*
+ * world's second shittiest initial interpreter
+ */
+static bool
+pwasm_aot_jit_call_func(
+  pwasm_env_t * const env,
+  pwasm_aot_jit_mod_t * const interp_mod,
+  uint32_t func_ofs
+) {
+  pwasm_aot_jit_t * const interp = env->env_data;
+  pwasm_stack_t * const stack = env->stack;
+  const pwasm_mod_t * const mod = interp_mod->mod;
+  // will be used for CALL and CALL_INDIRECT
+  // const size_t stack_pos = env->stack->pos;
+
+  // get func parameters and results
+  const pwasm_slice_t params = mod->types[mod->funcs[func_ofs]].params;
+  const pwasm_slice_t results = mod->types[mod->funcs[func_ofs]].results;
+
+  // check stack position (e.g. missing parameters)
+  // (FIXME: do we need this, should it be handled in check?)
+  if (stack->pos < params.len) {
+    // log error, return failure
+    D("missing parameters: stack->pos = %zu, params.len = %zu", stack->pos, params.len);
+    pwasm_env_fail(env, "missing function parameters");
+    return false;
+  }
+
+  // get number of local slots and total frame size
+  const size_t max_locals = mod->codes[func_ofs].max_locals;
+  const size_t frame_size = mod->codes[func_ofs].frame_size;
+  if (max_locals > 0) {
+    // clear local slots
+    memset(stack->ptr + stack->pos, 0, sizeof(pwasm_val_t) * max_locals);
+  }
+
+  // skip past locals
+  stack->pos += max_locals;
+
+  // get mems count and pointer in this module
+  const size_t num_mems = interp_mod->mems.len;
+  const uint32_t * const mems = ((uint32_t*) pwasm_vec_get_data(&(interp->u32s))) + interp_mod->mems.ofs;
+
+  // D("mems slice = { %zu, %zu }, len = %zu, mems[0] = %u", interp_mod->mems.ofs, interp_mod->mems.len, num_mems, num_mems ? mems[0] : 0);
+  // build interpreter frame
+  pwasm_aot_jit_frame_t frame = {
+    .env = env,
+    .mod = interp_mod,
+    // FIXME: is this right?
+    .mem_id = num_mems ? mems[0] : 0,
+    .params = params,
+    .locals = {
+      .ofs = stack->pos - frame_size,
+      .len = frame_size,
+    },
+  };
+
+  // get expr instructions slice
+  const pwasm_slice_t expr = mod->codes[func_ofs].expr;
+
+  const bool ok = pwasm_aot_jit_eval_expr(frame, expr);
+  if (!ok) {
+    D("eval_expr() failed, func_ofs = %u", func_ofs);
+    // return failure
+    return false;
+  }
+
+  // get func results
+  if (frame_size > 0) {
+    // calc dst and src stack positions
+    const size_t dst_pos = frame.locals.ofs;
+    const size_t src_pos = stack->pos - results.len;
+    const size_t num_bytes = sizeof(pwasm_val_t) * results.len;
+
+    // D("stack->pos: old = %zu, new = %zu", stack->pos, dst_pos + results.len);
+    // copy results, update stack position
+    memmove(stack->ptr + dst_pos, stack->ptr + src_pos, num_bytes);
+    stack->pos = dst_pos + results.len;
+  }
+
+  // return success
+  return true;
+}
+
+static bool
+pwasm_aot_jit_call(
+  pwasm_env_t * const env,
+  const uint32_t func_id
+) {
+  pwasm_aot_jit_t * const interp = env->env_data;
+  const pwasm_vec_t * const funcs_vec = &(interp->funcs);
+  const pwasm_vec_t * const mods_vec = &(interp->mods);
+  const pwasm_aot_jit_func_t * const funcs = pwasm_vec_get_data(funcs_vec);
+  pwasm_aot_jit_mod_t * const mods = (pwasm_aot_jit_mod_t*) pwasm_vec_get_data(mods_vec);
+  const size_t num_funcs = pwasm_vec_get_size(funcs_vec);
+  const size_t num_mods = pwasm_vec_get_size(mods_vec);
+
+  // check that func_id is in bounds
+  if (!func_id || func_id > num_funcs) {
+    D("bad func_id: %u", func_id);
+    pwasm_env_fail(env, "function index out of bounds");
+    return false;
+  }
+
+  // convert func_id to offset, get function row
+  const pwasm_aot_jit_func_t func = funcs[func_id - 1];
+
+  // check mod_ofs
+  if (func.mod_ofs >= num_mods) {
+    D("bad func mod_ofs: %u", func.mod_ofs);
+    pwasm_env_fail(env, "function mod offset out of bounds");
+    return false;
+  }
+
+  // get mod
+  const pwasm_aot_jit_mod_t mod = mods[func.mod_ofs];
+
+  // check func_ofs
+  if (func.func_ofs >= mod.funcs.len) {
+    D("bad func_ofs: %u", func.mod_ofs);
+    pwasm_env_fail(env, "function offset out of bounds");
+    return false;
+  }
+
+  switch (mod.type) {
+  case PWASM_AOT_JIT_MOD_TYPE_MOD:
+    D("found func, calling it: %u", func_id);
+    return pwasm_aot_jit_call_func(env, mods + func.mod_ofs, func.func_ofs);
+  case PWASM_AOT_JIT_MOD_TYPE_NATIVE:
+    D("found native func, calling it: %u", func_id);
+    const pwasm_native_func_t * const f = mod.native->funcs + func.func_ofs;
+    return f->func(env, mod.native);
+  default:
+    D("func_id %u maps to invalid mod type %u", func_id, mod.type);
+    pwasm_env_fail(env, "invalid function module type");
+    return false;
+  }
+}
+
+/**
+ * Given a frame and a table ID, get the offset of the table instance in
+ * the interpreter.
+ *
+ * Returns false if the table_id is invalid for the current module.
+ */
+static bool
+pwasm_aot_jit_get_mod_table_ofs(
+  const pwasm_aot_jit_frame_t frame,
+  const uint32_t mod_table_id,
+  uint32_t * const ret_ofs
+) {
+  pwasm_aot_jit_t * const interp = frame.env->env_data;
+  const uint32_t * const u32s = pwasm_vec_get_data(&(interp->u32s));
+  const size_t num_tables = frame.mod->tables.len;
+
+  // bounds check table index
+  if (mod_table_id >= num_tables) {
+    D("mod_table_id (%u) >= num_tables (%zu)", mod_table_id, num_tables);
+    pwasm_env_fail(frame.env, "table index out of bounds");
+    return false;
+  }
+
+  // map local index to table interpreter offset
+  *ret_ofs = u32s[frame.mod->tables.ofs + mod_table_id];
+
+  // return success
+  return true;
+}
+
+/**
+ * Given a frame and a call_indirect instruction, and a target function
+ * offset in the interpreter, compare the following types:
+ *
+ *  * in the index immediate of the call_indirect instruction, and
+ *  * the type of the target function and
+ *
+ * The comparison verifies all of the following:
+ *
+ *   * parameter count
+ *   * result count
+ *   * parameter value types
+ *   * result value types
+ *
+ * Returns `true` on success or `false` on error.
+ */
+static bool
+pwasm_aot_jit_call_indirect_check_type(
+  const pwasm_aot_jit_frame_t frame,
+  const pwasm_inst_t in,
+  const uint32_t func_ofs
+) {
+  pwasm_aot_jit_t * const interp = frame.env->env_data;
+
+  // get instruction immediate type
+  const uint32_t * const in_u32s = frame.mod->mod->u32s;
+  const pwasm_type_t in_type = frame.mod->mod->types[in.v_index];
+
+  // get function type
+  const pwasm_vec_t * const fn_vec = &(interp->funcs);
+  const pwasm_aot_jit_func_t * const fns = pwasm_vec_get_data(fn_vec);
+  const pwasm_aot_jit_func_t fn = fns[func_ofs];
+  const pwasm_vec_t * const mod_vec = &(interp->mods);
+  const pwasm_aot_jit_mod_t * const mods = pwasm_vec_get_data(mod_vec);
+  const pwasm_mod_t * const fn_mod = mods[fn.mod_ofs].mod;
+  const uint32_t * const fn_u32s = fn_mod->u32s;
+  const pwasm_type_t fn_type = fn_mod->types[fn_mod->funcs[fn.func_ofs]];
+
+  // check parameter count
+  if (in_type.params.len != fn_type.params.len) {
+    pwasm_env_fail(frame.env, "call_indirect parameter count mismatch");
+    return false;
+  }
+
+  // check result count
+  if (in_type.results.len != fn_type.results.len) {
+    pwasm_env_fail(frame.env, "call_indirect result count mismatch");
+    return false;
+  }
+
+  // check parameters
+  for (size_t i = 0 ; i < in_type.params.len; i++) {
+    const uint32_t in_param_type = in_u32s[in_type.params.ofs + i];
+    const uint32_t fn_param_type = fn_u32s[fn_type.params.ofs + i];
+
+    if (in_param_type != fn_param_type) {
+      pwasm_env_fail(frame.env, "call_indirect parameter type mismatch");
+      return false;
+    }
+  }
+
+  // return success
+  return true;
+}
+
+static bool
+pwasm_aot_jit_call_indirect(
+  const pwasm_aot_jit_frame_t frame,
+  const pwasm_inst_t in,
+  const uint32_t elem_ofs
+) {
+  // get module-relative table index from instruction
+  // TODO: hard-coded for now, get from instruction eventually
+  const uint32_t mod_table_id = 0;
+
+  // get interpreter table offset
+  uint32_t table_ofs;
+  if (!pwasm_aot_jit_get_mod_table_ofs(frame, mod_table_id, &table_ofs)) {
+    return false;
+  }
+
+  // convert table offset to ID
+  const uint32_t table_id = table_ofs + 1;
+  D("mod_table_id = %u, table_id (interp) = %u", mod_table_id, table_id);
+
+  // get interpreter function offset, check for error
+  uint32_t func_ofs;
+  if (!pwasm_aot_jit_get_elem(frame.env, table_id, elem_ofs, &func_ofs)) {
+    return false;
+  }
+
+  // check instruction type index against function type
+  if (!pwasm_aot_jit_call_indirect_check_type(frame, in, func_ofs)) {
+    return false;
+  }
+
+  // call function, return result
+  return pwasm_aot_jit_call(frame.env, func_ofs + 1);
+}
+
+//
+// aot jit callbacks
+//
+
+static bool
+pwasm_aot_jit_on_init(
+  pwasm_env_t * const env
+) {
+  return pwasm_aot_jit_init(env);
+}
+
+static void
+pwasm_aot_jit_on_fini(
+  pwasm_env_t * const env
+) {
+  pwasm_aot_jit_fini(env);
+}
+
+static uint32_t
+  pwasm_aot_jit_on_add_native(
+  pwasm_env_t * const env,
+  const char * const name,
+  const pwasm_native_t * const mod
+) {
+  return pwasm_aot_jit_add_native(env, name, mod);
+}
+
+static uint32_t
+pwasm_aot_jit_on_add_mod(
+  pwasm_env_t * const env,
+  const char * const name,
+  const pwasm_mod_t * const mod
+) {
+  return pwasm_aot_jit_add_mod(env, name, mod);
+}
+
+static uint32_t
+pwasm_aot_jit_on_find_mod(
+  pwasm_env_t * const env,
+  const pwasm_buf_t name
+) {
+  return pwasm_aot_jit_find_mod(env, name);
+}
+
+static uint32_t
+pwasm_aot_jit_on_find_func(
+  pwasm_env_t * const env,
+  const uint32_t mod_id,
+  const pwasm_buf_t name
+) {
+  return pwasm_aot_jit_find_func(env, mod_id, name);
+}
+
+static uint32_t
+pwasm_aot_jit_on_find_mem(
+  pwasm_env_t * const env,
+  const uint32_t mod_id,
+  const pwasm_buf_t name
+) {
+  return pwasm_aot_jit_find_mem(env, mod_id, name);
+}
+
+/* 
+ * static uint32_t
+ * pwasm_aot_jit_on_find_table(
+ *   pwasm_env_t * const env,
+ *   const uint32_t mod_id,
+ *   const pwasm_buf_t name
+ * ) {
+ *   return pwasm_aot_jit_find_table(env, mod_id, name);
+ * }
+ */ 
+
+static pwasm_env_mem_t *
+pwasm_aot_jit_on_get_mem(
+  pwasm_env_t * const env,
+  const uint32_t mem_id
+) {
+  return pwasm_aot_jit_get_mem(env, mem_id);
+}
+
+static bool
+pwasm_aot_jit_on_mem_load(
+  pwasm_env_t * const env,
+  const uint32_t mem_id,
+  const pwasm_inst_t in,
+  const uint32_t arg_ofs,
+  pwasm_val_t * const ret_val
+) {
+  return pwasm_aot_jit_mem_load(env, mem_id, in, arg_ofs, ret_val);
+}
+
+static bool
+pwasm_aot_jit_on_mem_store(
+  pwasm_env_t * const env,
+  const uint32_t mem_id,
+  const pwasm_inst_t in,
+  const uint32_t arg_ofs,
+  const pwasm_val_t val
+) {
+  return pwasm_aot_jit_mem_store(env, mem_id, in, arg_ofs, val);
+}
+
+static bool
+pwasm_aot_jit_on_mem_size(
+  pwasm_env_t * const env,
+  const uint32_t mem_id,
+  uint32_t * const ret_val
+) {
+  return pwasm_aot_jit_mem_size(env, mem_id, ret_val);
+}
+
+static bool
+pwasm_aot_jit_on_mem_grow(
+  pwasm_env_t * const env,
+  const uint32_t mem_id,
+  const uint32_t grow,
+  uint32_t * const ret_val
+) {
+  return pwasm_aot_jit_mem_grow(env, mem_id, grow, ret_val);
+}
+
+static bool
+pwasm_aot_jit_on_get_elem(
+  pwasm_env_t * const env,
+  const uint32_t table_id,
+  const uint32_t elem_ofs,
+  uint32_t * const ret_val
+) {
+  return pwasm_aot_jit_get_elem(env, table_id, elem_ofs, ret_val);
+}
+
+static uint32_t
+pwasm_aot_jit_on_find_import(
+  pwasm_env_t * const env,
+  const uint32_t mod_id,
+  const pwasm_import_type_t type,
+  const pwasm_buf_t name
+) {
+  return pwasm_aot_jit_find_import(env, mod_id, type, name);
+}
+
+static bool
+pwasm_aot_jit_on_get_global(
+  pwasm_env_t * const env,
+  const uint32_t id,
+  pwasm_val_t * const ret_val
+) {
+  return pwasm_aot_jit_get_global(env, id, ret_val);
+}
+
+static bool
+pwasm_aot_jit_on_set_global(
+  pwasm_env_t * const env,
+  const uint32_t id,
+  const pwasm_val_t val
+) {
+  return pwasm_aot_jit_set_global(env, id, val);
+}
+
+static bool
+pwasm_aot_jit_on_call(
+  pwasm_env_t * const env,
+  const uint32_t func_id
+) {
+  return pwasm_aot_jit_call(env, func_id);
+}
+
+/*
+ * AOT JIT environment callbacks.
+ */
+static const pwasm_env_cbs_t
+PWASM_AOT_JIT_CBS = {
+  .init         = pwasm_aot_jit_on_init,
+  .fini         = pwasm_aot_jit_on_fini,
+  .add_native   = pwasm_aot_jit_on_add_native,
+  .add_mod      = pwasm_aot_jit_on_add_mod,
+  .find_mod     = pwasm_aot_jit_on_find_mod,
+  .find_func    = pwasm_aot_jit_on_find_func,
+  .find_mem     = pwasm_aot_jit_on_find_mem,
+  // .find_table   = pwasm_aot_jit_on_find_table,
+  .get_mem      = pwasm_aot_jit_on_get_mem,
+  .mem_load     = pwasm_aot_jit_on_mem_load,
+  .mem_store    = pwasm_aot_jit_on_mem_store,
+  .mem_size     = pwasm_aot_jit_on_mem_size,
+  .mem_grow     = pwasm_aot_jit_on_mem_grow,
+  .get_elem     = pwasm_aot_jit_on_get_elem,
+  .find_import  = pwasm_aot_jit_on_find_import,
+  .get_global   = pwasm_aot_jit_on_get_global,
+  .set_global   = pwasm_aot_jit_on_set_global,
+  .call         = pwasm_aot_jit_on_call,
+};
+
+/*
+ * Get AOT JIT environment callbacks.
+ */
+void
+pwasm_aot_jit_get_cbs(
+  pwasm_env_cbs_t * const cbs,
+  void *(*on_compile)(pwasm_env_t *, const pwasm_mod_t *, const size_t)
+) {
+  *cbs = PWASM_AOT_JIT_CBS;
+  cbs->compile = on_compile;
 }

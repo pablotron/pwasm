@@ -13,7 +13,6 @@ tag.
 * [ ] code, test: add invalid code tests (e.g. checker assertion tests)
 * [ ] code, test: fix memory leaks on parse/validation/exec errors
 * [ ] code: remove redundant validation checks in interp/env calls
-* [ ] code, jit: add jit (`dynasm`?)
 * [ ] code, jit: add jit modes (lazy, aot, optimize, etc)
 * [ ] doc: add internal documentation
 * [ ] doc, test: document v128 `avgr_u` rounding
@@ -38,6 +37,7 @@ tag.
 * [ ] code: add `uint64_t pwasm_platform_get_value()` (e.g. compile-time limits, flags, etc)
 
 ## In Progress
+* [ ] code, jit: add jit (`dynasm`?)
 
 ## Done
 

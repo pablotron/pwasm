@@ -2274,6 +2274,22 @@ typedef struct {
     const uint32_t, // amount to grow
     uint32_t * // return value
   );
+
+  /**
+   * Compile function.
+   *
+   * @param[in]   env       Execution environment
+   * @param[in]   mod       Module
+   * @param[in]   func_ofs  Function offset
+   *
+   * @return pointer to compiled function on success, or `NULL` on
+   * error.
+   */
+  void *(*compile)(
+    pwasm_env_t *, // env
+    const pwasm_mod_t *, // mod
+    const size_t func_ofs // function offset
+  );
 } pwasm_env_cbs_t;
 
 /**
@@ -2872,6 +2888,32 @@ _Bool pwasm_call(
  * @see pwasm_env_init()
  */
 const pwasm_env_cbs_t *pwasm_new_interpreter_get_cbs(void);
+
+/**
+ * @defgroup aot-jit AOT JIT Functions
+ */
+
+/*
+ * Get AOT JIT environment callbacks.
+ *
+ * Populate environment variable callbacks for an ahead-of-time (AOT),
+ * just in time (JIT) environment.
+ *
+ * @ingroup aot-jit
+ *
+ * @param[out]  cbs         Pointer to execution environment callbacks.
+ * @param[in]   on_compile  Pointer to compile function.
+ *
+ * @see pwasm_env_init()
+ */
+void
+pwasm_aot_jit_get_cbs(
+  pwasm_env_cbs_t * const cbs,
+  void *(*on_compile)(pwasm_env_t *, const pwasm_mod_t *, const size_t)
+) {
+  *cbs = PWASM_AOT_JIT_CBS;
+  cbs->compile = on_compile;
+}
 
 #ifdef __cplusplus
 };
