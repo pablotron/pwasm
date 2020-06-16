@@ -2290,14 +2290,15 @@ typedef struct {
   /**
    * Compile function.
    *
+   * @param[out]  dst       Destination buffer
    * @param[in]   env       Execution environment
    * @param[in]   mod       Module
    * @param[in]   func_ofs  Function offset
    *
-   * @return pointer to compiled function on success, or `NULL` on
-   * error.
+   * @return `true` on success or `false` on error.
    */
-  void *(*compile)(
+  _Bool (*compile)(
+    pwasm_buf_t *, // destination buffer
     pwasm_env_t *, // env
     const pwasm_mod_t *, // mod
     const size_t func_ofs // function offset
@@ -2906,16 +2907,19 @@ const pwasm_env_cbs_t *pwasm_new_interpreter_get_cbs(void);
  */
 
 /**
- * JIT compiler function pointer.
+ * Prototype for compile function for JIT environments.
+ *
  * @ingroup jit
  *
- * @param env       Execution environment.
- * @param mod       Module.
- * @param func_ofs  Function offset in module.
+ * @param[out] dst       Destination buffer.
+ * @param[in]  env       Execution environment.
+ * @param[in]  mod       Module.
+ * @param[in]  func_ofs  Function offset in module.
  *
- * @return Function pointer, or `NULL` on error.
+ * @return `true` on success or `false` on error.
  */
-typedef void *(pwasm_compile_func_t)(
+typedef _Bool (pwasm_compile_func_t)(
+  pwasm_buf_t *dst,
   pwasm_env_t *env,
   const pwasm_mod_t *mod,
   const size_t func_ofs

@@ -1,3 +1,4 @@
+#include <stdbool.h>
 #include "pwasm-compile.h"
 
 static void
@@ -8,15 +9,16 @@ fail(
   pwasm_fail(env->mem_ctx, text);
 }
 
-void *
+bool
 pwasm_compile(
+  pwasm_buf_t * const dst,
   pwasm_env_t *env,
   const pwasm_mod_t *mod,
   const size_t func_ofs
 ) {
   const pwasm_func_t func = mod->codes[func_ofs];
   const pwasm_inst_t * const insts = mod->insts + func.expr.ofs;
-  (void) env;
+  (void) dst;
 
   // size_t ctrl_depth = 0;
 
@@ -28,11 +30,12 @@ pwasm_compile(
 
     switch (in.op) {
     default:
+      // log error, return failure
       fail(env, "unimplemented opcode:");
-      return NULL;
+      return false;
     }
   }
 
-  // return FAILURE
-  return NULL;
+  // return failure
+  return false;
 }

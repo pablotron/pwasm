@@ -18882,8 +18882,8 @@ typedef struct {
   pwasm_slice_t mems;
   pwasm_slice_t tables;
 
-  // pointers to compiled functions
-  void **fns;
+  // array of buffers containing pointers to compiled functions
+  pwasm_buf_t *fns;
 
   union {
     const pwasm_native_t * const native;
@@ -20045,8 +20045,9 @@ pwasm_aot_jit_init_segments(
   return true;
 }
 
-static void *
+static bool
 pwasm_aot_jit_compile_func(
+  pwasm_buf_t * const dst,
   pwasm_env_t * const env,
   const pwasm_mod_t * const mod,
   const size_t func_ofs
@@ -20056,7 +20057,7 @@ pwasm_aot_jit_compile_func(
     return NULL;
   }
 
-  return env->cbs->compile(env, mod, func_ofs);
+  return env->cbs->compile(dst, env, mod, func_ofs);
 }
 
 static bool
@@ -20065,11 +20066,11 @@ pwasm_aot_jit_compile_funcs(
 ) {
   const pwasm_mod_t * const mod = frame.mod->mod;
   const size_t num_codes = mod->num_codes;
-  const size_t num_bytes = num_codes * sizeof(void*);
+  const size_t num_bytes = num_codes * sizeof(pwasm_buf_t);
 
   if (num_bytes > 0) {
     // allocate function pointers
-    void **fns = pwasm_realloc(frame.env->mem_ctx, NULL, num_bytes);
+    pwasm_buf_t *fns = pwasm_realloc(frame.env->mem_ctx, NULL, num_bytes);
     if (!fns) {
       pwasm_env_fail(frame.env, "allocate function pointer list failed");
       return false;
@@ -20078,14 +20079,10 @@ pwasm_aot_jit_compile_funcs(
     // walk/compile functions
     for (size_t i = 0; i < num_codes; i++) {
       // compile function, check for error
-      void *fn = pwasm_aot_jit_compile_func(frame.env, mod, i);
-      if (!fn) {
+      if (!pwasm_aot_jit_compile_func(fns + i, frame.env, mod, i)) {
         // return failure
         return false;
       }
-
-      // save function pointer
-      fns[i] = fn;
     }
 
     // save function pointers

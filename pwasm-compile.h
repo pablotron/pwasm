@@ -12,20 +12,23 @@ extern "C" {
 #include "pwasm.h"
 
 /**
- * Compile a module function and return a pointer to the function.
+ * Compile a module function, populate destination buffer with function
+ * pointer and size of generated code.
  *
  * @ingroup jit
  *
- * @param env       Execution environment.
- * @param mod       Module.
- * @param func_ofs  Function offset in module.
+ * @param[out] dst      Destination buffer.
+ * @param[in]  env      Execution environment.
+ * @param[in]  mod      Module.
+ * @param[in]  func_ofs Function offset in module.
  *
- * @return Function pointer, or `NULL` on error.
+ * @return `true` on success or `false` if an error occurred.
  */
-void *pwasm_compile(
-  pwasm_env_t *env,
-  const pwasm_mod_t *mod,
-  const size_t func_ofs
+_Bool pwasm_compile(
+  pwasm_buf_t *dst, //< destination buffer
+  pwasm_env_t *env, //< execution environment
+  const pwasm_mod_t *mod, //< module
+  const size_t func_ofs //< function offset
 );
 
 #ifdef __cplusplus
