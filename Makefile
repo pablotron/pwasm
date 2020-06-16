@@ -30,7 +30,7 @@ OBJS=pwasm.o cli/main.o cli/cmds.o cli/tests.o cli/utils.o \
      cli/cmds/customs.o cli/cmds/cat.o cli/cmds/func.o \
      cli/cmds/imports.o cli/cmds/exports.o \
      cli/tests/init.o cli/tests/native.o cli/tests/wasm.o \
-     cli/tests/cli.o cli/result-type.o
+     cli/tests/compile.o cli/tests/cli.o cli/result-type.o
 
 .PHONY=all clean
 
