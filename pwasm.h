@@ -858,6 +858,18 @@ void *pwasm_realloc(
 );
 
 /**
+ * Invoke error callback.
+ * @ingroup mem
+ *
+ * @param mem_ctx Memory context
+ * @param text    Null-terminated string
+ */
+void pwasm_fail(
+  pwasm_mem_ctx_t * const mem_ctx,
+  const char * const text
+);
+
+/**
  * @defgroup vec Vectors
  */
 
