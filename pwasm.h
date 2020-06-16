@@ -2893,6 +2893,22 @@ const pwasm_env_cbs_t *pwasm_new_interpreter_get_cbs(void);
  * @defgroup aot-jit AOT JIT Functions
  */
 
+/**
+ * JIT compiler function.
+ * @ingroup type
+ *
+ * @param env       Execution environment.
+ * @param mod       Module.
+ * @param func_ofs  Function offset in module.
+ *
+ * @return Function pointer, or `NULL` on error.
+ */
+typedef void *(pwasm_compile_func_t)(
+  pwasm_env_t *env,
+  const pwasm_mod_t *mod,
+  const size_t func_ofs
+);
+
 /*
  * Get AOT JIT environment callbacks.
  *
@@ -2901,19 +2917,16 @@ const pwasm_env_cbs_t *pwasm_new_interpreter_get_cbs(void);
  *
  * @ingroup aot-jit
  *
- * @param[out]  cbs         Pointer to execution environment callbacks.
- * @param[in]   on_compile  Pointer to compile function.
+ * @param[out]  cbs     Pointer to execution environment callbacks.
+ * @param[in]   compile Pointer to compile function.
  *
  * @see pwasm_env_init()
  */
 void
 pwasm_aot_jit_get_cbs(
   pwasm_env_cbs_t * const cbs,
-  void *(*on_compile)(pwasm_env_t *, const pwasm_mod_t *, const size_t)
-) {
-  *cbs = PWASM_AOT_JIT_CBS;
-  cbs->compile = on_compile;
-}
+  pwasm_compile_func_t compile
+);
 
 #ifdef __cplusplus
 };

@@ -25510,8 +25510,8 @@ PWASM_AOT_JIT_CBS = {
 void
 pwasm_aot_jit_get_cbs(
   pwasm_env_cbs_t * const cbs,
-  void *(*on_compile)(pwasm_env_t *, const pwasm_mod_t *, const size_t)
+  pwasm_compile_func_t compile
 ) {
   *cbs = PWASM_AOT_JIT_CBS;
-  cbs->compile = on_compile;
+  cbs->compile = compile;
 }
