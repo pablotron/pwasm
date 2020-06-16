@@ -24,14 +24,6 @@
 #define PWASM_PAGE_SIZE (1 << 16)
 
 /**
- * Maximum depth of checking stack.
- *
- * Note: currently incorrectly used for control frame stack in
- * pwasm_interp_eval_expr(), which needs to be fixed.
- */
-#define PWASM_STACK_CHECK_MAX_DEPTH 512
-
-/**
  * Void block type.
  *
  * WASM 1.0 void block results were encoded with a single 0x40 byte,
