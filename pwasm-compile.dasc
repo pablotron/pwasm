@@ -9,13 +9,27 @@
 #include <dynasm/dasm_proto.h>
 #include <dynasm/dasm_x86.h>
 
+#ifdef PWASM_DEBUG
+#include <stdio.h>
+#define D(fmt, ...) fprintf( \
+  stderr, \
+  "D %s:%d %s(): " fmt "\n", \
+  __FILE__, __LINE__, __func__, __VA_ARGS__ \
+)
+#else
+#define D(fmt, ...)
+#endif /* PWASM_DEBUG */
+
 |.arch x64
 |.actionlist actions
 |.globals lbl_
 
+// function args
 |.define r_arg0, rdi
 |.define r_arg1, rsi
-|.define r_stack, r12
+// pointer to base and tail of stack
+|.define r_base, r12
+|.define r_stack, r13
 |.macro stack_inc
   | add r_stack, sizeof(pwasm_val_t)
 |.endmacro
@@ -23,24 +37,30 @@
   | sub r_stack, sizeof(pwasm_val_t)
 |.endmacro
 
+/**
+ * Call error handler.
+ */
 static void
 fail(
   pwasm_env_t * const env,
   const char * const text
 ) {
+  D("%s", text);
   pwasm_fail(env->mem_ctx, text);
 }
 
 //
-// control stack: used by new interpreter to manage control frames
+// control stack: used by compiler to manage control frames
 //
 
+// control stack entry types
 #define CTRL_TYPES \
   CTRL_TYPE(BLOCK) \
   CTRL_TYPE(LOOP) \
   CTRL_TYPE(IF) \
   CTRL_TYPE(ELSE)
 
+// control stack entry types
 typedef enum {
 #define CTRL_TYPE(a) CTRL_ ## a,
 CTRL_TYPES
@@ -48,15 +68,23 @@ CTRL_TYPES
   CTRL_LAST,
 } pwasm_ctrl_stack_entry_type_t;
 
+// control stack entry
 typedef struct {
-  pwasm_ctrl_stack_entry_type_t type; // stack entry type
+  pwasm_ctrl_stack_entry_type_t type; // entry type
   int label;
 } pwasm_ctrl_stack_entry_t;
 
+// control stack
 typedef struct {
+  // vector of entries
   pwasm_vec_t stack;
 } pwasm_ctrl_stack_t;
 
+/**
+ * Initialize control stack.
+ *
+ * Returns `true` on success or `false` on error.
+ */
 static bool
 pwasm_ctrl_stack_init(
   pwasm_ctrl_stack_t * const stack,
@@ -66,6 +94,9 @@ pwasm_ctrl_stack_init(
   return pwasm_vec_init(mem_ctx, &(stack->stack), stride);
 }
 
+/**
+ * Finalize control stack.
+ */
 static void
 pwasm_ctrl_stack_fini(
   pwasm_ctrl_stack_t * const stack
@@ -90,15 +121,25 @@ pwasm_ctrl_stack_peek_tail(
 }
 #endif /* 0 */
 
+/**
+ * Remove tail entry from control stack.
+ *
+ * Returns `false` if an error occurred.
+ */
 static bool
 pwasm_ctrl_stack_pop(
   pwasm_ctrl_stack_t * const stack,
-  void * const dst
+  pwasm_ctrl_stack_entry_t * const dst
 ) {
   // pop final entry, return result
   return pwasm_vec_pop(&(stack->stack), dst);
 }
 
+/**
+ * Append entry to tail of control stack.
+ *
+ * Returns `false` if an error occurred.
+ */
 static bool
 pwasm_ctrl_stack_push(
   pwasm_ctrl_stack_t * const stack,
@@ -107,6 +148,13 @@ pwasm_ctrl_stack_push(
   return pwasm_vec_push(&(stack->stack), 1, &entry, NULL);
 }
 
+/**
+ * Compile the given module function and then populate the given
+ * destination buffer with the length of the generated code and a
+ * pointer to the start of the function.
+ *
+ * Returns `true` on success, or `false` if an error occurred.
+ */
 bool
 pwasm_compile(
   pwasm_buf_t * const dst,
@@ -114,18 +162,9 @@ pwasm_compile(
   const pwasm_mod_t *mod,
   const size_t func_ofs
 ) {
+  const pwasm_type_t type = mod->types[mod->funcs[func_ofs]];
   const pwasm_func_t func = mod->codes[func_ofs];
   const pwasm_inst_t * const insts = mod->insts + func.expr.ofs;
-  pwasm_stack_t *stack = env->stack;
-  (void) dst;
-  (void) stack;
-
-  void *labels[lbl__MAX];
-  dasm_State *dasm;
-  dasm_init(&dasm, 1);
-  dasm_setupglobal(&dasm, labels, lbl__MAX);
-  dasm_setup(&dasm, actions);
-  dasm_growpc(&dasm, 2);
 
   // init control stack
   size_t ctrl_depth = 0;
@@ -135,23 +174,40 @@ pwasm_compile(
     return false;
   }
 
+  // init jit
+  void *labels[lbl__MAX];
+  dasm_State *dasm;
+  D("dasm_init(%u)", 1);
+  dasm_init(&dasm, 1);
+  dasm_setupglobal(&dasm, labels, lbl__MAX);
+  dasm_setup(&dasm, actions);
+  dasm_growpc(&dasm, 100); // FIXME
+
   dasm_State** Dst = &dasm;
   | ->enter: // FIXME: add prologue
   // get stack pointer from env, increment stack pointer
   | mov rax, [r_arg0 + offsetof(pwasm_env_t, stack)]
   | mov r_stack, [rax]
-  | add r_stack, [rax + sizeof(pwasm_val_t) * offsetof(pwasm_stack_t, pos)]
+  | mov r_base, r_stack
+
   for (size_t i = 0; i < func.expr.len; i++) {
     const pwasm_inst_t in = insts[i];
-    // D("0x%02X %s", in.op, pwasm_op_get_name(in.op));
+    D("0x%02X %s", in.op, pwasm_op_get_name(in.op));
 
     switch (in.op) {
+    case PWASM_OP_UNREACHABLE:
+      // TODO: log error message
+      | mov eax, 0
+      | ret
+      break;
     case PWASM_OP_NOP:
       | nop
       break;
     case PWASM_OP_BLOCK:
       {
         dasm_growpc(&dasm, 2 * (ctrl_depth + 1));
+
+        // TODO: save labels
 
         const pwasm_ctrl_stack_entry_t entry = {
           .type = CTRL_BLOCK,
@@ -211,19 +267,24 @@ pwasm_compile(
         char buf[512];
         snprintf(buf, sizeof(buf), "unimplemented opcode: 0x%08x", in.op);
         fail(env, buf);
-      }
 
-      // return failure
-      return false;
+        // return failure
+        return false;
+      }
     }
   }
   // FIXME: add epilogue
   | ->exit:
+
+  // get pointer to stack depth
+  // FIXME: remove hard-coded stack value
+  | mov rax, [r_arg0 + offsetof(pwasm_env_t, stack)]
+  | add rax, offsetof(pwasm_stack_t, pos)
+  | mov qword [rax], type.results.len
+
+  // return success
   | mov rax, 1
   | ret
-
-  // finalize control stack
-  pwasm_ctrl_stack_fini(&ctrl_stack);
 
   // get needed size
   size_t num_bytes;
@@ -233,15 +294,15 @@ pwasm_compile(
   }
 
   // map memory, check for error
-  void *mem = mmap(NULL, num_bytes, PROT_READ | PROT_WRITE, MAP_PRIVATE | MAP_ANONYMOUS, -1, 0);
-  if (!mem) {
+  void *ptr = mmap(NULL, num_bytes, PROT_READ | PROT_WRITE, MAP_PRIVATE | MAP_ANONYMOUS, -1, 0);
+  if (!ptr) {
     // log error, return failure
     fail(env, "dasm_link() failed");
     return false;
   }
 
   // encode, check for error
-  if (dasm_encode(&dasm, mem)) {
+  if (dasm_encode(&dasm, ptr)) {
     // log error, return failure
     fail(env, "dasm_encode() failed");
     return false;
@@ -250,19 +311,23 @@ pwasm_compile(
   // finalize dynasm state
   dasm_free(&dasm);
 
+  // finalize control stack
+  pwasm_ctrl_stack_fini(&ctrl_stack);
+
   // protect memory
-  if (mprotect(mem, num_bytes, PROT_READ | PROT_EXEC)) {
+  if (mprotect(ptr, num_bytes, PROT_READ | PROT_EXEC)) {
     // log error, return failure
     fail(env, "mprotect() failed");
     return false;
   }
 
   // populate result
-  dst->ptr = mem;
+  D("dst = %p, buf = { 0x%p, %zu }", (void*) dst, ptr, num_bytes);
+  dst->ptr = ptr;
   dst->len = num_bytes;
 
-  // return failure
-  return false;
+  // return success
+  return true;
 }
 
 // vi: syntax=c
