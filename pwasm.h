@@ -951,6 +951,22 @@ size_t pwasm_vec_get_size(const pwasm_vec_t *vec);
 const void *pwasm_vec_get_data(const pwasm_vec_t *vec);
 
 /**
+ * Get a pointer to the Nth entry from the tail of the vector.
+ *
+ * @ingroup vec
+ *
+ * @param vec Vector
+ * @param ofs Offset from tail element
+ *
+ * @return `NULL` if the vector is empty or if the offset is out of
+ * bounds.
+ */
+const void *pwasm_vec_peek_tail(
+  const pwasm_vec_t *vec, //< vector
+  const size_t ofs //< offset
+);
+
+/**
  * Append new entries to this vector.
  *
  * @ingroup vec

@@ -7338,7 +7338,7 @@ pwasm_vec_pop(
  * Returns NULL if the vector is empty or if the offset is out of
  * bounds.
  */
-static const void *
+const void *
 pwasm_vec_peek_tail(
   const pwasm_vec_t * const vec,
   const size_t ofs
