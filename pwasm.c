@@ -20053,7 +20053,8 @@ pwasm_aot_jit_compile_func(
   const size_t func_ofs
 ) {
   if (!env->cbs->compile) {
-    // return failure
+    // log error, return failure
+    pwasm_env_fail(env, "compile == NULL, cannot compile function");
     return NULL;
   }
 
