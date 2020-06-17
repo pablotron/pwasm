@@ -15,6 +15,8 @@ extern "C" {
  * Compile a module function, populate destination buffer with function
  * pointer and size of generated code.
  *
+ * JIT compiler for PWASM module functions, implemented using DynASM.
+ *
  * @ingroup jit
  *
  * @param[out] dst      Destination buffer.

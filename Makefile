@@ -1,27 +1,28 @@
-# LUA=$(HOME)/git/luajit-2.0/src/luajit
-# LUAJIT_DIR=$(HOME)/git/luajit-2.0
-# use -std=gnu11 for MAP_ANONYMOUS
-# CFLAGS=... -std=gnu11 -I$(LUAJIT_DIR)
+# note: using -std=gnu11 for MAP_ANONYMOUS
+
+# used to generate pwasm-compile.c
+DYNASM=dynasm
+LUAJIT_DIR=$(HOME)/git/luajit-2.0
 
 # release
-# CFLAGS=-W -Wall -Wextra -Werror -std=c11 -pedantic -O3
+# CFLAGS=-W -Wall -Wextra -Werror -std=gnu11 -pedantic -O3
 # LIBS=-lm
 
 # debug
-CFLAGS=-W -Wall -Wextra -Werror -std=c11 -pedantic -g -pg -DPWASM_DEBUG
+CFLAGS=-W -Wall -Wextra -Werror -std=gnu11 -pedantic -g -pg -DPWASM_DEBUG
 LIBS=-lm
 
 # asan
 # https://clang.llvm.org/docs/AddressSanitizer.html
 # run with: LD_PRELOAD=/lib/x86_64-linux-gnu/libasan.so.5 ./pwasm test
 # CC=clang
-# CFLAGS=-W -Wall -Wextra -Werror -std=c11 -pedantic -g -pg -O1 -fsanitize=address -DPWASM_DEBUG
+# CFLAGS=-W -Wall -Wextra -Werror -std=gnu11 -pedantic -g -pg -O1 -fsanitize=address -DPWASM_DEBUG
 # LIBS=-lm -lasan
 
 # ubsan
 # https://clang.llvm.org/docs/UndefinedBehaviorSanitizer.html
 # CC=clang
-# CFLAGS=-W -Wall -Wextra -Werror -std=c11 -pedantic -g -pg -fsanitize=undefined -DPWASM_DEBUG
+# CFLAGS=-W -Wall -Wextra -Werror -std=gnu11 -pedantic -g -pg -fsanitize=undefined -DPWASM_DEBUG
 # LIBS=-lm -lubsan
 
 APP=pwasm
@@ -42,6 +43,12 @@ $(APP): $(OBJS)
 
 %.o: %.c pwasm.h
 	$(CC) -c -o $@ $(CFLAGS) $<
+
+pwasm-compile.c: pwasm-compile.dasc
+	$(DYNASM) -o pwasm-compile.c pwasm-compile.dasc
+
+pwasm-compile.o: pwasm-compile.c pwasm.h
+	$(CC) -c -o $@ $(CFLAGS) -I$(LUAJIT_DIR) $<
 
 test: $(APP)
 	./$(APP)

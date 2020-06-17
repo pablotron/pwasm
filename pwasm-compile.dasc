@@ -1,0 +1,268 @@
+/**
+ * pwasm_compile(): JIT compiler for PWASM module functions implemented
+ * via DynASM.
+ */
+#include <stdbool.h> // bool
+#include <stdio.h> // snprintf()
+#include <sys/mman.h> // mprotect
+#include "pwasm-compile.h"
+#include <dynasm/dasm_proto.h>
+#include <dynasm/dasm_x86.h>
+
+|.arch x64
+|.actionlist actions
+|.globals lbl_
+
+|.define r_arg0, rdi
+|.define r_arg1, rsi
+|.define r_stack, r12
+|.macro stack_inc
+  | add r_stack, sizeof(pwasm_val_t)
+|.endmacro
+|.macro stack_dec
+  | sub r_stack, sizeof(pwasm_val_t)
+|.endmacro
+
+static void
+fail(
+  pwasm_env_t * const env,
+  const char * const text
+) {
+  pwasm_fail(env->mem_ctx, text);
+}
+
+//
+// control stack: used by new interpreter to manage control frames
+//
+
+#define CTRL_TYPES \
+  CTRL_TYPE(BLOCK) \
+  CTRL_TYPE(LOOP) \
+  CTRL_TYPE(IF) \
+  CTRL_TYPE(ELSE)
+
+typedef enum {
+#define CTRL_TYPE(a) CTRL_ ## a,
+CTRL_TYPES
+#undef CTRL_TYPE
+  CTRL_LAST,
+} pwasm_ctrl_stack_entry_type_t;
+
+typedef struct {
+  pwasm_ctrl_stack_entry_type_t type; // stack entry type
+  int label;
+} pwasm_ctrl_stack_entry_t;
+
+typedef struct {
+  pwasm_vec_t stack;
+} pwasm_ctrl_stack_t;
+
+static bool
+pwasm_ctrl_stack_init(
+  pwasm_ctrl_stack_t * const stack,
+  pwasm_mem_ctx_t * const mem_ctx
+) {
+  const size_t stride = sizeof(pwasm_ctrl_stack_entry_t);
+  return pwasm_vec_init(mem_ctx, &(stack->stack), stride);
+}
+
+static void
+pwasm_ctrl_stack_fini(
+  pwasm_ctrl_stack_t * const stack
+) {
+  pwasm_vec_fini(&(stack->stack));
+}
+
+#if 0
+static size_t
+pwasm_ctrl_stack_get_size(
+  const pwasm_ctrl_stack_t * const stack
+) {
+  return pwasm_vec_get_size(&(stack->stack));
+}
+
+static const void *
+pwasm_ctrl_stack_peek_tail(
+  const pwasm_ctrl_stack_t * const stack,
+  const size_t ofs
+) {
+  return pwasm_vec_peek_tail(&(stack->stack), ofs);
+}
+#endif /* 0 */
+
+static bool
+pwasm_ctrl_stack_pop(
+  pwasm_ctrl_stack_t * const stack,
+  void * const dst
+) {
+  // pop final entry, return result
+  return pwasm_vec_pop(&(stack->stack), dst);
+}
+
+static bool
+pwasm_ctrl_stack_push(
+  pwasm_ctrl_stack_t * const stack,
+  const pwasm_ctrl_stack_entry_t entry
+) {
+  return pwasm_vec_push(&(stack->stack), 1, &entry, NULL);
+}
+
+bool
+pwasm_compile(
+  pwasm_buf_t * const dst,
+  pwasm_env_t *env,
+  const pwasm_mod_t *mod,
+  const size_t func_ofs
+) {
+  const pwasm_func_t func = mod->codes[func_ofs];
+  const pwasm_inst_t * const insts = mod->insts + func.expr.ofs;
+  pwasm_stack_t *stack = env->stack;
+  (void) dst;
+  (void) stack;
+
+  void *labels[lbl__MAX];
+  dasm_State *dasm;
+  dasm_init(&dasm, 1);
+  dasm_setupglobal(&dasm, labels, lbl__MAX);
+  dasm_setup(&dasm, actions);
+  dasm_growpc(&dasm, 2);
+
+  // init control stack
+  size_t ctrl_depth = 0;
+  pwasm_ctrl_stack_t ctrl_stack;
+  if (!pwasm_ctrl_stack_init(&ctrl_stack, env->mem_ctx)) {
+    fail(env, "ctrl_stack_init failed");
+    return false;
+  }
+
+  dasm_State** Dst = &dasm;
+  | ->enter: // FIXME: add prologue
+  // get stack pointer from env, increment stack pointer
+  | mov rax, [r_arg0 + offsetof(pwasm_env_t, stack)]
+  | mov r_stack, [rax]
+  | add r_stack, [rax + sizeof(pwasm_val_t) * offsetof(pwasm_stack_t, pos)]
+  for (size_t i = 0; i < func.expr.len; i++) {
+    const pwasm_inst_t in = insts[i];
+    // D("0x%02X %s", in.op, pwasm_op_get_name(in.op));
+
+    switch (in.op) {
+    case PWASM_OP_NOP:
+      | nop
+      break;
+    case PWASM_OP_BLOCK:
+      {
+        dasm_growpc(&dasm, 2 * (ctrl_depth + 1));
+
+        const pwasm_ctrl_stack_entry_t entry = {
+          .type = CTRL_BLOCK,
+        };
+
+        if (!pwasm_ctrl_stack_push(&ctrl_stack, entry)) {
+          fail(env, "ctrl_stack_push failed");
+          return false;
+        }
+      }
+      break;
+    case PWASM_OP_I32_CONST:
+      | mov dword [r_stack], in.v_i32
+      | stack_inc
+      break;
+    case PWASM_OP_I32_ADD:
+      | mov eax, [r_stack - 2 * sizeof(pwasm_val_t)]
+      | mov ebx, [r_stack - sizeof(pwasm_val_t)]
+      | add eax, ebx
+      | mov [r_stack - 2 * sizeof(pwasm_val_t)], eax
+      | stack_dec
+      break;
+    case PWASM_OP_I64_CONST:
+      | mov qword [r_stack], in.v_i64
+      | stack_inc
+      break;
+    case PWASM_OP_I64_ADD:
+      | mov rax, [r_stack - 2 * sizeof(pwasm_val_t)]
+      | mov rbx, [r_stack - sizeof(pwasm_val_t)]
+      | add rax, rbx
+      | mov [r_stack - 2 * sizeof(pwasm_val_t)], rax
+      | stack_dec
+      break;
+    case PWASM_OP_END:
+      if (ctrl_depth > 0) {
+        // pop control stack, check for error
+        pwasm_ctrl_stack_entry_t tail;
+        if (!pwasm_ctrl_stack_pop(&ctrl_stack, &tail)) {
+          fail(env, "ctrl_stack_pop failed");
+          return false;
+        }
+
+        // decriment depth
+        ctrl_depth--;
+
+        // TODO
+      } else {
+        | jmp ->exit
+      }
+      break;
+    case PWASM_OP_DROP:
+      | stack_dec
+      break;
+    default:
+      {
+        // log error
+        char buf[512];
+        snprintf(buf, sizeof(buf), "unimplemented opcode: 0x%08x", in.op);
+        fail(env, buf);
+      }
+
+      // return failure
+      return false;
+    }
+  }
+  // FIXME: add epilogue
+  | ->exit:
+  | mov rax, 1
+  | ret
+
+  // finalize control stack
+  pwasm_ctrl_stack_fini(&ctrl_stack);
+
+  // get needed size
+  size_t num_bytes;
+  if (dasm_link(&dasm, &num_bytes)) {
+    fail(env, "dasm_link() failed");
+    return false;
+  }
+
+  // map memory, check for error
+  void *mem = mmap(NULL, num_bytes, PROT_READ | PROT_WRITE, MAP_PRIVATE | MAP_ANONYMOUS, -1, 0);
+  if (!mem) {
+    // log error, return failure
+    fail(env, "dasm_link() failed");
+    return false;
+  }
+
+  // encode, check for error
+  if (dasm_encode(&dasm, mem)) {
+    // log error, return failure
+    fail(env, "dasm_encode() failed");
+    return false;
+  }
+
+  // finalize dynasm state
+  dasm_free(&dasm);
+
+  // protect memory
+  if (mprotect(mem, num_bytes, PROT_READ | PROT_EXEC)) {
+    // log error, return failure
+    fail(env, "mprotect() failed");
+    return false;
+  }
+
+  // populate result
+  dst->ptr = mem;
+  dst->len = num_bytes;
+
+  // return failure
+  return false;
+}
+
+// vi: syntax=c
