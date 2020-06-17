@@ -20065,34 +20065,36 @@ pwasm_aot_jit_compile_func(
 
 static bool
 pwasm_aot_jit_compile_funcs(
-  pwasm_aot_jit_frame_t frame
+  pwasm_env_t * const env,
+  const pwasm_mod_t * const mod,
+  pwasm_buf_t ** const dst
 ) {
-  const pwasm_mod_t * const mod = frame.mod->mod;
   const size_t num_codes = mod->num_codes;
   const size_t num_bytes = num_codes * sizeof(pwasm_buf_t);
 
+  D("num_codes = %zu, num_bytes = %zu", num_codes, num_bytes);
   if (num_bytes > 0) {
     // allocate function pointers
-    pwasm_buf_t *fns = pwasm_realloc(frame.env->mem_ctx, NULL, num_bytes);
+    pwasm_buf_t *fns = pwasm_realloc(env->mem_ctx, NULL, num_bytes);
     if (!fns) {
-      pwasm_env_fail(frame.env, "allocate function pointer list failed");
-      return false;
+      pwasm_env_fail(env, "allocate function pointer list failed");
+      return NULL;
     }
 
     // walk/compile functions
     for (size_t i = 0; i < num_codes; i++) {
       // compile function, check for error
-      if (!pwasm_aot_jit_compile_func(fns + i, frame.env, mod, i)) {
+      if (!pwasm_aot_jit_compile_func(fns + i, env, mod, i)) {
         // return failure
         return false;
       }
     }
 
-    // save function pointers
-    frame.mod->fns = fns;
+    // save compiled function pointers (hack)
+    *dst = fns;
   } else {
     // no functions, save null pointer
-    frame.mod->fns = NULL;
+    *dst = NULL;
   }
 
   // return success
@@ -20103,8 +20105,6 @@ static bool
 pwasm_aot_jit_init_start(
   pwasm_aot_jit_frame_t frame
 ) {
-  (void) frame;
-
   // check for start function
   if (!frame.mod->mod->has_start) {
     // return success
@@ -20171,11 +20171,14 @@ pwasm_aot_jit_add_mod(
   };
 
   // append mod, check for error
-  if (!pwasm_vec_push(&(interp->mods), 1, &interp_mod, NULL)) {
+  size_t interp_mod_ofs;
+  if (!pwasm_vec_push(&(interp->mods), 1, &interp_mod, &interp_mod_ofs)) {
     // log error, return failure
     pwasm_env_fail(env, "append mod failed");
     return 0;
   }
+
+  pwasm_aot_jit_mod_t * const dst_interp_mod = (pwasm_aot_jit_mod_t*) pwasm_vec_get_data(&(interp->mods)) + interp_mod_ofs;
 
   // set up a temporary frame to init globals, tables, and mems
   pwasm_aot_jit_frame_t frame = {
@@ -20205,10 +20208,14 @@ pwasm_aot_jit_add_mod(
   }
 
   // compile funcs, check for error
-  if (!pwasm_aot_jit_compile_funcs(frame)) {
+  pwasm_buf_t *fns = NULL;
+  if (!pwasm_aot_jit_compile_funcs(env, mod, &fns)) {
     // return failure
     return 0;
   }
+
+  // save compiled functions
+  dst_interp_mod->fns = fns;
 
   // call start func, check for error
   if (!pwasm_aot_jit_init_start(frame)) {
@@ -25100,9 +25107,21 @@ pwasm_aot_jit_call_func(
   };
 
   // get expr instructions slice
-  const pwasm_slice_t expr = mod->codes[func_ofs].expr;
+  // const pwasm_slice_t expr = mod->codes[func_ofs].expr;
+  // (void) expr;
 
-  const bool ok = pwasm_aot_jit_eval_expr(frame, expr);
+  D("func_ofs = %u", func_ofs);
+  D("fns = %p", (void*) interp_mod->fns);
+  D("fns[%u] = { %p, %zu }", func_ofs, (void*) interp_mod->fns[func_ofs].ptr, interp_mod->fns[func_ofs].len);
+  union {
+    const void *ptr_void;
+    bool (*ptr_func)(pwasm_env_t *, const pwasm_mod_t *, uint32_t);
+  } pun = { .ptr_void = interp_mod->fns[func_ofs].ptr };
+
+  // D("calling func (%p)", (void*) pun.ptr_void);
+  const bool ok = pun.ptr_func(env, interp_mod->mod, func_ofs);
+  D("call done, ok == %d", ok);
+  // const bool ok = pwasm_aot_jit_eval_expr(frame, expr);
   if (!ok) {
     D("eval_expr() failed, func_ofs = %u", func_ofs);
     // return failure
