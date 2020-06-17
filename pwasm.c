@@ -25061,8 +25061,6 @@ pwasm_aot_jit_call_func(
   pwasm_aot_jit_t * const interp = env->env_data;
   pwasm_stack_t * const stack = env->stack;
   const pwasm_mod_t * const mod = interp_mod->mod;
-  // will be used for CALL and CALL_INDIRECT
-  // const size_t stack_pos = env->stack->pos;
 
   // get func parameters and results
   const pwasm_slice_t params = mod->types[mod->funcs[func_ofs]].params;
