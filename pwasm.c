@@ -624,6 +624,7 @@ pwasm_block_type_result_get_value_type(
   }
 }
 
+#if 0
 /**
  * Is this a valid block type?
  */
@@ -639,6 +640,7 @@ pwasm_block_type_is_valid(
     (kind == PWASM_BLOCK_TYPE_KIND_IMPORT)
   );
 }
+#endif /* 0 */
 
 /**
  * Get the number of parameters for the given block type.
