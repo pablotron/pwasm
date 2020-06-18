@@ -81,4 +81,30 @@
   )
 
   (export "if_false" (func $if_false))
+
+  ;;
+  ;; br_outer: test br to outer block
+  ;;   expect 1234
+  ;;
+  (func $br_outer (result i32)
+    (i32.const 1234)
+    (br 0)
+    (unreachable)
+  )
+
+  (export "br_outer" (func $br_outer))
+
+  ;;
+  ;; br_inner: test br to outer block
+  ;;   expect 5678
+  ;;
+  (func $br_inner (result i32)
+    (i32.const 5678)
+    (block
+      (br 0)
+      (unreachable)
+    )
+  )
+
+  (export "br_inner" (func $br_inner))
 )

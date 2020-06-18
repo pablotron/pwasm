@@ -84,7 +84,7 @@ CTRL_TYPES
 typedef struct {
   pwasm_ctrl_stack_entry_type_t type; // entry type
   int32_t block_type; // block type
-  int label;
+  size_t label;
 } pwasm_ctrl_stack_entry_t;
 
 // control stack
@@ -124,6 +124,7 @@ pwasm_ctrl_stack_get_size(
 ) {
   return pwasm_vec_get_size(&(stack->stack));
 }
+#endif /* 0 */
 
 static const void *
 pwasm_ctrl_stack_peek_tail(
@@ -132,7 +133,6 @@ pwasm_ctrl_stack_peek_tail(
 ) {
   return pwasm_vec_peek_tail(&(stack->stack), ofs);
 }
-#endif /* 0 */
 
 /**
  * Remove tail entry from control stack.
@@ -460,6 +460,26 @@ pwasm_compile(
 //           stack->ptr[dst_ofs] = stack->ptr[src_ofs];
 //         }
       } else {
+        | jmp ->exit_success
+      }
+
+      break;
+    case PWASM_OP_BR:
+      if ((ctrl_depth > 0) && (ctrl_depth - in.v_index) > 0) {
+        // get control stack tail, check for error
+        const pwasm_ctrl_stack_entry_t *tail = pwasm_ctrl_stack_peek_tail(&ctrl_stack, in.v_index);
+        if (!tail) {
+          fail(env, "br: ctrl_stack_peek_tail failed");
+          return false;
+        }
+
+        // get destination label
+        const size_t label = tail->label + ((tail->type == CTRL_IF) ? 1 : 0);
+
+        // emit jump to label
+        | jmp =>label
+      } else {
+        // emit exit success
         | jmp ->exit_success
       }
 
