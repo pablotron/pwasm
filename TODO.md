@@ -8,6 +8,7 @@ See the "Tag Definitions" section below for a brief description of each
 tag.
 
 * [ ] code, test: add tests with random values for math ops
+* [ ] code, test: loop with params
 * [ ] code, test: check `call_immediate` table ID in validation layer
       instead of parser
 * [ ] code, test: check stack size at start of call

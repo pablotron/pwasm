@@ -27,14 +27,26 @@
 // function args
 |.define r_arg0, rdi
 |.define r_arg1, rsi
+
 // pointer to base and tail of stack
 |.define r_base, r12
 |.define r_stack, r13
+
+// TODO
+|.macro epilogue
+  | nop
+|.endmacro
+
 |.macro stack_inc
   | add r_stack, sizeof(pwasm_val_t)
 |.endmacro
+
 |.macro stack_dec
   | sub r_stack, sizeof(pwasm_val_t)
+|.endmacro
+
+|.macro stack_decn, num
+  | sub r_stack, num * sizeof(pwasm_val_t)
 |.endmacro
 
 /**
@@ -71,6 +83,7 @@ CTRL_TYPES
 // control stack entry
 typedef struct {
   pwasm_ctrl_stack_entry_type_t type; // entry type
+  int32_t block_type; // block type
   int label;
 } pwasm_ctrl_stack_entry_t;
 
@@ -190,59 +203,188 @@ pwasm_compile(
   | mov r_stack, [rax]
   | mov r_base, r_stack
 
+  size_t max_label = 0;
   for (size_t i = 0; i < func.expr.len; i++) {
     const pwasm_inst_t in = insts[i];
     D("0x%02X %s", in.op, pwasm_op_get_name(in.op));
 
     switch (in.op) {
     case PWASM_OP_UNREACHABLE:
-      // TODO: log error message
-      | mov eax, 0
-      | ret
+      {
+        // log error message (FIXME)
+        // const char * const err = "unreachable";
+        // | mov r_arg0, env
+        // | mov r_arg1, err
+        // | call aword fail
+
+        // return failure
+        | jmp ->exit_failure
+      }
       break;
     case PWASM_OP_NOP:
       | nop
       break;
     case PWASM_OP_BLOCK:
       {
-        dasm_growpc(&dasm, 2 * (ctrl_depth + 1));
-
-        // TODO: save labels
-
-        const pwasm_ctrl_stack_entry_t entry = {
-          .type = CTRL_BLOCK,
-        };
-
-        if (!pwasm_ctrl_stack_push(&ctrl_stack, entry)) {
-          fail(env, "ctrl_stack_push failed");
+        // get block.params.size, check for error
+        size_t num_params;
+        if (!pwasm_block_type_params_get_size(mod, in.v_block.block_type, &num_params)) {
+          // log error, return failure
+          fail(env, "block: get num block params failed");
           return false;
         }
+
+        if (num_params > 0) {
+          // decriment stack (block parameters)
+          | stack_decn num_params
+        }
+
+        // create control stack entry
+        const pwasm_ctrl_stack_entry_t entry = {
+          .type       = CTRL_BLOCK,
+          .block_type = in.v_block.block_type,
+          .label      = max_label,
+        };
+
+        // push entry, check for error
+        if (!pwasm_ctrl_stack_push(&ctrl_stack, entry)) {
+          fail(env, "block: ctrl_stack_push failed");
+          return false;
+        }
+
+        // increment control depth
+        ctrl_depth++;
+
+        // increment label
+        max_label++;
+        dasm_growpc(&dasm, max_label);
       }
+
       break;
-    case PWASM_OP_I32_CONST:
-      | mov dword [r_stack], in.v_i32
-      | stack_inc
+    case PWASM_OP_LOOP:
+      {
+        // get block.params.size, check for error
+        size_t num_params;
+        if (!pwasm_block_type_params_get_size(mod, in.v_block.block_type, &num_params)) {
+          // log error, return failure
+          fail(env, "loop: get num block params failed");
+          return false;
+        }
+
+        if (num_params > 0) {
+          // decriment stack (block parameters)
+          | stack_decn num_params
+        }
+
+        // emit label
+        |=>max_label:
+
+        // create control stack entry
+        const pwasm_ctrl_stack_entry_t entry = {
+          .type       = CTRL_LOOP,
+          .block_type = in.v_block.block_type,
+          .label      = max_label,
+        };
+
+        // push entry, check for error
+        if (!pwasm_ctrl_stack_push(&ctrl_stack, entry)) {
+          fail(env, "loop: ctrl_stack_push failed");
+          return false;
+        }
+
+        // increment control depth
+        ctrl_depth++;
+
+        // increment label
+        max_label++;
+        dasm_growpc(&dasm, max_label);
+      }
+
       break;
-    case PWASM_OP_I32_ADD:
-      | mov eax, [r_stack - 2 * sizeof(pwasm_val_t)]
-      | mov ebx, [r_stack - sizeof(pwasm_val_t)]
-      | add eax, ebx
-      | mov [r_stack - 2 * sizeof(pwasm_val_t)], eax
-      | stack_dec
+    case PWASM_OP_IF:
+      {
+        // emit condition pop
+        | mov eax, [r_stack]
+        | stack_dec
+
+        // get block.params.size, check for error
+        size_t num_params;
+        if (!pwasm_block_type_params_get_size(mod, in.v_block.block_type, &num_params)) {
+          // log error, return failure
+          fail(env, "if: get num block params failed");
+          return false;
+        }
+
+        if (num_params > 0) {
+          // emit stack pop (block parameters)
+          | stack_decn num_params
+        }
+
+        // create control stack entry
+        const pwasm_ctrl_stack_entry_t entry = {
+          .type       = CTRL_IF,
+          .block_type = in.v_block.block_type,
+          .label      = max_label,
+        };
+
+        // push entry, check for error
+        if (!pwasm_ctrl_stack_push(&ctrl_stack, entry)) {
+          fail(env, "if: ctrl_stack_push failed");
+          return false;
+        }
+
+        // increment control depth
+        ctrl_depth++;
+
+        // emit compare
+        | cmp eax, 0
+        | je =>max_label
+
+        // increment label
+        max_label += 2;
+        dasm_growpc(&dasm, max_label);
+      }
+
       break;
-    case PWASM_OP_I64_CONST:
-      | mov qword [r_stack], in.v_i64
-      | stack_inc
-      break;
-    case PWASM_OP_I64_ADD:
-      | mov rax, [r_stack - 2 * sizeof(pwasm_val_t)]
-      | mov rbx, [r_stack - sizeof(pwasm_val_t)]
-      | add rax, rbx
-      | mov [r_stack - 2 * sizeof(pwasm_val_t)], rax
-      | stack_dec
+    case PWASM_OP_ELSE:
+      {
+        // pop if entry, check for error
+        pwasm_ctrl_stack_entry_t if_entry;
+        if (!pwasm_ctrl_stack_pop(&ctrl_stack, &if_entry)) {
+          fail(env, "else: ctrl_stack_pop failed");
+          return false;
+        }
+
+        // decriment control depth
+        // disabled, redundant
+        // ctrl_depth--;
+
+        // unconditional jump to end
+        | jmp =>(if_entry.label + 1)
+        | =>(if_entry.label):
+
+        // create control stack entry
+        const pwasm_ctrl_stack_entry_t else_entry = {
+          .type       = CTRL_ELSE,
+          .block_type = if_entry.block_type,
+          .label      = if_entry.label + 1,
+        };
+
+        // push else entry, check for error
+        if (!pwasm_ctrl_stack_push(&ctrl_stack, else_entry)) {
+          fail(env, "else: ctrl_stack_push failed");
+          return false;
+        }
+
+        // increment control depth
+        // disabled, redundant
+        // ctrl_depth++;
+      }
+
       break;
     case PWASM_OP_END:
       if (ctrl_depth > 0) {
+        // FIXME
         // pop control stack, check for error
         pwasm_ctrl_stack_entry_t tail;
         if (!pwasm_ctrl_stack_pop(&ctrl_stack, &tail)) {
@@ -255,11 +397,39 @@ pwasm_compile(
 
         // TODO
       } else {
-        | jmp ->exit
+        | jmp ->exit_success
       }
+
+      break;
+    case PWASM_OP_I32_CONST:
+      | mov dword [r_stack], in.v_i32
+      | stack_inc
+
+      break;
+    case PWASM_OP_I32_ADD:
+      | mov eax, [r_stack - 2 * sizeof(pwasm_val_t)]
+      | mov ebx, [r_stack - sizeof(pwasm_val_t)]
+      | add eax, ebx
+      | mov [r_stack - 2 * sizeof(pwasm_val_t)], eax
+      | stack_dec
+
+      break;
+    case PWASM_OP_I64_CONST:
+      | mov qword [r_stack], in.v_i64
+      | stack_inc
+
+      break;
+    case PWASM_OP_I64_ADD:
+      | mov rax, [r_stack - 2 * sizeof(pwasm_val_t)]
+      | mov rbx, [r_stack - sizeof(pwasm_val_t)]
+      | add rax, rbx
+      | mov [r_stack - 2 * sizeof(pwasm_val_t)], rax
+      | stack_dec
+
       break;
     case PWASM_OP_DROP:
       | stack_dec
+
       break;
     default:
       {
@@ -273,17 +443,24 @@ pwasm_compile(
       }
     }
   }
-  // FIXME: add epilogue
-  | ->exit:
 
-  // get pointer to stack depth
-  // FIXME: remove hard-coded stack value
+  // emit exit_success
+  | ->exit_success:
+
+  // save stack depth
   | mov rax, [r_arg0 + offsetof(pwasm_env_t, stack)]
   | add rax, offsetof(pwasm_stack_t, pos)
   | mov qword [rax], type.results.len
 
   // return success
+  | epilogue
   | mov rax, 1
+  | ret
+
+  // emit exit_failure
+  | ->exit_failure:
+  | epilogue
+  | mov rax, 0
   | ret
 
   // get needed size
