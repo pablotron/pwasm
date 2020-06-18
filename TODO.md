@@ -7,6 +7,7 @@ Each entry in this list is prefixed with category tags.
 See the "Tag Definitions" section below for a brief description of each
 tag.
 
+* [ ] doc: document `pwasm-compile.c` build
 * [ ] code, test: add tests with random values for math ops
 * [ ] code, test: loop with params
 * [ ] code, test: check `call_immediate` table ID in validation layer

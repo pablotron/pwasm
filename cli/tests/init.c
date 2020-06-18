@@ -76,7 +76,8 @@ static const uint8_t DATA[] = {
   0x00, 0x61, 0x73, 0x6d, 0x01, 0x00, 0x00, 0x00,
   0x01, 0x04, 0x01, 0x60, 0x00, 0x00,
 
-  // type section: i32, i64 -> f32, f64 (fail, ofs: 211, len: 18)
+  // type section: i32, i64 -> f32, f64 (pass, ofs: 211, len: 18)
+  // note: this is allowed now
   0x00, 0x61, 0x73, 0x6d, 0x01, 0x00, 0x00, 0x00,
   0x01, 0x08, 0x01, 0x60, 0x02, 0X7F, 0x7E, 0x02,
   0x7D, 0x7C,
@@ -361,7 +362,7 @@ static const init_test_t TESTS[] = {
   { "type section: void -> junk",         false,  166,   15 },
   { "type section: i32, f32 -> void",     true,   181,   16 },
   { "type section: void -> void",         true,   197,   14 },
-  { "type section: i32, i64 -> f32, f64", false,  211,   18 },
+  { "type section: i32, i64 -> f32, f64", true,   211,   18 },
   { "import section: blank",              true,   229,   11 },
   { "import func: \".\", id: 0",          false,  240,   15 },
   { "import func: \"foo.bar\", id: 1",    false,  255,   21 },

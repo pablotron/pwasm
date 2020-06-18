@@ -12,10 +12,12 @@ extern "C" {
 #include "pwasm.h"
 
 /**
- * Compile a module function, populate destination buffer with function
- * pointer and size of generated code.
+ * Compile a function from a WebAssembly module, then populate
+ * destination buffer with function pointer and size of generated code.
  *
  * JIT compiler for PWASM module functions, implemented using DynASM.
+ *
+ * @note This function is architecture and operating system specific.
  *
  * @ingroup jit
  *
