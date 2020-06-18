@@ -46,7 +46,7 @@
 |.endmacro
 
 |.macro stack_decn, num
-  | sub r_stack, num * sizeof(pwasm_val_t)
+  | sub r_stack, (num * sizeof(pwasm_val_t))
 |.endmacro
 
 /**
@@ -175,7 +175,7 @@ pwasm_compile(
   const pwasm_mod_t *mod,
   const size_t func_ofs
 ) {
-  const pwasm_type_t type = mod->types[mod->funcs[func_ofs]];
+  // const pwasm_type_t type = mod->types[mod->funcs[func_ofs]];
   const pwasm_func_t func = mod->codes[func_ofs];
   const pwasm_inst_t * const insts = mod->insts + func.expr.ofs;
 
@@ -206,7 +206,13 @@ pwasm_compile(
   size_t max_label = 0;
   for (size_t i = 0; i < func.expr.len; i++) {
     const pwasm_inst_t in = insts[i];
-    D("0x%02X %s", in.op, pwasm_op_get_name(in.op));
+    switch (in.op) {
+    case PWASM_OP_I32_CONST:
+      D("0x%02X %s (0x%08x)", in.op, pwasm_op_get_name(in.op), in.v_i32);
+      break;
+    default:
+      D("0x%02X %s", in.op, pwasm_op_get_name(in.op));
+    }
 
     switch (in.op) {
     case PWASM_OP_UNREACHABLE:
@@ -304,21 +310,8 @@ pwasm_compile(
     case PWASM_OP_IF:
       {
         // emit condition pop
-        | mov eax, [r_stack]
+        | mov eax, [r_stack - sizeof(pwasm_val_t)]
         | stack_dec
-
-        // get block.params.size, check for error
-        size_t num_params;
-        if (!pwasm_block_type_params_get_size(mod, in.v_block.block_type, &num_params)) {
-          // log error, return failure
-          fail(env, "if: get num block params failed");
-          return false;
-        }
-
-        if (num_params > 0) {
-          // emit stack pop (block parameters)
-          | stack_decn num_params
-        }
 
         // create control stack entry
         const pwasm_ctrl_stack_entry_t entry = {
@@ -336,13 +329,28 @@ pwasm_compile(
         // increment control depth
         ctrl_depth++;
 
-        // emit compare
-        | cmp eax, 0
-        | je =>max_label
-
         // increment label
         max_label += 2;
         dasm_growpc(&dasm, max_label);
+
+        // emit compare
+        | cmp eax, 0
+        | je =>entry.label
+
+        // get block.params.size, check for error
+        size_t num_params;
+        if (!pwasm_block_type_params_get_size(mod, in.v_block.block_type, &num_params)) {
+          // log error, return failure
+          fail(env, "if: get num block params failed");
+          return false;
+        }
+
+        if (num_params > 0) {
+          // emit stack pop (block parameters)
+          D("num_params = %zu", num_params);
+          // FIXME
+          // | stack_decn num_params
+        }
       }
 
       break;
@@ -359,9 +367,23 @@ pwasm_compile(
         // disabled, redundant
         // ctrl_depth--;
 
-        // unconditional jump to end
+        // emit unconditional jump to end
         | jmp =>(if_entry.label + 1)
+        // emit else label
         | =>(if_entry.label):
+
+        size_t num_params;
+        if (!pwasm_block_type_params_get_size(mod, if_entry.block_type, &num_params)) {
+          // log error, return failure
+          fail(env, "if: get num block params failed");
+          return false;
+        }
+
+        if (num_params > 0) {
+          // emit stack pop (block parameters)
+          D("num_params = %zu", num_params);
+          | stack_decn num_params
+        }
 
         // create control stack entry
         const pwasm_ctrl_stack_entry_t else_entry = {
@@ -384,7 +406,6 @@ pwasm_compile(
       break;
     case PWASM_OP_END:
       if (ctrl_depth > 0) {
-        // FIXME
         // pop control stack, check for error
         pwasm_ctrl_stack_entry_t tail;
         if (!pwasm_ctrl_stack_pop(&ctrl_stack, &tail)) {
@@ -395,7 +416,49 @@ pwasm_compile(
         // decriment depth
         ctrl_depth--;
 
+        switch (tail.type) {
+        case CTRL_IF:
+          // emit tail labels
+          // FIXME: is this right?
+          | =>(tail.label):
+          | =>(tail.label + 1):
+          break;
+        case CTRL_ELSE:
+        case CTRL_BLOCK:
+          // emit tail label
+          | =>(tail.label):
+          break;
+        case CTRL_LOOP:
+          // do nothing
+          break;
+        default:
+          {
+            // log error
+            char buf[512];
+            snprintf(buf, sizeof(buf), "unknown ctrl stack entry type: %u", tail.type);
+            fail(env, buf);
+
+            // return failure
+            return false;
+          }
+        }
+
+        // get block type result count, check for error
+        size_t num_results;
+        if (!pwasm_block_type_results_get_size(mod, tail.block_type, &num_results)) {
+          // log error, return failure
+          fail(env, "end: get block num_results failed");
+          return false;
+        }
+
+        // pop results
         // TODO
+//         for (size_t j = 0; j < num_results; j++) {
+//           // calculate stack source and destination offsets
+//           const size_t src_ofs = stack->pos - 1 - (num_results - 1 - j);
+//           const size_t dst_ofs = ctrl_tail.depth + j;
+//           stack->ptr[dst_ofs] = stack->ptr[src_ofs];
+//         }
       } else {
         | jmp ->exit_success
       }
@@ -410,6 +473,14 @@ pwasm_compile(
       | mov eax, [r_stack - 2 * sizeof(pwasm_val_t)]
       | mov ebx, [r_stack - sizeof(pwasm_val_t)]
       | add eax, ebx
+      | mov [r_stack - 2 * sizeof(pwasm_val_t)], eax
+      | stack_dec
+
+      break;
+    case PWASM_OP_I32_SUB:
+      | mov eax, [r_stack - 2 * sizeof(pwasm_val_t)]
+      | mov ebx, [r_stack - sizeof(pwasm_val_t)]
+      | sub eax, ebx
       | mov [r_stack - 2 * sizeof(pwasm_val_t)], eax
       | stack_dec
 
@@ -448,9 +519,15 @@ pwasm_compile(
   | ->exit_success:
 
   // save stack depth
+  // | mov rax, [r_arg0 + offsetof(pwasm_env_t, stack)]
+  // | add rax, offsetof(pwasm_stack_t, pos)
+  // | mov qword [rax], type.results.len
+  | mov rbx, r_stack
+  | sub rbx, r_base
+  | shr rbx, 4
   | mov rax, [r_arg0 + offsetof(pwasm_env_t, stack)]
   | add rax, offsetof(pwasm_stack_t, pos)
-  | mov qword [rax], type.results.len
+  | mov qword [rax], rbx
 
   // return success
   | epilogue
