@@ -659,6 +659,47 @@ pwasm_compile(
       }
 
       break;
+    case PWASM_OP_GLOBAL_GET:
+      {
+        // get global index
+        const uint32_t global_id = env->cbs->get_global_index(env, mod_id, in.v_index);
+
+        // get global
+        | mov r_arg0, r_env
+        | mov r_arg1, global_id
+        | mov r_arg2, r_stack
+        | call aword &pwasm_env_get_global
+
+        // check for error
+        | cmp eax, 0
+        | je ->exit_failure
+
+        // increment stack
+        | stack_inc
+      }
+
+      break;
+    case PWASM_OP_GLOBAL_SET:
+      {
+        // get global index
+        const uint32_t global_id = env->cbs->get_global_index(env, mod_id, in.v_index);
+
+        // get global
+        | mov r_arg0, r_env
+        | mov r_arg1, global_id
+        // FIXME: need to pass structure value here
+        | mov r_arg2, r_stack
+        | call aword &pwasm_env_set_global
+
+        // check for error
+        | cmp eax, 0
+        | je ->exit_failure
+
+        // increment stack
+        | stack_inc
+      }
+
+      break;
     case PWASM_OP_I32_CONST:
       | mov dword [r_stack], in.v_i32
       | stack_inc
