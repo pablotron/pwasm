@@ -50,7 +50,7 @@ pwasm_dump_get_name(
   // fill destination buffer
   memcpy(dst, "dump-", 5);
   memcpy(dst + 5, mod_name->ptr, mod_name->len);
-  sprintf(dst + 5 + mod_name->len, "-%u.dat", func_ofs);
+  sprintf(dst + 5 + mod_name->len, "-%02u.dat", func_ofs);
 }
 
 /**
