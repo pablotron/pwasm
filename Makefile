@@ -10,7 +10,7 @@ LUAJIT_DIR=$(HOME)/git/luajit-2.0
 
 # debug
 CFLAGS=-W -Wall -Wextra -Werror -fPIC -std=gnu11 -pedantic -g -pg -DPWASM_DEBUG
-LIBS=-lm
+LIBS=-lm -ldl
 
 # asan
 # https://clang.llvm.org/docs/AddressSanitizer.html
