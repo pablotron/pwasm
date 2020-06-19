@@ -11923,6 +11923,15 @@ pwasm_env_set_global(
   return (cbs && cbs->set_global) ? cbs->set_global(env, id, val) : false;
 }
 
+const pwasm_mod_t *
+pwasm_env_get_mod(
+  pwasm_env_t * const env,
+  const uint32_t mod_id
+) {
+  const pwasm_env_cbs_t * const cbs = env->cbs;
+  return (cbs && cbs->get_mod) ? cbs->get_mod(env, mod_id) : NULL;
+}
+
 uint32_t
 pwasm_env_find_mod(
   pwasm_env_t * const env,
@@ -13568,6 +13577,19 @@ pwasm_new_interp_add_mod(
   return mod_ofs + 1;
 }
 
+static const pwasm_mod_t *
+pwasm_new_interp_get_mod(
+  pwasm_env_t * const env,
+  const uint32_t mod_id
+) {
+  pwasm_new_interp_t * const interp = env->env_data;
+  const pwasm_new_interp_mod_t *rows = pwasm_vec_get_data(&(interp->mods));
+  const size_t num_rows = pwasm_vec_get_size(&(interp->mods));
+
+  const bool ok = (mod_id && mod_id <- num_rows);
+  return ok ? rows[mod_id - 1].mod : NULL;
+}
+
 static uint32_t
 pwasm_new_interp_find_mod(
   pwasm_env_t * const env,
@@ -14046,7 +14068,7 @@ pwasm_new_interp_set_global(
  * Returns 0 on error.
  */
 static uint32_t
-pwasm_new_interp_get_global_index(
+pwasm_new_interp_mod_get_global_index(
   pwasm_env_t * const env,
   pwasm_new_interp_mod_t * const mod,
   uint32_t id
@@ -14502,7 +14524,7 @@ pwasm_new_interp_eval_expr(
     case PWASM_OP_GLOBAL_GET:
       {
         // get global index
-        const uint32_t id = pwasm_new_interp_get_global_index(frame.env, frame.mod, in.v_index);
+        const uint32_t id = pwasm_new_interp_mod_get_global_index(frame.env, frame.mod, in.v_index);
 
         // get global value, check for error
         pwasm_val_t val;
@@ -14519,7 +14541,7 @@ pwasm_new_interp_eval_expr(
     case PWASM_OP_GLOBAL_SET:
       {
         // get global index
-        const uint32_t id = pwasm_new_interp_get_global_index(frame.env, frame.mod, in.v_index);
+        const uint32_t id = pwasm_new_interp_mod_get_global_index(frame.env, frame.mod, in.v_index);
 
         // set global value, check for error
         if (!pwasm_env_set_global(frame.env, id, PWASM_PEEK(stack, 0))) {
@@ -18696,6 +18718,14 @@ pwasm_new_interp_on_add_mod(
   return pwasm_new_interp_add_mod(env, name, mod);
 }
 
+static const pwasm_mod_t *
+pwasm_new_interp_on_get_mod(
+  pwasm_env_t * const env,
+  const uint32_t mod_id
+) {
+  return pwasm_new_interp_get_mod(env, mod_id);
+}
+
 static uint32_t
 pwasm_new_interp_on_find_mod(
   pwasm_env_t * const env,
@@ -18837,6 +18867,7 @@ NEW_PWASM_INTERP_CBS = {
   .fini         = pwasm_new_interp_on_fini,
   .add_native   = pwasm_new_interp_on_add_native,
   .add_mod      = pwasm_new_interp_on_add_mod,
+  .get_mod      = pwasm_new_interp_on_get_mod,
   .find_mod     = pwasm_new_interp_on_find_mod,
   .find_func    = pwasm_new_interp_on_find_func,
   .find_mem     = pwasm_new_interp_on_find_mem,
@@ -20232,6 +20263,19 @@ pwasm_aot_jit_add_mod(
   return ret_mod_id;
 }
 
+static const pwasm_mod_t *
+pwasm_aot_jit_get_mod(
+  pwasm_env_t * const env,
+  const uint32_t mod_id
+) {
+  pwasm_aot_jit_t * const interp = env->env_data;
+  const pwasm_aot_jit_mod_t *rows = pwasm_vec_get_data(&(interp->mods));
+  const size_t num_rows = pwasm_vec_get_size(&(interp->mods));
+
+  const bool ok = (mod_id && mod_id <- num_rows);
+  return ok ? rows[mod_id - 1].mod : NULL;
+}
+
 static uint32_t
 pwasm_aot_jit_find_mod(
   pwasm_env_t * const env,
@@ -20710,7 +20754,7 @@ pwasm_aot_jit_set_global(
  * Returns 0 on error.
  */
 static uint32_t
-pwasm_aot_jit_get_global_index(
+pwasm_aot_jit_mod_get_global_index(
   pwasm_env_t * const env,
   pwasm_aot_jit_mod_t * const mod,
   uint32_t id
@@ -21166,7 +21210,7 @@ pwasm_aot_jit_eval_expr(
     case PWASM_OP_GLOBAL_GET:
       {
         // get global index
-        const uint32_t id = pwasm_aot_jit_get_global_index(frame.env, frame.mod, in.v_index);
+        const uint32_t id = pwasm_aot_jit_mod_get_global_index(frame.env, frame.mod, in.v_index);
 
         // get global value, check for error
         pwasm_val_t val;
@@ -21183,7 +21227,7 @@ pwasm_aot_jit_eval_expr(
     case PWASM_OP_GLOBAL_SET:
       {
         // get global index
-        const uint32_t id = pwasm_aot_jit_get_global_index(frame.env, frame.mod, in.v_index);
+        const uint32_t id = pwasm_aot_jit_mod_get_global_index(frame.env, frame.mod, in.v_index);
 
         // set global value, check for error
         if (!pwasm_env_set_global(frame.env, id, PWASM_PEEK(stack, 0))) {
@@ -25369,6 +25413,14 @@ pwasm_aot_jit_on_add_mod(
   return pwasm_aot_jit_add_mod(env, name, mod);
 }
 
+static const pwasm_mod_t *
+pwasm_aot_jit_on_get_mod(
+  pwasm_env_t * const env,
+  const uint32_t mod_id
+) {
+  return pwasm_aot_jit_get_mod(env, mod_id);
+}
+
 static uint32_t
 pwasm_aot_jit_on_find_mod(
   pwasm_env_t * const env,
@@ -25521,6 +25573,7 @@ PWASM_AOT_JIT_CBS = {
   .fini         = pwasm_aot_jit_on_fini,
   .add_native   = pwasm_aot_jit_on_add_native,
   .add_mod      = pwasm_aot_jit_on_add_mod,
+  .get_mod      = pwasm_aot_jit_on_get_mod,
   .find_mod     = pwasm_aot_jit_on_find_mod,
   .find_func    = pwasm_aot_jit_on_find_func,
   .find_mem     = pwasm_aot_jit_on_find_mem,

@@ -2007,6 +2007,24 @@ typedef struct {
   );
 
   /**
+   * Get module by handle.
+   *
+   * Callback to get a module from an execution environment with the
+   * given ID.
+   *
+   * @param env     Execution environment
+   * @param mod_id  Module instance handle
+   *
+   * @return Pointer to parsed module, or NULL on error.
+   *
+   * @note This callback implements `pwasm_env_get_mod()`.
+   */
+  const pwasm_mod_t *(*get_mod)(
+    pwasm_env_t *env,
+    const uint32_t mod_id
+  );
+
+  /**
    * Get module by name.
    *
    * Callback to get a module from an execution environment with the
@@ -2018,7 +2036,7 @@ typedef struct {
    * @return Module handle on success, or `0` on error.
    *
    * @note This callback implements `pwasm_find_mod()` and
-   * `pwasm_env_find_mod().
+   * `pwasm_env_find_mod()`.
    */
   uint32_t (*find_mod)(
     pwasm_env_t *env,
@@ -2038,7 +2056,7 @@ typedef struct {
    * @return Global variable handle on success, or `0` on error.
    *
    * @note This callback implements `pwasm_find_global()` and
-   * `pwasm_env_find_global().
+   * `pwasm_env_find_global()`.
    */
   uint32_t (*find_global)(
     pwasm_env_t *, // env
@@ -2459,6 +2477,21 @@ uint32_t pwasm_env_add_native(
   pwasm_env_t *env,
   const char * const name,
   const pwasm_native_t *mod
+);
+
+/**
+ * Find module and return pointer.
+ *
+ * @ingroup env-low
+ *
+ * @param env     Execution environment
+ * @param mod_id  Module instance handle
+ *
+ * @return Pointer to module, or `NULL` on error.
+ */
+const pwasm_mod_t *pwasm_env_get_mod(
+  pwasm_env_t *env,
+  const uint32_t mod_id
 );
 
 /**
