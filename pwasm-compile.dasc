@@ -25,12 +25,16 @@
 |.globals lbl_
 
 // function args
+// sysv amd64 calling convention
+// (https://en.wikipedia.org/wiki/X86_calling_conventions#List_of_x86_calling_conventions)
 |.define r_arg0, rdi
 |.define r_arg1, rsi
+|.define r_arg2, rdx
 
 // pointer to base and tail of stack
-|.define r_base, r12
-|.define r_stack, r13
+|.define r_env, r12
+|.define r_base, r13
+|.define r_stack, r14
 
 // TODO
 |.macro epilogue
@@ -175,7 +179,7 @@ pwasm_compile(
   const pwasm_mod_t *mod,
   const size_t func_ofs
 ) {
-  // const pwasm_type_t type = mod->types[mod->funcs[func_ofs]];
+  const pwasm_type_t type = mod->types[mod->funcs[func_ofs]];
   const pwasm_func_t func = mod->codes[func_ofs];
   const pwasm_inst_t * const insts = mod->insts + func.expr.ofs;
 
@@ -198,9 +202,18 @@ pwasm_compile(
 
   dasm_State** Dst = &dasm;
   | ->enter: // FIXME: add prologue
-  // get stack pointer from env, increment stack pointer
-  | mov rax, [r_arg0 + offsetof(pwasm_env_t, stack)]
-  | mov r_stack, [rax]
+  // get env pointer
+  | mov r_env, r_arg0
+
+  // get stack pointer from env
+  | mov rax, [r_env + offsetof(pwasm_env_t, stack)]
+  | mov r_stack, [rax + offsetof(pwasm_stack_t, ptr)]
+
+  // get stack offset
+  | imul rbx, [rax + offsetof(pwasm_stack_t, pos)], sizeof(pwasm_val_t)
+
+  // increment stack pointer
+  | add r_stack, rbx
   | mov r_base, r_stack
 
   size_t max_label = 0;
@@ -484,6 +497,167 @@ pwasm_compile(
       }
 
       break;
+    case PWASM_OP_BR_IF:
+      // emit compare
+      | mov eax, [r_stack - sizeof(pwasm_val_t)]
+      | stack_dec
+      | cmp eax, 0
+
+      if ((ctrl_depth > 0) && (ctrl_depth - in.v_index) > 0) {
+        // get control stack tail, check for error
+        const pwasm_ctrl_stack_entry_t *tail = pwasm_ctrl_stack_peek_tail(&ctrl_stack, in.v_index);
+        if (!tail) {
+          fail(env, "br: ctrl_stack_peek_tail failed");
+          return false;
+        }
+
+        // get destination label
+        const size_t label = tail->label + ((tail->type == CTRL_IF) ? 1 : 0);
+
+        // emit jump to label
+        | je =>label
+      } else {
+        // emit exit success
+        | je ->exit_success
+      }
+
+      break;
+    case PWASM_OP_BR_TABLE:
+      {
+        // get branch labels
+        const pwasm_slice_t labels = in.v_br_table;
+
+        // pop index
+        | mov eax, [r_stack - sizeof(pwasm_val_t)]
+        | stack_dec
+
+        // emit labels
+        // FIXME: this could be optimized into a jump table
+        for (size_t j = 0; j < labels.len - 1; j++) {
+          const uint32_t ofs = mod->u32s[labels.ofs + j];
+
+          if ((ctrl_depth > 0) && (ctrl_depth - ofs) > 0) {
+            const pwasm_ctrl_stack_entry_t *tail = pwasm_ctrl_stack_peek_tail(&ctrl_stack, ofs);
+            if (!tail) {
+              fail(env, "br_table: ctrl_stack_peek_tail failed");
+              return false;
+            }
+
+            // get destination label
+            const size_t label = tail->label + ((tail->type == CTRL_IF) ? 1 : 0);
+
+            // emit conditional jump
+            | cmp eax, j
+            | je =>label
+          } else {
+            // emit exit success
+            | cmp eax, j
+            | je ->exit_success
+          }
+        }
+
+        // emit unconditional jump to default label
+        {
+          // get offset of last branch target
+          const uint32_t ofs = mod->u32s[labels.ofs + labels.len - 1];
+
+          if ((ctrl_depth > 0) && (ctrl_depth - ofs) > 0) {
+            const pwasm_ctrl_stack_entry_t *tail = pwasm_ctrl_stack_peek_tail(&ctrl_stack, ofs);
+            if (!tail) {
+              fail(env, "br_table: ctrl_stack_peek_tail failed");
+              return false;
+            }
+
+            // get destination label
+            const size_t label = tail->label + ((tail->type == CTRL_IF) ? 1 : 0);
+
+            // emit unconditional jump to default label
+            | jmp =>label
+          } else {
+            // emit unconditional jump to exit_success
+            | jmp ->exit_success
+          }
+        }
+      }
+
+      break;
+    case PWASM_OP_RETURN:
+      // emit unconditional jump to exit_success
+      | jmp ->exit_success
+
+      break;
+    case PWASM_OP_CALL:
+      // TODO: emit store stack position, push registers
+      | mov r_arg0, env
+      | mov r_arg1, mod
+      | mov r_arg2, in.v_index
+      // TODO: | call aword pwasm_aot_jit_call_func
+      | cmp eax, 0
+      | je ->exit_failure
+      // TODO: pop registers, restore stack position
+
+      break;
+    // TODO: case PWASM_OP_CALL_INDIRECT:
+    case PWASM_OP_DROP:
+      | stack_dec
+
+      break;
+    case PWASM_OP_SELECT:
+      // pop value, compare to zero
+      | mov eax, [r_stack - sizeof(pwasm_val_t)]
+      | cmp eax, 0
+
+      // get left value (FIXME: use xmm?)
+      | cmovnz rax, [r_stack - 3 * sizeof(pwasm_val_t)]
+      | cmovnz rbx, [r_stack - 3 * sizeof(pwasm_val_t) + sizeof(uint64_t)]
+
+      // get right value (FIXME: use xmm?)
+      | cmovz rax, [r_stack - 2 * sizeof(pwasm_val_t)]
+      | cmovz rbx, [r_stack - 2 * sizeof(pwasm_val_t) + sizeof(uint64_t)]
+
+      // store result
+      | mov [r_stack - 3 * sizeof(pwasm_val_t)], rax
+      | mov [r_stack - 3 * sizeof(pwasm_val_t) + sizeof(uint64_t)], rbx
+
+      // decriment stack
+      | stack_decn 2
+
+      break;
+    case PWASM_OP_LOCAL_GET:
+      {
+        const size_t ofs = func.frame_size - in.v_index;
+
+        | mov rax, [r_base - ofs * sizeof(pwasm_val_t)]
+        | mov rbx, [r_base - ofs * sizeof(pwasm_val_t) + sizeof(uint64_t)]
+        | mov [r_stack], rax
+        | mov [r_stack + sizeof(uint64_t)], rbx
+        | stack_inc
+      }
+
+      break;
+    case PWASM_OP_LOCAL_SET:
+      {
+        const size_t ofs = func.frame_size - in.v_index;
+
+        | mov rax, [r_stack - sizeof(pwasm_val_t)]
+        | mov rbx, [r_stack - sizeof(pwasm_val_t) + sizeof(uint64_t)]
+        | mov [r_base - ofs * sizeof(pwasm_val_t)], rax
+        | mov [r_base - ofs * sizeof(pwasm_val_t) + sizeof(uint64_t)], rbx
+        | stack_dec
+      }
+
+      break;
+    case PWASM_OP_LOCAL_TEE:
+      {
+        const size_t ofs = func.frame_size - in.v_index;
+
+        | mov rax, [r_stack - sizeof(pwasm_val_t)]
+        | mov rbx, [r_stack - sizeof(pwasm_val_t) + sizeof(uint64_t)]
+        | mov [r_base - ofs * sizeof(pwasm_val_t)], rax
+        | mov [r_base - ofs * sizeof(pwasm_val_t) + sizeof(uint64_t)], rbx
+      }
+
+      break;
     case PWASM_OP_I32_CONST:
       | mov dword [r_stack], in.v_i32
       | stack_inc
@@ -498,10 +672,10 @@ pwasm_compile(
 
       break;
     case PWASM_OP_I32_SUB:
-      | mov eax, [r_stack - 2 * sizeof(pwasm_val_t)]
-      | mov ebx, [r_stack - sizeof(pwasm_val_t)]
+      | mov eax, dword [r_stack - 2 * sizeof(pwasm_val_t)]
+      | mov ebx, dword [r_stack - sizeof(pwasm_val_t)]
       | sub eax, ebx
-      | mov [r_stack - 2 * sizeof(pwasm_val_t)], eax
+      | mov dword [r_stack - 2 * sizeof(pwasm_val_t)], eax
       | stack_dec
 
       break;
@@ -515,10 +689,6 @@ pwasm_compile(
       | mov rbx, [r_stack - sizeof(pwasm_val_t)]
       | add rax, rbx
       | mov [r_stack - 2 * sizeof(pwasm_val_t)], rax
-      | stack_dec
-
-      break;
-    case PWASM_OP_DROP:
       | stack_dec
 
       break;
@@ -539,15 +709,9 @@ pwasm_compile(
   | ->exit_success:
 
   // save stack depth
-  // | mov rax, [r_arg0 + offsetof(pwasm_env_t, stack)]
-  // | add rax, offsetof(pwasm_stack_t, pos)
-  // | mov qword [rax], type.results.len
-  | mov rbx, r_stack
-  | sub rbx, r_base
-  | shr rbx, 4
-  | mov rax, [r_arg0 + offsetof(pwasm_env_t, stack)]
+  | mov rax, [r_env + offsetof(pwasm_env_t, stack)]
   | add rax, offsetof(pwasm_stack_t, pos)
-  | mov qword [rax], rbx
+  | add qword [rax], type.results.len
 
   // return success
   | epilogue

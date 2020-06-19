@@ -107,4 +107,28 @@
   )
 
   (export "br_inner" (func $br_inner))
+
+  ;;
+  ;; sub: test i32.sub
+  ;;   expect i32 a - b
+  ;;
+  (func $sub (param $a i32) (param $b i32) (result i32)
+    (i32.sub (local.get $a) (local.get $b))
+  )
+
+  (export "sub" (func $sub))
+
+  ;;
+  ;; is_99: test select, i32.sub
+  ;;   i32 99: expect 1
+  ;;   else: expect 0
+  (func $is_99 (param $v i32) (result i32)
+    (select
+      (i32.const 0)
+      (i32.const 1)
+      (i32.sub (i32.const 99) (local.get $v))
+    )
+  )
+
+  (export "is_99" (func $is_99))
 )
