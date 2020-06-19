@@ -131,4 +131,25 @@
   )
 
   (export "is_99" (func $is_99))
+
+  (global $i32 (mut i32) (i32.const 42))
+
+  ;;
+  ;; i32_get: get value of i32 global.
+  ;;
+  (func $i32_get (result i32) ;; return value
+    (global.get $i32)
+  )
+
+  (export "i32_get" (func $i32_get))
+
+  ;;
+  ;; i32_set: set value of i32 global.
+  ;;
+  (func $i32_set (param $val i32) ;; value
+    (global.set $i32 (local.get $val))
+  )
+
+  (export "i32_set" (func $i32_set))
+
 )
