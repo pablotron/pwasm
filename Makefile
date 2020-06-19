@@ -9,7 +9,7 @@ LUAJIT_DIR=$(HOME)/git/luajit-2.0
 # LIBS=-lm
 
 # debug
-CFLAGS=-W -Wall -Wextra -Werror -std=gnu11 -pedantic -g -pg -DPWASM_DEBUG
+CFLAGS=-W -Wall -Wextra -Werror -fPIC -std=gnu11 -pedantic -g -pg -DPWASM_DEBUG
 LIBS=-lm
 
 # asan
@@ -26,7 +26,7 @@ LIBS=-lm
 # LIBS=-lm -lubsan
 
 APP=pwasm
-OBJS=pwasm.o pwasm-compile.o \
+OBJS=pwasm.o pwasm-compile.o pwasm-dump.o \
      cli/main.o cli/cmds.o cli/tests.o cli/utils.o \
      cli/cmds/help.o cli/cmds/test.o cli/cmds/wat.o \
      cli/cmds/customs.o cli/cmds/cat.o cli/cmds/func.o \
