@@ -23,6 +23,7 @@ extern "C" {
  *
  * @param[out] dst      Destination buffer.
  * @param[in]  env      Execution environment.
+ * @param[in]  mod_id   Module instance handle.
  * @param[in]  mod      Module.
  * @param[in]  func_ofs Function offset in module.
  *
@@ -31,6 +32,7 @@ extern "C" {
 _Bool pwasm_compile(
   pwasm_buf_t *dst, //< destination buffer
   pwasm_env_t *env, //< execution environment
+  const uint32_t mod_id, //< module instance handle
   const pwasm_mod_t *mod, //< module
   const size_t func_ofs //< function offset
 );

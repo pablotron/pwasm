@@ -176,6 +176,7 @@ bool
 pwasm_compile(
   pwasm_buf_t * const dst,
   pwasm_env_t *env,
+  const uint32_t mod_id,
   const pwasm_mod_t *mod,
   const size_t func_ofs
 ) {
