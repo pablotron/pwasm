@@ -20051,6 +20051,7 @@ static bool
 pwasm_aot_jit_compile_func(
   pwasm_buf_t * const dst,
   pwasm_env_t * const env,
+  const uint32_t mod_id,
   const pwasm_mod_t * const mod,
   const size_t func_ofs
 ) {
@@ -20060,12 +20061,13 @@ pwasm_aot_jit_compile_func(
     return NULL;
   }
 
-  return env->cbs->compile(dst, env, mod, func_ofs);
+  return env->cbs->compile(dst, env, mod_id, mod, func_ofs);
 }
 
 static bool
 pwasm_aot_jit_compile_funcs(
   pwasm_env_t * const env,
+  const uint32_t mod_id,
   const pwasm_mod_t * const mod,
   pwasm_buf_t ** const dst
 ) {
@@ -20084,7 +20086,7 @@ pwasm_aot_jit_compile_funcs(
     // walk/compile functions
     for (size_t i = 0; i < num_codes; i++) {
       // compile function, check for error
-      if (!pwasm_aot_jit_compile_func(fns + i, env, mod, i)) {
+      if (!pwasm_aot_jit_compile_func(fns + i, env, mod_id, mod, i)) {
         // return failure
         return false;
       }
@@ -20178,6 +20180,9 @@ pwasm_aot_jit_add_mod(
     return 0;
   }
 
+  // convert offset to ID by adding 1
+  const uint32_t ret_mod_id = mod_ofs + 1;
+
   pwasm_aot_jit_mod_t * const dst_interp_mod = (pwasm_aot_jit_mod_t*) pwasm_vec_get_data(&(interp->mods)) + interp_mod_ofs;
 
   // set up a temporary frame to init globals, tables, and mems
@@ -20209,7 +20214,7 @@ pwasm_aot_jit_add_mod(
 
   // compile funcs, check for error
   pwasm_buf_t *fns = NULL;
-  if (!pwasm_aot_jit_compile_funcs(env, mod, &fns)) {
+  if (!pwasm_aot_jit_compile_funcs(env, ret_mod_id, mod, &fns)) {
     // return failure
     return 0;
   }
@@ -20223,8 +20228,8 @@ pwasm_aot_jit_add_mod(
     return 0;
   }
 
-  // return success, convert offset to ID by adding 1
-  return mod_ofs + 1;
+  // return success (non-zero mod ID)
+  return ret_mod_id;
 }
 
 static uint32_t
@@ -25496,6 +25501,17 @@ pwasm_aot_jit_on_call(
   return pwasm_aot_jit_call(env, func_id);
 }
 
+#if 0
+static uint32_t
+pwasm_aot_jit_on_get_global_index(
+  pwasm_env_t * const env,
+  const uint32_t mod_id,
+  const uint32_t global_ofs
+) {
+  return pwasm_aot_jit_get_global_index(env, mod, global_ofs);
+}
+#endif /* 0 */
+
 /*
  * AOT JIT environment callbacks.
  */
@@ -25519,6 +25535,7 @@ PWASM_AOT_JIT_CBS = {
   .get_global   = pwasm_aot_jit_on_get_global,
   .set_global   = pwasm_aot_jit_on_set_global,
   .call         = pwasm_aot_jit_on_call,
+  // .get_global_index = pwasm_aot_jit_on_get_global_index,
 };
 
 /*

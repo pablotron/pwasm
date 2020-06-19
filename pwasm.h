@@ -2308,16 +2308,33 @@ typedef struct {
    *
    * @param[out]  dst       Destination buffer
    * @param[in]   env       Execution environment
+   * @param[in]   mod       Module instance handle
    * @param[in]   mod       Module
-   * @param[in]   func_ofs  Function offset
+   * @param[in]   func_ofs  Function offset in module
    *
    * @return `true` on success or `false` on error.
    */
   _Bool (*compile)(
     pwasm_buf_t *, // destination buffer
     pwasm_env_t *, // env
+    const uint32_t mod_id, // module instance handle
     const pwasm_mod_t *, // mod
     const size_t func_ofs // function offset
+  );
+
+  /**
+   * Map module index to environment index.
+   *
+   * @param[in]   env         Execution environment
+   * @param[in]   mod_id      Module instance handle
+   * @param[in]   global_ofs  Global offset in module
+   *
+   * @return `true` on success or `false` on error.
+   */
+  uint32_t (*get_global_index)(
+    pwasm_env_t *env, // env
+    const uint32_t mod_id, // module instance handle
+    const uint32_t global_ofs // global index in module
   );
 } pwasm_env_cbs_t;
 
@@ -2929,6 +2946,7 @@ const pwasm_env_cbs_t *pwasm_new_interpreter_get_cbs(void);
  *
  * @param[out] dst       Destination buffer.
  * @param[in]  env       Execution environment.
+ * @param[in]  mod       Module instance handle.
  * @param[in]  mod       Module.
  * @param[in]  func_ofs  Function offset in module.
  *
@@ -2937,6 +2955,7 @@ const pwasm_env_cbs_t *pwasm_new_interpreter_get_cbs(void);
 typedef _Bool (pwasm_compile_func_t)(
   pwasm_buf_t *dst,
   pwasm_env_t *env,
+  const uint32_t mod_id,
   const pwasm_mod_t *mod,
   const size_t func_ofs
 );
