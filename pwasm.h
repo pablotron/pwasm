@@ -2025,6 +2025,25 @@ typedef struct {
   );
 
   /**
+   * Get module instance name by handle
+   *
+   * Callback to get the name of a module instance from an execution
+   * environment, given the module's handle.
+   *
+   * @param env     Execution environment
+   * @param mod_id  Module instance handle
+   *
+   * @return Read-only pointer to buffer containing module instance name
+   * and length or `NULL` if the given module handle is invalid.
+   *
+   * @note The pointer to the name string is not null terminated.
+   */
+  const pwasm_buf_t *(*get_mod_name)(
+    pwasm_env_t *env,
+    const uint32_t mod_id
+  );
+
+  /**
    * Get module by name.
    *
    * Callback to get a module from an execution environment with the
@@ -2490,6 +2509,21 @@ uint32_t pwasm_env_add_native(
  * @return Pointer to module, or `NULL` on error.
  */
 const pwasm_mod_t *pwasm_env_get_mod(
+  pwasm_env_t *env,
+  const uint32_t mod_id
+);
+
+/**
+ * Get the name of the given module
+ *
+ * @ingroup env-low
+ *
+ * @param env     Execution environment
+ * @param mod_id  Module instance handle
+ *
+ * @return Pointer to module, or `NULL` on error.
+ */
+const pwasm_buf_t *pwasm_env_get_mod_name(
   pwasm_env_t *env,
   const uint32_t mod_id
 );
