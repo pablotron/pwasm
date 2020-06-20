@@ -21,6 +21,8 @@ tag.
 * [ ] doc: add internal documentation
 * [ ] doc, test: document v128 `avgr_u` rounding
 * [ ] doc, test: investigate/document rounding mode for `f32/f64.div` (fenv)
+* [ ] code, test: confirm `roundss` rounding modes (used for
+      `f32.{floor,ceil,trunc,nearest}` insts)
 * [ ] code, cleanup: consider calloc() for memory init (zero mem, bounds check)
 * [ ] code, test: check uses of realloc() for overflow (security)
 * [ ] cli, cleanup: properly escape values in CSV columns
