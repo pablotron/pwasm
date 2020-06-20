@@ -759,9 +759,36 @@ pwasm_compile(
       }
 
       break;
+    // TODO: load, store, mem.grow, mem.size
+    // (need call to work before i can implement these)
     case PWASM_OP_I32_CONST:
       | mov dword [r_stack], in.v_i32
       | stack_inc
+
+      break;
+    case PWASM_OP_I64_CONST:
+      | mov qword [r_stack], in.v_i64
+      | stack_inc
+
+      break;
+    case PWASM_OP_F32_CONST:
+      | mov qword [r_stack], in.v_f32
+      | stack_inc
+
+      break;
+    case PWASM_OP_F64_CONST:
+      | mov qword [r_stack], in.v_f64
+      | stack_inc
+
+      break;
+    case PWASM_OP_I32_EQZ:
+      | mov eax, [r_stack - sizeof(pwasm_val_t)]
+      | mov ebx, 1
+      | mov ecx, 0
+      | cmp eax, 0
+      | cmove eax, ebx
+      | cmovne eax, ecx
+      | mov [r_stack - sizeof(pwasm_val_t)], eax
 
       break;
     case PWASM_OP_I32_ADD:
@@ -778,11 +805,6 @@ pwasm_compile(
       | sub eax, ebx
       | mov dword [r_stack - 2 * sizeof(pwasm_val_t)], eax
       | stack_dec
-
-      break;
-    case PWASM_OP_I64_CONST:
-      | mov qword [r_stack], in.v_i64
-      | stack_inc
 
       break;
     case PWASM_OP_I64_ADD:
