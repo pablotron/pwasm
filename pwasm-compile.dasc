@@ -82,6 +82,76 @@
   | sub r_stack, (num * sizeof(pwasm_val_t))
 |.endmacro
 
+|.macro i32_testop_init
+  | mov eax, [r_stack - sizeof(pwasm_val_t)]
+  | mov ebx, 1
+  | mov ecx, 0
+|.endmacro
+
+|.macro i32_testop_fini
+  | cmove eax, ebx
+  | cmovne eax, ecx
+  | mov [r_stack - sizeof(pwasm_val_t)], eax
+|.endmacro
+
+|.macro i32_relop_init
+  | mov eax, [r_stack - sizeof(pwasm_val_t)]
+  | mov ebx, [r_stack - 2 * sizeof(pwasm_val_t)]
+  | mov ecx, 1
+  | mov edx, 0
+  | cmp eax, ebx
+|.endmacro
+
+|.macro i32_relop_fini
+  | mov [r_stack - 2 * sizeof(pwasm_val_t)], eax
+  | stack_dec
+|.endmacro
+
+|.macro i32_binop_init
+  | mov eax, [r_stack - 2 * sizeof(pwasm_val_t)]
+  | mov ebx, [r_stack - sizeof(pwasm_val_t)]
+|.endmacro
+
+|.macro i32_binop_fini
+  | mov [r_stack - 2 * sizeof(pwasm_val_t)], eax
+  | stack_dec
+|.endmacro
+
+|.macro i64_testop_init
+  | mov rax, [r_stack - sizeof(pwasm_val_t)]
+  | mov ebx, 1
+  | mov ecx, 0
+|.endmacro
+
+|.macro i64_testop_fini
+  | cmove eax, ebx
+  | cmovne eax, ecx
+  | mov [r_stack - sizeof(pwasm_val_t)], eax
+|.endmacro
+
+|.macro i64_relop_init
+  | mov rax, [r_stack - sizeof(pwasm_val_t)]
+  | mov rbx, [r_stack - 2 * sizeof(pwasm_val_t)]
+  | mov ecx, 1
+  | mov edx, 0
+  | cmp rax, rbx
+|.endmacro
+
+|.macro i64_relop_fini
+  | mov [r_stack - 2 * sizeof(pwasm_val_t)], eax
+  | stack_dec
+|.endmacro
+
+|.macro i64_binop_init
+  | mov rax, [r_stack - 2 * sizeof(pwasm_val_t)]
+  | mov rbx, [r_stack - sizeof(pwasm_val_t)]
+|.endmacro
+
+|.macro i64_binop_fini
+  | mov [r_stack - 2 * sizeof(pwasm_val_t)], rax
+  | stack_dec
+|.endmacro
+
 /**
  * Call error handler.
  */
@@ -782,53 +852,167 @@ pwasm_compile(
 
       break;
     case PWASM_OP_I32_EQZ:
-      | mov eax, [r_stack - sizeof(pwasm_val_t)]
-      | mov ebx, 1
-      | mov ecx, 0
+      | i32_testop_init
       | cmp eax, 0
-      | cmove eax, ebx
-      | cmovne eax, ecx
-      | mov [r_stack - sizeof(pwasm_val_t)], eax
+      | i32_testop_fini
 
       break;
     case PWASM_OP_I32_EQ:
-      | mov eax, [r_stack - sizeof(pwasm_val_t)]
-      | mov ebx, [r_stack - 2 * sizeof(pwasm_val_t)]
-      | mov ecx, 1
-      | mov edx, 0
-      | cmp eax, ebx
+      | i32_relop_init
       | cmove eax, ecx
       | cmovne eax, edx
-      | mov [r_stack - 2 * sizeof(pwasm_val_t)], eax
-      | stack_dec
+      | i32_relop_fini
 
       break;
     case PWASM_OP_I32_NE:
-      | mov eax, [r_stack - sizeof(pwasm_val_t)]
-      | mov ebx, [r_stack - 2 * sizeof(pwasm_val_t)]
-      | mov ecx, 0
-      | mov edx, 1
-      | cmp eax, ebx
+      | i32_relop_init
+      | cmovne eax, ecx
+      | cmove eax, edx
+      | i32_relop_fini
+
+      break;
+    case PWASM_OP_I32_LT_S:
+      | i32_relop_init
+      | cmovl eax, ecx
+      | cmovge eax, edx
+      | i32_relop_fini
+
+      break;
+    case PWASM_OP_I32_LT_U:
+      | i32_relop_init
+      | cmovb eax, ecx
+      | cmovae eax, edx
+      | i32_relop_fini
+
+      break;
+    case PWASM_OP_I32_GT_S:
+      | i32_relop_init
+      | cmovg eax, ecx
+      | cmovle eax, edx
+      | i32_relop_fini
+
+      break;
+    case PWASM_OP_I32_GT_U:
+      | i32_relop_init
+      | cmova eax, ecx
+      | cmovbe eax, edx
+      | i32_relop_fini
+
+      break;
+    case PWASM_OP_I32_LE_S:
+      | i32_relop_init
+      | cmovle eax, ecx
+      | cmovg eax, edx
+      | i32_relop_fini
+
+      break;
+    case PWASM_OP_I32_LE_U:
+      | i32_relop_init
+      | cmovbe eax, ecx
+      | cmova eax, edx
+      | i32_relop_fini
+
+      break;
+    case PWASM_OP_I32_GE_S:
+      | i32_relop_init
+      | cmovge eax, ecx
+      | cmovl eax, edx
+      | i32_relop_fini
+
+      break;
+    case PWASM_OP_I32_GE_U:
+      | i32_relop_init
+      | cmovae eax, ecx
+      | cmovb eax, edx
+      | i32_relop_fini
+
+      break;
+    case PWASM_OP_I64_EQZ:
+      | i64_testop_init
+      | cmp rax, 0
+      | i64_testop_fini
+
+      break;
+    case PWASM_OP_I64_EQ:
+      | i64_relop_init
       | cmove eax, ecx
       | cmovne eax, edx
-      | mov [r_stack - 2 * sizeof(pwasm_val_t)], eax
-      | stack_dec
+      | i64_relop_fini
+
+      break;
+    case PWASM_OP_I64_NE:
+      | i64_relop_init
+      | cmovne eax, ecx
+      | cmove eax, edx
+      | i64_relop_fini
+
+      break;
+    case PWASM_OP_I64_LT_S:
+      | i64_relop_init
+      | cmovl eax, ecx
+      | cmovge eax, edx
+      | i64_relop_fini
+
+      break;
+    case PWASM_OP_I64_LT_U:
+      | i64_relop_init
+      | cmovb eax, ecx
+      | cmovae eax, edx
+      | i64_relop_fini
+
+      break;
+    case PWASM_OP_I64_GT_S:
+      | i64_relop_init
+      | cmovg eax, ecx
+      | cmovle eax, edx
+      | i64_relop_fini
+
+      break;
+    case PWASM_OP_I64_GT_U:
+      | i64_relop_init
+      | cmova eax, ecx
+      | cmovbe eax, edx
+      | i64_relop_fini
+
+      break;
+    case PWASM_OP_I64_LE_S:
+      | i64_relop_init
+      | cmovle eax, ecx
+      | cmovg eax, edx
+      | i64_relop_fini
+
+      break;
+    case PWASM_OP_I64_LE_U:
+      | i64_relop_init
+      | cmovbe eax, ecx
+      | cmova eax, edx
+      | i64_relop_fini
+
+      break;
+    case PWASM_OP_I64_GE_S:
+      | i64_relop_init
+      | cmovge eax, ecx
+      | cmovl eax, edx
+      | i64_relop_fini
+
+      break;
+    case PWASM_OP_I64_GE_U:
+      | i64_relop_init
+      | cmovae eax, ecx
+      | cmovb eax, edx
+      | i64_relop_fini
 
       break;
     case PWASM_OP_I32_ADD:
-      | mov eax, [r_stack - 2 * sizeof(pwasm_val_t)]
-      | mov ebx, [r_stack - sizeof(pwasm_val_t)]
+      | i32_binop_init
       | add eax, ebx
-      | mov [r_stack - 2 * sizeof(pwasm_val_t)], eax
-      | stack_dec
+      | i32_binop_fini
 
       break;
     case PWASM_OP_I32_SUB:
-      | mov eax, dword [r_stack - 2 * sizeof(pwasm_val_t)]
-      | mov ebx, dword [r_stack - sizeof(pwasm_val_t)]
+      | i32_binop_init
       | sub eax, ebx
-      | mov dword [r_stack - 2 * sizeof(pwasm_val_t)], eax
-      | stack_dec
+      | i32_binop_fini
 
       break;
     case PWASM_OP_I64_ADD:
