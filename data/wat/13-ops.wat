@@ -559,7 +559,7 @@
   (export "test_i32_eq" (func $test_i32_eq))
 
   ;;
-  ;; test_i32_eq:
+  ;; test_i32_ne:
   ;;   expect $a != $b: i32 1
   ;;   expect $a == $b: i32 0
   ;;
