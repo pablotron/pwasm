@@ -709,4 +709,154 @@
   )
 
   (export "i32_rotr" (func $i32_rotr))
+
+  ;;
+  ;; i64_add:
+  ;;   expect i64 $a + $b
+  ;;
+  (func $i64_add (param $a i64) (param $b i64) (result i64)
+    (i64.add (local.get $a) (local.get $b))
+  )
+
+  (export "i64_add" (func $i64_add))
+
+  ;;
+  ;; i64_sub:
+  ;;   expect i64 $a - $b
+  ;;
+  (func $i64_sub (param $a i64) (param $b i64) (result i64)
+    (i64.sub (local.get $a) (local.get $b))
+  )
+
+  (export "i64_sub" (func $i64_sub))
+
+  ;;
+  ;; i64_mul:
+  ;;   expect i64 $a * $b
+  ;;
+  (func $i64_mul (param $a i64) (param $b i64) (result i64)
+    (i64.mul (local.get $a) (local.get $b))
+  )
+
+  (export "i64_mul" (func $i64_mul))
+
+  ;;
+  ;; i64_div_s:
+  ;;   expect i64 $a / $b (signed)
+  ;;
+  (func $i64_div_s (param $a i64) (param $b i64) (result i64)
+    (i64.div_s (local.get $a) (local.get $b))
+  )
+
+  (export "i64_div_s" (func $i64_div_s))
+
+  ;;
+  ;; i64_div_u:
+  ;;   expect i64 $a / $b (unsigned)
+  ;;
+  (func $i64_div_u (param $a i64) (param $b i64) (result i64)
+    (i64.div_u (local.get $a) (local.get $b))
+  )
+
+  (export "i64_div_u" (func $i64_div_u))
+
+  ;;
+  ;; i64_rem_s:
+  ;;   expect i64 $a % $b (signed)
+  ;;
+  (func $i64_rem_s (param $a i64) (param $b i64) (result i64)
+    (i64.rem_s (local.get $a) (local.get $b))
+  )
+
+  (export "i64_rem_s" (func $i64_rem_s))
+
+  ;;
+  ;; i64_rem_u:
+  ;;   expect i64 $a % $b (unsigned)
+  ;;
+  (func $i64_rem_u (param $a i64) (param $b i64) (result i64)
+    (i64.rem_u (local.get $a) (local.get $b))
+  )
+
+  (export "i64_rem_u" (func $i64_rem_u))
+
+  ;;
+  ;; i64_and:
+  ;;   expect i64 $a & $b
+  ;;
+  (func $i64_and (param $a i64) (param $b i64) (result i64)
+    (i64.and (local.get $a) (local.get $b))
+  )
+
+  (export "i64_and" (func $i64_and))
+
+  ;;
+  ;; i64_or:
+  ;;   expect i64 $a | $b
+  ;;
+  (func $i64_or (param $a i64) (param $b i64) (result i64)
+    (i64.or (local.get $a) (local.get $b))
+  )
+
+  (export "i64_or" (func $i64_or))
+
+  ;;
+  ;; i64_xor:
+  ;;   expect i64 $a ^ $b
+  ;;
+  (func $i64_xor (param $a i64) (param $b i64) (result i64)
+    (i64.xor (local.get $a) (local.get $b))
+  )
+
+  (export "i64_xor" (func $i64_xor))
+
+  ;;
+  ;; i64_shl:
+  ;;   expect i64 $a << $b
+  ;;
+  (func $i64_shl (param $a i64) (param $b i64) (result i64)
+    (i64.shl (local.get $a) (local.get $b))
+  )
+
+  (export "i64_shl" (func $i64_shl))
+
+  ;;
+  ;; i64_shr_s:
+  ;;   expect i64 $a >> $b (signed)
+  ;;
+  (func $i64_shr_s (param $a i64) (param $b i64) (result i64)
+    (i64.shr_s (local.get $a) (local.get $b))
+  )
+
+  (export "i64_shr_s" (func $i64_shr_s))
+
+  ;;
+  ;; i64_shr_u:
+  ;;   expect i64 $a >> $b (unsigned)
+  ;;
+  (func $i64_shr_u (param $a i64) (param $b i64) (result i64)
+    (i64.shr_u (local.get $a) (local.get $b))
+  )
+
+  (export "i64_shr_u" (func $i64_shr_u))
+
+  ;;
+  ;; i64_rotl:
+  ;;   expect i64 $a <<< $b
+  ;;
+  (func $i64_rotl (param $a i64) (param $b i64) (result i64)
+    (i64.rotl (local.get $a) (local.get $b))
+  )
+
+  (export "i64_rotl" (func $i64_rotl))
+
+  ;;
+  ;; i64_rotr:
+  ;;   expect i64 $a >>> $b
+  ;;
+  (func $i64_rotr (param $a i64) (param $b i64) (result i64)
+    (i64.rotr (local.get $a) (local.get $b))
+  )
+
+  (export "i64_rotr" (func $i64_rotr))
 )
