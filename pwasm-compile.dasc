@@ -791,6 +791,30 @@ pwasm_compile(
       | mov [r_stack - sizeof(pwasm_val_t)], eax
 
       break;
+    case PWASM_OP_I32_EQ:
+      | mov eax, [r_stack - sizeof(pwasm_val_t)]
+      | mov ebx, [r_stack - 2 * sizeof(pwasm_val_t)]
+      | mov ecx, 1
+      | mov edx, 0
+      | cmp eax, ebx
+      | cmove eax, ecx
+      | cmovne eax, edx
+      | mov [r_stack - 2 * sizeof(pwasm_val_t)], eax
+      | stack_dec
+
+      break;
+    case PWASM_OP_I32_NE:
+      | mov eax, [r_stack - sizeof(pwasm_val_t)]
+      | mov ebx, [r_stack - 2 * sizeof(pwasm_val_t)]
+      | mov ecx, 0
+      | mov edx, 1
+      | cmp eax, ebx
+      | cmove eax, ecx
+      | cmovne eax, edx
+      | mov [r_stack - 2 * sizeof(pwasm_val_t)], eax
+      | stack_dec
+
+      break;
     case PWASM_OP_I32_ADD:
       | mov eax, [r_stack - 2 * sizeof(pwasm_val_t)]
       | mov ebx, [r_stack - sizeof(pwasm_val_t)]

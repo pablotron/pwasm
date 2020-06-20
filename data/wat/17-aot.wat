@@ -160,4 +160,30 @@
   )
 
   (export "i32_eqz" (func $i32_eqz))
+
+  ;;
+  ;; i32_eq:
+  ;;   expect $a == $b: i32 1
+  ;;   expect $a != $b: i32 0
+  ;;
+  (func $i32_eq (param $a i32)
+                     (param $b i32)
+                     (result i32)
+    (i32.eq (local.get $a) (local.get $b))
+  )
+
+  (export "i32_eq" (func $i32_eq))
+
+  ;;
+  ;; i32_ne:
+  ;;   expect $a != $b: i32 1
+  ;;   expect $a == $b: i32 0
+  ;;
+  (func $i32_ne (param $a i32)
+                     (param $b i32)
+                     (result i32)
+    (i32.ne (local.get $a) (local.get $b))
+  )
+
+  (export "i32_ne" (func $i32_ne))
 )
