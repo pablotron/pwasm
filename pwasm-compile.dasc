@@ -132,6 +132,14 @@
   | mov [r_stack - sizeof(pwasm_val_t)], eax
 |.endmacro
 
+|.macro i64_unop_init
+  | mov rax, [r_stack - sizeof(pwasm_val_t)]
+|.endmacro
+
+|.macro i64_unop_fini
+  | mov [r_stack - sizeof(pwasm_val_t)], rax
+|.endmacro
+
 |.macro i64_relop_init
   | mov rax, [r_stack - 2 * sizeof(pwasm_val_t)]
   | mov rbx, [r_stack - sizeof(pwasm_val_t)]
@@ -1114,7 +1122,6 @@ pwasm_compile(
 
       break;
     case PWASM_OP_I32_MUL:
-      // FIXME: should i be using mul or imul here?
       | i32_binop_init
       | mul ebx
       | i32_binop_fini
@@ -1203,12 +1210,127 @@ pwasm_compile(
       | i32_binop_fini
 
       break;
+    case PWASM_OP_I64_CLZ:
+      // FIXME: use lzcnt instead of bsr?
+      | i64_unop_init
+      | bsr rbx, rax
+      | mov eax, 63
+      | sub eax, ebx
+      | i64_unop_fini
+
+      break;
+    case PWASM_OP_I64_CTZ:
+      // FIXME: use tzcnt instead of bsf?
+      | i64_unop_init
+      | bsf rax, rax
+      | i64_unop_fini
+
+      break;
+    case PWASM_OP_I64_POPCNT:
+      | i64_unop_init
+      | popcnt rax, rax
+      | i64_unop_fini
+
+      break;
     case PWASM_OP_I64_ADD:
-      | mov rax, [r_stack - 2 * sizeof(pwasm_val_t)]
-      | mov rbx, [r_stack - sizeof(pwasm_val_t)]
+      | i64_binop_init
       | add rax, rbx
-      | mov [r_stack - 2 * sizeof(pwasm_val_t)], rax
-      | stack_dec
+      | i64_binop_fini
+
+      break;
+    case PWASM_OP_I64_SUB:
+      | i64_binop_init
+      | sub rax, rbx
+      | i64_binop_fini
+
+      break;
+    case PWASM_OP_I64_MUL:
+      | i64_binop_init
+      | mul rbx
+      | i64_binop_fini
+
+      break;
+    case PWASM_OP_I64_DIV_S:
+      | i64_binop_init
+      | cdq           // sign-extend eax into edx
+      | idiv rbx      // signed divide
+      | i64_binop_fini
+
+      break;
+    case PWASM_OP_I64_DIV_U:
+      | i64_binop_init
+      | mov rdx, 0    // zero-extend into edx
+      | div rbx       // unsigned divide
+      | i64_binop_fini
+
+      break;
+    case PWASM_OP_I64_REM_S:
+      | i64_binop_init
+      | cdq           // sign-extend eax into edx
+      | idiv rbx      // signed divide
+      | mov rax, rdx  // save remainder
+      | i64_binop_fini
+
+      break;
+    case PWASM_OP_I64_REM_U:
+      | i64_binop_init
+      | mov rdx, 0    // zero edx
+      | div rbx       // unsigned divide
+      | mov rax, rdx  // save remainder
+      | i64_binop_fini
+
+      break;
+    case PWASM_OP_I64_AND:
+      | i64_binop_init
+      | and rax, rbx
+      | i64_binop_fini
+
+      break;
+    case PWASM_OP_I64_OR:
+      | i64_binop_init
+      | or rax, rbx
+      | i64_binop_fini
+
+      break;
+    case PWASM_OP_I64_XOR:
+      | i64_binop_init
+      | xor rax, rbx
+      | i64_binop_fini
+
+      break;
+    case PWASM_OP_I64_SHL:
+      | i64_binop_init
+      | mov cl, bl    // move shift to cl
+      | shl rax, cl   // shift left
+      | i64_binop_fini
+
+      break;
+    case PWASM_OP_I64_SHR_S:
+      | i64_binop_init
+      | mov cl, bl    // move shift to cl
+      | sar rax, cl   // shift right (arithmetic)
+      | i64_binop_fini
+
+      break;
+    case PWASM_OP_I64_SHR_U:
+      | i64_binop_init
+      | mov cl, bl    // move shift to cl
+      | shr rax, cl   // shift right (logical)
+      | i64_binop_fini
+
+      break;
+    case PWASM_OP_I64_ROTL:
+      | i64_binop_init
+      | mov cl, bl    // move shift to cl
+      | rol rax, cl   // rotate left
+      | i64_binop_fini
+
+      break;
+    case PWASM_OP_I64_ROTR:
+      | i64_binop_init
+      | mov cl, bl    // move shift to cl
+      | ror rax, cl   // rotate right
+      | i64_binop_fini
 
       break;
     default:
