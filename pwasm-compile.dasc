@@ -163,11 +163,11 @@
 |.endmacro
 
 |.macro f32_unop_init
-  | movd xmm0, dword [r_stack - sizeof(pwasm_val_t)]
+  | movss xmm0, dword [r_stack - sizeof(pwasm_val_t)]
 |.endmacro
 
 |.macro f32_unop_fini
-  | movd dword [r_stack - sizeof(pwasm_val_t)], xmm0
+  | movss dword [r_stack - sizeof(pwasm_val_t)], xmm0
 |.endmacro
 
 |.macro f32_relop_init
@@ -178,6 +178,16 @@
 |.macro f32_relop_fini
   | psrld xmm0, 31
   | movd dword [r_stack - 2 * sizeof(pwasm_val_t)], xmm0
+  | stack_dec
+|.endmacro
+
+|.macro f32_binop_init
+  | movss xmm0, dword [r_stack - 2 * sizeof(pwasm_val_t)]
+  | movss xmm1, dword [r_stack - sizeof(pwasm_val_t)]
+|.endmacro
+
+|.macro f32_binop_fini
+  | movss dword [r_stack - 2 * sizeof(pwasm_val_t)], xmm0
   | stack_dec
 |.endmacro
 
@@ -1349,46 +1359,96 @@ pwasm_compile(
       | pcmpeqd  xmm5, xmm5 // fill xmm5 with 0xFF
       | psrld xmm5, 1 // logical shift right one bit (0x7F)
       | andps xmm0, xmm5 // mask sign bit
-      | f32_unop_init
+      | f32_unop_fini
 
       break;
     case PWASM_OP_F32_NEG:
       | f32_unop_init
       | xorps xmm6, xmm6 // xmm6 = 0
       | subss xmm6, xmm0 // xmm6 -= xmm0
-      | movss xmm0, xmm6 // xmm0 = xmm5
-      | f32_unop_init
+      | movss xmm0, xmm6 // xmm0 = xmm6
+      | f32_unop_fini
 
       break;
     case PWASM_OP_F32_CEIL:
       | f32_unop_init
       | roundps xmm0, xmm0, 2 // xmm0 = ceil(xmm0)
-      | f32_unop_init
+      | f32_unop_fini
 
       break;
     case PWASM_OP_F32_FLOOR:
       | f32_unop_init
       | roundps xmm0, xmm0, 1 // xmm0 = floor(xmm0)
-      | f32_unop_init
+      | f32_unop_fini
 
       break;
     case PWASM_OP_F32_TRUNC:
       | f32_unop_init
       | roundps xmm0, xmm0, 3 // xmm0 = trunc(xmm0)
-      | f32_unop_init
+      | f32_unop_fini
 
       break;
     case PWASM_OP_F32_NEAREST:
       | f32_unop_init
-      // FIXME: confirm rounding mode
       | roundps  xmm0, xmm0, 0 // xmm0 = round(xmm0)
-      | f32_unop_init
+      | f32_unop_fini
 
       break;
     case PWASM_OP_F32_SQRT:
       | f32_unop_init
       | sqrtss xmm0, xmm0 // xmm0 = sqrt(xmm0)
-      | f32_unop_init
+      | f32_unop_fini
+
+      break;
+    case PWASM_OP_F32_ADD:
+      | f32_binop_init
+      | addss xmm0, xmm1 // xmm0 += xmm1
+      | f32_binop_fini
+
+      break;
+    case PWASM_OP_F32_SUB:
+      | f32_binop_init
+      | subss xmm0, xmm1 // xmm0 -= xmm1
+      | f32_binop_fini
+
+      break;
+    case PWASM_OP_F32_MUL:
+      | f32_binop_init
+      | mulss xmm0, xmm1 // xmm0 *= xmm1
+      | f32_binop_fini
+
+      break;
+    case PWASM_OP_F32_DIV:
+      | f32_binop_init
+      | mulss xmm0, xmm1 // xmm0 /= xmm1
+      | f32_binop_fini
+
+      break;
+    case PWASM_OP_F32_MIN:
+      | f32_binop_init
+      | minss xmm0, xmm1 // xmm0 = min(xmm0, xmm1)
+      | f32_binop_fini
+
+      break;
+    case PWASM_OP_F32_MAX:
+      | f32_binop_init
+      | maxss xmm0, xmm1 // xmm0 = max(xmm0, xmm1)
+      | f32_binop_fini
+
+      break;
+    case PWASM_OP_F32_COPYSIGN:
+      | f32_binop_init
+      // FIXME: the next two lines should eventually be generated in the
+      // prologue
+      // ref: https://stackoverflow.com/questions/32408665/fastest-way-to-compute-absolute-value-using-sse
+      | pcmpeqd  xmm5, xmm5 // xmm5 = 0xFFFFFFFF
+      | psrld xmm5, 1       // xmm5 >>= 1 (0x7FFFFFFF)
+      | andps xmm0, xmm5    // xmm0 &= xmm5 (exclude sign bit)
+      | pcmpeqd xmm6, xmm6  // xmm5 = 0xFFFFFFFF
+      | pslld xmm6, 31      // xmm6 <<= 31 (0x8000000)
+      | andps xmm1, xmm6    // xmm1 &= xmm6 (only sign bit)
+      | orps xmm0, xmm1     // xmm0 |= xmm1
+      | f32_binop_fini
 
       break;
     default:
