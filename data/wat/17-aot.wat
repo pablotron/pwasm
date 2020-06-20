@@ -432,4 +432,82 @@
   )
 
   (export "i64_ge_u" (func $i64_ge_u))
+
+  ;;
+  ;; f32_eq:
+  ;;   expect $a == $b: i32 1
+  ;;   expect $a != $b: i32 0
+  ;;
+  (func $f32_eq (param $a f32)
+                     (param $b f32)
+                     (result i32)
+    (f32.eq (local.get $a) (local.get $b))
+  )
+
+  (export "f32_eq" (func $f32_eq))
+
+  ;;
+  ;; f32_ne:
+  ;;   expect $a != $b: i32 1
+  ;;   expect $a == $b: i32 0
+  ;;
+  (func $f32_ne (param $a f32)
+                     (param $b f32)
+                     (result i32)
+    (f32.ne (local.get $a) (local.get $b))
+  )
+
+  (export "f32_ne" (func $f32_ne))
+
+  ;;
+  ;; f32_lt:
+  ;;   expect $a < $b: i32 1
+  ;;   expect $a >= $b: i32 0
+  ;;
+  (func $f32_lt (param $a f32)
+                     (param $b f32)
+                     (result i32)
+    (f32.lt (local.get $a) (local.get $b))
+  )
+
+  (export "f32_lt" (func $f32_lt))
+
+  ;;
+  ;; f32_gt:
+  ;;   expect $a > $b: i32 1
+  ;;   expect $a <= $b: i32 0
+  ;;
+  (func $f32_gt (param $a f32)
+                     (param $b f32)
+                     (result i32)
+    (f32.gt (local.get $a) (local.get $b))
+  )
+
+  (export "f32_gt" (func $f32_gt))
+
+  ;;
+  ;; f32_le:
+  ;;   expect $a <= $b: i32 1
+  ;;   expect $a > $b: i32 0
+  ;;
+  (func $f32_le (param $a f32)
+                     (param $b f32)
+                     (result i32)
+    (f32.le (local.get $a) (local.get $b))
+  )
+
+  (export "f32_le" (func $f32_le))
+
+  ;;
+  ;; f32_ge:
+  ;;   expect $a >= $b: i32 1
+  ;;   expect $a < $b: i32 0
+  ;;
+  (func $f32_ge (param $a f32)
+                     (param $b f32)
+                     (result i32)
+    (f32.ge (local.get $a) (local.get $b))
+  )
+
+  (export "f32_ge" (func $f32_ge))
 )

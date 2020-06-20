@@ -146,6 +146,18 @@
   | stack_dec
 |.endmacro
 
+|.macro f32_relop_init
+  | movd xmm0, dword [r_stack - 2 * sizeof(pwasm_val_t)]
+  | movd xmm1, dword [r_stack - sizeof(pwasm_val_t)]
+|.endmacro
+
+|.macro f32_relop_fini
+  | psrld xmm0, 31
+  | movd dword [r_stack - 2 * sizeof(pwasm_val_t)], xmm0
+  | stack_dec
+|.endmacro
+
+
 /**
  * Call error handler.
  */
@@ -975,6 +987,42 @@ pwasm_compile(
       | i64_relop_init
       | setae al
       | i64_relop_fini
+
+      break;
+    case PWASM_OP_F32_EQ:
+      | f32_relop_init
+      | cmpss xmm0, xmm1, 0
+      | f32_relop_fini
+
+      break;
+    case PWASM_OP_F32_NE:
+      | f32_relop_init
+      | cmpss xmm0, xmm1, 4
+      | f32_relop_fini
+
+      break;
+    case PWASM_OP_F32_LT:
+      | f32_relop_init
+      | cmpss xmm0, xmm1, 1
+      | f32_relop_fini
+
+      break;
+    case PWASM_OP_F32_GT:
+      | f32_relop_init
+      | cmpss xmm0, xmm1, 6
+      | f32_relop_fini
+
+      break;
+    case PWASM_OP_F32_LE:
+      | f32_relop_init
+      | cmpss xmm0, xmm1, 2
+      | f32_relop_fini
+
+      break;
+    case PWASM_OP_F32_GE:
+      | f32_relop_init
+      | cmpss xmm0, xmm1, 5
+      | f32_relop_fini
 
       break;
     case PWASM_OP_I32_ADD:
