@@ -1036,4 +1036,144 @@
   )
 
   (export "f32_copysign" (func $f32_copysign))
+
+  ;;
+  ;; f64_abs:
+  ;;   expect f64 $a
+  ;;
+  (func $f64_abs (param $a f64) (result f64)
+    (f64.abs (local.get $a))
+  )
+
+  (export "f64_abs" (func $f64_abs))
+
+  ;;
+  ;; f64_neg:
+  ;;   expect f64 -$a
+  ;;
+  (func $f64_neg (param $a f64) (result f64)
+    (f64.neg (local.get $a))
+  )
+
+  (export "f64_neg" (func $f64_neg))
+
+  ;;
+  ;; f64_ceil:
+  ;;   expect f64 ceil($a)
+  ;;
+  (func $f64_ceil (param $a f64) (result f64)
+    (f64.ceil (local.get $a))
+  )
+
+  (export "f64_ceil" (func $f64_ceil))
+
+  ;;
+  ;; f64_floor:
+  ;;   expect f64 floor($a)
+  ;;
+  (func $f64_floor (param $a f64) (result f64)
+    (f64.floor (local.get $a))
+  )
+
+  (export "f64_floor" (func $f64_floor))
+
+  ;;
+  ;; f64_trunc:
+  ;;   expect f64 trunc($a)
+  ;;
+  (func $f64_trunc (param $a f64) (result f64)
+    (f64.trunc (local.get $a))
+  )
+
+  (export "f64_trunc" (func $f64_trunc))
+
+  ;;
+  ;; f64_nearest:
+  ;;   expect f64 nearest($a)
+  ;;
+  (func $f64_nearest (param $a f64) (result f64)
+    (f64.nearest (local.get $a))
+  )
+
+  (export "f64_nearest" (func $f64_nearest))
+
+  ;;
+  ;; f64_sqrt:
+  ;;   expect f64 sqrt($a)
+  ;;
+  (func $f64_sqrt (param $a f64) (result f64)
+    (f64.sqrt (local.get $a))
+  )
+
+  (export "f64_sqrt" (func $f64_sqrt))
+
+  ;;
+  ;; f64_add:
+  ;;   expect f64 $a + $b
+  ;;
+  (func $f64_add (param $a f64) (param $b f64) (result f64)
+    (f64.add (local.get $a) (local.get $b))
+  )
+
+  (export "f64_add" (func $f64_add))
+
+  ;;
+  ;; f64_sub:
+  ;;   expect f64 $a - $b
+  ;;
+  (func $f64_sub (param $a f64) (param $b f64) (result f64)
+    (f64.sub (local.get $a) (local.get $b))
+  )
+
+  (export "f64_sub" (func $f64_sub))
+
+  ;;
+  ;; f64_mul:
+  ;;   expect f64 $a * $b
+  ;;
+  (func $f64_mul (param $a f64) (param $b f64) (result f64)
+    (f64.mul (local.get $a) (local.get $b))
+  )
+
+  (export "f64_mul" (func $f64_mul))
+
+  ;;
+  ;; f64_div:
+  ;;   expect f64 $a / $b
+  ;;
+  (func $f64_div (param $a f64) (param $b f64) (result f64)
+    (f64.div (local.get $a) (local.get $b))
+  )
+
+  (export "f64_div" (func $f64_div))
+
+  ;;
+  ;; f64_min:
+  ;;   expect f64 min($a, $b)
+  ;;
+  (func $f64_min (param $a f64) (param $b f64) (result f64)
+    (f64.min (local.get $a) (local.get $b))
+  )
+
+  (export "f64_min" (func $f64_min))
+
+  ;;
+  ;; f64_max:
+  ;;   expect f64 max($a, $b)
+  ;;
+  (func $f64_max (param $a f64) (param $b f64) (result f64)
+    (f64.max (local.get $a) (local.get $b))
+  )
+
+  (export "f64_max" (func $f64_max))
+
+  ;;
+  ;; f64_copysign:
+  ;;   expect f64 copysign($a, $b)
+  ;;
+  (func $f64_copysign (param $a f64) (param $b f64) (result f64)
+    (f64.copysign (local.get $a) (local.get $b))
+  )
+
+  (export "f64_copysign" (func $f64_copysign))
 )
