@@ -151,4 +151,13 @@
   )
 
   (export "i32_set" (func $i32_set))
+
+  ;;
+  ;; i32_eqz: compare value to zero
+  ;;
+  (func $i32_eqz (param $a i32) (result i32)
+    (i32.eqz (local.get $a))
+  )
+
+  (export "i32_eqz" (func $i32_eqz))
 )
