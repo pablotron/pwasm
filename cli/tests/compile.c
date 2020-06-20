@@ -394,88 +394,90 @@ void test_compile(
     }
   }
 
-  {
-    // populate paramters
-    stack.pos = 0;
-
-    // call "i32_get", check for error
-    const bool call_ok = pwasm_call(&env, "aot-basics", "i32_get");
-    if (call_ok) {
-      cli_test_pass(test_ctx, cli_test, "i32_get(): pwasm_call()");
-    } else {
-      cli_test_fail(test_ctx, cli_test, "i32_get(): pwasm_call()");
-    }
-
-    // check stack size
-    if (call_ok && (stack.pos == 1)) {
-      cli_test_pass(test_ctx, cli_test, "i32_get(): stack size: 1");
-    } else {
-      char buf[512];
-      snprintf(buf, sizeof(buf), "i32_get(): stack size: got %zu, expected 1", stack.pos);
-      cli_test_fail(test_ctx, cli_test, buf);
-    }
-
-    // check result
-    if (call_ok && (stack.pos == 1) && (stack.ptr[0].i32 == 42)) {
-      cli_test_pass(test_ctx, cli_test, "i32_get(2): result: 42");
-    } else {
-      char buf[512];
-      snprintf(buf, sizeof(buf), "i32_get(2): result: got %u, expected 42", stack.ptr[0].i32);
-      cli_test_fail(test_ctx, cli_test, buf);
-    }
-  }
-
-  {
-    // populate paramters
-    stack.pos = 1;
-    stack.ptr[0].i32 = 73;
-
-    // call "i32_set", check for error
-    const bool call_ok = pwasm_call(&env, "aot-basics", "i32_set");
-    if (call_ok) {
-      cli_test_pass(test_ctx, cli_test, "i32_set(73): pwasm_call()");
-    } else {
-      cli_test_fail(test_ctx, cli_test, "i32_set(73): pwasm_call()");
-    }
-
-    // check stack
-    if (call_ok && (stack.pos == 0)) {
-      cli_test_pass(test_ctx, cli_test, "i32_set(73): stack size: 0");
-    } else {
-      char buf[512];
-      snprintf(buf, sizeof(buf), "i32_set(2): stack size: got %zu, expected 0", stack.pos);
-      cli_test_fail(test_ctx, cli_test, buf);
-    }
-  }
-
-  {
-    // populate paramters
-    stack.pos = 0;
-
-    // call "i32_get", check for error
-    const bool call_ok = pwasm_call(&env, "aot-basics", "i32_get");
-    if (call_ok) {
-      cli_test_pass(test_ctx, cli_test, "i32_get(): pwasm_call()");
-    } else {
-      cli_test_fail(test_ctx, cli_test, "i32_get(): pwasm_call()");
-    }
-
-    // check stack size
-    if (call_ok && (stack.pos == 1)) {
-      cli_test_pass(test_ctx, cli_test, "i32_get(): stack size: 1");
-    } else {
-      char buf[512];
-      snprintf(buf, sizeof(buf), "i32_get(): stack size: got %zu, expected 1", stack.pos);
-      cli_test_fail(test_ctx, cli_test, buf);
-    }
-
-    // check result
-    if (call_ok && (stack.pos == 1) && (stack.ptr[0].i32 == 73)) {
-      cli_test_pass(test_ctx, cli_test, "i32_get(2): result: 0");
-    } else {
-      char buf[512];
-      snprintf(buf, sizeof(buf), "i32_get(2): result: got %u, expected 73", stack.ptr[0].i32);
-      cli_test_fail(test_ctx, cli_test, buf);
-    }
-  }
+/* 
+ *   {
+ *     // populate paramters
+ *     stack.pos = 0;
+ * 
+ *     // call "i32_get", check for error
+ *     const bool call_ok = pwasm_call(&env, "aot-basics", "i32_get");
+ *     if (call_ok) {
+ *       cli_test_pass(test_ctx, cli_test, "i32_get(): pwasm_call()");
+ *     } else {
+ *       cli_test_fail(test_ctx, cli_test, "i32_get(): pwasm_call()");
+ *     }
+ * 
+ *     // check stack size
+ *     if (call_ok && (stack.pos == 1)) {
+ *       cli_test_pass(test_ctx, cli_test, "i32_get(): stack size: 1");
+ *     } else {
+ *       char buf[512];
+ *       snprintf(buf, sizeof(buf), "i32_get(): stack size: got %zu, expected 1", stack.pos);
+ *       cli_test_fail(test_ctx, cli_test, buf);
+ *     }
+ * 
+ *     // check result
+ *     if (call_ok && (stack.pos == 1) && (stack.ptr[0].i32 == 42)) {
+ *       cli_test_pass(test_ctx, cli_test, "i32_get(2): result: 42");
+ *     } else {
+ *       char buf[512];
+ *       snprintf(buf, sizeof(buf), "i32_get(2): result: got %u, expected 42", stack.ptr[0].i32);
+ *       cli_test_fail(test_ctx, cli_test, buf);
+ *     }
+ *   }
+ * 
+ *   {
+ *     // populate paramters
+ *     stack.pos = 1;
+ *     stack.ptr[0].i32 = 73;
+ * 
+ *     // call "i32_set", check for error
+ *     const bool call_ok = pwasm_call(&env, "aot-basics", "i32_set");
+ *     if (call_ok) {
+ *       cli_test_pass(test_ctx, cli_test, "i32_set(73): pwasm_call()");
+ *     } else {
+ *       cli_test_fail(test_ctx, cli_test, "i32_set(73): pwasm_call()");
+ *     }
+ * 
+ *     // check stack
+ *     if (call_ok && (stack.pos == 0)) {
+ *       cli_test_pass(test_ctx, cli_test, "i32_set(73): stack size: 0");
+ *     } else {
+ *       char buf[512];
+ *       snprintf(buf, sizeof(buf), "i32_set(2): stack size: got %zu, expected 0", stack.pos);
+ *       cli_test_fail(test_ctx, cli_test, buf);
+ *     }
+ *   }
+ * 
+ *   {
+ *     // populate paramters
+ *     stack.pos = 0;
+ * 
+ *     // call "i32_get", check for error
+ *     const bool call_ok = pwasm_call(&env, "aot-basics", "i32_get");
+ *     if (call_ok) {
+ *       cli_test_pass(test_ctx, cli_test, "i32_get(): pwasm_call()");
+ *     } else {
+ *       cli_test_fail(test_ctx, cli_test, "i32_get(): pwasm_call()");
+ *     }
+ * 
+ *     // check stack size
+ *     if (call_ok && (stack.pos == 1)) {
+ *       cli_test_pass(test_ctx, cli_test, "i32_get(): stack size: 1");
+ *     } else {
+ *       char buf[512];
+ *       snprintf(buf, sizeof(buf), "i32_get(): stack size: got %zu, expected 1", stack.pos);
+ *       cli_test_fail(test_ctx, cli_test, buf);
+ *     }
+ * 
+ *     // check result
+ *     if (call_ok && (stack.pos == 1) && (stack.ptr[0].i32 == 73)) {
+ *       cli_test_pass(test_ctx, cli_test, "i32_get(2): result: 0");
+ *     } else {
+ *       char buf[512];
+ *       snprintf(buf, sizeof(buf), "i32_get(2): result: got %u, expected 73", stack.ptr[0].i32);
+ *       cli_test_fail(test_ctx, cli_test, buf);
+ *     }
+ *   }
+ */ 
 }

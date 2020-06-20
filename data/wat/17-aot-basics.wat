@@ -151,5 +151,4 @@
   )
 
   (export "i32_set" (func $i32_set))
-
 )
