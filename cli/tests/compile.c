@@ -299,6 +299,154 @@ TEST_VALS[] = {
   { .i32 = 0 },
   { .i32 = 5053 },
   { .i32 = 0 },
+
+  // mod: "aot", func: "i64_eqz", test: 0, params: 1, results: 1
+  { .i64 = 0 },
+  { .i32 = 1 },
+
+  // mod: "aot", func: "i64_eqz", test: 1, params: 1, results: 1
+  { .i64 = 1 },
+  { .i32 = 0 },
+
+  // mod: "aot", func: "i64_eq", test: 0, params: 2, results: 1
+  { .i64 = 314 },
+  { .i64 = 314 },
+  { .i32 = 1 },
+
+  // mod: "aot", func: "i64_eq", test: 1, params: 2, results: 1
+  { .i64 = 123 },
+  { .i64 = 456 },
+  { .i32 = 0 },
+
+  // mod: "aot", func: "i64_ne", test: 0, params: 2, results: 1
+  { .i64 = 654 },
+  { .i64 = 789 },
+  { .i32 = 1 },
+
+  // mod: "aot", func: "i64_ne", test: 1, params: 2, results: 1
+  { .i64 = 44422 },
+  { .i64 = 44422 },
+  { .i32 = 0 },
+
+  // mod: "aot", func: "i64_lt_s", test: 0, params: 2, results: 1
+  { .i64 = -22 },
+  { .i64 = 44 },
+  { .i32 = 1 },
+
+  // mod: "aot", func: "i64_lt_s", test: 1, params: 2, results: 1
+  { .i64 = 4122 },
+  { .i64 = 4122 },
+  { .i32 = 0 },
+
+  // mod: "aot", func: "i64_lt_s", test: 2, params: 2, results: 1
+  { .i64 = 2020 },
+  { .i64 = 5 },
+  { .i32 = 0 },
+
+  // mod: "aot", func: "i64_lt_u", test: 0, params: 2, results: 1
+  { .i64 = 12 },
+  { .i64 = (1UL << 31) },
+  { .i32 = 1 },
+
+  // mod: "aot", func: "i64_lt_u", test: 1, params: 2, results: 1
+  { .i64 = 4122 },
+  { .i64 = 4122 },
+  { .i32 = 0 },
+
+  // mod: "aot", func: "i64_lt_u", test: 2, params: 2, results: 1
+  { .i64 = 2020 },
+  { .i64 = 5 },
+  { .i32 = 0 },
+
+  // mod: "aot", func: "i64_gt_s", test: 0, params: 2, results: 1
+  { .i64 = 22 },
+  { .i64 = -44 },
+  { .i32 = 1 },
+
+  // mod: "aot", func: "i64_gt_s", test: 1, params: 2, results: 1
+  { .i64 = 4122 },
+  { .i64 = 4122 },
+  { .i32 = 0 },
+
+  // mod: "aot", func: "i64_gt_s", test: 2, params: 2, results: 1
+  { .i64 = 123 },
+  { .i64 = 4212 },
+  { .i32 = 0 },
+
+  // mod: "aot", func: "i64_gt_u", test: 0, params: 2, results: 1
+  { .i64 = (1UL << 31) },
+  { .i64 = 12 },
+  { .i32 = 1 },
+
+  // mod: "aot", func: "i64_gt_u", test: 1, params: 2, results: 1
+  { .i64 = 4122 },
+  { .i64 = 4122 },
+  { .i32 = 0 },
+
+  // mod: "aot", func: "i64_gt_u", test: 2, params: 2, results: 1
+  { .i64 = 5 },
+  { .i64 = 2020 },
+  { .i32 = 0 },
+
+  // mod: "aot", func: "i64_le_s", test: 0, params: 2, results: 1
+  { .i64 = -22 },
+  { .i64 = 44 },
+  { .i32 = 1 },
+
+  // mod: "aot", func: "i64_le_s", test: 1, params: 2, results: 1
+  { .i64 = 4122 },
+  { .i64 = 4122 },
+  { .i32 = 1 },
+
+  // mod: "aot", func: "i64_le_s", test: 2, params: 2, results: 1
+  { .i64 = 2020 },
+  { .i64 = 5 },
+  { .i32 = 0 },
+
+  // mod: "aot", func: "i64_le_u", test: 0, params: 2, results: 1
+  { .i64 = 12 },
+  { .i64 = (1UL << 31) },
+  { .i32 = 1 },
+
+  // mod: "aot", func: "i64_le_u", test: 1, params: 2, results: 1
+  { .i64 = 4122 },
+  { .i64 = 4122 },
+  { .i32 = 1 },
+
+  // mod: "aot", func: "i64_le_u", test: 2, params: 2, results: 1
+  { .i64 = 2020 },
+  { .i64 = 5 },
+  { .i32 = 0 },
+
+  // mod: "aot", func: "i64_ge_s", test: 0, params: 2, results: 1
+  { .i64 = 22 },
+  { .i64 = -44 },
+  { .i32 = 1 },
+
+  // mod: "aot", func: "i64_ge_s", test: 1, params: 2, results: 1
+  { .i64 = 4122 },
+  { .i64 = 4122 },
+  { .i32 = 1 },
+
+  // mod: "aot", func: "i64_ge_s", test: 2, params: 2, results: 1
+  { .i64 = 2 },
+  { .i64 = 3030 },
+  { .i32 = 0 },
+
+  // mod: "aot", func: "i64_ge_u", test: 0, params: 2, results: 1
+  { .i64 = (1UL << 31) },
+  { .i64 = 9 },
+  { .i32 = 1 },
+
+  // mod: "aot", func: "i64_ge_u", test: 1, params: 2, results: 1
+  { .i64 = 4122 },
+  { .i64 = 4122 },
+  { .i32 = 1 },
+
+  // mod: "aot", func: "i64_ge_u", test: 2, params: 2, results: 1
+  { .i64 = 0 },
+  { .i64 = 5053 },
+  { .i32 = 0 },
 };
 
 static const pwasm_value_type_t
@@ -483,6 +631,154 @@ TEST_TYPES[] = {
   // mod: "aot", func: "i32_ge_u", test: 2, params: 2, results: 1
   PWASM_VALUE_TYPE_I32,
   PWASM_VALUE_TYPE_I32,
+  PWASM_VALUE_TYPE_I32,
+
+  // mod: "aot", func: "i64_eqz", test: 0, params: 1, results: 1
+  PWASM_VALUE_TYPE_I64,
+  PWASM_VALUE_TYPE_I32,
+
+  // mod: "aot", func: "i64_eqz", test: 1, params: 1, results: 1
+  PWASM_VALUE_TYPE_I64,
+  PWASM_VALUE_TYPE_I32,
+
+  // mod: "aot", func: "i64_eq", test: 0, params: 2, results: 1
+  PWASM_VALUE_TYPE_I64,
+  PWASM_VALUE_TYPE_I64,
+  PWASM_VALUE_TYPE_I32,
+
+  // mod: "aot", func: "i64_eq", test: 1, params: 2, results: 1
+  PWASM_VALUE_TYPE_I64,
+  PWASM_VALUE_TYPE_I64,
+  PWASM_VALUE_TYPE_I32,
+
+  // mod: "aot", func: "i64_ne", test: 0, params: 2, results: 1
+  PWASM_VALUE_TYPE_I64,
+  PWASM_VALUE_TYPE_I64,
+  PWASM_VALUE_TYPE_I32,
+
+  // mod: "aot", func: "i64_ne", test: 1, params: 2, results: 1
+  PWASM_VALUE_TYPE_I64,
+  PWASM_VALUE_TYPE_I64,
+  PWASM_VALUE_TYPE_I32,
+
+  // mod: "aot", func: "i64_lt_s", test: 0, params: 2, results: 1
+  PWASM_VALUE_TYPE_I64,
+  PWASM_VALUE_TYPE_I64,
+  PWASM_VALUE_TYPE_I32,
+
+  // mod: "aot", func: "i64_lt_s", test: 1, params: 2, results: 1
+  PWASM_VALUE_TYPE_I64,
+  PWASM_VALUE_TYPE_I64,
+  PWASM_VALUE_TYPE_I32,
+
+  // mod: "aot", func: "i64_lt_s", test: 2, params: 2, results: 1
+  PWASM_VALUE_TYPE_I64,
+  PWASM_VALUE_TYPE_I64,
+  PWASM_VALUE_TYPE_I32,
+
+  // mod: "aot", func: "i64_lt_u", test: 0, params: 2, results: 1
+  PWASM_VALUE_TYPE_I64,
+  PWASM_VALUE_TYPE_I64,
+  PWASM_VALUE_TYPE_I32,
+
+  // mod: "aot", func: "i64_lt_u", test: 1, params: 2, results: 1
+  PWASM_VALUE_TYPE_I64,
+  PWASM_VALUE_TYPE_I64,
+  PWASM_VALUE_TYPE_I32,
+
+  // mod: "aot", func: "i64_lt_u", test: 2, params: 2, results: 1
+  PWASM_VALUE_TYPE_I64,
+  PWASM_VALUE_TYPE_I64,
+  PWASM_VALUE_TYPE_I32,
+
+  // mod: "aot", func: "i64_gt_s", test: 0, params: 2, results: 1
+  PWASM_VALUE_TYPE_I64,
+  PWASM_VALUE_TYPE_I64,
+  PWASM_VALUE_TYPE_I32,
+
+  // mod: "aot", func: "i64_gt_s", test: 1, params: 2, results: 1
+  PWASM_VALUE_TYPE_I64,
+  PWASM_VALUE_TYPE_I64,
+  PWASM_VALUE_TYPE_I32,
+
+  // mod: "aot", func: "i64_gt_s", test: 2, params: 2, results: 1
+  PWASM_VALUE_TYPE_I64,
+  PWASM_VALUE_TYPE_I64,
+  PWASM_VALUE_TYPE_I32,
+
+  // mod: "aot", func: "i64_gt_u", test: 0, params: 2, results: 1
+  PWASM_VALUE_TYPE_I64,
+  PWASM_VALUE_TYPE_I64,
+  PWASM_VALUE_TYPE_I32,
+
+  // mod: "aot", func: "i64_gt_u", test: 1, params: 2, results: 1
+  PWASM_VALUE_TYPE_I64,
+  PWASM_VALUE_TYPE_I64,
+  PWASM_VALUE_TYPE_I32,
+
+  // mod: "aot", func: "i64_gt_u", test: 2, params: 2, results: 1
+  PWASM_VALUE_TYPE_I64,
+  PWASM_VALUE_TYPE_I64,
+  PWASM_VALUE_TYPE_I32,
+
+  // mod: "aot", func: "i64_le_s", test: 0, params: 2, results: 1
+  PWASM_VALUE_TYPE_I64,
+  PWASM_VALUE_TYPE_I64,
+  PWASM_VALUE_TYPE_I32,
+
+  // mod: "aot", func: "i64_le_s", test: 1, params: 2, results: 1
+  PWASM_VALUE_TYPE_I64,
+  PWASM_VALUE_TYPE_I64,
+  PWASM_VALUE_TYPE_I32,
+
+  // mod: "aot", func: "i64_le_s", test: 2, params: 2, results: 1
+  PWASM_VALUE_TYPE_I64,
+  PWASM_VALUE_TYPE_I64,
+  PWASM_VALUE_TYPE_I32,
+
+  // mod: "aot", func: "i64_le_u", test: 0, params: 2, results: 1
+  PWASM_VALUE_TYPE_I64,
+  PWASM_VALUE_TYPE_I64,
+  PWASM_VALUE_TYPE_I32,
+
+  // mod: "aot", func: "i64_le_u", test: 1, params: 2, results: 1
+  PWASM_VALUE_TYPE_I64,
+  PWASM_VALUE_TYPE_I64,
+  PWASM_VALUE_TYPE_I32,
+
+  // mod: "aot", func: "i64_le_u", test: 2, params: 2, results: 1
+  PWASM_VALUE_TYPE_I64,
+  PWASM_VALUE_TYPE_I64,
+  PWASM_VALUE_TYPE_I32,
+
+  // mod: "aot", func: "i64_ge_s", test: 0, params: 2, results: 1
+  PWASM_VALUE_TYPE_I64,
+  PWASM_VALUE_TYPE_I64,
+  PWASM_VALUE_TYPE_I32,
+
+  // mod: "aot", func: "i64_ge_s", test: 1, params: 2, results: 1
+  PWASM_VALUE_TYPE_I64,
+  PWASM_VALUE_TYPE_I64,
+  PWASM_VALUE_TYPE_I32,
+
+  // mod: "aot", func: "i64_ge_s", test: 2, params: 2, results: 1
+  PWASM_VALUE_TYPE_I64,
+  PWASM_VALUE_TYPE_I64,
+  PWASM_VALUE_TYPE_I32,
+
+  // mod: "aot", func: "i64_ge_u", test: 0, params: 2, results: 1
+  PWASM_VALUE_TYPE_I64,
+  PWASM_VALUE_TYPE_I64,
+  PWASM_VALUE_TYPE_I32,
+
+  // mod: "aot", func: "i64_ge_u", test: 1, params: 2, results: 1
+  PWASM_VALUE_TYPE_I64,
+  PWASM_VALUE_TYPE_I64,
+  PWASM_VALUE_TYPE_I32,
+
+  // mod: "aot", func: "i64_ge_u", test: 2, params: 2, results: 1
+  PWASM_VALUE_TYPE_I64,
+  PWASM_VALUE_TYPE_I64,
   PWASM_VALUE_TYPE_I32,
 };
 
@@ -692,6 +988,156 @@ TEST_CALLS[] = {{
   .func     = "i32_ge_u",
   .params  = { 99, 2 },
   .results = { 101, 1 },
+}, {
+  .mod      = "aot",
+  .func     = "i64_eqz",
+  .params  = { 102, 1 },
+  .results = { 103, 1 },
+}, {
+  .mod      = "aot",
+  .func     = "i64_eqz",
+  .params  = { 104, 1 },
+  .results = { 105, 1 },
+}, {
+  .mod      = "aot",
+  .func     = "i64_eq",
+  .params  = { 106, 2 },
+  .results = { 108, 1 },
+}, {
+  .mod      = "aot",
+  .func     = "i64_eq",
+  .params  = { 109, 2 },
+  .results = { 111, 1 },
+}, {
+  .mod      = "aot",
+  .func     = "i64_ne",
+  .params  = { 112, 2 },
+  .results = { 114, 1 },
+}, {
+  .mod      = "aot",
+  .func     = "i64_ne",
+  .params  = { 115, 2 },
+  .results = { 117, 1 },
+}, {
+  .mod      = "aot",
+  .func     = "i64_lt_s",
+  .params  = { 118, 2 },
+  .results = { 120, 1 },
+}, {
+  .mod      = "aot",
+  .func     = "i64_lt_s",
+  .params  = { 121, 2 },
+  .results = { 123, 1 },
+}, {
+  .mod      = "aot",
+  .func     = "i64_lt_s",
+  .params  = { 124, 2 },
+  .results = { 126, 1 },
+}, {
+  .mod      = "aot",
+  .func     = "i64_lt_u",
+  .params  = { 127, 2 },
+  .results = { 129, 1 },
+}, {
+  .mod      = "aot",
+  .func     = "i64_lt_u",
+  .params  = { 130, 2 },
+  .results = { 132, 1 },
+}, {
+  .mod      = "aot",
+  .func     = "i64_lt_u",
+  .params  = { 133, 2 },
+  .results = { 135, 1 },
+}, {
+  .mod      = "aot",
+  .func     = "i64_gt_s",
+  .params  = { 136, 2 },
+  .results = { 138, 1 },
+}, {
+  .mod      = "aot",
+  .func     = "i64_gt_s",
+  .params  = { 139, 2 },
+  .results = { 141, 1 },
+}, {
+  .mod      = "aot",
+  .func     = "i64_gt_s",
+  .params  = { 142, 2 },
+  .results = { 144, 1 },
+}, {
+  .mod      = "aot",
+  .func     = "i64_gt_u",
+  .params  = { 145, 2 },
+  .results = { 147, 1 },
+}, {
+  .mod      = "aot",
+  .func     = "i64_gt_u",
+  .params  = { 148, 2 },
+  .results = { 150, 1 },
+}, {
+  .mod      = "aot",
+  .func     = "i64_gt_u",
+  .params  = { 151, 2 },
+  .results = { 153, 1 },
+}, {
+  .mod      = "aot",
+  .func     = "i64_le_s",
+  .params  = { 154, 2 },
+  .results = { 156, 1 },
+}, {
+  .mod      = "aot",
+  .func     = "i64_le_s",
+  .params  = { 157, 2 },
+  .results = { 159, 1 },
+}, {
+  .mod      = "aot",
+  .func     = "i64_le_s",
+  .params  = { 160, 2 },
+  .results = { 162, 1 },
+}, {
+  .mod      = "aot",
+  .func     = "i64_le_u",
+  .params  = { 163, 2 },
+  .results = { 165, 1 },
+}, {
+  .mod      = "aot",
+  .func     = "i64_le_u",
+  .params  = { 166, 2 },
+  .results = { 168, 1 },
+}, {
+  .mod      = "aot",
+  .func     = "i64_le_u",
+  .params  = { 169, 2 },
+  .results = { 171, 1 },
+}, {
+  .mod      = "aot",
+  .func     = "i64_ge_s",
+  .params  = { 172, 2 },
+  .results = { 174, 1 },
+}, {
+  .mod      = "aot",
+  .func     = "i64_ge_s",
+  .params  = { 175, 2 },
+  .results = { 177, 1 },
+}, {
+  .mod      = "aot",
+  .func     = "i64_ge_s",
+  .params  = { 178, 2 },
+  .results = { 180, 1 },
+}, {
+  .mod      = "aot",
+  .func     = "i64_ge_u",
+  .params  = { 181, 2 },
+  .results = { 183, 1 },
+}, {
+  .mod      = "aot",
+  .func     = "i64_ge_u",
+  .params  = { 184, 2 },
+  .results = { 186, 1 },
+}, {
+  .mod      = "aot",
+  .func     = "i64_ge_u",
+  .params  = { 187, 2 },
+  .results = { 189, 1 },
 }};
 
 static size_t get_test_name(
