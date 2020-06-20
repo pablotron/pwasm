@@ -711,6 +711,43 @@
   (export "i32_rotr" (func $i32_rotr))
 
   ;;
+  ;; i64_clz:
+  ;;   0x00: expect i64 32
+  ;;   0x0f: expect i64 24
+  ;;   0x0000f00f: expect i64 16
+  ;;
+  (func $i64_clz (param $a i64) (result i64)
+    (i64.clz (local.get $a))
+  )
+
+  (export "i64_clz" (func $i64_clz))
+
+  ;;
+  ;; i64_ctz:
+  ;;   0x00: expect i64 32
+  ;;   0xf0: expect i64 4
+  ;;   0xf00f0000: expect i64 16
+  ;;
+  (func $i64_ctz (param $a i64) (result i64)
+    (i64.ctz (local.get $a))
+  )
+
+  (export "i64_ctz" (func $i64_ctz))
+
+  ;;
+  ;; i64_popcnt:
+  ;;   0x00: expect i64 0
+  ;;   0xf0: expect i64 4
+  ;;   0xf0f0f0f0: expect i64 16
+  ;;
+  (func $i64_popcnt (param $a i64) (result i64)
+    (i64.popcnt (local.get $a))
+  )
+
+  (export "i64_popcnt" (func $i64_popcnt))
+
+
+  ;;
   ;; i64_add:
   ;;   expect i64 $a + $b
   ;;
