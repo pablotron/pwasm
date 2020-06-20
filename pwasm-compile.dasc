@@ -191,6 +191,14 @@
   | stack_dec
 |.endmacro
 
+|.macro f64_unop_init
+  | movsd xmm0, qword [r_stack - sizeof(pwasm_val_t)]
+|.endmacro
+
+|.macro f64_unop_fini
+  | movsd qword [r_stack - sizeof(pwasm_val_t)], xmm0
+|.endmacro
+
 |.macro f64_relop_init
   | movq xmm0, qword [r_stack - 2 * sizeof(pwasm_val_t)]
   | movq xmm1, qword [r_stack - sizeof(pwasm_val_t)]
@@ -199,6 +207,16 @@
 |.macro f64_relop_fini
   | psrld xmm0, 31
   | movd dword [r_stack - 2 * sizeof(pwasm_val_t)], xmm0
+  | stack_dec
+|.endmacro
+
+|.macro f64_binop_init
+  | movsd xmm0, qword [r_stack - 2 * sizeof(pwasm_val_t)]
+  | movsd xmm1, qword [r_stack - sizeof(pwasm_val_t)]
+|.endmacro
+
+|.macro f64_binop_fini
+  | movsd qword [r_stack - 2 * sizeof(pwasm_val_t)], xmm0
   | stack_dec
 |.endmacro
 
@@ -1449,6 +1467,106 @@ pwasm_compile(
       | andps xmm1, xmm6    // xmm1 &= xmm6 (only sign bit)
       | orps xmm0, xmm1     // xmm0 |= xmm1
       | f32_binop_fini
+
+      break;
+    case PWASM_OP_F64_ABS:
+      | f64_unop_init
+      // FIXME: the next two lines should eventually be generated in the
+      // prologue
+      // ref: https://stackoverflow.com/questions/32408665/fastest-way-to-compute-absolute-value-using-sse
+      | pcmpeqd  xmm5, xmm5 // fill xmm5 with 0xFF
+      | psrld xmm5, 1 // logical shift right one bit (0x7F)
+      | andpd xmm0, xmm5 // mask sign bit
+      | f64_unop_fini
+
+      break;
+    case PWASM_OP_F64_NEG:
+      | f64_unop_init
+      | xorpd xmm6, xmm6 // xmm6 = 0
+      | subsd xmm6, xmm0 // xmm6 -= xmm0
+      | movsd xmm0, xmm6 // xmm0 = xmm6
+      | f64_unop_fini
+
+      break;
+    case PWASM_OP_F64_CEIL:
+      | f64_unop_init
+      | roundpd xmm0, xmm0, 2 // xmm0 = ceil(xmm0)
+      | f64_unop_fini
+
+      break;
+    case PWASM_OP_F64_FLOOR:
+      | f64_unop_init
+      | roundpd xmm0, xmm0, 1 // xmm0 = floor(xmm0)
+      | f64_unop_fini
+
+      break;
+    case PWASM_OP_F64_TRUNC:
+      | f64_unop_init
+      | roundpd xmm0, xmm0, 3 // xmm0 = trunc(xmm0)
+      | f64_unop_fini
+
+      break;
+    case PWASM_OP_F64_NEAREST:
+      | f64_unop_init
+      | roundpd  xmm0, xmm0, 0 // xmm0 = round(xmm0)
+      | f64_unop_fini
+
+      break;
+    case PWASM_OP_F64_SQRT:
+      | f64_unop_init
+      | sqrtsd xmm0, xmm0 // xmm0 = sqrt(xmm0)
+      | f64_unop_fini
+
+      break;
+    case PWASM_OP_F64_ADD:
+      | f64_binop_init
+      | addsd xmm0, xmm1 // xmm0 += xmm1
+      | f64_binop_fini
+
+      break;
+    case PWASM_OP_F64_SUB:
+      | f64_binop_init
+      | subsd xmm0, xmm1 // xmm0 -= xmm1
+      | f64_binop_fini
+
+      break;
+    case PWASM_OP_F64_MUL:
+      | f64_binop_init
+      | mulsd xmm0, xmm1 // xmm0 *= xmm1
+      | f64_binop_fini
+
+      break;
+    case PWASM_OP_F64_DIV:
+      | f64_binop_init
+      | mulsd xmm0, xmm1 // xmm0 /= xmm1
+      | f64_binop_fini
+
+      break;
+    case PWASM_OP_F64_MIN:
+      | f64_binop_init
+      | minsd xmm0, xmm1 // xmm0 = min(xmm0, xmm1)
+      | f64_binop_fini
+
+      break;
+    case PWASM_OP_F64_MAX:
+      | f64_binop_init
+      | maxsd xmm0, xmm1 // xmm0 = max(xmm0, xmm1)
+      | f64_binop_fini
+
+      break;
+    case PWASM_OP_F64_COPYSIGN:
+      | f64_binop_init
+      // FIXME: the next two lines should eventually be generated in the
+      // prologue
+      // ref: https://stackoverflow.com/questions/32408665/fastest-way-to-compute-absolute-value-using-sse
+      | pcmpeqd  xmm5, xmm5 // xmm5 = 0xFFFFFFFF
+      | psrld xmm5, 1       // xmm5 >>= 1 (0x7FFFFFFF)
+      | andpd xmm0, xmm5    // xmm0 &= xmm5 (exclude sign bit)
+      | pcmpeqd xmm6, xmm6  // xmm5 = 0xFFFFFFFF
+      | pslld xmm6, 31      // xmm6 <<= 31 (0x8000000)
+      | andpd xmm1, xmm6    // xmm1 &= xmm6 (only sign bit)
+      | orpd xmm0, xmm1     // xmm0 |= xmm1
+      | f64_binop_fini
 
       break;
     default:
