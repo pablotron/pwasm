@@ -84,22 +84,19 @@
 
 |.macro i32_testop_init
   | mov eax, [r_stack - sizeof(pwasm_val_t)]
-  | mov ebx, 1
-  | mov ecx, 0
 |.endmacro
 
 |.macro i32_testop_fini
-  | cmove eax, ebx
-  | cmovne eax, ecx
+  | mov eax, 0
+  | sete al
   | mov [r_stack - sizeof(pwasm_val_t)], eax
 |.endmacro
 
 |.macro i32_relop_init
-  | mov eax, [r_stack - sizeof(pwasm_val_t)]
-  | mov ebx, [r_stack - 2 * sizeof(pwasm_val_t)]
-  | mov ecx, 1
-  | mov edx, 0
+  | mov eax, [r_stack - 2 * sizeof(pwasm_val_t)]
+  | mov ebx, [r_stack - sizeof(pwasm_val_t)]
   | cmp eax, ebx
+  | mov eax, 0
 |.endmacro
 
 |.macro i32_relop_fini
@@ -119,22 +116,19 @@
 
 |.macro i64_testop_init
   | mov rax, [r_stack - sizeof(pwasm_val_t)]
-  | mov ebx, 1
-  | mov ecx, 0
 |.endmacro
 
 |.macro i64_testop_fini
-  | cmove eax, ebx
-  | cmovne eax, ecx
+  | mov eax, 0
+  | sete al
   | mov [r_stack - sizeof(pwasm_val_t)], eax
 |.endmacro
 
 |.macro i64_relop_init
-  | mov rax, [r_stack - sizeof(pwasm_val_t)]
-  | mov rbx, [r_stack - 2 * sizeof(pwasm_val_t)]
-  | mov ecx, 1
-  | mov edx, 0
+  | mov rax, [r_stack - 2 * sizeof(pwasm_val_t)]
+  | mov rbx, [r_stack - sizeof(pwasm_val_t)]
   | cmp rax, rbx
+  | mov eax, 0
 |.endmacro
 
 |.macro i64_relop_fini
@@ -859,71 +853,61 @@ pwasm_compile(
       break;
     case PWASM_OP_I32_EQ:
       | i32_relop_init
-      | cmove eax, ecx
-      | cmovne eax, edx
+      | sete al
       | i32_relop_fini
 
       break;
     case PWASM_OP_I32_NE:
       | i32_relop_init
-      | cmovne eax, ecx
-      | cmove eax, edx
+      | setne al
       | i32_relop_fini
 
       break;
     case PWASM_OP_I32_LT_S:
       | i32_relop_init
-      | cmovl eax, ecx
-      | cmovge eax, edx
+      | setl al
       | i32_relop_fini
 
       break;
     case PWASM_OP_I32_LT_U:
       | i32_relop_init
-      | cmovb eax, ecx
-      | cmovae eax, edx
+      | setb al
       | i32_relop_fini
 
       break;
     case PWASM_OP_I32_GT_S:
       | i32_relop_init
-      | cmovg eax, ecx
-      | cmovle eax, edx
+      | setg al
       | i32_relop_fini
 
       break;
     case PWASM_OP_I32_GT_U:
       | i32_relop_init
-      | cmova eax, ecx
-      | cmovbe eax, edx
+      | seta al
       | i32_relop_fini
 
       break;
     case PWASM_OP_I32_LE_S:
       | i32_relop_init
-      | cmovle eax, ecx
-      | cmovg eax, edx
+      | setle al
       | i32_relop_fini
 
       break;
     case PWASM_OP_I32_LE_U:
       | i32_relop_init
-      | cmovbe eax, ecx
-      | cmova eax, edx
+      | setbe al
       | i32_relop_fini
 
       break;
     case PWASM_OP_I32_GE_S:
       | i32_relop_init
-      | cmovge eax, ecx
-      | cmovl eax, edx
+      | setge al
       | i32_relop_fini
 
       break;
     case PWASM_OP_I32_GE_U:
       | i32_relop_init
-      | cmovae eax, ecx
-      | cmovb eax, edx
+      | setae al
       | i32_relop_fini
 
       break;
@@ -935,71 +919,61 @@ pwasm_compile(
       break;
     case PWASM_OP_I64_EQ:
       | i64_relop_init
-      | cmove eax, ecx
-      | cmovne eax, edx
+      | sete al
       | i64_relop_fini
 
       break;
     case PWASM_OP_I64_NE:
       | i64_relop_init
-      | cmovne eax, ecx
-      | cmove eax, edx
+      | setne al
       | i64_relop_fini
 
       break;
     case PWASM_OP_I64_LT_S:
       | i64_relop_init
-      | cmovl eax, ecx
-      | cmovge eax, edx
+      | setl al
       | i64_relop_fini
 
       break;
     case PWASM_OP_I64_LT_U:
       | i64_relop_init
-      | cmovb eax, ecx
-      | cmovae eax, edx
+      | setb al
       | i64_relop_fini
 
       break;
     case PWASM_OP_I64_GT_S:
       | i64_relop_init
-      | cmovg eax, ecx
-      | cmovle eax, edx
+      | setg al
       | i64_relop_fini
 
       break;
     case PWASM_OP_I64_GT_U:
       | i64_relop_init
-      | cmova eax, ecx
-      | cmovbe eax, edx
+      | seta al
       | i64_relop_fini
 
       break;
     case PWASM_OP_I64_LE_S:
       | i64_relop_init
-      | cmovle eax, ecx
-      | cmovg eax, edx
+      | setle al
       | i64_relop_fini
 
       break;
     case PWASM_OP_I64_LE_U:
       | i64_relop_init
-      | cmovbe eax, ecx
-      | cmova eax, edx
+      | setbe al
       | i64_relop_fini
 
       break;
     case PWASM_OP_I64_GE_S:
       | i64_relop_init
-      | cmovge eax, ecx
-      | cmovl eax, edx
+      | setge al
       | i64_relop_fini
 
       break;
     case PWASM_OP_I64_GE_U:
       | i64_relop_init
-      | cmovae eax, ecx
-      | cmovb eax, edx
+      | setae al
       | i64_relop_fini
 
       break;
