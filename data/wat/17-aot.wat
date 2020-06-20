@@ -186,4 +186,250 @@
   )
 
   (export "i32_ne" (func $i32_ne))
+
+  ;;
+  ;; i32_lt_s:
+  ;;   expect $a < $b: i32 1
+  ;;   expect $a >= $b: i32 0
+  ;;
+  (func $i32_lt_s (param $a i32)
+                       (param $b i32)
+                       (result i32)
+    (i32.lt_s (local.get $a) (local.get $b))
+  )
+
+  (export "i32_lt_s" (func $i32_lt_s))
+
+  ;;
+  ;; i32_lt_u:
+  ;;   expect $a < $b: i32 1
+  ;;   expect $a >= $b: i32 0
+  ;;
+  (func $i32_lt_u (param $a i32)
+                       (param $b i32)
+                       (result i32)
+    (i32.lt_u (local.get $a) (local.get $b))
+  )
+
+  (export "i32_lt_u" (func $i32_lt_u))
+
+  ;;
+  ;; i32_gt_s:
+  ;;   expect $a > $b: i32 1
+  ;;   expect $a <= $b: i32 0
+  ;;
+  (func $i32_gt_s (param $a i32)
+                       (param $b i32)
+                       (result i32)
+    (i32.gt_s (local.get $a) (local.get $b))
+  )
+
+  (export "i32_gt_s" (func $i32_gt_s))
+
+  ;;
+  ;; i32_gt_u:
+  ;;   expect $a > $b: i32 1
+  ;;   expect $a <= $b: i32 0
+  ;;
+  (func $i32_gt_u (param $a i32)
+                       (param $b i32)
+                       (result i32)
+    (i32.gt_u (local.get $a) (local.get $b))
+  )
+
+  (export "i32_gt_u" (func $i32_gt_u))
+
+  ;;
+  ;; i32_le_s:
+  ;;   expect $a <= $b: i32 1
+  ;;   expect $a > $b: i32 0
+  ;;
+  (func $i32_le_s (param $a i32)
+                       (param $b i32)
+                       (result i32)
+    (i32.le_s (local.get $a) (local.get $b))
+  )
+
+  (export "i32_le_s" (func $i32_le_s))
+
+  ;;
+  ;; i32_le_u:
+  ;;   expect $a <= $b: i32 1
+  ;;   expect $a > $b: i32 0
+  ;;
+  (func $i32_le_u (param $a i32)
+                       (param $b i32)
+                       (result i32)
+    (i32.le_u (local.get $a) (local.get $b))
+  )
+
+  (export "i32_le_u" (func $i32_le_u))
+
+  ;;
+  ;; i32_ge_s:
+  ;;   expect $a >= $b: i32 1
+  ;;   expect $a < $b: i32 0
+  ;;
+  (func $i32_ge_s (param $a i32)
+                       (param $b i32)
+                       (result i32)
+    (i32.ge_s (local.get $a) (local.get $b))
+  )
+
+  (export "i32_ge_s" (func $i32_ge_s))
+
+  ;;
+  ;; i32_ge_u:
+  ;;   expect $a >= $b: i32 1
+  ;;   expect $a < $b: i32 0
+  ;;
+  (func $i32_ge_u (param $a i32)
+                       (param $b i32)
+                       (result i32)
+    (i32.ge_u (local.get $a) (local.get $b))
+  )
+
+  (export "i32_ge_u" (func $i32_ge_u))
+
+  ;;
+  ;; i64_eqz:
+  ;;   expect $a = 0: i32 1
+  ;;   expect $a = 1: i32 0
+  ;;
+  (func $i64_eqz (param $a i64)
+                      (result i32)
+    (i64.eqz (local.get $a))
+  )
+
+  (export "i64_eqz" (func $i64_eqz))
+
+  ;;
+  ;; i64_eq:
+  ;;   expect $a == $b: i32 1
+  ;;   expect $a != $b: i32 0
+  ;;
+  (func $i64_eq (param $a i64)
+                     (param $b i64)
+                     (result i32)
+    (i64.eq (local.get $a) (local.get $b))
+  )
+
+  (export "i64_eq" (func $i64_eq))
+
+  ;;
+  ;; i64_eq:
+  ;;   expect $a != $b: i32 1
+  ;;   expect $a == $b: i32 0
+  ;;
+  (func $i64_ne (param $a i64)
+                     (param $b i64)
+                     (result i32)
+    (i64.ne (local.get $a) (local.get $b))
+  )
+
+  (export "i64_ne" (func $i64_ne))
+
+  ;;
+  ;; i64_lt_s:
+  ;;   expect $a < $b: i32 1
+  ;;   expect $a >= $b: i32 0
+  ;;
+  (func $i64_lt_s (param $a i64)
+                       (param $b i64)
+                       (result i32)
+    (i64.lt_s (local.get $a) (local.get $b))
+  )
+
+  (export "i64_lt_s" (func $i64_lt_s))
+
+  ;;
+  ;; i64_lt_u:
+  ;;   expect $a < $b: i32 1
+  ;;   expect $a >= $b: i32 0
+  ;;
+  (func $i64_lt_u (param $a i64)
+                       (param $b i64)
+                       (result i32)
+    (i64.lt_u (local.get $a) (local.get $b))
+  )
+
+  (export "i64_lt_u" (func $i64_lt_u))
+
+  ;;
+  ;; i64_gt_s:
+  ;;   expect $a > $b: i32 1
+  ;;   expect $a <= $b: i32 0
+  ;;
+  (func $i64_gt_s (param $a i64)
+                       (param $b i64)
+                       (result i32)
+    (i64.gt_s (local.get $a) (local.get $b))
+  )
+
+  (export "i64_gt_s" (func $i64_gt_s))
+
+  ;;
+  ;; i64_gt_u:
+  ;;   expect $a > $b: i32 1
+  ;;   expect $a <= $b: i32 0
+  ;;
+  (func $i64_gt_u (param $a i64)
+                       (param $b i64)
+                       (result i32)
+    (i64.gt_u (local.get $a) (local.get $b))
+  )
+
+  (export "i64_gt_u" (func $i64_gt_u))
+
+  ;;
+  ;; i64_le_s:
+  ;;   expect $a <= $b: i32 1
+  ;;   expect $a > $b: i32 0
+  ;;
+  (func $i64_le_s (param $a i64)
+                       (param $b i64)
+                       (result i32)
+    (i64.le_s (local.get $a) (local.get $b))
+  )
+
+  (export "i64_le_s" (func $i64_le_s))
+
+  ;;
+  ;; i64_le_u:
+  ;;   expect $a <= $b: i32 1
+  ;;   expect $a > $b: i32 0
+  ;;
+  (func $i64_le_u (param $a i64)
+                       (param $b i64)
+                       (result i32)
+    (i64.le_u (local.get $a) (local.get $b))
+  )
+
+  (export "i64_le_u" (func $i64_le_u))
+
+  ;;
+  ;; i64_ge_s:
+  ;;   expect $a >= $b: i32 1
+  ;;   expect $a < $b: i32 0
+  ;;
+  (func $i64_ge_s (param $a i64)
+                       (param $b i64)
+                       (result i32)
+    (i64.ge_s (local.get $a) (local.get $b))
+  )
+
+  (export "i64_ge_s" (func $i64_ge_s))
+
+  ;;
+  ;; i64_ge_u:
+  ;;   expect $a >= $b: i32 1
+  ;;   expect $a < $b: i32 0
+  ;;
+  (func $i64_ge_u (param $a i64)
+                       (param $b i64)
+                       (result i32)
+    (i64.ge_u (local.get $a) (local.get $b))
+  )
+
+  (export "i64_ge_u" (func $i64_ge_u))
 )
