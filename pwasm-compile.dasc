@@ -1082,7 +1082,9 @@ pwasm_compile(
     case PWASM_OP_I32_CLZ:
       // FIXME: use lzcnt instead of bsr?
       | i32_unop_init
-      | bsr eax, eax
+      | bsr ebx, eax
+      | mov eax, 31
+      | sub eax, ebx
       | i32_unop_fini
 
       break;
@@ -1114,33 +1116,37 @@ pwasm_compile(
     case PWASM_OP_I32_MUL:
       // FIXME: should i be using mul or imul here?
       | i32_binop_init
-      | imul eax, ebx
+      | mul ebx
       | i32_binop_fini
 
       break;
     case PWASM_OP_I32_DIV_S:
       | i32_binop_init
-      | idiv ebx
+      | cdq           // sign-extend eax into edx
+      | idiv ebx      // signed divide
       | i32_binop_fini
 
       break;
     case PWASM_OP_I32_DIV_U:
       | i32_binop_init
-      | div ebx
+      | mov edx, 0    // zero-extend into edx
+      | div ebx       // unsigned divide
       | i32_binop_fini
 
       break;
     case PWASM_OP_I32_REM_S:
       | i32_binop_init
-      | idiv ebx
-      | mov eax, edx
+      | cdq           // sign-extend eax into edx
+      | idiv ebx      // signed divide
+      | mov eax, edx  // save remainder
       | i32_binop_fini
 
       break;
     case PWASM_OP_I32_REM_U:
       | i32_binop_init
-      | div ebx
-      | mov eax, edx
+      | mov edx, 0    // zero edx
+      | div ebx       // unsigned divide
+      | mov eax, edx  // save remainder
       | i32_binop_fini
 
       break;
@@ -1164,31 +1170,36 @@ pwasm_compile(
       break;
     case PWASM_OP_I32_SHL:
       | i32_binop_init
-      | shl eax, r1b
+      | mov cl, bl    // move shift to cl
+      | shl eax, cl   // shift left
       | i32_binop_fini
 
       break;
     case PWASM_OP_I32_SHR_S:
       | i32_binop_init
-      | sar eax, r1b
+      | mov cl, bl    // move shift to cl
+      | sar eax, cl   // shift right (arithmetic)
       | i32_binop_fini
 
       break;
     case PWASM_OP_I32_SHR_U:
       | i32_binop_init
-      | shr eax, r1b
+      | mov cl, bl    // move shift to cl
+      | shr eax, cl   // shift right (logical)
       | i32_binop_fini
 
       break;
     case PWASM_OP_I32_ROTL:
       | i32_binop_init
-      | rol eax, r1b
+      | mov cl, bl    // move shift to cl
+      | rol eax, cl   // rotate left
       | i32_binop_fini
 
       break;
     case PWASM_OP_I32_ROTR:
       | i32_binop_init
-      | ror eax, r1b
+      | mov cl, bl    // move shift to cl
+      | ror eax, cl   // rotate right
       | i32_binop_fini
 
       break;
