@@ -1252,7 +1252,7 @@ pwasm_compile(
       break;
     case PWASM_OP_I64_DIV_S:
       | i64_binop_init
-      | cdq           // sign-extend eax into edx
+      | cqo           // sign-extend eax into edx
       | idiv rbx      // signed divide
       | i64_binop_fini
 
@@ -1266,7 +1266,7 @@ pwasm_compile(
       break;
     case PWASM_OP_I64_REM_S:
       | i64_binop_init
-      | cdq           // sign-extend eax into edx
+      | cqo           // sign-extend eax into edx
       | idiv rbx      // signed divide
       | mov rax, rdx  // save remainder
       | i64_binop_fini
