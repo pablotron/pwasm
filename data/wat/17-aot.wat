@@ -896,4 +896,144 @@
   )
 
   (export "i64_rotr" (func $i64_rotr))
+
+  ;;
+  ;; f32_abs:
+  ;;   expect f32 $a
+  ;;
+  (func $f32_abs (param $a f32) (result f32)
+    (f32.abs (local.get $a))
+  )
+
+  (export "f32_abs" (func $f32_abs))
+
+  ;;
+  ;; f32_neg:
+  ;;   expect f32 -$a
+  ;;
+  (func $f32_neg (param $a f32) (result f32)
+    (f32.neg (local.get $a))
+  )
+
+  (export "f32_neg" (func $f32_neg))
+
+  ;;
+  ;; f32_ceil:
+  ;;   expect f32 ceil($a)
+  ;;
+  (func $f32_ceil (param $a f32) (result f32)
+    (f32.ceil (local.get $a))
+  )
+
+  (export "f32_ceil" (func $f32_ceil))
+
+  ;;
+  ;; f32_floor:
+  ;;   expect f32 floor($a)
+  ;;
+  (func $f32_floor (param $a f32) (result f32)
+    (f32.floor (local.get $a))
+  )
+
+  (export "f32_floor" (func $f32_floor))
+
+  ;;
+  ;; f32_trunc:
+  ;;   expect f32 trunc($a)
+  ;;
+  (func $f32_trunc (param $a f32) (result f32)
+    (f32.trunc (local.get $a))
+  )
+
+  (export "f32_trunc" (func $f32_trunc))
+
+  ;;
+  ;; f32_nearest:
+  ;;   expect f32 nearest($a)
+  ;;
+  (func $f32_nearest (param $a f32) (result f32)
+    (f32.nearest (local.get $a))
+  )
+
+  (export "f32_nearest" (func $f32_nearest))
+
+  ;;
+  ;; f32_sqrt:
+  ;;   expect f32 sqrt($a)
+  ;;
+  (func $f32_sqrt (param $a f32) (result f32)
+    (f32.sqrt (local.get $a))
+  )
+
+  (export "f32_sqrt" (func $f32_sqrt))
+
+  ;;
+  ;; f32_add:
+  ;;   expect f32 $a + $b
+  ;;
+  (func $f32_add (param $a f32) (param $b f32) (result f32)
+    (f32.add (local.get $a) (local.get $b))
+  )
+
+  (export "f32_add" (func $f32_add))
+
+  ;;
+  ;; f32_sub:
+  ;;   expect f32 $a - $b
+  ;;
+  (func $f32_sub (param $a f32) (param $b f32) (result f32)
+    (f32.sub (local.get $a) (local.get $b))
+  )
+
+  (export "f32_sub" (func $f32_sub))
+
+  ;;
+  ;; f32_mul:
+  ;;   expect f32 $a * $b
+  ;;
+  (func $f32_mul (param $a f32) (param $b f32) (result f32)
+    (f32.mul (local.get $a) (local.get $b))
+  )
+
+  (export "f32_mul" (func $f32_mul))
+
+  ;;
+  ;; f32_div:
+  ;;   expect f32 $a / $b
+  ;;
+  (func $f32_div (param $a f32) (param $b f32) (result f32)
+    (f32.div (local.get $a) (local.get $b))
+  )
+
+  (export "f32_div" (func $f32_div))
+
+  ;;
+  ;; f32_min:
+  ;;   expect f32 min($a, $b)
+  ;;
+  (func $f32_min (param $a f32) (param $b f32) (result f32)
+    (f32.min (local.get $a) (local.get $b))
+  )
+
+  (export "f32_min" (func $f32_min))
+
+  ;;
+  ;; f32_max:
+  ;;   expect f32 max($a, $b)
+  ;;
+  (func $f32_max (param $a f32) (param $b f32) (result f32)
+    (f32.max (local.get $a) (local.get $b))
+  )
+
+  (export "f32_max" (func $f32_max))
+
+  ;;
+  ;; f32_copysign:
+  ;;   expect f32 copysign($a, $b)
+  ;;
+  (func $f32_copysign (param $a f32) (param $b f32) (result f32)
+    (f32.copysign (local.get $a) (local.get $b))
+  )
+
+  (export "f32_copysign" (func $f32_copysign))
 )
