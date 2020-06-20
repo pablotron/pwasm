@@ -14,6 +14,7 @@ tag.
       instead of parser
 * [ ] code, test: check stack size at start of call
 * [ ] code, test: add invalid code tests (e.g. checker assertion tests)
+* [ ] code, test: unify testing code in `cli/tests/{wasm,compile.c}`
 * [ ] code, test: fix memory leaks on parse/validation/exec errors
 * [ ] code: remove redundant validation checks in interp/env calls
 * [ ] code, jit: add jit modes (lazy, aot, optimize, etc)
