@@ -1823,14 +1823,16 @@ pwasm_compile(
     case PWASM_OP_V128_CONST:
       | mov rax, in.v_v128.i64[0]
       | mov rbx, in.v_v128.i64[1]
+      | mov qword [r_stack], rax
+      | mov qword [r_stack + sizeof(uint64_t)], rbx
+      | stack_inc
       // note: the following movd's are actually "movq", but dynasm does
       // not understand "movq xmm, r64", see the comments here:
       // https://stackoverflow.com/questions/6654099/how-to-move-128-bit-immediates-to-xmm-registers
-      | movd xmm0, rax // actually "movq", but dynasm sees it is movd
-      | movd xmm1, rbx
-      | unpcklpd xmm0, xmm1
-      | movups [r_stack], xmm0
-      | stack_inc
+      // | movd xmm0, rax
+      // | movd xmm1, rbx
+      // | unpcklpd xmm0, xmm1
+      // | movups [r_stack], xmm0
 
       break;
     default:
