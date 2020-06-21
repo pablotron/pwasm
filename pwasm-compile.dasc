@@ -1438,7 +1438,7 @@ pwasm_compile(
       break;
     case PWASM_OP_F32_DIV:
       | f32_binop_init
-      | mulss xmm0, xmm1 // xmm0 /= xmm1
+      | divss xmm0, xmm1 // xmm0 /= xmm1
       | f32_binop_fini
 
       break;
@@ -1538,7 +1538,7 @@ pwasm_compile(
       break;
     case PWASM_OP_F64_DIV:
       | f64_binop_init
-      | mulsd xmm0, xmm1 // xmm0 /= xmm1
+      | divsd xmm0, xmm1 // xmm0 /= xmm1
       | f64_binop_fini
 
       break;
