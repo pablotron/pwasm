@@ -9,6 +9,10 @@ tag.
 
 * [ ] doc: document `pwasm-compile.c` build
 * [ ] code, test: add tests with random values for math ops
+* [ ] code: switch compile function to `compiler_t`, and do cpuid checks
+      in `compiler_init`
+* [ ] code, test: check jit functions to make sure they are supported
+      by cpuflags, and add fallback implementations
 * [ ] code, test: loop with params
 * [ ] code, test: check `call_immediate` table ID in validation layer
       instead of parser
