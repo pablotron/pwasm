@@ -1361,6 +1361,111 @@ TEST_VALS[] = {
   // mod: "aot", func: "f32_sqrt", test: 2, params: 1, results: 1
   { .f32 = 49.0 },
   { .f32 = 7.0 },
+
+  // mod: "aot", func: "f32_add", test: 0, params: 2, results: 1
+  { .f32 = 49.0 },
+  { .f32 = 51.0 },
+  { .f32 = 100.0 },
+
+  // mod: "aot", func: "f32_add", test: 1, params: 2, results: 1
+  { .f32 = -49.0 },
+  { .f32 = 51.0 },
+  { .f32 = 2.0 },
+
+  // mod: "aot", func: "f32_add", test: 2, params: 2, results: 1
+  { .f32 = 1024.0 },
+  { .f32 = 321.0 },
+  { .f32 = 1345.0 },
+
+  // mod: "aot", func: "f32_sub", test: 0, params: 2, results: 1
+  { .f32 = 49.0 },
+  { .f32 = 51.0 },
+  { .f32 = -2.0 },
+
+  // mod: "aot", func: "f32_sub", test: 1, params: 2, results: 1
+  { .f32 = -49.0 },
+  { .f32 = 51.0 },
+  { .f32 = -100.0 },
+
+  // mod: "aot", func: "f32_sub", test: 2, params: 2, results: 1
+  { .f32 = 1024.2 },
+  { .f32 = 21.1 },
+  { .f32 = 1003.1 },
+
+  // mod: "aot", func: "f32_mul", test: 0, params: 2, results: 1
+  { .f32 = 4.0 },
+  { .f32 = 5.0 },
+  { .f32 = 20.0 },
+
+  // mod: "aot", func: "f32_mul", test: 1, params: 2, results: 1
+  { .f32 = -9.0 },
+  { .f32 = 5.0 },
+  { .f32 = -45.0 },
+
+  // mod: "aot", func: "f32_mul", test: 2, params: 2, results: 1
+  { .f32 = 1024.0 },
+  { .f32 = 2.1 },
+  { .f32 = 2150.4 },
+
+  // mod: "aot", func: "f32_div", test: 0, params: 2, results: 1
+  { .f32 = 4.0 },
+  { .f32 = 5.0 },
+  { .f32 = 0.8 },
+
+  // mod: "aot", func: "f32_div", test: 1, params: 2, results: 1
+  { .f32 = -15.0 },
+  { .f32 = 5.0 },
+  { .f32 = -3.0 },
+
+  // mod: "aot", func: "f32_div", test: 2, params: 2, results: 1
+  { .f32 = 1024.0 },
+  { .f32 = 2.0 },
+  { .f32 = 512.0 },
+
+  // mod: "aot", func: "f32_min", test: 0, params: 2, results: 1
+  { .f32 = 4.0 },
+  { .f32 = 5.0 },
+  { .f32 = 4.0 },
+
+  // mod: "aot", func: "f32_min", test: 1, params: 2, results: 1
+  { .f32 = -15.0 },
+  { .f32 = 5.0 },
+  { .f32 = -15.0 },
+
+  // mod: "aot", func: "f32_min", test: 2, params: 2, results: 1
+  { .f32 = 1024.0 },
+  { .f32 = 2.0 },
+  { .f32 = 2.0 },
+
+  // mod: "aot", func: "f32_max", test: 0, params: 2, results: 1
+  { .f32 = 4.0 },
+  { .f32 = 5.0 },
+  { .f32 = 5.0 },
+
+  // mod: "aot", func: "f32_max", test: 1, params: 2, results: 1
+  { .f32 = -15.0 },
+  { .f32 = 5.0 },
+  { .f32 = 5.0 },
+
+  // mod: "aot", func: "f32_max", test: 2, params: 2, results: 1
+  { .f32 = 1024.0 },
+  { .f32 = 2.0 },
+  { .f32 = 1024.0 },
+
+  // mod: "aot", func: "f32_copysign", test: 0, params: 2, results: 1
+  { .f32 = -4.0 },
+  { .f32 = 5.0 },
+  { .f32 = 4.0 },
+
+  // mod: "aot", func: "f32_copysign", test: 1, params: 2, results: 1
+  { .f32 = 15.0 },
+  { .f32 = -5.0 },
+  { .f32 = -15.0 },
+
+  // mod: "aot", func: "f32_copysign", test: 2, params: 2, results: 1
+  { .f32 = 1024.0 },
+  { .f32 = 0.0 },
+  { .f32 = 1024.0 },
 };
 
 static const pwasm_value_type_t
@@ -2418,6 +2523,111 @@ TEST_TYPES[] = {
   PWASM_VALUE_TYPE_F32,
 
   // mod: "aot", func: "f32_sqrt", test: 2, params: 1, results: 1
+  PWASM_VALUE_TYPE_F32,
+  PWASM_VALUE_TYPE_F32,
+
+  // mod: "aot", func: "f32_add", test: 0, params: 2, results: 1
+  PWASM_VALUE_TYPE_F32,
+  PWASM_VALUE_TYPE_F32,
+  PWASM_VALUE_TYPE_F32,
+
+  // mod: "aot", func: "f32_add", test: 1, params: 2, results: 1
+  PWASM_VALUE_TYPE_F32,
+  PWASM_VALUE_TYPE_F32,
+  PWASM_VALUE_TYPE_F32,
+
+  // mod: "aot", func: "f32_add", test: 2, params: 2, results: 1
+  PWASM_VALUE_TYPE_F32,
+  PWASM_VALUE_TYPE_F32,
+  PWASM_VALUE_TYPE_F32,
+
+  // mod: "aot", func: "f32_sub", test: 0, params: 2, results: 1
+  PWASM_VALUE_TYPE_F32,
+  PWASM_VALUE_TYPE_F32,
+  PWASM_VALUE_TYPE_F32,
+
+  // mod: "aot", func: "f32_sub", test: 1, params: 2, results: 1
+  PWASM_VALUE_TYPE_F32,
+  PWASM_VALUE_TYPE_F32,
+  PWASM_VALUE_TYPE_F32,
+
+  // mod: "aot", func: "f32_sub", test: 2, params: 2, results: 1
+  PWASM_VALUE_TYPE_F32,
+  PWASM_VALUE_TYPE_F32,
+  PWASM_VALUE_TYPE_F32,
+
+  // mod: "aot", func: "f32_mul", test: 0, params: 2, results: 1
+  PWASM_VALUE_TYPE_F32,
+  PWASM_VALUE_TYPE_F32,
+  PWASM_VALUE_TYPE_F32,
+
+  // mod: "aot", func: "f32_mul", test: 1, params: 2, results: 1
+  PWASM_VALUE_TYPE_F32,
+  PWASM_VALUE_TYPE_F32,
+  PWASM_VALUE_TYPE_F32,
+
+  // mod: "aot", func: "f32_mul", test: 2, params: 2, results: 1
+  PWASM_VALUE_TYPE_F32,
+  PWASM_VALUE_TYPE_F32,
+  PWASM_VALUE_TYPE_F32,
+
+  // mod: "aot", func: "f32_div", test: 0, params: 2, results: 1
+  PWASM_VALUE_TYPE_F32,
+  PWASM_VALUE_TYPE_F32,
+  PWASM_VALUE_TYPE_F32,
+
+  // mod: "aot", func: "f32_div", test: 1, params: 2, results: 1
+  PWASM_VALUE_TYPE_F32,
+  PWASM_VALUE_TYPE_F32,
+  PWASM_VALUE_TYPE_F32,
+
+  // mod: "aot", func: "f32_div", test: 2, params: 2, results: 1
+  PWASM_VALUE_TYPE_F32,
+  PWASM_VALUE_TYPE_F32,
+  PWASM_VALUE_TYPE_F32,
+
+  // mod: "aot", func: "f32_min", test: 0, params: 2, results: 1
+  PWASM_VALUE_TYPE_F32,
+  PWASM_VALUE_TYPE_F32,
+  PWASM_VALUE_TYPE_F32,
+
+  // mod: "aot", func: "f32_min", test: 1, params: 2, results: 1
+  PWASM_VALUE_TYPE_F32,
+  PWASM_VALUE_TYPE_F32,
+  PWASM_VALUE_TYPE_F32,
+
+  // mod: "aot", func: "f32_min", test: 2, params: 2, results: 1
+  PWASM_VALUE_TYPE_F32,
+  PWASM_VALUE_TYPE_F32,
+  PWASM_VALUE_TYPE_F32,
+
+  // mod: "aot", func: "f32_max", test: 0, params: 2, results: 1
+  PWASM_VALUE_TYPE_F32,
+  PWASM_VALUE_TYPE_F32,
+  PWASM_VALUE_TYPE_F32,
+
+  // mod: "aot", func: "f32_max", test: 1, params: 2, results: 1
+  PWASM_VALUE_TYPE_F32,
+  PWASM_VALUE_TYPE_F32,
+  PWASM_VALUE_TYPE_F32,
+
+  // mod: "aot", func: "f32_max", test: 2, params: 2, results: 1
+  PWASM_VALUE_TYPE_F32,
+  PWASM_VALUE_TYPE_F32,
+  PWASM_VALUE_TYPE_F32,
+
+  // mod: "aot", func: "f32_copysign", test: 0, params: 2, results: 1
+  PWASM_VALUE_TYPE_F32,
+  PWASM_VALUE_TYPE_F32,
+  PWASM_VALUE_TYPE_F32,
+
+  // mod: "aot", func: "f32_copysign", test: 1, params: 2, results: 1
+  PWASM_VALUE_TYPE_F32,
+  PWASM_VALUE_TYPE_F32,
+  PWASM_VALUE_TYPE_F32,
+
+  // mod: "aot", func: "f32_copysign", test: 2, params: 2, results: 1
+  PWASM_VALUE_TYPE_F32,
   PWASM_VALUE_TYPE_F32,
   PWASM_VALUE_TYPE_F32,
 };
@@ -3543,6 +3753,111 @@ TEST_CALLS[] = {{
   .func     = "f32_sqrt",
   .params  = { 608, 1 },
   .results = { 609, 1 },
+}, {
+  .mod      = "aot",
+  .func     = "f32_add",
+  .params  = { 610, 2 },
+  .results = { 612, 1 },
+}, {
+  .mod      = "aot",
+  .func     = "f32_add",
+  .params  = { 613, 2 },
+  .results = { 615, 1 },
+}, {
+  .mod      = "aot",
+  .func     = "f32_add",
+  .params  = { 616, 2 },
+  .results = { 618, 1 },
+}, {
+  .mod      = "aot",
+  .func     = "f32_sub",
+  .params  = { 619, 2 },
+  .results = { 621, 1 },
+}, {
+  .mod      = "aot",
+  .func     = "f32_sub",
+  .params  = { 622, 2 },
+  .results = { 624, 1 },
+}, {
+  .mod      = "aot",
+  .func     = "f32_sub",
+  .params  = { 625, 2 },
+  .results = { 627, 1 },
+}, {
+  .mod      = "aot",
+  .func     = "f32_mul",
+  .params  = { 628, 2 },
+  .results = { 630, 1 },
+}, {
+  .mod      = "aot",
+  .func     = "f32_mul",
+  .params  = { 631, 2 },
+  .results = { 633, 1 },
+}, {
+  .mod      = "aot",
+  .func     = "f32_mul",
+  .params  = { 634, 2 },
+  .results = { 636, 1 },
+}, {
+  .mod      = "aot",
+  .func     = "f32_div",
+  .params  = { 637, 2 },
+  .results = { 639, 1 },
+}, {
+  .mod      = "aot",
+  .func     = "f32_div",
+  .params  = { 640, 2 },
+  .results = { 642, 1 },
+}, {
+  .mod      = "aot",
+  .func     = "f32_div",
+  .params  = { 643, 2 },
+  .results = { 645, 1 },
+}, {
+  .mod      = "aot",
+  .func     = "f32_min",
+  .params  = { 646, 2 },
+  .results = { 648, 1 },
+}, {
+  .mod      = "aot",
+  .func     = "f32_min",
+  .params  = { 649, 2 },
+  .results = { 651, 1 },
+}, {
+  .mod      = "aot",
+  .func     = "f32_min",
+  .params  = { 652, 2 },
+  .results = { 654, 1 },
+}, {
+  .mod      = "aot",
+  .func     = "f32_max",
+  .params  = { 655, 2 },
+  .results = { 657, 1 },
+}, {
+  .mod      = "aot",
+  .func     = "f32_max",
+  .params  = { 658, 2 },
+  .results = { 660, 1 },
+}, {
+  .mod      = "aot",
+  .func     = "f32_max",
+  .params  = { 661, 2 },
+  .results = { 663, 1 },
+}, {
+  .mod      = "aot",
+  .func     = "f32_copysign",
+  .params  = { 664, 2 },
+  .results = { 666, 1 },
+}, {
+  .mod      = "aot",
+  .func     = "f32_copysign",
+  .params  = { 667, 2 },
+  .results = { 669, 1 },
+}, {
+  .mod      = "aot",
+  .func     = "f32_copysign",
+  .params  = { 670, 2 },
+  .results = { 672, 1 },
 }};
 
 static size_t get_test_name(
