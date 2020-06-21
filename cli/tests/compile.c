@@ -1466,6 +1466,195 @@ TEST_VALS[] = {
   { .f32 = 1024.0 },
   { .f32 = 0.0 },
   { .f32 = 1024.0 },
+
+  // mod: "aot", func: "f64_abs", test: 0, params: 1, results: 1
+  { .f64 = -1 },
+  { .f64 = 1 },
+
+  // mod: "aot", func: "f64_abs", test: 1, params: 1, results: 1
+  { .f64 = 0 },
+  { .f64 = 0 },
+
+  // mod: "aot", func: "f64_abs", test: 2, params: 1, results: 1
+  { .f64 = 1 },
+  { .f64 = 1 },
+
+  // mod: "aot", func: "f64_neg", test: 0, params: 1, results: 1
+  { .f64 = -1 },
+  { .f64 = 1 },
+
+  // mod: "aot", func: "f64_neg", test: 1, params: 1, results: 1
+  { .f64 = 0 },
+  { .f64 = 0 },
+
+  // mod: "aot", func: "f64_neg", test: 2, params: 1, results: 1
+  { .f64 = 1 },
+  { .f64 = -1 },
+
+  // mod: "aot", func: "f64_ceil", test: 0, params: 1, results: 1
+  { .f64 = -1.1 },
+  { .f64 = -1.0 },
+
+  // mod: "aot", func: "f64_ceil", test: 1, params: 1, results: 1
+  { .f64 = 0 },
+  { .f64 = 0 },
+
+  // mod: "aot", func: "f64_ceil", test: 2, params: 1, results: 1
+  { .f64 = 1.1 },
+  { .f64 = 2 },
+
+  // mod: "aot", func: "f64_floor", test: 0, params: 1, results: 1
+  { .f64 = -1.1 },
+  { .f64 = -2.0 },
+
+  // mod: "aot", func: "f64_floor", test: 1, params: 1, results: 1
+  { .f64 = 0 },
+  { .f64 = 0 },
+
+  // mod: "aot", func: "f64_floor", test: 2, params: 1, results: 1
+  { .f64 = 1.1 },
+  { .f64 = 1.0 },
+
+  // mod: "aot", func: "f64_trunc", test: 0, params: 1, results: 1
+  { .f64 = -1.1 },
+  { .f64 = -1.0 },
+
+  // mod: "aot", func: "f64_trunc", test: 1, params: 1, results: 1
+  { .f64 = 0 },
+  { .f64 = 0 },
+
+  // mod: "aot", func: "f64_trunc", test: 2, params: 1, results: 1
+  { .f64 = 1.1 },
+  { .f64 = 1.0 },
+
+  // mod: "aot", func: "f64_nearest", test: 0, params: 1, results: 1
+  { .f64 = -1.1 },
+  { .f64 = -1.0 },
+
+  // mod: "aot", func: "f64_nearest", test: 1, params: 1, results: 1
+  { .f64 = 0 },
+  { .f64 = 0 },
+
+  // mod: "aot", func: "f64_nearest", test: 2, params: 1, results: 1
+  { .f64 = 1.6 },
+  { .f64 = 2.0 },
+
+  // mod: "aot", func: "f64_sqrt", test: 0, params: 1, results: 1
+  { .f64 = 4.0 },
+  { .f64 = 2.0 },
+
+  // mod: "aot", func: "f64_sqrt", test: 1, params: 1, results: 1
+  { .f64 = 2.0 },
+  { .f64 = 1.41421 },
+
+  // mod: "aot", func: "f64_sqrt", test: 2, params: 1, results: 1
+  { .f64 = 49.0 },
+  { .f64 = 7.0 },
+
+  // mod: "aot", func: "f64_add", test: 0, params: 2, results: 1
+  { .f64 = 49.0 },
+  { .f64 = 51.0 },
+  { .f64 = 100.0 },
+
+  // mod: "aot", func: "f64_add", test: 1, params: 2, results: 1
+  { .f64 = -49.0 },
+  { .f64 = 51.0 },
+  { .f64 = 2.0 },
+
+  // mod: "aot", func: "f64_add", test: 2, params: 2, results: 1
+  { .f64 = 1024.0 },
+  { .f64 = 321.0 },
+  { .f64 = 1345.0 },
+
+  // mod: "aot", func: "f64_sub", test: 0, params: 2, results: 1
+  { .f64 = 49.0 },
+  { .f64 = 51.0 },
+  { .f64 = -2.0 },
+
+  // mod: "aot", func: "f64_sub", test: 1, params: 2, results: 1
+  { .f64 = -49.0 },
+  { .f64 = 51.0 },
+  { .f64 = -100.0 },
+
+  // mod: "aot", func: "f64_sub", test: 2, params: 2, results: 1
+  { .f64 = 1024.2 },
+  { .f64 = 21.1 },
+  { .f64 = 1003.1 },
+
+  // mod: "aot", func: "f64_mul", test: 0, params: 2, results: 1
+  { .f64 = 4.0 },
+  { .f64 = 5.0 },
+  { .f64 = 20.0 },
+
+  // mod: "aot", func: "f64_mul", test: 1, params: 2, results: 1
+  { .f64 = -9.0 },
+  { .f64 = 5.0 },
+  { .f64 = -45.0 },
+
+  // mod: "aot", func: "f64_mul", test: 2, params: 2, results: 1
+  { .f64 = 1024.0 },
+  { .f64 = 2.1 },
+  { .f64 = 2150.4 },
+
+  // mod: "aot", func: "f64_div", test: 0, params: 2, results: 1
+  { .f64 = 4.0 },
+  { .f64 = 5.0 },
+  { .f64 = 0.8 },
+
+  // mod: "aot", func: "f64_div", test: 1, params: 2, results: 1
+  { .f64 = -15.0 },
+  { .f64 = 5.0 },
+  { .f64 = -3.0 },
+
+  // mod: "aot", func: "f64_div", test: 2, params: 2, results: 1
+  { .f64 = 1024.0 },
+  { .f64 = 2.0 },
+  { .f64 = 512.0 },
+
+  // mod: "aot", func: "f64_min", test: 0, params: 2, results: 1
+  { .f64 = 4.0 },
+  { .f64 = 5.0 },
+  { .f64 = 4.0 },
+
+  // mod: "aot", func: "f64_min", test: 1, params: 2, results: 1
+  { .f64 = -15.0 },
+  { .f64 = 5.0 },
+  { .f64 = -15.0 },
+
+  // mod: "aot", func: "f64_min", test: 2, params: 2, results: 1
+  { .f64 = 1024.0 },
+  { .f64 = 2.0 },
+  { .f64 = 2.0 },
+
+  // mod: "aot", func: "f64_max", test: 0, params: 2, results: 1
+  { .f64 = 4.0 },
+  { .f64 = 5.0 },
+  { .f64 = 5.0 },
+
+  // mod: "aot", func: "f64_max", test: 1, params: 2, results: 1
+  { .f64 = -15.0 },
+  { .f64 = 5.0 },
+  { .f64 = 5.0 },
+
+  // mod: "aot", func: "f64_max", test: 2, params: 2, results: 1
+  { .f64 = 1024.0 },
+  { .f64 = 2.0 },
+  { .f64 = 1024.0 },
+
+  // mod: "aot", func: "f64_copysign", test: 0, params: 2, results: 1
+  { .f64 = -4.0 },
+  { .f64 = 5.0 },
+  { .f64 = 4.0 },
+
+  // mod: "aot", func: "f64_copysign", test: 1, params: 2, results: 1
+  { .f64 = 15.0 },
+  { .f64 = -5.0 },
+  { .f64 = -15.0 },
+
+  // mod: "aot", func: "f64_copysign", test: 2, params: 2, results: 1
+  { .f64 = 1024.0 },
+  { .f64 = 0.0 },
+  { .f64 = 1024.0 },
 };
 
 static const pwasm_value_type_t
@@ -2630,6 +2819,195 @@ TEST_TYPES[] = {
   PWASM_VALUE_TYPE_F32,
   PWASM_VALUE_TYPE_F32,
   PWASM_VALUE_TYPE_F32,
+
+  // mod: "aot", func: "f64_abs", test: 0, params: 1, results: 1
+  PWASM_VALUE_TYPE_F64,
+  PWASM_VALUE_TYPE_F64,
+
+  // mod: "aot", func: "f64_abs", test: 1, params: 1, results: 1
+  PWASM_VALUE_TYPE_F64,
+  PWASM_VALUE_TYPE_F64,
+
+  // mod: "aot", func: "f64_abs", test: 2, params: 1, results: 1
+  PWASM_VALUE_TYPE_F64,
+  PWASM_VALUE_TYPE_F64,
+
+  // mod: "aot", func: "f64_neg", test: 0, params: 1, results: 1
+  PWASM_VALUE_TYPE_F64,
+  PWASM_VALUE_TYPE_F64,
+
+  // mod: "aot", func: "f64_neg", test: 1, params: 1, results: 1
+  PWASM_VALUE_TYPE_F64,
+  PWASM_VALUE_TYPE_F64,
+
+  // mod: "aot", func: "f64_neg", test: 2, params: 1, results: 1
+  PWASM_VALUE_TYPE_F64,
+  PWASM_VALUE_TYPE_F64,
+
+  // mod: "aot", func: "f64_ceil", test: 0, params: 1, results: 1
+  PWASM_VALUE_TYPE_F64,
+  PWASM_VALUE_TYPE_F64,
+
+  // mod: "aot", func: "f64_ceil", test: 1, params: 1, results: 1
+  PWASM_VALUE_TYPE_F64,
+  PWASM_VALUE_TYPE_F64,
+
+  // mod: "aot", func: "f64_ceil", test: 2, params: 1, results: 1
+  PWASM_VALUE_TYPE_F64,
+  PWASM_VALUE_TYPE_F64,
+
+  // mod: "aot", func: "f64_floor", test: 0, params: 1, results: 1
+  PWASM_VALUE_TYPE_F64,
+  PWASM_VALUE_TYPE_F64,
+
+  // mod: "aot", func: "f64_floor", test: 1, params: 1, results: 1
+  PWASM_VALUE_TYPE_F64,
+  PWASM_VALUE_TYPE_F64,
+
+  // mod: "aot", func: "f64_floor", test: 2, params: 1, results: 1
+  PWASM_VALUE_TYPE_F64,
+  PWASM_VALUE_TYPE_F64,
+
+  // mod: "aot", func: "f64_trunc", test: 0, params: 1, results: 1
+  PWASM_VALUE_TYPE_F64,
+  PWASM_VALUE_TYPE_F64,
+
+  // mod: "aot", func: "f64_trunc", test: 1, params: 1, results: 1
+  PWASM_VALUE_TYPE_F64,
+  PWASM_VALUE_TYPE_F64,
+
+  // mod: "aot", func: "f64_trunc", test: 2, params: 1, results: 1
+  PWASM_VALUE_TYPE_F64,
+  PWASM_VALUE_TYPE_F64,
+
+  // mod: "aot", func: "f64_nearest", test: 0, params: 1, results: 1
+  PWASM_VALUE_TYPE_F64,
+  PWASM_VALUE_TYPE_F64,
+
+  // mod: "aot", func: "f64_nearest", test: 1, params: 1, results: 1
+  PWASM_VALUE_TYPE_F64,
+  PWASM_VALUE_TYPE_F64,
+
+  // mod: "aot", func: "f64_nearest", test: 2, params: 1, results: 1
+  PWASM_VALUE_TYPE_F64,
+  PWASM_VALUE_TYPE_F64,
+
+  // mod: "aot", func: "f64_sqrt", test: 0, params: 1, results: 1
+  PWASM_VALUE_TYPE_F64,
+  PWASM_VALUE_TYPE_F64,
+
+  // mod: "aot", func: "f64_sqrt", test: 1, params: 1, results: 1
+  PWASM_VALUE_TYPE_F64,
+  PWASM_VALUE_TYPE_F64,
+
+  // mod: "aot", func: "f64_sqrt", test: 2, params: 1, results: 1
+  PWASM_VALUE_TYPE_F64,
+  PWASM_VALUE_TYPE_F64,
+
+  // mod: "aot", func: "f64_add", test: 0, params: 2, results: 1
+  PWASM_VALUE_TYPE_F64,
+  PWASM_VALUE_TYPE_F64,
+  PWASM_VALUE_TYPE_F64,
+
+  // mod: "aot", func: "f64_add", test: 1, params: 2, results: 1
+  PWASM_VALUE_TYPE_F64,
+  PWASM_VALUE_TYPE_F64,
+  PWASM_VALUE_TYPE_F64,
+
+  // mod: "aot", func: "f64_add", test: 2, params: 2, results: 1
+  PWASM_VALUE_TYPE_F64,
+  PWASM_VALUE_TYPE_F64,
+  PWASM_VALUE_TYPE_F64,
+
+  // mod: "aot", func: "f64_sub", test: 0, params: 2, results: 1
+  PWASM_VALUE_TYPE_F64,
+  PWASM_VALUE_TYPE_F64,
+  PWASM_VALUE_TYPE_F64,
+
+  // mod: "aot", func: "f64_sub", test: 1, params: 2, results: 1
+  PWASM_VALUE_TYPE_F64,
+  PWASM_VALUE_TYPE_F64,
+  PWASM_VALUE_TYPE_F64,
+
+  // mod: "aot", func: "f64_sub", test: 2, params: 2, results: 1
+  PWASM_VALUE_TYPE_F64,
+  PWASM_VALUE_TYPE_F64,
+  PWASM_VALUE_TYPE_F64,
+
+  // mod: "aot", func: "f64_mul", test: 0, params: 2, results: 1
+  PWASM_VALUE_TYPE_F64,
+  PWASM_VALUE_TYPE_F64,
+  PWASM_VALUE_TYPE_F64,
+
+  // mod: "aot", func: "f64_mul", test: 1, params: 2, results: 1
+  PWASM_VALUE_TYPE_F64,
+  PWASM_VALUE_TYPE_F64,
+  PWASM_VALUE_TYPE_F64,
+
+  // mod: "aot", func: "f64_mul", test: 2, params: 2, results: 1
+  PWASM_VALUE_TYPE_F64,
+  PWASM_VALUE_TYPE_F64,
+  PWASM_VALUE_TYPE_F64,
+
+  // mod: "aot", func: "f64_div", test: 0, params: 2, results: 1
+  PWASM_VALUE_TYPE_F64,
+  PWASM_VALUE_TYPE_F64,
+  PWASM_VALUE_TYPE_F64,
+
+  // mod: "aot", func: "f64_div", test: 1, params: 2, results: 1
+  PWASM_VALUE_TYPE_F64,
+  PWASM_VALUE_TYPE_F64,
+  PWASM_VALUE_TYPE_F64,
+
+  // mod: "aot", func: "f64_div", test: 2, params: 2, results: 1
+  PWASM_VALUE_TYPE_F64,
+  PWASM_VALUE_TYPE_F64,
+  PWASM_VALUE_TYPE_F64,
+
+  // mod: "aot", func: "f64_min", test: 0, params: 2, results: 1
+  PWASM_VALUE_TYPE_F64,
+  PWASM_VALUE_TYPE_F64,
+  PWASM_VALUE_TYPE_F64,
+
+  // mod: "aot", func: "f64_min", test: 1, params: 2, results: 1
+  PWASM_VALUE_TYPE_F64,
+  PWASM_VALUE_TYPE_F64,
+  PWASM_VALUE_TYPE_F64,
+
+  // mod: "aot", func: "f64_min", test: 2, params: 2, results: 1
+  PWASM_VALUE_TYPE_F64,
+  PWASM_VALUE_TYPE_F64,
+  PWASM_VALUE_TYPE_F64,
+
+  // mod: "aot", func: "f64_max", test: 0, params: 2, results: 1
+  PWASM_VALUE_TYPE_F64,
+  PWASM_VALUE_TYPE_F64,
+  PWASM_VALUE_TYPE_F64,
+
+  // mod: "aot", func: "f64_max", test: 1, params: 2, results: 1
+  PWASM_VALUE_TYPE_F64,
+  PWASM_VALUE_TYPE_F64,
+  PWASM_VALUE_TYPE_F64,
+
+  // mod: "aot", func: "f64_max", test: 2, params: 2, results: 1
+  PWASM_VALUE_TYPE_F64,
+  PWASM_VALUE_TYPE_F64,
+  PWASM_VALUE_TYPE_F64,
+
+  // mod: "aot", func: "f64_copysign", test: 0, params: 2, results: 1
+  PWASM_VALUE_TYPE_F64,
+  PWASM_VALUE_TYPE_F64,
+  PWASM_VALUE_TYPE_F64,
+
+  // mod: "aot", func: "f64_copysign", test: 1, params: 2, results: 1
+  PWASM_VALUE_TYPE_F64,
+  PWASM_VALUE_TYPE_F64,
+  PWASM_VALUE_TYPE_F64,
+
+  // mod: "aot", func: "f64_copysign", test: 2, params: 2, results: 1
+  PWASM_VALUE_TYPE_F64,
+  PWASM_VALUE_TYPE_F64,
+  PWASM_VALUE_TYPE_F64,
 };
 
 typedef struct {
@@ -3858,6 +4236,216 @@ TEST_CALLS[] = {{
   .func     = "f32_copysign",
   .params  = { 670, 2 },
   .results = { 672, 1 },
+}, {
+  .mod      = "aot",
+  .func     = "f64_abs",
+  .params  = { 673, 1 },
+  .results = { 674, 1 },
+}, {
+  .mod      = "aot",
+  .func     = "f64_abs",
+  .params  = { 675, 1 },
+  .results = { 676, 1 },
+}, {
+  .mod      = "aot",
+  .func     = "f64_abs",
+  .params  = { 677, 1 },
+  .results = { 678, 1 },
+}, {
+  .mod      = "aot",
+  .func     = "f64_neg",
+  .params  = { 679, 1 },
+  .results = { 680, 1 },
+}, {
+  .mod      = "aot",
+  .func     = "f64_neg",
+  .params  = { 681, 1 },
+  .results = { 682, 1 },
+}, {
+  .mod      = "aot",
+  .func     = "f64_neg",
+  .params  = { 683, 1 },
+  .results = { 684, 1 },
+}, {
+  .mod      = "aot",
+  .func     = "f64_ceil",
+  .params  = { 685, 1 },
+  .results = { 686, 1 },
+}, {
+  .mod      = "aot",
+  .func     = "f64_ceil",
+  .params  = { 687, 1 },
+  .results = { 688, 1 },
+}, {
+  .mod      = "aot",
+  .func     = "f64_ceil",
+  .params  = { 689, 1 },
+  .results = { 690, 1 },
+}, {
+  .mod      = "aot",
+  .func     = "f64_floor",
+  .params  = { 691, 1 },
+  .results = { 692, 1 },
+}, {
+  .mod      = "aot",
+  .func     = "f64_floor",
+  .params  = { 693, 1 },
+  .results = { 694, 1 },
+}, {
+  .mod      = "aot",
+  .func     = "f64_floor",
+  .params  = { 695, 1 },
+  .results = { 696, 1 },
+}, {
+  .mod      = "aot",
+  .func     = "f64_trunc",
+  .params  = { 697, 1 },
+  .results = { 698, 1 },
+}, {
+  .mod      = "aot",
+  .func     = "f64_trunc",
+  .params  = { 699, 1 },
+  .results = { 700, 1 },
+}, {
+  .mod      = "aot",
+  .func     = "f64_trunc",
+  .params  = { 701, 1 },
+  .results = { 702, 1 },
+}, {
+  .mod      = "aot",
+  .func     = "f64_nearest",
+  .params  = { 703, 1 },
+  .results = { 704, 1 },
+}, {
+  .mod      = "aot",
+  .func     = "f64_nearest",
+  .params  = { 705, 1 },
+  .results = { 706, 1 },
+}, {
+  .mod      = "aot",
+  .func     = "f64_nearest",
+  .params  = { 707, 1 },
+  .results = { 708, 1 },
+}, {
+  .mod      = "aot",
+  .func     = "f64_sqrt",
+  .params  = { 709, 1 },
+  .results = { 710, 1 },
+}, {
+  .mod      = "aot",
+  .func     = "f64_sqrt",
+  .params  = { 711, 1 },
+  .results = { 712, 1 },
+}, {
+  .mod      = "aot",
+  .func     = "f64_sqrt",
+  .params  = { 713, 1 },
+  .results = { 714, 1 },
+}, {
+  .mod      = "aot",
+  .func     = "f64_add",
+  .params  = { 715, 2 },
+  .results = { 717, 1 },
+}, {
+  .mod      = "aot",
+  .func     = "f64_add",
+  .params  = { 718, 2 },
+  .results = { 720, 1 },
+}, {
+  .mod      = "aot",
+  .func     = "f64_add",
+  .params  = { 721, 2 },
+  .results = { 723, 1 },
+}, {
+  .mod      = "aot",
+  .func     = "f64_sub",
+  .params  = { 724, 2 },
+  .results = { 726, 1 },
+}, {
+  .mod      = "aot",
+  .func     = "f64_sub",
+  .params  = { 727, 2 },
+  .results = { 729, 1 },
+}, {
+  .mod      = "aot",
+  .func     = "f64_sub",
+  .params  = { 730, 2 },
+  .results = { 732, 1 },
+}, {
+  .mod      = "aot",
+  .func     = "f64_mul",
+  .params  = { 733, 2 },
+  .results = { 735, 1 },
+}, {
+  .mod      = "aot",
+  .func     = "f64_mul",
+  .params  = { 736, 2 },
+  .results = { 738, 1 },
+}, {
+  .mod      = "aot",
+  .func     = "f64_mul",
+  .params  = { 739, 2 },
+  .results = { 741, 1 },
+}, {
+  .mod      = "aot",
+  .func     = "f64_div",
+  .params  = { 742, 2 },
+  .results = { 744, 1 },
+}, {
+  .mod      = "aot",
+  .func     = "f64_div",
+  .params  = { 745, 2 },
+  .results = { 747, 1 },
+}, {
+  .mod      = "aot",
+  .func     = "f64_div",
+  .params  = { 748, 2 },
+  .results = { 750, 1 },
+}, {
+  .mod      = "aot",
+  .func     = "f64_min",
+  .params  = { 751, 2 },
+  .results = { 753, 1 },
+}, {
+  .mod      = "aot",
+  .func     = "f64_min",
+  .params  = { 754, 2 },
+  .results = { 756, 1 },
+}, {
+  .mod      = "aot",
+  .func     = "f64_min",
+  .params  = { 757, 2 },
+  .results = { 759, 1 },
+}, {
+  .mod      = "aot",
+  .func     = "f64_max",
+  .params  = { 760, 2 },
+  .results = { 762, 1 },
+}, {
+  .mod      = "aot",
+  .func     = "f64_max",
+  .params  = { 763, 2 },
+  .results = { 765, 1 },
+}, {
+  .mod      = "aot",
+  .func     = "f64_max",
+  .params  = { 766, 2 },
+  .results = { 768, 1 },
+}, {
+  .mod      = "aot",
+  .func     = "f64_copysign",
+  .params  = { 769, 2 },
+  .results = { 771, 1 },
+}, {
+  .mod      = "aot",
+  .func     = "f64_copysign",
+  .params  = { 772, 2 },
+  .results = { 774, 1 },
+}, {
+  .mod      = "aot",
+  .func     = "f64_copysign",
+  .params  = { 775, 2 },
+  .results = { 777, 1 },
 }};
 
 static size_t get_test_name(
