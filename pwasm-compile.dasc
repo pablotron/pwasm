@@ -220,6 +220,39 @@
   | stack_dec
 |.endmacro
 
+|.macro v128_unop_init
+  // FIXME: use movdqu, movups, or lddqu here?
+  | movdqu xmm0, [r_stack - sizeof(pwasm_val_t)]
+  // | lddqu xmm0, [r_stack - sizeof(pwasm_val_t)]
+|.endmacro
+
+|.macro v128_unop_fini
+  | movdqu [r_stack - sizeof(pwasm_val_t)], xmm0
+|.endmacro
+
+|.macro v128_binop_init
+  // FIXME: use movups or lddqu here?
+  | movdqu xmm0, [r_stack - 2 * sizeof(pwasm_val_t)]
+  | movdqu xmm1, [r_stack - sizeof(pwasm_val_t)]
+|.endmacro
+
+// load operands in reverse order
+// (e.g. xmm0 = stack[-1], xmm1 = stack[-2]
+|.macro v128_inv_binop_init
+  | movdqu xmm0, [r_stack - sizeof(pwasm_val_t)]
+  | movdqu xmm1, [r_stack - 2 * sizeof(pwasm_val_t)]
+|.endmacro
+
+|.macro v128_r32_binop_init
+  | movdqu xmm0, [r_stack - 2 * sizeof(pwasm_val_t)]
+  | movd xmm1, dword [r_stack - sizeof(pwasm_val_t)]
+|.endmacro
+
+|.macro v128_binop_fini
+  | movdqu [r_stack - 2 * sizeof(pwasm_val_t)], xmm0
+  | stack_dec
+|.endmacro
+
 /**
  * Call error handler.
  */
@@ -1833,6 +1866,1022 @@ pwasm_compile(
       // | movd xmm1, rbx
       // | unpcklpd xmm0, xmm1
       // | movups [r_stack], xmm0
+
+      break;
+    case PWASM_OP_I8X16_SPLAT:
+      // vbroadcast is avx512-only
+
+      | xor rax, rax    // zero rax
+      | mov al, byte [r_stack - sizeof(pwasm_val_t)]
+
+      | mov ah, al      // ah = al (splat)
+      | mov rbx, rax    // rbx = rax
+      | shl ebx, 16     // ebx <<= 16
+      | or eax, ebx     // eax |= ebx
+      | shl rbx, 16     // rbx <<= 16
+      | or rax, rbx     // rax |= rbx
+      | shl rbx, 16     // rbx <<= 16
+      | or rax, rbx     // rax |= rbx
+
+      | mov qword [r_stack - sizeof(pwasm_val_t)], rax
+      | mov qword [r_stack - sizeof(pwasm_val_t) + sizeof(uint64_t)], rax
+
+      break;
+    case PWASM_OP_I16X8_SPLAT:
+      // vbroadcast is avx512-only
+      | xor rax, rax    // zero rax
+      | mov ax, word [r_stack - sizeof(pwasm_val_t)]
+
+      | mov rbx, rax    // rbx = rax
+      | shl ebx, 16     // ebx <<= 16
+      | or eax, ebx     // eax |= ebx
+      | shl rbx, 16     // ebx <<= 16
+      | or rax, rbx     // rax |= rbx
+      | shl rbx, 16     // rbx <<= 16
+      | or rax, rbx     // rax |= rbx
+
+      | mov qword [r_stack - sizeof(pwasm_val_t)], rax
+      | mov qword [r_stack - sizeof(pwasm_val_t) + sizeof(uint64_t)], rax
+
+      break;
+    case PWASM_OP_I32X4_SPLAT:
+    case PWASM_OP_F32X4_SPLAT:
+      // vbroadcast is avx512-only
+      | xor rax, rax    // zero rax
+      | mov eax, dword [r_stack - sizeof(pwasm_val_t)]
+
+      | mov rbx, rax    // rbx = rax
+      | shl rbx, 32     // rbx <<= 32
+      | or rax, rbx     // rax |= rbx
+
+      | mov qword [r_stack - sizeof(pwasm_val_t)], rax
+      | mov qword [r_stack - sizeof(pwasm_val_t) + sizeof(uint64_t)], rax
+
+      break;
+    case PWASM_OP_I64X2_SPLAT:
+    case PWASM_OP_F64X2_SPLAT:
+      // vbroadcast is avx512-only
+      | mov rax, qword [r_stack - sizeof(pwasm_val_t)]
+      | mov qword [r_stack - sizeof(pwasm_val_t) + sizeof(uint64_t)], rax
+
+      break;
+    case PWASM_OP_I8X16_EXTRACT_LANE_S:
+      // pextrb, movsx/cbd
+      | movzx eax, byte [r_stack - sizeof(pwasm_val_t) + in.v_index]
+      | mov [r_stack - sizeof(pwasm_val_t)], eax
+
+      break;
+    case PWASM_OP_I8X16_EXTRACT_LANE_U:
+      // pextrb, movzx/cbd
+      | xor eax, eax
+      | mov al, byte [r_stack - sizeof(pwasm_val_t) + in.v_index]
+      | mov [r_stack - sizeof(pwasm_val_t)], eax
+
+      break;
+    case PWASM_OP_I8X16_REPLACE_LANE:
+      | mov al, byte [r_stack - sizeof(pwasm_val_t)]
+      | mov byte [r_stack - 2 * sizeof(pwasm_val_t) + in.v_index], al
+      | stack_dec
+
+      break;
+    case PWASM_OP_I16X8_EXTRACT_LANE_S:
+      // pextrw, movsx/cwd
+      | movzx eax, word [r_stack - sizeof(pwasm_val_t) + in.v_index * 2]
+      | mov [r_stack - sizeof(pwasm_val_t)], eax
+
+      break;
+    case PWASM_OP_I16X8_EXTRACT_LANE_U:
+      // pextrw, movzx/cwd
+      | xor eax, eax
+      | mov ax, word [r_stack - sizeof(pwasm_val_t) + in.v_index * 2]
+      | mov [r_stack - sizeof(pwasm_val_t)], eax
+
+      break;
+    case PWASM_OP_I16X8_REPLACE_LANE:
+      | mov ax, word [r_stack - sizeof(pwasm_val_t)]
+      | mov word [r_stack - 2 * sizeof(pwasm_val_t) + in.v_index * 2], ax
+      | stack_dec
+
+      break;
+    case PWASM_OP_I32X4_EXTRACT_LANE:
+    case PWASM_OP_F32X4_EXTRACT_LANE:
+      // pextrd
+      | mov eax, dword [r_stack - sizeof(pwasm_val_t) + in.v_index * 4]
+      | mov [r_stack - sizeof(pwasm_val_t)], eax
+
+      break;
+    case PWASM_OP_I32X4_REPLACE_LANE:
+    case PWASM_OP_F32X4_REPLACE_LANE:
+      | mov eax, dword [r_stack - sizeof(pwasm_val_t)]
+      | mov [r_stack - 2 * sizeof(pwasm_val_t) + in.v_index * 4], eax
+      | stack_dec
+
+      break;
+    case PWASM_OP_I64X2_EXTRACT_LANE:
+    case PWASM_OP_F64X2_EXTRACT_LANE:
+      // pextrq
+      | mov rax, qword [r_stack - sizeof(pwasm_val_t) + in.v_index * 8]
+      | mov [r_stack - sizeof(pwasm_val_t)], rax
+
+      break;
+    case PWASM_OP_I64X2_REPLACE_LANE:
+    case PWASM_OP_F64X2_REPLACE_LANE:
+      | mov rax, qword [r_stack - sizeof(pwasm_val_t)]
+      | mov [r_stack - 2 * sizeof(pwasm_val_t) + in.v_index * 8], rax
+      | stack_dec
+
+      break;
+    case PWASM_OP_I8X16_EQ:
+      | v128_binop_init
+      | pcmpeqb xmm0, xmm1
+      | v128_binop_fini
+
+      break;
+    case PWASM_OP_I8X16_NE:
+      | v128_binop_init
+
+      | pcmpeqb xmm2, xmm2  // xmm2 = 0xFF...
+      | pcmpeqb xmm0, xmm1  // xmm0 = (xmm0 == xmm1)
+      | pxor xmm0, xmm2     // xmm0 ^= xmm2
+
+      | v128_binop_fini
+
+      break;
+    case PWASM_OP_I8X16_LT_S:
+      | v128_inv_binop_init
+      | pcmpgtb xmm0, xmm1  // xmm1 = (xmm1 > xmm0)
+      | v128_binop_fini
+
+      break;
+    case PWASM_OP_I8X16_LT_U:
+      // ref: https://stackoverflow.com/questions/16204663/sse-compare-packed-unsigned-bytes
+      | v128_inv_binop_init
+      | movaps xmm2, xmm0     // xmm2 = xmm1
+      | pmaxub xmm0, xmm1     // xmm0 = maxu(xmm0, xmm1)
+      | pcmpeqb xmm0, xmm2    // xmm0 = (xmm0 == xmm2)
+      | v128_binop_fini
+
+      break;
+    case PWASM_OP_I8X16_GT_S:
+      | v128_binop_init
+      | pcmpgtb xmm0, xmm1  // xmm1 = (xmm1 > xmm0)
+      | v128_binop_fini
+
+      break;
+    case PWASM_OP_I8X16_GT_U:
+      // calculate inverse of le_u
+      // ref: https://stackoverflow.com/questions/16204663/sse-compare-packed-unsigned-bytes
+      | v128_binop_init
+      | pcmpeqb xmm3, xmm3    // xmm3 = 0xFF...
+      | movaps xmm2, xmm0     // xmm2 = xmm1
+      | pminub xmm0, xmm1     // xmm0 = minu(xmm0, xmm1)
+      | pcmpeqb xmm0, xmm2    // xmm0 = (xmm0 == xmm2)
+      | pxor xmm0, xmm3       // xmm0 ^= xmm3
+      | v128_binop_fini
+
+      break;
+    case PWASM_OP_I8X16_LE_S:
+      | v128_inv_binop_init
+      | pcmpgtb xmm0, xmm1  // xmm1 = (xmm1 > xmm0)
+      | v128_binop_fini
+
+      break;
+    case PWASM_OP_I8X16_LE_U:
+      | v128_binop_init
+      | movaps xmm2, xmm0     // xmm2 = xmm1
+      | pminub xmm0, xmm1     // xmm0 = minu(xmm0, xmm1)
+      | pcmpeqb xmm0, xmm2    // xmm0 = (xmm0 == xmm2)
+      | v128_binop_fini
+
+      break;
+    case PWASM_OP_I8X16_GE_S:
+      // ref: https://stackoverflow.com/questions/16204663/sse-compare-packed-unsigned-bytes
+      | v128_binop_init
+      | movaps xmm2, xmm0     // xmm2 = xmm1
+      | pmaxub xmm0, xmm1     // xmm0 = maxu(xmm0, xmm1)
+      | pcmpeqb xmm0, xmm2    // xmm0 = (xmm0 == xmm2)
+      | v128_binop_fini
+
+      break;
+    case PWASM_OP_I8X16_GE_U:
+      // ref: https://stackoverflow.com/questions/16204663/sse-compare-packed-unsigned-bytes
+      | v128_inv_binop_init
+      | movaps xmm2, xmm0     // xmm2 = xmm1
+      | pmaxub xmm0, xmm1     // xmm0 = maxu(xmm0, xmm1)
+      | pcmpeqb xmm0, xmm2    // xmm0 = (xmm0 == xmm2)
+      | v128_binop_fini
+
+      break;
+    case PWASM_OP_I16X8_EQ:
+      | v128_binop_init
+      | pcmpeqw xmm0, xmm1
+      | v128_binop_fini
+
+      break;
+    case PWASM_OP_I16X8_NE:
+      | v128_binop_init
+
+      | pcmpeqd xmm2, xmm2  // xmm2 = 0xFF...
+      | pcmpeqw xmm0, xmm1  // xmm0 = (xmm0 == xmm1)
+      | pxor xmm0, xmm2     // xmm0 ^= xmm2
+
+      | v128_binop_fini
+
+      break;
+    case PWASM_OP_I16X8_LT_S:
+      | v128_inv_binop_init
+      | pcmpgtw xmm0, xmm1  // xmm1 = (xmm1 > xmm0)
+      | v128_binop_fini
+
+      break;
+    case PWASM_OP_I16X8_LT_U:
+      // ref: https://stackoverflow.com/questions/16204663/sse-compare-packed-unsigned-bytes
+      | v128_inv_binop_init
+      | movaps xmm2, xmm0     // xmm2 = xmm1
+      | pmaxuw xmm0, xmm1     // xmm0 = maxu(xmm0, xmm1)
+      | pcmpeqw xmm0, xmm2    // xmm0 = (xmm0 == xmm2)
+      | v128_binop_fini
+
+      break;
+    case PWASM_OP_I16X8_GT_S:
+      | v128_binop_init
+      | pcmpgtw xmm0, xmm1  // xmm1 = (xmm1 > xmm0)
+      | v128_binop_fini
+
+      break;
+    case PWASM_OP_I16X8_GT_U:
+      // calculate inverse of le_u
+      // ref: https://stackoverflow.com/questions/16204663/sse-compare-packed-unsigned-bytes
+      | v128_binop_init
+      | pcmpeqd xmm3, xmm3    // xmm3 = 0xFF...
+      | movaps xmm2, xmm0     // xmm2 = xmm1
+      | pminuw xmm0, xmm1     // xmm0 = minu(xmm0, xmm1)
+      | pcmpeqw xmm0, xmm2    // xmm0 = (xmm0 == xmm2)
+      | pxor xmm0, xmm3       // xmm0 ^= xmm3
+      | v128_binop_fini
+
+      break;
+    case PWASM_OP_I16X8_LE_S:
+      | v128_inv_binop_init
+      | pcmpgtw xmm0, xmm1  // xmm1 = (xmm1 > xmm0)
+      | v128_binop_fini
+
+      break;
+    case PWASM_OP_I16X8_LE_U:
+      | v128_binop_init
+      | movaps xmm2, xmm0     // xmm2 = xmm1
+      | pminuw xmm0, xmm1     // xmm0 = minu(xmm0, xmm1)
+      | pcmpeqw xmm0, xmm2    // xmm0 = (xmm0 == xmm2)
+      | v128_binop_fini
+
+      break;
+    case PWASM_OP_I16X8_GE_S:
+      // ref: https://stackoverflow.com/questions/16204663/sse-compare-packed-unsigned-bytes
+      | v128_binop_init
+      | movaps xmm2, xmm0     // xmm2 = xmm1
+      | pmaxuw xmm0, xmm1     // xmm0 = maxu(xmm0, xmm1)
+      | pcmpeqw xmm0, xmm2    // xmm0 = (xmm0 == xmm2)
+      | v128_binop_fini
+
+      break;
+    case PWASM_OP_I16X8_GE_U:
+      // ref: https://stackoverflow.com/questions/16204663/sse-compare-packed-unsigned-bytes
+      | v128_inv_binop_init
+      | movaps xmm2, xmm0     // xmm2 = xmm1
+      | pmaxuw xmm0, xmm1     // xmm0 = maxu(xmm0, xmm1)
+      | pcmpeqw xmm0, xmm2    // xmm0 = (xmm0 == xmm2)
+      | v128_binop_fini
+
+      break;
+    case PWASM_OP_I32X4_EQ:
+      | v128_binop_init
+      | pcmpeqd xmm0, xmm1
+      | v128_binop_fini
+
+      break;
+    case PWASM_OP_I32X4_NE:
+      | v128_binop_init
+
+      | pcmpeqd xmm2, xmm2  // xmm2 = 0xFF...
+      | pcmpeqd xmm0, xmm1  // xmm0 = (xmm0 == xmm1)
+      | pxor xmm0, xmm2     // xmm0 ^= xmm2
+
+      | v128_binop_fini
+
+      break;
+    case PWASM_OP_I32X4_LT_S:
+      | v128_inv_binop_init
+      | pcmpgtd xmm0, xmm1  // xmm1 = (xmm1 > xmm0)
+      | v128_binop_fini
+
+      break;
+    case PWASM_OP_I32X4_LT_U:
+      // ref: https://stackoverflow.com/questions/16204663/sse-compare-packed-unsigned-bytes
+      | v128_inv_binop_init
+      | movaps xmm2, xmm0     // xmm2 = xmm1
+      | pmaxud xmm0, xmm1     // xmm0 = maxu(xmm0, xmm1)
+      | pcmpeqd xmm0, xmm2    // xmm0 = (xmm0 == xmm2)
+      | v128_binop_fini
+
+      break;
+    case PWASM_OP_I32X4_GT_S:
+      | v128_binop_init
+      | pcmpgtd xmm0, xmm1  // xmm1 = (xmm1 > xmm0)
+      | v128_binop_fini
+
+      break;
+    case PWASM_OP_I32X4_GT_U:
+      // calculate inverse of le_u
+      // ref: https://stackoverflow.com/questions/16204663/sse-compare-packed-unsigned-bytes
+      | v128_binop_init
+      | pcmpeqd xmm3, xmm3    // xmm3 = 0xFF...
+      | movaps xmm2, xmm0     // xmm2 = xmm1
+      | pminud xmm0, xmm1     // xmm0 = minu(xmm0, xmm1)
+      | pcmpeqd xmm0, xmm2    // xmm0 = (xmm0 == xmm2)
+      | pxor xmm0, xmm3       // xmm0 ^= xmm3
+      | v128_binop_fini
+
+      break;
+    case PWASM_OP_I32X4_LE_S:
+      | v128_inv_binop_init
+      | pcmpgtd xmm0, xmm1  // xmm1 = (xmm1 > xmm0)
+      | v128_binop_fini
+
+      break;
+    case PWASM_OP_I32X4_LE_U:
+      | v128_binop_init
+      | movaps xmm2, xmm0     // xmm2 = xmm1
+      | pminud xmm0, xmm1     // xmm0 = minu(xmm0, xmm1)
+      | pcmpeqd xmm0, xmm2    // xmm0 = (xmm0 == xmm2)
+      | v128_binop_fini
+
+      break;
+    case PWASM_OP_I32X4_GE_S:
+      // ref: https://stackoverflow.com/questions/16204663/sse-compare-packed-unsigned-bytes
+      | v128_binop_init
+      | movaps xmm2, xmm0     // xmm2 = xmm1
+      | pmaxud xmm0, xmm1     // xmm0 = maxu(xmm0, xmm1)
+      | pcmpeqd xmm0, xmm2    // xmm0 = (xmm0 == xmm2)
+      | v128_binop_fini
+
+      break;
+    case PWASM_OP_I32X4_GE_U:
+      // ref: https://stackoverflow.com/questions/16204663/sse-compare-packed-unsigned-bytes
+      | v128_inv_binop_init
+      | movaps xmm2, xmm0     // xmm2 = xmm1
+      | pmaxud xmm0, xmm1     // xmm0 = maxu(xmm0, xmm1)
+      | pcmpeqd xmm0, xmm2    // xmm0 = (xmm0 == xmm2)
+      | v128_binop_fini
+
+      break;
+    case PWASM_OP_F32X4_EQ:
+      | v128_binop_init
+      | cmpps xmm0, xmm1, 0   // xmm0 = (xmm0 == xmm1)
+      | v128_binop_fini
+
+      break;
+    case PWASM_OP_F32X4_NE:
+      | v128_binop_init
+      | cmpps xmm0, xmm1, 4   // xmm0 = (xmm0 != xmm1)
+      | v128_binop_fini
+
+      break;
+    case PWASM_OP_F32X4_LT:
+      | v128_binop_init
+      | cmpps xmm0, xmm1, 1   // xmm0 = (xmm0 == xmm1)
+      | v128_binop_fini
+
+      break;
+    case PWASM_OP_F32X4_GT:
+      | v128_binop_init
+      | cmpps xmm0, xmm1, 6   // xmm0 = (xmm0 == xmm1)
+      | v128_binop_fini
+
+      break;
+    case PWASM_OP_F32X4_LE:
+      | v128_binop_init
+      | cmpps xmm0, xmm1, 2   // xmm0 = (xmm0 == xmm1)
+      | v128_binop_fini
+
+      break;
+    case PWASM_OP_F32X4_GE:
+      | v128_binop_init
+      | cmpps xmm0, xmm1, 5   // xmm0 = (xmm0 == xmm1)
+      | v128_binop_fini
+
+      break;
+    case PWASM_OP_F64X2_EQ:
+      | v128_binop_init
+      | cmppd xmm0, xmm1, 0   // xmm0 = (xmm0 == xmm1)
+      | v128_binop_fini
+
+      break;
+    case PWASM_OP_F64X2_NE:
+      | v128_binop_init
+      | cmppd xmm0, xmm1, 4   // xmm0 = (xmm0 != xmm1)
+      | v128_binop_fini
+
+      break;
+    case PWASM_OP_F64X2_LT:
+      | v128_binop_init
+      | cmppd xmm0, xmm1, 1   // xmm0 = (xmm0 == xmm1)
+      | v128_binop_fini
+
+      break;
+    case PWASM_OP_F64X2_GT:
+      | v128_binop_init
+      | cmppd xmm0, xmm1, 6   // xmm0 = (xmm0 == xmm1)
+      | v128_binop_fini
+
+      break;
+    case PWASM_OP_F64X2_LE:
+      | v128_binop_init
+      | cmppd xmm0, xmm1, 2   // xmm0 = (xmm0 == xmm1)
+      | v128_binop_fini
+
+      break;
+    case PWASM_OP_F64X2_GE:
+      | v128_binop_init
+      | cmppd xmm0, xmm1, 5   // xmm0 = (xmm0 == xmm1)
+      | v128_binop_fini
+
+      break;
+    case PWASM_OP_V128_NOT:
+      | v128_unop_init
+      | pcmpeqd xmm1, xmm1    // xmm1 = 0xFF..
+      | pxor xmm0, xmm1       // xmm0 = ~xmm0
+      | v128_unop_fini
+
+      break;
+    case PWASM_OP_V128_AND:
+      | v128_binop_init
+      | pand xmm0, xmm1       // xmm0 &= xmm1
+      | v128_binop_fini
+
+      break;
+    case PWASM_OP_V128_ANDNOT:
+      | v128_binop_init
+      | pandn xmm0, xmm1      // xmm0 &= ~xmm1
+      | v128_binop_fini
+
+      break;
+    case PWASM_OP_V128_OR:
+      | v128_binop_init
+      | por xmm0, xmm1        // xmm0 |= xmm1
+      | v128_binop_fini
+
+      break;
+    case PWASM_OP_V128_XOR:
+      | v128_binop_init
+      | pxor xmm0, xmm1       // xmm0 ^= xmm1
+      | v128_binop_fini
+
+      break;
+    case PWASM_OP_V128_BITSELECT:
+      // FIXME: i think there's an instruction for this
+
+      | movupd xmm0, [r_stack - 3 * sizeof(pwasm_val_t)] // a
+      | movupd xmm1, [r_stack - 2 * sizeof(pwasm_val_t)] // b
+      | movupd xmm2, [r_stack - 1 * sizeof(pwasm_val_t)] // mask
+
+      | pcmpeqd xmm3, xmm3    // xmm3 = 0xFF..
+      | pxor xmm3, xmm2       // xmm3 = ~mask
+      | pand xmm0, xmm2       // a &= mask
+      | pand xmm1, xmm3       // b &= ~mask
+      | por xmm0, xmm1        // a = a | b
+
+      | movupd [r_stack - 3 * sizeof(pwasm_val_t)], xmm0
+      | stack_decn 2
+
+      break;
+    case PWASM_OP_I8X16_ABS:
+      | v128_unop_init
+      | pabsb xmm0, xmm0
+      | v128_unop_fini
+
+      break;
+    case PWASM_OP_I8X16_NEG:
+      | v128_unop_init
+      | pcmpeqd xmm1, xmm1    // xmm1 = 0xFF...
+      | psignb xmm0, xmm1     // xmm0 = -xmm0
+      | v128_unop_fini
+
+      break;
+    case PWASM_OP_I8X16_ANY_TRUE:
+    case PWASM_OP_I16X8_ANY_TRUE:
+      | v128_unop_init
+      | xor eax, eax
+      | ptest xmm0, xmm0
+      | setnz al
+      | i32_unop_fini
+
+      break;
+    case PWASM_OP_I8X16_ALL_TRUE:
+    case PWASM_OP_I16X8_ALL_TRUE:
+      // FIXME: this looks wrong
+      | v128_unop_init
+      | pxor xmm1, xmm1       // xmm1 = 0
+      | pcmpeqd xmm2, xmm2    // xmm2 = 0xFF...
+      | pcmpeqd xmm0, xmm1    // xmm0 = (xmm0 == 0)
+      | ptest xmm0, xmm0      // (xmm0 != 0)
+      | setz al
+      | i32_unop_fini
+
+      break;
+    case PWASM_OP_I8X16_NARROW_I16X8_S:
+      | v128_binop_init
+      | packsswb xmm0, xmm1
+      | v128_binop_fini
+
+      break;
+    case PWASM_OP_I8X16_NARROW_I16X8_U:
+      | v128_binop_init
+      | packuswb xmm0, xmm1
+      | v128_binop_fini
+
+      break;
+    // TODO: case PWASM_OP_I8X16_SHL:
+    // TODO: case PWASM_OP_I8X16_SHR_S:
+    // TODO: case PWASM_OP_I8X16_SHR_U:
+
+    case PWASM_OP_I8X16_ADD:
+      | v128_binop_init
+      | paddb xmm0, xmm1
+      | v128_binop_fini
+
+      break;
+    case PWASM_OP_I8X16_ADD_SATURATE_S:
+      | v128_binop_init
+      | paddsb xmm0, xmm1
+      | v128_binop_fini
+
+      break;
+    case PWASM_OP_I8X16_ADD_SATURATE_U:
+      | v128_binop_init
+      | paddusb xmm0, xmm1
+      | v128_binop_fini
+
+      break;
+    case PWASM_OP_I8X16_SUB:
+      | v128_binop_init
+      | psubb xmm0, xmm1
+      | v128_binop_fini
+
+      break;
+    case PWASM_OP_I8X16_SUB_SATURATE_S:
+      | v128_binop_init
+      | psubsb xmm0, xmm1
+      | v128_binop_fini
+
+      break;
+    case PWASM_OP_I8X16_SUB_SATURATE_U:
+      | v128_binop_init
+      | psubusb xmm0, xmm1
+      | v128_binop_fini
+
+      break;
+    case PWASM_OP_I8X16_MIN_S:
+      | v128_binop_init
+      | pminsb xmm0, xmm1
+      | v128_binop_fini
+
+      break;
+    case PWASM_OP_I8X16_MIN_U:
+      | v128_binop_init
+      | pminub xmm0, xmm1
+      | v128_binop_fini
+
+      break;
+    case PWASM_OP_I8X16_MAX_S:
+      | v128_binop_init
+      | pmaxsb xmm0, xmm1
+      | v128_binop_fini
+
+      break;
+    case PWASM_OP_I8X16_MAX_U:
+      | v128_binop_init
+      | pmaxub xmm0, xmm1
+      | v128_binop_fini
+
+      break;
+    case PWASM_OP_I8X16_AVGR_U:
+      | v128_binop_init
+      | pavgb xmm0, xmm1
+      | v128_binop_fini
+
+      break;
+    case PWASM_OP_I16X8_ABS:
+      | v128_unop_init
+      | pabsw xmm0, xmm0
+      | v128_unop_fini
+
+      break;
+    case PWASM_OP_I16X8_NEG:
+      | v128_unop_init
+      | pcmpeqd xmm1, xmm1    // xmm1 = 0xFF...
+      | psignw xmm0, xmm1     // xmm0 = -xmm0
+      | v128_unop_fini
+
+      break;
+    case PWASM_OP_I16X8_NARROW_I32X4_S:
+      | v128_binop_init
+      | packssdw xmm0, xmm1
+      | v128_binop_fini
+
+      break;
+    case PWASM_OP_I16X8_NARROW_I32X4_U:
+      | v128_binop_init
+      | packusdw xmm0, xmm1
+      | v128_binop_fini
+
+      break;
+    case PWASM_OP_I16X8_WIDEN_LOW_I8X16_S:
+      | v128_unop_init
+      | pmovsxbw xmm0, xmm0
+      | v128_unop_fini
+
+      break;
+    case PWASM_OP_I16X8_WIDEN_LOW_I8X16_U:
+      | v128_unop_init
+      | pmovzxbw xmm0, xmm0
+      | v128_unop_fini
+
+      break;
+    case PWASM_OP_I16X8_WIDEN_HIGH_I8X16_S:
+      | movdqu xmm0, [r_stack - sizeof(pwasm_val_t) + sizeof(uint64_t)]
+      | pmovsxbw xmm0, xmm0
+      | v128_unop_fini
+
+      break;
+    case PWASM_OP_I16X8_WIDEN_HIGH_I8X16_U:
+      | movdqu xmm0, [r_stack - sizeof(pwasm_val_t) + sizeof(uint64_t)]
+      | pmovzxbw xmm0, xmm0
+      | v128_unop_fini
+
+      break;
+    case PWASM_OP_I16X8_SHL:
+      | v128_r32_binop_init
+      | psllw xmm0, xmm1
+      | v128_binop_fini
+
+      break;
+    case PWASM_OP_I16X8_SHR_S:
+      | v128_r32_binop_init
+      | psraw xmm0, xmm1
+      | v128_binop_fini
+
+      break;
+    case PWASM_OP_I16X8_SHR_U:
+      | v128_r32_binop_init
+      | psrlw xmm0, xmm1
+      | v128_binop_fini
+
+      break;
+    case PWASM_OP_I16X8_ADD:
+      | v128_binop_init
+      | paddw xmm0, xmm1
+      | v128_binop_fini
+
+      break;
+    case PWASM_OP_I16X8_ADD_SATURATE_S:
+      | v128_binop_init
+      | paddsw xmm0, xmm1
+      | v128_binop_fini
+
+      break;
+    case PWASM_OP_I16X8_ADD_SATURATE_U:
+      | v128_binop_init
+      | paddusw xmm0, xmm1
+      | v128_binop_fini
+
+      break;
+    case PWASM_OP_I16X8_SUB:
+      | v128_binop_init
+      | psubw xmm0, xmm1
+      | v128_binop_fini
+
+      break;
+    case PWASM_OP_I16X8_SUB_SATURATE_S:
+      | v128_binop_init
+      | psubsw xmm0, xmm1
+      | v128_binop_fini
+
+      break;
+    case PWASM_OP_I16X8_SUB_SATURATE_U:
+      | v128_binop_init
+      | psubusw xmm0, xmm1
+      | v128_binop_fini
+
+      break;
+    case PWASM_OP_I16X8_MUL:
+      | v128_binop_init
+      | pmullw xmm0, xmm1
+      | v128_binop_fini
+
+      break;
+    case PWASM_OP_I16X8_MIN_S:
+      | v128_binop_init
+      | pminsw xmm0, xmm1
+      | v128_binop_fini
+
+      break;
+    case PWASM_OP_I16X8_MIN_U:
+      | v128_binop_init
+      | pminuw xmm0, xmm1
+      | v128_binop_fini
+
+      break;
+    case PWASM_OP_I16X8_MAX_S:
+      | v128_binop_init
+      | pmaxsw xmm0, xmm1
+      | v128_binop_fini
+
+      break;
+    case PWASM_OP_I16X8_MAX_U:
+      | v128_binop_init
+      | pmaxuw xmm0, xmm1
+      | v128_binop_fini
+
+      break;
+    case PWASM_OP_I16X8_AVGR_U:
+      | v128_binop_init
+      | pavgw xmm0, xmm1
+      | v128_binop_fini
+
+      break;
+    case PWASM_OP_I32X4_ABS:
+      | v128_unop_init
+      | pabsd xmm0, xmm0
+      | v128_unop_fini
+
+      break;
+    case PWASM_OP_I32X4_NEG:
+      | v128_unop_init
+      | pcmpeqd xmm1, xmm1    // xmm1 = 0xFF...
+      | psignd xmm0, xmm1     // xmm0 = -xmm0
+      | v128_unop_fini
+
+      break;
+    case PWASM_OP_I32X4_WIDEN_LOW_I16X8_S:
+      | v128_unop_init
+      | pmovsxwd xmm0, xmm0
+      | v128_unop_fini
+
+      break;
+    case PWASM_OP_I32X4_WIDEN_LOW_I16X8_U:
+      | v128_unop_init
+      | pmovzxwd xmm0, xmm0
+      | v128_unop_fini
+
+      break;
+    case PWASM_OP_I32X4_WIDEN_HIGH_I16X8_S:
+      | movdqu xmm0, [r_stack - sizeof(pwasm_val_t) + sizeof(uint64_t)]
+      | pmovsxwd xmm0, xmm0
+      | v128_unop_fini
+
+      break;
+    case PWASM_OP_I32X4_WIDEN_HIGH_I16X8_U:
+      | movdqu xmm0, [r_stack - sizeof(pwasm_val_t) + sizeof(uint64_t)]
+      | pmovzxwd xmm0, xmm0
+      | v128_unop_fini
+
+      break;
+    case PWASM_OP_I32X4_SHL:
+      | v128_r32_binop_init
+      | pslld xmm0, xmm1
+      | v128_binop_fini
+
+      break;
+    case PWASM_OP_I32X4_SHR_S:
+      | v128_r32_binop_init
+      | psrad xmm0, xmm1
+      | v128_binop_fini
+
+      break;
+    case PWASM_OP_I32X4_SHR_U:
+      | v128_r32_binop_init
+      | psrld xmm0, xmm1
+      | v128_binop_fini
+
+      break;
+    case PWASM_OP_I32X4_ADD:
+      | v128_binop_init
+      | paddd xmm0, xmm1
+      | v128_binop_fini
+
+      break;
+    case PWASM_OP_I32X4_SUB:
+      | v128_binop_init
+      | psubd xmm0, xmm1
+      | v128_binop_fini
+
+      break;
+    case PWASM_OP_I32X4_MUL:
+      | v128_binop_init
+      | pmulld xmm0, xmm1
+      | v128_binop_fini
+
+      break;
+    case PWASM_OP_I32X4_MIN_S:
+      | v128_binop_init
+      | pminsd xmm0, xmm1
+      | v128_binop_fini
+
+      break;
+    case PWASM_OP_I32X4_MIN_U:
+      | v128_binop_init
+      | pminud xmm0, xmm1
+      | v128_binop_fini
+
+      break;
+    case PWASM_OP_I32X4_MAX_S:
+      | v128_binop_init
+      | pmaxsd xmm0, xmm1
+      | v128_binop_fini
+
+      break;
+    case PWASM_OP_I32X4_MAX_U:
+      | v128_binop_init
+      | pmaxud xmm0, xmm1
+      | v128_binop_fini
+
+      break;
+    case PWASM_OP_I64X2_NEG:
+      | v128_unop_init
+      | pcmpeqd xmm1, xmm1    // xmm1 = 0xFF...
+      | psrlq xmm1, 1         // xmm1 >>= 1
+      | pandn xmm1, xmm0      // xmm1 = ~xmm1 & xmm0
+      | movdqu xmm0, xmm1
+      | v128_unop_fini
+
+      break;
+    case PWASM_OP_I64X2_SHL:
+      | v128_r32_binop_init
+      | psllq xmm0, xmm1
+      | v128_binop_fini
+
+      break;
+    case PWASM_OP_I64X2_SHR_S:
+      | v128_r32_binop_init
+      // FIXME: | psraq xmm0, xmm1
+      | v128_binop_fini
+
+      break;
+    case PWASM_OP_I64X2_SHR_U:
+      | v128_r32_binop_init
+      | psrlq xmm0, xmm1
+      | v128_binop_fini
+
+      break;
+    case PWASM_OP_I64X2_ADD:
+      | v128_binop_init
+      | paddq xmm0, xmm1
+      | v128_binop_fini
+
+      break;
+    case PWASM_OP_I64X2_SUB:
+      | v128_binop_init
+      | psubq xmm0, xmm1
+      | v128_binop_fini
+
+      break;
+    case PWASM_OP_I64X2_MUL:
+      | mov rax, [r_stack - 2 * sizeof(pwasm_val_t)]
+      | imul rax, [r_stack - 2 * sizeof(pwasm_val_t) + sizeof(uint64_t)]
+      | mov rbx, [r_stack - sizeof(pwasm_val_t)]
+      | imul rbx, [r_stack - sizeof(pwasm_val_t) + sizeof(uint64_t)]
+      | mov [r_stack - 2 * sizeof(pwasm_val_t)], rax
+      | mov [r_stack - 2 * sizeof(pwasm_val_t) + sizeof(uint64_t)], rbx
+      | stack_dec
+
+      break;
+    case PWASM_OP_F32X4_ABS:
+      | v128_unop_init
+      | pxor xmm1, xmm1       // xmm1 = 0
+      | subps xmm1, xmm0      // xmm1 = -xmm0
+      | maxps xmm0, xmm1      // xmm0 = max(xmm0, xmm1)
+      | v128_unop_fini
+
+      break;
+    case PWASM_OP_F32X4_NEG:
+      | v128_unop_init
+      | pxor xmm1, xmm1       // xmm1 = 0
+      | subps xmm1, xmm0      // xmm1 -= xmm0
+      | movaps xmm0, xmm1     // xmm0 = xmm1
+      | v128_unop_fini
+
+      break;
+    case PWASM_OP_F32X4_SQRT:
+      | v128_unop_init
+      | sqrtps xmm0, xmm0     // xmm1 = sqrt(xmm0)
+      | v128_unop_fini
+
+      break;
+    case PWASM_OP_F32X4_ADD:
+      | v128_binop_init
+      | addps xmm0, xmm1
+      | v128_binop_fini
+
+      break;
+    case PWASM_OP_F32X4_SUB:
+      | v128_binop_init
+      | subps xmm0, xmm1
+      | v128_binop_fini
+
+      break;
+    case PWASM_OP_F32X4_MUL:
+      | v128_binop_init
+      | mulps xmm0, xmm1
+      | v128_binop_fini
+
+      break;
+    case PWASM_OP_F32X4_DIV:
+      | v128_binop_init
+      | divps xmm0, xmm1
+      | v128_binop_fini
+
+      break;
+    case PWASM_OP_F32X4_MIN:
+      | v128_binop_init
+      | minps xmm0, xmm1
+      | v128_binop_fini
+
+      break;
+    case PWASM_OP_F32X4_MAX:
+      | v128_binop_init
+      | maxps xmm0, xmm1
+      | v128_binop_fini
+
+      break;
+    case PWASM_OP_F64X2_ABS:
+      | v128_unop_init
+      | pxor xmm1, xmm1       // xmm1 = 0
+      | subpd xmm1, xmm0      // xmm1 = -xmm0
+      | maxpd xmm0, xmm1      // xmm0 = max(xmm0, xmm1)
+      | v128_unop_fini
+
+      break;
+    case PWASM_OP_F64X2_NEG:
+      | v128_unop_init
+      | pxor xmm1, xmm1       // xmm1 = 0
+      | subpd xmm1, xmm0      // xmm1 -= xmm0
+      | movapd xmm0, xmm1     // xmm0 = xmm1
+      | v128_unop_fini
+
+      break;
+    case PWASM_OP_F64X2_SQRT:
+      | v128_unop_init
+      | sqrtpd xmm0, xmm0     // xmm1 = sqrt(xmm0)
+      | v128_unop_fini
+
+      break;
+    case PWASM_OP_F64X2_ADD:
+      | v128_binop_init
+      | addpd xmm0, xmm1
+      | v128_binop_fini
+
+      break;
+    case PWASM_OP_F64X2_SUB:
+      | v128_binop_init
+      | subpd xmm0, xmm1
+      | v128_binop_fini
+
+      break;
+    case PWASM_OP_F64X2_MUL:
+      | v128_binop_init
+      | mulpd xmm0, xmm1
+      | v128_binop_fini
+
+      break;
+    case PWASM_OP_F64X2_DIV:
+      | v128_binop_init
+      | divpd xmm0, xmm1
+      | v128_binop_fini
+
+      break;
+    case PWASM_OP_F64X2_MIN:
+      | v128_binop_init
+      | minpd xmm0, xmm1
+      | v128_binop_fini
+
+      break;
+    case PWASM_OP_F64X2_MAX:
+      | v128_binop_init
+      | maxpd xmm0, xmm1
+      | v128_binop_fini
+
+      break;
+    case PWASM_OP_I32X4_TRUNC_SAT_F32X4_S:
+      | v128_unop_init
+      | cvtps2pi xmm0, xmm0
+      | v128_unop_fini
+
+      break;
+    case PWASM_OP_I32X4_TRUNC_SAT_F32X4_U:
+      | v128_unop_init
+      // FIXME: want VCVTPS2UDQ, but that's AVX512
+      | cvtps2pi xmm0, xmm0
+      | v128_unop_fini
 
       break;
     default:
