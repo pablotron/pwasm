@@ -2873,14 +2873,14 @@ pwasm_compile(
       break;
     case PWASM_OP_I32X4_TRUNC_SAT_F32X4_S:
       | v128_unop_init
-      | cvtps2pi xmm0, xmm0
+      // FIXME: | cvtps2pi xmm0, xmm0
       | v128_unop_fini
 
       break;
     case PWASM_OP_I32X4_TRUNC_SAT_F32X4_U:
       | v128_unop_init
       // FIXME: want VCVTPS2UDQ, but that's AVX512
-      | cvtps2pi xmm0, xmm0
+      // | cvtps2pi xmm0, xmm0
       | v128_unop_fini
 
       break;
