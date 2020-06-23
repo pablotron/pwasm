@@ -11849,6 +11849,31 @@ pwasm_mod_check(
 }
 
 bool
+pwasm_jit_compiler_compile(
+  pwasm_jit_compiler_t *cc, // compiler
+  pwasm_buf_t *dst, // destination buffer
+  pwasm_env_t *env, // env
+  const uint32_t mod_id, // module instance handle
+  const size_t func_ofs // function offset
+) {
+  if (!cc || !cc->cbs || !cc->cbs->compile) {
+    // return failure
+    return false;
+  }
+
+  return cc->cbs->compile(cc, dst, env, mod_id, func_ofs);
+}
+
+void
+pwasm_jit_compiler_fini(
+  pwasm_jit_compiler_t *cc // compiler
+) {
+  if (cc && cc->cbs && cc->cbs->fini) {
+    cc->cbs->fini(cc);
+  }
+}
+
+bool
 pwasm_env_init(
   pwasm_env_t * env,
   pwasm_mem_ctx_t * mem_ctx,
@@ -20115,16 +20140,16 @@ pwasm_aot_jit_compile_func(
   pwasm_buf_t * const dst,
   pwasm_env_t * const env,
   const uint32_t mod_id,
-  const pwasm_mod_t * const mod,
   const size_t func_ofs
 ) {
-  if (!env->cbs->compile) {
+  pwasm_jit_compiler_t *cc = env->cbs->compiler;
+  if (!cc) {
     // log error, return failure
-    pwasm_env_fail(env, "compile == NULL, cannot compile function");
+    pwasm_env_fail(env, "compiler == NULL, cannot compile function");
     return NULL;
   }
 
-  return env->cbs->compile(dst, env, mod_id, mod, func_ofs);
+  return pwasm_jit_compiler_compile(cc, dst, env, mod_id, func_ofs);
 }
 
 static bool
@@ -20149,7 +20174,7 @@ pwasm_aot_jit_compile_funcs(
     // walk/compile functions
     for (size_t i = 0; i < num_codes; i++) {
       // compile function, check for error
-      if (!pwasm_aot_jit_compile_func(fns + i, env, mod_id, mod, i)) {
+      if (!pwasm_aot_jit_compile_func(fns + i, env, mod_id, i)) {
         // return failure
         return false;
       }
@@ -25689,8 +25714,8 @@ PWASM_AOT_JIT_CBS = {
 void
 pwasm_aot_jit_get_cbs(
   pwasm_env_cbs_t * const cbs,
-  pwasm_compile_func_t compile
+  pwasm_jit_compiler_t * const cc
 ) {
   *cbs = PWASM_AOT_JIT_CBS;
-  cbs->compile = compile;
+  cbs->compiler = cc;
 }

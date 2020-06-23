@@ -23,10 +23,10 @@ static const cli_test_t TESTS[] = {{
   .text   = "Test function calls into WASM modules.",
   .func   = test_wasm_calls,
 }, {
-  .suite  = "compile",
+  .suite  = "aot-jit",
   .test   = "call",
-  .text   = "Test compiling functions in WASM modules.",
-  .func   = test_compile,
+  .text   = "Test DynASM AOT JIT compiler.",
+  .func   = test_aot_jit,
 }};
 
 cli_test_ctx_t cli_test_ctx_init(

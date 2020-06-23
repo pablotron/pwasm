@@ -1,13 +1,8 @@
-/**
- * pwasm_compile(): JIT compiler for PWASM module functions implemented
- * via DynASM.
- */
-
 #define _GNU_SOURCE
 #include <stdbool.h> // bool
 #include <stdio.h> // snprintf()
 #include <sys/mman.h> // mprotect
-#include "pwasm-compile.h"
+#include "pwasm-dynasm-jit.h"
 #include "pwasm-dump.h"
 #include <dlfcn.h> // dlsym()
 #include <dynasm/dasm_proto.h>
@@ -379,17 +374,19 @@ pwasm_ctrl_stack_push(
  *
  * Returns `true` on success, or `false` if an error occurred.
  */
-bool
-pwasm_compile(
+static bool
+pwasm_dynasm_jit_on_compile(
+  pwasm_jit_compiler_t * const cc,
   pwasm_buf_t * const dst,
   pwasm_env_t *env,
   const uint32_t mod_id,
-  const pwasm_mod_t *mod,
   const size_t func_ofs
 ) {
+  const pwasm_mod_t * const mod = pwasm_env_get_mod(env, mod_id);
   const pwasm_type_t type = mod->types[mod->funcs[func_ofs]];
   const pwasm_func_t func = mod->codes[func_ofs];
   const pwasm_inst_t * const insts = mod->insts + func.expr.ofs;
+  (void) cc;
 
   // init control stack
   size_t ctrl_depth = 0;
@@ -2956,6 +2953,37 @@ pwasm_compile(
 
   // dump buffer
   pwasm_dump(env, mod_id, func_ofs, *dst);
+
+  // return success
+  return true;
+}
+
+static void
+pwasm_dynasm_jit_on_fini(
+  pwasm_jit_compiler_t * const cc
+) {
+  (void) cc;
+  // TODO: free memory
+}
+
+static const pwasm_jit_compiler_cbs_t
+PWASM_DYNASM_JIT_CBS = {
+  .compile  = pwasm_dynasm_jit_on_compile,
+  .fini     = pwasm_dynasm_jit_on_fini,
+};
+
+bool
+pwasm_dynasm_jit_init(
+  pwasm_jit_compiler_t *cc, ///< destination compiler
+  pwasm_mem_ctx_t *mem_ctx  ///< memory context
+) {
+  *cc = (pwasm_jit_compiler_t) {
+    .mem_ctx  = mem_ctx,
+    .cbs      = &PWASM_DYNASM_JIT_CBS,
+    .data     = NULL, // TODO
+  };
+
+  // TODO: check cpuid here
 
   // return success
   return true;

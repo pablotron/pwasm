@@ -26,13 +26,13 @@ LIBS=-lm -ldl
 # LIBS=-lm -lubsan
 
 APP=pwasm
-OBJS=pwasm.o pwasm-compile.o pwasm-dump.o \
+OBJS=pwasm.o pwasm-dynasm-jit.o pwasm-dump.o \
      cli/main.o cli/cmds.o cli/tests.o cli/utils.o \
      cli/cmds/help.o cli/cmds/test.o cli/cmds/wat.o \
      cli/cmds/customs.o cli/cmds/cat.o cli/cmds/func.o \
      cli/cmds/imports.o cli/cmds/exports.o \
      cli/tests/init.o cli/tests/native.o cli/tests/wasm.o \
-     cli/tests/compile.o cli/tests/cli.o cli/result-type.o
+     cli/tests/aot-jit.o cli/tests/cli.o cli/result-type.o
 
 .PHONY=all clean
 
@@ -44,10 +44,10 @@ $(APP): $(OBJS)
 %.o: %.c pwasm.h
 	$(CC) -c -o $@ $(CFLAGS) $<
 
-pwasm-compile.c: pwasm-compile.dasc
-	$(DYNASM) -o pwasm-compile.c pwasm-compile.dasc
+pwasm-dynasm-jit.c: pwasm-dynasm-jit.dasc
+	$(DYNASM) -o pwasm-dynasm-jit.c pwasm-dynasm-jit.dasc
 
-pwasm-compile.o: pwasm-compile.c pwasm.h
+pwasm-dynasm-jit.o: pwasm-dynasm-jit.c pwasm.h
 	$(CC) -c -o $@ $(CFLAGS) -I$(LUAJIT_DIR) $<
 
 test: $(APP)

@@ -57,7 +57,7 @@ void test_cli_null(cli_test_ctx_t *, const cli_test_t *);
 void test_init_mods(cli_test_ctx_t *, const cli_test_t *);
 void test_native_calls(cli_test_ctx_t *, const cli_test_t *);
 void test_wasm_calls(cli_test_ctx_t *, const cli_test_t *);
-void test_compile(cli_test_ctx_t *, const cli_test_t *);
+void test_aot_jit(cli_test_ctx_t *, const cli_test_t *);
 // TODO: void test_aot_init(cli_test_ctx_t *, const cli_test_t *);
 // TODO: void test_aot_calls(cli_test_ctx_t *, const cli_test_t *);
 

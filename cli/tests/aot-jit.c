@@ -6,7 +6,7 @@
 #include "../tests.h"
 #include "../result-type.h"
 #include "../../pwasm.h"
-#include "../../pwasm-compile.h"
+#include "../../pwasm-dynasm-jit.h"
 
 #define LEN(ary) (sizeof(ary) / sizeof(ary[0]))
 
@@ -4607,7 +4607,7 @@ static void check_results(
   }
 }
 
-void test_compile(
+void test_aot_jit(
   cli_test_ctx_t * const test_ctx,
   const cli_test_t * const cli_test
 ) {
@@ -4621,11 +4621,18 @@ void test_compile(
     .len = MAX_STACK_DEPTH,
   };
 
-  // get interpreter callbacks
-  pwasm_env_cbs_t cbs;
-  pwasm_aot_jit_get_cbs(&cbs, pwasm_compile);
+  // init jit compiler
+  pwasm_jit_compiler_t cc;
+  if (!pwasm_dynasm_jit_init(&cc, &mem_ctx)) {
+    cli_test_error(test_ctx, "pwasm_dynasm_jit_compiler_init() failed");
+    return;
+  }
 
-  // create environment, check for error
+  // get aot jit callbacks
+  pwasm_env_cbs_t cbs;
+  pwasm_aot_jit_get_cbs(&cbs, &cc);
+
+  // create aot jit environment, check for error
   pwasm_env_t env;
   if (!pwasm_env_init(&env, &mem_ctx, &cbs, &stack, NULL)) {
     cli_test_error(test_ctx, "pwasm_env_init() failed");
@@ -4693,4 +4700,8 @@ void test_compile(
       check_results(test_ctx, cli_test, test, name_buf, &stack);
     }
   }
+
+  // finalize environment and jit
+  pwasm_env_fini(&env);
+  pwasm_jit_compiler_fini(&cc);
 }

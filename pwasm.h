@@ -1769,11 +1769,93 @@ typedef struct {
  */
 #define PWASM_PEEK(stack, ofs) ((stack)->ptr[(stack)->pos - 1 - (ofs)])
 
-/** forward declaration */
+/** forward declarations */
 typedef struct pwasm_env_t pwasm_env_t;
-
-/** forward declaration */
 typedef struct pwasm_native_t pwasm_native_t;
+typedef struct pwasm_jit_compiler_t pwasm_jit_compiler_t;
+
+/**
+ * @defgroup jit JIT Functions
+ */
+
+/**
+ * JIT compiler callbacks.
+ * @ingroup jit
+ */
+typedef struct {
+  /**
+   * Compile function.
+   *
+   * @param[in]   cc        Compiler
+   * @param[out]  dst       Destination buffer
+   * @param[in]   env       Execution environment
+   * @param[in]   mod       Module instance handle
+   * @param[in]   mod       Module
+   * @param[in]   func_ofs  Function offset in module
+   *
+   * @return `true` on success or `false` on error.
+   */
+  _Bool (*compile)(
+    pwasm_jit_compiler_t *cc, // compiler
+    pwasm_buf_t *dst, // destination buffer
+    pwasm_env_t *env, // env
+    const uint32_t mod_id, // module instance handle
+    const size_t func_ofs // function offset
+  );
+
+  /**
+   * Finalize compiler and free any allocated memory.
+   *
+   * @param cc Compiler
+   */
+  void (*fini)(
+    pwasm_jit_compiler_t *cc // compiler
+  );
+} pwasm_jit_compiler_cbs_t;
+
+/**
+ * JIT compiler.
+ * @ingroup jit
+ */
+struct pwasm_jit_compiler_t {
+  const pwasm_jit_compiler_cbs_t *cbs; ///< compiler callbacks
+  pwasm_mem_ctx_t *mem_ctx; ///< memory context
+  void *data; ///< internal compiler data
+};
+
+/**
+ * Compile function at offset `func_ofs` in module instance `mod_id` in
+ * environment `env` using JIT compiler `cc`, and write the result to
+ * destination buffer `dst`.
+ *
+ * @param[in]   cc        Compiler
+ * @param[out]  dst       Destination buffer
+ * @param[in]   env       Execution environment
+ * @param[in]   mod_id    Module instance handle
+ * @param[in]   func_ofs  Function offset in module
+ *
+ * @return `true` on success or `false` on error.
+ *
+ * @ingroup jit
+ */
+_Bool pwasm_jit_compiler_compile(
+  pwasm_jit_compiler_t *cc, // compiler
+  pwasm_buf_t *dst, // destination buffer
+  pwasm_env_t *env, // env
+  const uint32_t mod_id, // module instance handle
+  const size_t func_ofs // function offset
+);
+
+/**
+ * Finalize JIT compiler.
+ *
+ * @param cc Compiler
+ *
+ * @ingroup jit
+ */
+void pwasm_jit_compiler_fini(
+  pwasm_jit_compiler_t *cc ///< compiler
+);
 
 /**
  * @defgroup native Native Modules
@@ -2341,25 +2423,6 @@ typedef struct {
   );
 
   /**
-   * Compile function.
-   *
-   * @param[out]  dst       Destination buffer
-   * @param[in]   env       Execution environment
-   * @param[in]   mod       Module instance handle
-   * @param[in]   mod       Module
-   * @param[in]   func_ofs  Function offset in module
-   *
-   * @return `true` on success or `false` on error.
-   */
-  _Bool (*compile)(
-    pwasm_buf_t *, // destination buffer
-    pwasm_env_t *, // env
-    const uint32_t mod_id, // module instance handle
-    const pwasm_mod_t *, // mod
-    const size_t func_ofs // function offset
-  );
-
-  /**
    * Map module index to environment index.
    *
    * @param[in]   env         Execution environment
@@ -2373,6 +2436,8 @@ typedef struct {
     const uint32_t mod_id, // module instance handle
     const uint32_t global_ofs // global index in module
   );
+
+  pwasm_jit_compiler_t *compiler; ///< compiler
 } pwasm_env_cbs_t;
 
 /**
@@ -3003,10 +3068,6 @@ _Bool pwasm_call(
 const pwasm_env_cbs_t *pwasm_new_interpreter_get_cbs(void);
 
 /**
- * @defgroup jit JIT Functions
- */
-
-/**
  * Prototype for compile function for JIT environments.
  *
  * @ingroup jit
@@ -3035,14 +3096,14 @@ typedef _Bool (pwasm_compile_func_t)(
  *
  * @ingroup jit
  *
- * @param[out]  cbs     Pointer to execution environment callbacks.
- * @param[in]   compile Pointer to compile function.
+ * @param[out]  cbs Pointer to execution environment callbacks.
+ * @param[in]   cc  Pointer to JIT compiler.
  *
  * @see pwasm_env_init()
  */
 void pwasm_aot_jit_get_cbs(
   pwasm_env_cbs_t * const cbs,
-  pwasm_compile_func_t compile
+  pwasm_jit_compiler_t * const cc
 );
 
 #ifdef __cplusplus

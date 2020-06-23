@@ -7,10 +7,11 @@ Each entry in this list is prefixed with category tags.
 See the "Tag Definitions" section below for a brief description of each
 tag.
 
-* [ ] doc: document `pwasm-compile.c` build
+* [ ] doc: document `pwasm-dynasm-jit.c` build
 * [ ] code, test: add tests with random values for math ops
-* [ ] code: switch compile function to `compiler_t`, and do cpuid checks
-      in `compiler_init`
+* [ ] code: cache 0xFF... in xmm7 (e.g. pcmpeqd xmm7, xmm7) for negating
+      v128 ops
+* [ ] code: count `call` and `call_indirect` to elide prologue/epilogue
 * [ ] code, test: check jit functions to make sure they are supported
       by cpuflags, and add fallback implementations
 * [ ] code, test: loop with params
@@ -120,6 +121,8 @@ Items in this section have been completed.
       remove them from `eval_expr`
 * [x] code: remove fixed-size stack in `eval_expr` (added
   `pwasm_ctrl_stack_t`)
+* [x] code: switch compile function to `compiler_t`, and do cpuid checks
+      in `compiler_init`
 
 ## Tag Definitions
 

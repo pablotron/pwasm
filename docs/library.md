@@ -25,7 +25,7 @@ The [PWASM][] library has the following features:
 
 **Coming Soon**
 
-* [JIT][] and [AOT][] compiler.
+* x86-64 [AOT][] [JIT][] compiler (via [DynASM][]).
 * Threaded parser.
 
 ## Usage
@@ -254,3 +254,5 @@ with [Doxygen][] by doing the following:
   "Application Programming Interface (API)"
 [simd]: https://en.wikipedia.org/wiki/SIMD
   "Single Instruction, Multiple Data"
+[dynasm]: https://luajit.org/dynasm.html
+  "DynASM dynamic assembler"
