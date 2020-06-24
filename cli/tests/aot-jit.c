@@ -304,4148 +304,1877 @@ static const uint8_t AOT_WASM[] = {
   0x0b
 };
 
-static const pwasm_val_t
-TEST_VALS[] = {
-  // mod: "aot", func: "add_i32s", test: 0, params: 0, results: 1
-  { .i32 = 579 },
-
-  // mod: "aot", func: "if_else_true", test: 0, params: 0, results: 1
-  { .i32 = 321 },
-
-  // mod: "aot", func: "if_else_false", test: 0, params: 0, results: 1
-  { .i32 = 45 },
-
-  // mod: "aot", func: "if_true", test: 0, params: 0, results: 1
-  { .i32 = 314159 },
-
-  // mod: "aot", func: "if_false", test: 0, params: 0, results: 1
-  { .i32 = 22 },
-
-  // mod: "aot", func: "br_outer", test: 0, params: 0, results: 1
-  { .i32 = 1234 },
-
-  // mod: "aot", func: "br_inner", test: 0, params: 0, results: 1
-  { .i32 = 5678 },
-
-  // mod: "aot", func: "sub", test: 0, params: 2, results: 1
-  { .i32 = 99 },
-  { .i32 = 77 },
-  { .i32 = 22 },
-
-  // mod: "aot", func: "is_99", test: 0, params: 1, results: 1
-  { .i32 = 99 },
-  { .i32 = 1 },
-
-  // mod: "aot", func: "is_99", test: 0, params: 1, results: 1
-  { .i32 = 2 },
-  { .i32 = 0 },
-
-  // mod: "aot", func: "i32_eqz", test: 0, params: 1, results: 1
-  { .i32 = 0 },
-  { .i32 = 1 },
-
-  // mod: "aot", func: "i32_eqz", test: 1, params: 1, results: 1
-  { .i32 = 1 },
-  { .i32 = 0 },
-
-  // mod: "aot", func: "i32_eq", test: 0, params: 2, results: 1
-  { .i32 = 314 },
-  { .i32 = 314 },
-  { .i32 = 1 },
-
-  // mod: "aot", func: "i32_eq", test: 1, params: 2, results: 1
-  { .i32 = 123 },
-  { .i32 = 456 },
-  { .i32 = 0 },
-
-  // mod: "aot", func: "i32_ne", test: 0, params: 2, results: 1
-  { .i32 = 654 },
-  { .i32 = 789 },
-  { .i32 = 1 },
-
-  // mod: "aot", func: "i32_ne", test: 1, params: 2, results: 1
-  { .i32 = 44422 },
-  { .i32 = 44422 },
-  { .i32 = 0 },
-
-  // mod: "aot", func: "i32_lt_s", test: 0, params: 2, results: 1
-  { .i32 = -22 },
-  { .i32 = 44 },
-  { .i32 = 1 },
-
-  // mod: "aot", func: "i32_lt_s", test: 1, params: 2, results: 1
-  { .i32 = 4122 },
-  { .i32 = 4122 },
-  { .i32 = 0 },
-
-  // mod: "aot", func: "i32_lt_s", test: 2, params: 2, results: 1
-  { .i32 = 2020 },
-  { .i32 = 5 },
-  { .i32 = 0 },
-
-  // mod: "aot", func: "i32_lt_u", test: 0, params: 2, results: 1
-  { .i32 = 12 },
-  { .i32 = (1UL << 31) },
-  { .i32 = 1 },
-
-  // mod: "aot", func: "i32_lt_u", test: 1, params: 2, results: 1
-  { .i32 = 4122 },
-  { .i32 = 4122 },
-  { .i32 = 0 },
-
-  // mod: "aot", func: "i32_lt_u", test: 2, params: 2, results: 1
-  { .i32 = 2020 },
-  { .i32 = 5 },
-  { .i32 = 0 },
-
-  // mod: "aot", func: "i32_gt_s", test: 0, params: 2, results: 1
-  { .i32 = 22 },
-  { .i32 = -44 },
-  { .i32 = 1 },
-
-  // mod: "aot", func: "i32_gt_s", test: 1, params: 2, results: 1
-  { .i32 = 4122 },
-  { .i32 = 4122 },
-  { .i32 = 0 },
-
-  // mod: "aot", func: "i32_gt_s", test: 2, params: 2, results: 1
-  { .i32 = 123 },
-  { .i32 = 4212 },
-  { .i32 = 0 },
-
-  // mod: "aot", func: "i32_gt_u", test: 0, params: 2, results: 1
-  { .i32 = (1UL << 31) },
-  { .i32 = 12 },
-  { .i32 = 1 },
-
-  // mod: "aot", func: "i32_gt_u", test: 1, params: 2, results: 1
-  { .i32 = 4122 },
-  { .i32 = 4122 },
-  { .i32 = 0 },
-
-  // mod: "aot", func: "i32_gt_u", test: 2, params: 2, results: 1
-  { .i32 = 5 },
-  { .i32 = 2020 },
-  { .i32 = 0 },
-
-  // mod: "aot", func: "i32_le_s", test: 0, params: 2, results: 1
-  { .i32 = -22 },
-  { .i32 = 44 },
-  { .i32 = 1 },
-
-  // mod: "aot", func: "i32_le_s", test: 1, params: 2, results: 1
-  { .i32 = 4122 },
-  { .i32 = 4122 },
-  { .i32 = 1 },
-
-  // mod: "aot", func: "i32_le_s", test: 2, params: 2, results: 1
-  { .i32 = 2020 },
-  { .i32 = 5 },
-  { .i32 = 0 },
-
-  // mod: "aot", func: "i32_le_u", test: 0, params: 2, results: 1
-  { .i32 = 12 },
-  { .i32 = (1UL << 31) },
-  { .i32 = 1 },
-
-  // mod: "aot", func: "i32_le_u", test: 1, params: 2, results: 1
-  { .i32 = 4122 },
-  { .i32 = 4122 },
-  { .i32 = 1 },
-
-  // mod: "aot", func: "i32_le_u", test: 2, params: 2, results: 1
-  { .i32 = 2020 },
-  { .i32 = 5 },
-  { .i32 = 0 },
-
-  // mod: "aot", func: "i32_ge_s", test: 0, params: 2, results: 1
-  { .i32 = 22 },
-  { .i32 = -44 },
-  { .i32 = 1 },
-
-  // mod: "aot", func: "i32_ge_s", test: 1, params: 2, results: 1
-  { .i32 = 4122 },
-  { .i32 = 4122 },
-  { .i32 = 1 },
-
-  // mod: "aot", func: "i32_ge_s", test: 2, params: 2, results: 1
-  { .i32 = 2 },
-  { .i32 = 3030 },
-  { .i32 = 0 },
-
-  // mod: "aot", func: "i32_ge_u", test: 0, params: 2, results: 1
-  { .i32 = (1UL << 31) },
-  { .i32 = 9 },
-  { .i32 = 1 },
-
-  // mod: "aot", func: "i32_ge_u", test: 1, params: 2, results: 1
-  { .i32 = 4122 },
-  { .i32 = 4122 },
-  { .i32 = 1 },
-
-  // mod: "aot", func: "i32_ge_u", test: 2, params: 2, results: 1
-  { .i32 = 0 },
-  { .i32 = 5053 },
-  { .i32 = 0 },
-
-  // mod: "aot", func: "i64_eqz", test: 0, params: 1, results: 1
-  { .i64 = 0 },
-  { .i32 = 1 },
-
-  // mod: "aot", func: "i64_eqz", test: 1, params: 1, results: 1
-  { .i64 = 1 },
-  { .i32 = 0 },
-
-  // mod: "aot", func: "i64_eq", test: 0, params: 2, results: 1
-  { .i64 = 314 },
-  { .i64 = 314 },
-  { .i32 = 1 },
-
-  // mod: "aot", func: "i64_eq", test: 1, params: 2, results: 1
-  { .i64 = 123 },
-  { .i64 = 456 },
-  { .i32 = 0 },
-
-  // mod: "aot", func: "i64_ne", test: 0, params: 2, results: 1
-  { .i64 = 654 },
-  { .i64 = 789 },
-  { .i32 = 1 },
-
-  // mod: "aot", func: "i64_ne", test: 1, params: 2, results: 1
-  { .i64 = 44422 },
-  { .i64 = 44422 },
-  { .i32 = 0 },
-
-  // mod: "aot", func: "i64_lt_s", test: 0, params: 2, results: 1
-  { .i64 = -22 },
-  { .i64 = 44 },
-  { .i32 = 1 },
-
-  // mod: "aot", func: "i64_lt_s", test: 1, params: 2, results: 1
-  { .i64 = 4122 },
-  { .i64 = 4122 },
-  { .i32 = 0 },
-
-  // mod: "aot", func: "i64_lt_s", test: 2, params: 2, results: 1
-  { .i64 = 2020 },
-  { .i64 = 5 },
-  { .i32 = 0 },
-
-  // mod: "aot", func: "i64_lt_u", test: 0, params: 2, results: 1
-  { .i64 = 12 },
-  { .i64 = (1UL << 31) },
-  { .i32 = 1 },
-
-  // mod: "aot", func: "i64_lt_u", test: 1, params: 2, results: 1
-  { .i64 = 4122 },
-  { .i64 = 4122 },
-  { .i32 = 0 },
-
-  // mod: "aot", func: "i64_lt_u", test: 2, params: 2, results: 1
-  { .i64 = 2020 },
-  { .i64 = 5 },
-  { .i32 = 0 },
-
-  // mod: "aot", func: "i64_gt_s", test: 0, params: 2, results: 1
-  { .i64 = 22 },
-  { .i64 = -44 },
-  { .i32 = 1 },
-
-  // mod: "aot", func: "i64_gt_s", test: 1, params: 2, results: 1
-  { .i64 = 4122 },
-  { .i64 = 4122 },
-  { .i32 = 0 },
-
-  // mod: "aot", func: "i64_gt_s", test: 2, params: 2, results: 1
-  { .i64 = 123 },
-  { .i64 = 4212 },
-  { .i32 = 0 },
-
-  // mod: "aot", func: "i64_gt_u", test: 0, params: 2, results: 1
-  { .i64 = (1UL << 31) },
-  { .i64 = 12 },
-  { .i32 = 1 },
-
-  // mod: "aot", func: "i64_gt_u", test: 1, params: 2, results: 1
-  { .i64 = 4122 },
-  { .i64 = 4122 },
-  { .i32 = 0 },
-
-  // mod: "aot", func: "i64_gt_u", test: 2, params: 2, results: 1
-  { .i64 = 5 },
-  { .i64 = 2020 },
-  { .i32 = 0 },
-
-  // mod: "aot", func: "i64_le_s", test: 0, params: 2, results: 1
-  { .i64 = -22 },
-  { .i64 = 44 },
-  { .i32 = 1 },
-
-  // mod: "aot", func: "i64_le_s", test: 1, params: 2, results: 1
-  { .i64 = 4122 },
-  { .i64 = 4122 },
-  { .i32 = 1 },
-
-  // mod: "aot", func: "i64_le_s", test: 2, params: 2, results: 1
-  { .i64 = 2020 },
-  { .i64 = 5 },
-  { .i32 = 0 },
-
-  // mod: "aot", func: "i64_le_u", test: 0, params: 2, results: 1
-  { .i64 = 12 },
-  { .i64 = (1UL << 31) },
-  { .i32 = 1 },
-
-  // mod: "aot", func: "i64_le_u", test: 1, params: 2, results: 1
-  { .i64 = 4122 },
-  { .i64 = 4122 },
-  { .i32 = 1 },
-
-  // mod: "aot", func: "i64_le_u", test: 2, params: 2, results: 1
-  { .i64 = 2020 },
-  { .i64 = 5 },
-  { .i32 = 0 },
-
-  // mod: "aot", func: "i64_ge_s", test: 0, params: 2, results: 1
-  { .i64 = 22 },
-  { .i64 = -44 },
-  { .i32 = 1 },
-
-  // mod: "aot", func: "i64_ge_s", test: 1, params: 2, results: 1
-  { .i64 = 4122 },
-  { .i64 = 4122 },
-  { .i32 = 1 },
-
-  // mod: "aot", func: "i64_ge_s", test: 2, params: 2, results: 1
-  { .i64 = 2 },
-  { .i64 = 3030 },
-  { .i32 = 0 },
-
-  // mod: "aot", func: "i64_ge_u", test: 0, params: 2, results: 1
-  { .i64 = (1UL << 31) },
-  { .i64 = 9 },
-  { .i32 = 1 },
-
-  // mod: "aot", func: "i64_ge_u", test: 1, params: 2, results: 1
-  { .i64 = 4122 },
-  { .i64 = 4122 },
-  { .i32 = 1 },
-
-  // mod: "aot", func: "i64_ge_u", test: 2, params: 2, results: 1
-  { .i64 = 0 },
-  { .i64 = 5053 },
-  { .i32 = 0 },
-
-  // mod: "aot", func: "f32_eq", test: 0, params: 2, results: 1
-  { .f32 = 1.0f },
-  { .f32 = 1.0f },
-  { .i32 = 1 },
-
-  // mod: "aot", func: "f32_eq", test: 1, params: 2, results: 1
-  { .f32 = 2.0f },
-  { .f32 = 1.0f },
-  { .i32 = 0 },
-
-  // mod: "aot", func: "f32_ne", test: 0, params: 2, results: 1
-  { .f32 = -1.0f },
-  { .f32 = 1.0f },
-  { .i32 = 1 },
-
-  // mod: "aot", func: "f32_ne", test: 1, params: 2, results: 1
-  { .f32 = 2.0f },
-  { .f32 = 2.0f },
-  { .i32 = 0 },
-
-  // mod: "aot", func: "f32_lt", test: 0, params: 2, results: 1
-  { .f32 = -1.0f },
-  { .f32 = 1.0f },
-  { .i32 = 1 },
-
-  // mod: "aot", func: "f32_lt", test: 1, params: 2, results: 1
-  { .f32 = 2.0f },
-  { .f32 = 2.0f },
-  { .i32 = 0 },
-
-  // mod: "aot", func: "f32_gt", test: 0, params: 2, results: 1
-  { .f32 = 10.0f },
-  { .f32 = 1.0f },
-  { .i32 = 1 },
-
-  // mod: "aot", func: "f32_gt", test: 1, params: 2, results: 1
-  { .f32 = 3.0f },
-  { .f32 = 3.0f },
-  { .i32 = 0 },
-
-  // mod: "aot", func: "f32_le", test: 0, params: 2, results: 1
-  { .f32 = -1.0f },
-  { .f32 = 1.0f },
-  { .i32 = 1 },
-
-  // mod: "aot", func: "f32_le", test: 1, params: 2, results: 1
-  { .f32 = 2.0f },
-  { .f32 = 2.0f },
-  { .i32 = 1 },
-
-  // mod: "aot", func: "f32_ge", test: 0, params: 2, results: 1
-  { .f32 = 10.0f },
-  { .f32 = 1.0f },
-  { .i32 = 1 },
-
-  // mod: "aot", func: "f32_ge", test: 1, params: 2, results: 1
-  { .f32 = 3.0f },
-  { .f32 = 3.0f },
-  { .i32 = 1 },
-
-  // mod: "aot", func: "f64_eq", test: 0, params: 2, results: 1
-  { .f64 = 1.0f },
-  { .f64 = 1.0f },
-  { .i32 = 1 },
-
-  // mod: "aot", func: "f64_eq", test: 1, params: 2, results: 1
-  { .f64 = 2.0f },
-  { .f64 = 1.0f },
-  { .i32 = 0 },
-
-  // mod: "aot", func: "f64_ne", test: 0, params: 2, results: 1
-  { .f64 = -1.0f },
-  { .f64 = 1.0f },
-  { .i32 = 1 },
-
-  // mod: "aot", func: "f64_ne", test: 1, params: 2, results: 1
-  { .f64 = 2.0f },
-  { .f64 = 2.0f },
-  { .i32 = 0 },
-
-  // mod: "aot", func: "f64_lt", test: 0, params: 2, results: 1
-  { .f64 = -1.0f },
-  { .f64 = 1.0f },
-  { .i32 = 1 },
-
-  // mod: "aot", func: "f64_lt", test: 1, params: 2, results: 1
-  { .f64 = 2.0f },
-  { .f64 = 2.0f },
-  { .i32 = 0 },
-
-  // mod: "aot", func: "f64_gt", test: 0, params: 2, results: 1
-  { .f64 = 10.0f },
-  { .f64 = 1.0f },
-  { .i32 = 1 },
-
-  // mod: "aot", func: "f64_gt", test: 1, params: 2, results: 1
-  { .f64 = 3.0f },
-  { .f64 = 3.0f },
-  { .i32 = 0 },
-
-  // mod: "aot", func: "f64_le", test: 0, params: 2, results: 1
-  { .f64 = -1.0f },
-  { .f64 = 1.0f },
-  { .i32 = 1 },
-
-  // mod: "aot", func: "f64_le", test: 1, params: 2, results: 1
-  { .f64 = 2.0f },
-  { .f64 = 2.0f },
-  { .i32 = 1 },
-
-  // mod: "aot", func: "f64_ge", test: 0, params: 2, results: 1
-  { .f64 = 10.0f },
-  { .f64 = 1.0f },
-  { .i32 = 1 },
-
-  // mod: "aot", func: "f64_ge", test: 1, params: 2, results: 1
-  { .f64 = 3.0f },
-  { .f64 = 3.0f },
-  { .i32 = 1 },
-
-  // mod: "aot", func: "i32_clz", test: 0, params: 1, results: 1
-  { .i32 = 1 },
-  { .i32 = 31 },
-
-  // mod: "aot", func: "i32_clz", test: 1, params: 1, results: 1
-  { .i32 = 0x0000FFFF },
-  { .i32 = 16 },
-
-  // mod: "aot", func: "i32_clz", test: 2, params: 1, results: 1
-  { .i32 = 0x00FF0000 },
-  { .i32 = 8 },
-
-  // mod: "aot", func: "i32_ctz", test: 0, params: 1, results: 1
-  { .i32 = 0x80000000 },
-  { .i32 = 31 },
-
-  // mod: "aot", func: "i32_ctz", test: 1, params: 1, results: 1
-  { .i32 = 0xFFFF0000 },
-  { .i32 = 16 },
-
-  // mod: "aot", func: "i32_ctz", test: 2, params: 1, results: 1
-  { .i32 = 0x0000FF00 },
-  { .i32 = 8 },
-
-  // mod: "aot", func: "i32_popcnt", test: 0, params: 1, results: 1
-  { .i32 = 0x8000000 },
-  { .i32 = 1 },
-
-  // mod: "aot", func: "i32_popcnt", test: 1, params: 1, results: 1
-  { .i32 = 0xFFFF0000 },
-  { .i32 = 16 },
-
-  // mod: "aot", func: "i32_popcnt", test: 2, params: 1, results: 1
-  { .i32 = 0x0F0F0F00 },
-  { .i32 = 12 },
-
-  // mod: "aot", func: "i32_add", test: 0, params: 2, results: 1
-  { .i32 = 5 },
-  { .i32 = 127 },
-  { .i32 = 132 },
-
-  // mod: "aot", func: "i32_add", test: 1, params: 2, results: 1
-  { .i32 = 123123 },
-  { .i32 = 321321 },
-  { .i32 = 444444 },
-
-  // mod: "aot", func: "i32_add", test: 2, params: 2, results: 1
-  { .i32 = -100 },
-  { .i32 = 200 },
-  { .i32 = 100 },
-
-  // mod: "aot", func: "i32_sub", test: 0, params: 2, results: 1
-  { .i32 = 132 },
-  { .i32 = 127 },
-  { .i32 = 5 },
-
-  // mod: "aot", func: "i32_sub", test: 1, params: 2, results: 1
-  { .i32 = 444444 },
-  { .i32 = 321321 },
-  { .i32 = 123123 },
-
-  // mod: "aot", func: "i32_sub", test: 2, params: 2, results: 1
-  { .i32 = -100 },
-  { .i32 = 200 },
-  { .i32 = -300 },
-
-  // mod: "aot", func: "i32_mul", test: 0, params: 2, results: 1
-  { .i32 = 132 },
-  { .i32 = 127 },
-  { .i32 = 16764 },
-
-  // mod: "aot", func: "i32_mul", test: 1, params: 2, results: 1
-  { .i32 = -20 },
-  { .i32 = 44 },
-  { .i32 = -880 },
-
-  // mod: "aot", func: "i32_mul", test: 2, params: 2, results: 1
-  { .i32 = -100 },
-  { .i32 = -200 },
-  { .i32 = 20000 },
-
-  // mod: "aot", func: "i32_div_s", test: 0, params: 2, results: 1
-  { .i32 = 100 },
-  { .i32 = 50 },
-  { .i32 = 2 },
-
-  // mod: "aot", func: "i32_div_s", test: 1, params: 2, results: 1
-  { .i32 = -20 },
-  { .i32 = 2 },
-  { .i32 = -10 },
-
-  // mod: "aot", func: "i32_div_s", test: 2, params: 2, results: 1
-  { .i32 = -39 },
-  { .i32 = -3 },
-  { .i32 = 13 },
-
-  // mod: "aot", func: "i32_div_u", test: 0, params: 2, results: 1
-  { .i32 = 100 },
-  { .i32 = 50 },
-  { .i32 = 2 },
-
-  // mod: "aot", func: "i32_div_u", test: 1, params: 2, results: 1
-  { .i32 = 20 },
-  { .i32 = 2 },
-  { .i32 = 10 },
-
-  // mod: "aot", func: "i32_div_u", test: 2, params: 2, results: 1
-  { .i32 = 39 },
-  { .i32 = 3 },
-  { .i32 = 13 },
-
-  // mod: "aot", func: "i32_rem_s", test: 0, params: 2, results: 1
-  { .i32 = 102 },
-  { .i32 = 50 },
-  { .i32 = 2 },
-
-  // mod: "aot", func: "i32_rem_s", test: 1, params: 2, results: 1
-  { .i32 = -20 },
-  { .i32 = 2 },
-  { .i32 = 0 },
-
-  // mod: "aot", func: "i32_rem_s", test: 2, params: 2, results: 1
-  { .i32 = 41 },
-  { .i32 = -3 },
-  { .i32 = 2 },
-
-  // mod: "aot", func: "i32_rem_u", test: 0, params: 2, results: 1
-  { .i32 = 109 },
-  { .i32 = 50 },
-  { .i32 = 9 },
-
-  // mod: "aot", func: "i32_rem_u", test: 1, params: 2, results: 1
-  { .i32 = 29 },
-  { .i32 = 6 },
-  { .i32 = 5 },
-
-  // mod: "aot", func: "i32_rem_u", test: 2, params: 2, results: 1
-  { .i32 = 40 },
-  { .i32 = 3 },
-  { .i32 = 1 },
-
-  // mod: "aot", func: "i32_and", test: 0, params: 2, results: 1
-  { .i32 = 0x00FFFF00 },
-  { .i32 = 0xFFFF0000 },
-  { .i32 = 0x00FF0000 },
-
-  // mod: "aot", func: "i32_and", test: 1, params: 2, results: 1
-  { .i32 = 0x00000000 },
-  { .i32 = 0xFFFFFFFF },
-  { .i32 = 0x00000000 },
-
-  // mod: "aot", func: "i32_and", test: 2, params: 2, results: 1
-  { .i32 = 0xFFFFFFFF },
-  { .i32 = 0x0000FFFF },
-  { .i32 = 0x0000FFFF },
-
-  // mod: "aot", func: "i32_or", test: 0, params: 2, results: 1
-  { .i32 = 0xF0F0F0F0 },
-  { .i32 = 0x0F0F0F0F },
-  { .i32 = 0xFFFFFFFF },
-
-  // mod: "aot", func: "i32_or", test: 1, params: 2, results: 1
-  { .i32 = 0xFFFF0000 },
-  { .i32 = 0x00000000 },
-  { .i32 = 0xFFFF0000 },
-
-  // mod: "aot", func: "i32_or", test: 2, params: 2, results: 1
-  { .i32 = 0x00000000 },
-  { .i32 = 0x00000000 },
-  { .i32 = 0x00000000 },
-
-  // mod: "aot", func: "i32_xor", test: 0, params: 2, results: 1
-  { .i32 = 0xF0F0F0F0 },
-  { .i32 = 0x0F0F0F0F },
-  { .i32 = 0xFFFFFFFF },
-
-  // mod: "aot", func: "i32_xor", test: 1, params: 2, results: 1
-  { .i32 = 0xFFFFF000 },
-  { .i32 = 0x000FFFFF },
-  { .i32 = 0xFFF00FFF },
-
-  // mod: "aot", func: "i32_xor", test: 2, params: 2, results: 1
-  { .i32 = 0xFFFFFF00 },
-  { .i32 = 0x00FFFFFF },
-  { .i32 = 0xFF0000FF },
-
-  // mod: "aot", func: "i32_shl", test: 0, params: 2, results: 1
-  { .i32 = 0x0000FFFF },
-  { .i32 = 16 },
-  { .i32 = 0xFFFF0000 },
-
-  // mod: "aot", func: "i32_shl", test: 1, params: 2, results: 1
-  { .i32 = 0xFFFF0000 },
-  { .i32 = 8 },
-  { .i32 = 0xFF000000 },
-
-  // mod: "aot", func: "i32_shl", test: 2, params: 2, results: 1
-  { .i32 = 0xFFFFFFFF },
-  { .i32 = 31 },
-  { .i32 = 0x80000000 },
-
-  // mod: "aot", func: "i32_shr_s", test: 0, params: 2, results: 1
-  { .i32 = 0x0000FFFF },
-  { .i32 = 16 },
-  { .i32 = 0x00000000 },
-
-  // mod: "aot", func: "i32_shr_s", test: 1, params: 2, results: 1
-  { .i32 = 0xFFFFFFF0 },
-  { .i32 = 4 },
-  { .i32 = 0xFFFFFFFF },
-
-  // mod: "aot", func: "i32_shr_s", test: 2, params: 2, results: 1
-  { .i32 = 0xFFFFFFFF },
-  { .i32 = 31 },
-  { .i32 = 0xFFFFFFFF },
-
-  // mod: "aot", func: "i32_shr_u", test: 0, params: 2, results: 1
-  { .i32 = 0x0000FFFF },
-  { .i32 = 16 },
-  { .i32 = 0x00000000 },
-
-  // mod: "aot", func: "i32_shr_u", test: 1, params: 2, results: 1
-  { .i32 = 0xFFFFFFF0 },
-  { .i32 = 4 },
-  { .i32 = 0x0FFFFFFF },
-
-  // mod: "aot", func: "i32_shr_u", test: 2, params: 2, results: 1
-  { .i32 = 0x80000000 },
-  { .i32 = 31 },
-  { .i32 = 0x00000001 },
-
-  // mod: "aot", func: "i32_rotl", test: 0, params: 2, results: 1
-  { .i32 = 0xFF0000FF },
-  { .i32 = 8 },
-  { .i32 = 0x0000FFFF },
-
-  // mod: "aot", func: "i32_rotl", test: 1, params: 2, results: 1
-  { .i32 = 0x0000FFFF },
-  { .i32 = 16 },
-  { .i32 = 0xFFFF0000 },
-
-  // mod: "aot", func: "i32_rotl", test: 2, params: 2, results: 1
-  { .i32 = 0x00FF00FF },
-  { .i32 = 8 },
-  { .i32 = 0xFF00FF00 },
-
-  // mod: "aot", func: "i32_rotr", test: 0, params: 2, results: 1
-  { .i32 = 0xFF0000FF },
-  { .i32 = 8 },
-  { .i32 = 0xFFFF0000 },
-
-  // mod: "aot", func: "i32_rotr", test: 1, params: 2, results: 1
-  { .i32 = 0x00FFFFFF },
-  { .i32 = 16 },
-  { .i32 = 0xFFFF00FF },
-
-  // mod: "aot", func: "i32_rotr", test: 2, params: 2, results: 1
-  { .i32 = 0x00FF00FF },
-  { .i32 = 4 },
-  { .i32 = 0xF00FF00F },
-
-  // mod: "aot", func: "i64_clz", test: 0, params: 1, results: 1
-  { .i64 = 0x100000000 },
-  { .i64 = 31 },
-
-  // mod: "aot", func: "i64_clz", test: 1, params: 1, results: 1
-  { .i64 = 0x0000FFFF00000000 },
-  { .i64 = 16 },
-
-  // mod: "aot", func: "i64_clz", test: 2, params: 1, results: 1
-  { .i64 = 0x00FF000000000000 },
-  { .i64 = 8 },
-
-  // mod: "aot", func: "i64_ctz", test: 0, params: 1, results: 1
-  { .i64 = 0x80000000 },
-  { .i64 = 31 },
-
-  // mod: "aot", func: "i64_ctz", test: 1, params: 1, results: 1
-  { .i64 = 0xFFFF0000 },
-  { .i64 = 16 },
-
-  // mod: "aot", func: "i64_ctz", test: 2, params: 1, results: 1
-  { .i64 = 0x0000FF00 },
-  { .i64 = 8 },
-
-  // mod: "aot", func: "i64_popcnt", test: 0, params: 1, results: 1
-  { .i64 = 0x8000000 },
-  { .i64 = 1 },
-
-  // mod: "aot", func: "i64_popcnt", test: 1, params: 1, results: 1
-  { .i64 = 0xFFFF0000 },
-  { .i64 = 16 },
-
-  // mod: "aot", func: "i64_popcnt", test: 2, params: 1, results: 1
-  { .i64 = 0x0F0F0F00 },
-  { .i64 = 12 },
-
-  // mod: "aot", func: "i64_add", test: 0, params: 2, results: 1
-  { .i64 = 5 },
-  { .i64 = 127 },
-  { .i64 = 132 },
-
-  // mod: "aot", func: "i64_add", test: 1, params: 2, results: 1
-  { .i64 = 123123 },
-  { .i64 = 321321 },
-  { .i64 = 444444 },
-
-  // mod: "aot", func: "i64_add", test: 2, params: 2, results: 1
-  { .i64 = -100 },
-  { .i64 = 200 },
-  { .i64 = 100 },
-
-  // mod: "aot", func: "i64_sub", test: 0, params: 2, results: 1
-  { .i64 = 132 },
-  { .i64 = 127 },
-  { .i64 = 5 },
-
-  // mod: "aot", func: "i64_sub", test: 1, params: 2, results: 1
-  { .i64 = 444444 },
-  { .i64 = 321321 },
-  { .i64 = 123123 },
-
-  // mod: "aot", func: "i64_sub", test: 2, params: 2, results: 1
-  { .i64 = -100 },
-  { .i64 = 200 },
-  { .i64 = -300 },
-
-  // mod: "aot", func: "i64_mul", test: 0, params: 2, results: 1
-  { .i64 = 132 },
-  { .i64 = 127 },
-  { .i64 = 16764 },
-
-  // mod: "aot", func: "i64_mul", test: 1, params: 2, results: 1
-  { .i64 = -20 },
-  { .i64 = 44 },
-  { .i64 = -880 },
-
-  // mod: "aot", func: "i64_mul", test: 2, params: 2, results: 1
-  { .i64 = -100 },
-  { .i64 = -200 },
-  { .i64 = 20000 },
-
-  // mod: "aot", func: "i64_div_s", test: 0, params: 2, results: 1
-  { .i64 = 100 },
-  { .i64 = 50 },
-  { .i64 = 2 },
-
-  // mod: "aot", func: "i64_div_s", test: 1, params: 2, results: 1
-  { .i64 = -20 },
-  { .i64 = 2 },
-  { .i64 = -10 },
-
-  // mod: "aot", func: "i64_div_s", test: 2, params: 2, results: 1
-  { .i64 = -39 },
-  { .i64 = -3 },
-  { .i64 = 13 },
-
-  // mod: "aot", func: "i64_div_u", test: 0, params: 2, results: 1
-  { .i64 = 100 },
-  { .i64 = 50 },
-  { .i64 = 2 },
-
-  // mod: "aot", func: "i64_div_u", test: 1, params: 2, results: 1
-  { .i64 = 20 },
-  { .i64 = 2 },
-  { .i64 = 10 },
-
-  // mod: "aot", func: "i64_div_u", test: 2, params: 2, results: 1
-  { .i64 = 39 },
-  { .i64 = 3 },
-  { .i64 = 13 },
-
-  // mod: "aot", func: "i64_rem_s", test: 0, params: 2, results: 1
-  { .i64 = 102 },
-  { .i64 = 50 },
-  { .i64 = 2 },
-
-  // mod: "aot", func: "i64_rem_s", test: 1, params: 2, results: 1
-  { .i64 = -20 },
-  { .i64 = 2 },
-  { .i64 = 0 },
-
-  // mod: "aot", func: "i64_rem_s", test: 2, params: 2, results: 1
-  { .i64 = 41 },
-  { .i64 = -3 },
-  { .i64 = 2 },
-
-  // mod: "aot", func: "i64_rem_u", test: 0, params: 2, results: 1
-  { .i64 = 109 },
-  { .i64 = 50 },
-  { .i64 = 9 },
-
-  // mod: "aot", func: "i64_rem_u", test: 1, params: 2, results: 1
-  { .i64 = 29 },
-  { .i64 = 6 },
-  { .i64 = 5 },
-
-  // mod: "aot", func: "i64_rem_u", test: 2, params: 2, results: 1
-  { .i64 = 40 },
-  { .i64 = 3 },
-  { .i64 = 1 },
-
-  // mod: "aot", func: "i64_and", test: 0, params: 2, results: 1
-  { .i64 = 0x00FFFF0000FFFF00 },
-  { .i64 = 0xFFFF0000FFFF0000 },
-  { .i64 = 0x00FF000000FF0000 },
-
-  // mod: "aot", func: "i64_and", test: 1, params: 2, results: 1
-  { .i64 = 0x0000000000000000 },
-  { .i64 = 0xFFFFFFFFFFFFFFFF },
-  { .i64 = 0x0000000000000000 },
-
-  // mod: "aot", func: "i64_and", test: 2, params: 2, results: 1
-  { .i64 = 0xFFFFFFFFFFFFFFFF },
-  { .i64 = 0x0000FFFF0000FFFF },
-  { .i64 = 0x0000FFFF0000FFFF },
-
-  // mod: "aot", func: "i64_or", test: 0, params: 2, results: 1
-  { .i64 = 0xF0F0F0F0F0F0F0F0 },
-  { .i64 = 0x0F0F0F0F0F0F0F0F },
-  { .i64 = 0xFFFFFFFFFFFFFFFF },
-
-  // mod: "aot", func: "i64_or", test: 1, params: 2, results: 1
-  { .i64 = 0xFFFF0000FFFF0000 },
-  { .i64 = 0x0000000000000000 },
-  { .i64 = 0xFFFF0000FFFF0000 },
-
-  // mod: "aot", func: "i64_or", test: 2, params: 2, results: 1
-  { .i64 = 0x0000000000000000 },
-  { .i64 = 0x0000000000000000 },
-  { .i64 = 0x0000000000000000 },
-
-  // mod: "aot", func: "i64_xor", test: 0, params: 2, results: 1
-  { .i64 = 0xF0F0F0F0F0F0F0F0 },
-  { .i64 = 0x0F0F0F0F0F0F0F0F },
-  { .i64 = 0xFFFFFFFFFFFFFFFF },
-
-  // mod: "aot", func: "i64_xor", test: 1, params: 2, results: 1
-  { .i64 = 0xFFFFF000FFFFF000 },
-  { .i64 = 0x000FFFFF000FFFFF },
-  { .i64 = 0xFFF00FFFFFF00FFF },
-
-  // mod: "aot", func: "i64_xor", test: 2, params: 2, results: 1
-  { .i64 = 0xFFFFFF00FFFFFF00 },
-  { .i64 = 0x00FFFFFF00FFFFFF },
-  { .i64 = 0xFF0000FFFF0000FF },
-
-  // mod: "aot", func: "i64_shl", test: 0, params: 2, results: 1
-  { .i64 = 0x0000FFFF0000FFFF },
-  { .i64 = 16 },
-  { .i64 = 0xFFFF0000FFFF0000 },
-
-  // mod: "aot", func: "i64_shl", test: 1, params: 2, results: 1
-  { .i64 = 0xFFFF0000FFFF0000 },
-  { .i64 = 8 },
-  { .i64 = 0xFF0000FFFF000000 },
-
-  // mod: "aot", func: "i64_shl", test: 2, params: 2, results: 1
-  { .i64 = 0xFFFFFFFFFFFFFFFF },
-  { .i64 = 63 },
-  { .i64 = 0x8000000000000000 },
-
-  // mod: "aot", func: "i64_shr_s", test: 0, params: 2, results: 1
-  { .i64 = 0x000000000000FFFF },
-  { .i64 = 16 },
-  { .i64 = 0x0000000000000000 },
-
-  // mod: "aot", func: "i64_shr_s", test: 1, params: 2, results: 1
-  { .i64 = 0xFFFFFFFFFFFFFFF0 },
-  { .i64 = 4 },
-  { .i64 = 0xFFFFFFFFFFFFFFFF },
-
-  // mod: "aot", func: "i64_shr_s", test: 2, params: 2, results: 1
-  { .i64 = 0xFFFFFFFFFFFFFFFF },
-  { .i64 = 63 },
-  { .i64 = 0xFFFFFFFFFFFFFFFF },
-
-  // mod: "aot", func: "i64_shr_u", test: 0, params: 2, results: 1
-  { .i64 = 0x000000000000FFFF },
-  { .i64 = 16 },
-  { .i64 = 0x0000000000000000 },
-
-  // mod: "aot", func: "i64_shr_u", test: 1, params: 2, results: 1
-  { .i64 = 0x00000000FFFFFFF0 },
-  { .i64 = 4 },
-  { .i64 = 0x000000000FFFFFFF },
-
-  // mod: "aot", func: "i64_shr_u", test: 2, params: 2, results: 1
-  { .i64 = 0x8000000000000000 },
-  { .i64 = 63 },
-  { .i64 = 0x0000000000000001 },
-
-  // mod: "aot", func: "i64_rotl", test: 0, params: 2, results: 1
-  { .i64 = 0xFF0000FFFF0000FF },
-  { .i64 = 8 },
-  { .i64 = 0x0000FFFF0000FFFF },
-
-  // mod: "aot", func: "i64_rotl", test: 1, params: 2, results: 1
-  { .i64 = 0x0000FFFF0000FFFF },
-  { .i64 = 16 },
-  { .i64 = 0xFFFF0000FFFF0000 },
-
-  // mod: "aot", func: "i64_rotl", test: 2, params: 2, results: 1
-  { .i64 = 0x00FF00FF00FF00FF },
-  { .i64 = 8 },
-  { .i64 = 0xFF00FF00FF00FF00 },
-
-  // mod: "aot", func: "i64_rotr", test: 0, params: 2, results: 1
-  { .i64 = 0xFF0000FFFF0000FF },
-  { .i64 = 8 },
-  { .i64 = 0xFFFF0000FFFF0000 },
-
-  // mod: "aot", func: "i64_rotr", test: 1, params: 2, results: 1
-  { .i64 = 0x00FFFFFF00FFFFFF },
-  { .i64 = 16 },
-  { .i64 = 0xFFFF00FFFFFF00FF },
-
-  // mod: "aot", func: "i64_rotr", test: 2, params: 2, results: 1
-  { .i64 = 0x00FF00FF00FF00FF },
-  { .i64 = 4 },
-  { .i64 = 0xF00FF00FF00FF00F },
-
-  // mod: "aot", func: "f32_abs", test: 0, params: 1, results: 1
-  { .f32 = -1 },
-  { .f32 = 1 },
-
-  // mod: "aot", func: "f32_abs", test: 1, params: 1, results: 1
-  { .f32 = 0 },
-  { .f32 = 0 },
-
-  // mod: "aot", func: "f32_abs", test: 2, params: 1, results: 1
-  { .f32 = 1 },
-  { .f32 = 1 },
-
-  // mod: "aot", func: "f32_neg", test: 0, params: 1, results: 1
-  { .f32 = -1 },
-  { .f32 = 1 },
-
-  // mod: "aot", func: "f32_neg", test: 1, params: 1, results: 1
-  { .f32 = 0 },
-  { .f32 = 0 },
-
-  // mod: "aot", func: "f32_neg", test: 2, params: 1, results: 1
-  { .f32 = 1 },
-  { .f32 = -1 },
-
-  // mod: "aot", func: "f32_ceil", test: 0, params: 1, results: 1
-  { .f32 = -1.1 },
-  { .f32 = -1.0 },
-
-  // mod: "aot", func: "f32_ceil", test: 1, params: 1, results: 1
-  { .f32 = 0 },
-  { .f32 = 0 },
-
-  // mod: "aot", func: "f32_ceil", test: 2, params: 1, results: 1
-  { .f32 = 1.1 },
-  { .f32 = 2 },
-
-  // mod: "aot", func: "f32_floor", test: 0, params: 1, results: 1
-  { .f32 = -1.1 },
-  { .f32 = -2.0 },
-
-  // mod: "aot", func: "f32_floor", test: 1, params: 1, results: 1
-  { .f32 = 0 },
-  { .f32 = 0 },
-
-  // mod: "aot", func: "f32_floor", test: 2, params: 1, results: 1
-  { .f32 = 1.1 },
-  { .f32 = 1.0 },
-
-  // mod: "aot", func: "f32_trunc", test: 0, params: 1, results: 1
-  { .f32 = -1.1 },
-  { .f32 = -1.0 },
-
-  // mod: "aot", func: "f32_trunc", test: 1, params: 1, results: 1
-  { .f32 = 0 },
-  { .f32 = 0 },
-
-  // mod: "aot", func: "f32_trunc", test: 2, params: 1, results: 1
-  { .f32 = 1.1 },
-  { .f32 = 1.0 },
-
-  // mod: "aot", func: "f32_nearest", test: 0, params: 1, results: 1
-  { .f32 = -1.1 },
-  { .f32 = -1.0 },
-
-  // mod: "aot", func: "f32_nearest", test: 1, params: 1, results: 1
-  { .f32 = 0 },
-  { .f32 = 0 },
-
-  // mod: "aot", func: "f32_nearest", test: 2, params: 1, results: 1
-  { .f32 = 1.6 },
-  { .f32 = 2.0 },
-
-  // mod: "aot", func: "f32_sqrt", test: 0, params: 1, results: 1
-  { .f32 = 4.0 },
-  { .f32 = 2.0 },
-
-  // mod: "aot", func: "f32_sqrt", test: 1, params: 1, results: 1
-  { .f32 = 2.0 },
-  { .f32 = 1.41421 },
-
-  // mod: "aot", func: "f32_sqrt", test: 2, params: 1, results: 1
-  { .f32 = 49.0 },
-  { .f32 = 7.0 },
-
-  // mod: "aot", func: "f32_add", test: 0, params: 2, results: 1
-  { .f32 = 49.0 },
-  { .f32 = 51.0 },
-  { .f32 = 100.0 },
-
-  // mod: "aot", func: "f32_add", test: 1, params: 2, results: 1
-  { .f32 = -49.0 },
-  { .f32 = 51.0 },
-  { .f32 = 2.0 },
-
-  // mod: "aot", func: "f32_add", test: 2, params: 2, results: 1
-  { .f32 = 1024.0 },
-  { .f32 = 321.0 },
-  { .f32 = 1345.0 },
-
-  // mod: "aot", func: "f32_sub", test: 0, params: 2, results: 1
-  { .f32 = 49.0 },
-  { .f32 = 51.0 },
-  { .f32 = -2.0 },
-
-  // mod: "aot", func: "f32_sub", test: 1, params: 2, results: 1
-  { .f32 = -49.0 },
-  { .f32 = 51.0 },
-  { .f32 = -100.0 },
-
-  // mod: "aot", func: "f32_sub", test: 2, params: 2, results: 1
-  { .f32 = 1024.2 },
-  { .f32 = 21.1 },
-  { .f32 = 1003.1 },
-
-  // mod: "aot", func: "f32_mul", test: 0, params: 2, results: 1
-  { .f32 = 4.0 },
-  { .f32 = 5.0 },
-  { .f32 = 20.0 },
-
-  // mod: "aot", func: "f32_mul", test: 1, params: 2, results: 1
-  { .f32 = -9.0 },
-  { .f32 = 5.0 },
-  { .f32 = -45.0 },
-
-  // mod: "aot", func: "f32_mul", test: 2, params: 2, results: 1
-  { .f32 = 1024.0 },
-  { .f32 = 2.1 },
-  { .f32 = 2150.4 },
-
-  // mod: "aot", func: "f32_div", test: 0, params: 2, results: 1
-  { .f32 = 4.0 },
-  { .f32 = 5.0 },
-  { .f32 = 0.8 },
-
-  // mod: "aot", func: "f32_div", test: 1, params: 2, results: 1
-  { .f32 = -15.0 },
-  { .f32 = 5.0 },
-  { .f32 = -3.0 },
-
-  // mod: "aot", func: "f32_div", test: 2, params: 2, results: 1
-  { .f32 = 1024.0 },
-  { .f32 = 2.0 },
-  { .f32 = 512.0 },
-
-  // mod: "aot", func: "f32_min", test: 0, params: 2, results: 1
-  { .f32 = 4.0 },
-  { .f32 = 5.0 },
-  { .f32 = 4.0 },
-
-  // mod: "aot", func: "f32_min", test: 1, params: 2, results: 1
-  { .f32 = -15.0 },
-  { .f32 = 5.0 },
-  { .f32 = -15.0 },
-
-  // mod: "aot", func: "f32_min", test: 2, params: 2, results: 1
-  { .f32 = 1024.0 },
-  { .f32 = 2.0 },
-  { .f32 = 2.0 },
-
-  // mod: "aot", func: "f32_max", test: 0, params: 2, results: 1
-  { .f32 = 4.0 },
-  { .f32 = 5.0 },
-  { .f32 = 5.0 },
-
-  // mod: "aot", func: "f32_max", test: 1, params: 2, results: 1
-  { .f32 = -15.0 },
-  { .f32 = 5.0 },
-  { .f32 = 5.0 },
-
-  // mod: "aot", func: "f32_max", test: 2, params: 2, results: 1
-  { .f32 = 1024.0 },
-  { .f32 = 2.0 },
-  { .f32 = 1024.0 },
-
-  // mod: "aot", func: "f32_copysign", test: 0, params: 2, results: 1
-  { .f32 = -4.0 },
-  { .f32 = 5.0 },
-  { .f32 = 4.0 },
-
-  // mod: "aot", func: "f32_copysign", test: 1, params: 2, results: 1
-  { .f32 = 15.0 },
-  { .f32 = -5.0 },
-  { .f32 = -15.0 },
-
-  // mod: "aot", func: "f32_copysign", test: 2, params: 2, results: 1
-  { .f32 = 1024.0 },
-  { .f32 = 0.0 },
-  { .f32 = 1024.0 },
-
-  // mod: "aot", func: "f64_abs", test: 0, params: 1, results: 1
-  { .f64 = -1 },
-  { .f64 = 1 },
-
-  // mod: "aot", func: "f64_abs", test: 1, params: 1, results: 1
-  { .f64 = 0 },
-  { .f64 = 0 },
-
-  // mod: "aot", func: "f64_abs", test: 2, params: 1, results: 1
-  { .f64 = 1 },
-  { .f64 = 1 },
-
-  // mod: "aot", func: "f64_neg", test: 0, params: 1, results: 1
-  { .f64 = -1 },
-  { .f64 = 1 },
-
-  // mod: "aot", func: "f64_neg", test: 1, params: 1, results: 1
-  { .f64 = 0 },
-  { .f64 = 0 },
-
-  // mod: "aot", func: "f64_neg", test: 2, params: 1, results: 1
-  { .f64 = 1 },
-  { .f64 = -1 },
-
-  // mod: "aot", func: "f64_ceil", test: 0, params: 1, results: 1
-  { .f64 = -1.1 },
-  { .f64 = -1.0 },
-
-  // mod: "aot", func: "f64_ceil", test: 1, params: 1, results: 1
-  { .f64 = 0 },
-  { .f64 = 0 },
-
-  // mod: "aot", func: "f64_ceil", test: 2, params: 1, results: 1
-  { .f64 = 1.1 },
-  { .f64 = 2 },
-
-  // mod: "aot", func: "f64_floor", test: 0, params: 1, results: 1
-  { .f64 = -1.1 },
-  { .f64 = -2.0 },
-
-  // mod: "aot", func: "f64_floor", test: 1, params: 1, results: 1
-  { .f64 = 0 },
-  { .f64 = 0 },
-
-  // mod: "aot", func: "f64_floor", test: 2, params: 1, results: 1
-  { .f64 = 1.1 },
-  { .f64 = 1.0 },
-
-  // mod: "aot", func: "f64_trunc", test: 0, params: 1, results: 1
-  { .f64 = -1.1 },
-  { .f64 = -1.0 },
-
-  // mod: "aot", func: "f64_trunc", test: 1, params: 1, results: 1
-  { .f64 = 0 },
-  { .f64 = 0 },
-
-  // mod: "aot", func: "f64_trunc", test: 2, params: 1, results: 1
-  { .f64 = 1.1 },
-  { .f64 = 1.0 },
-
-  // mod: "aot", func: "f64_nearest", test: 0, params: 1, results: 1
-  { .f64 = -1.1 },
-  { .f64 = -1.0 },
-
-  // mod: "aot", func: "f64_nearest", test: 1, params: 1, results: 1
-  { .f64 = 0 },
-  { .f64 = 0 },
-
-  // mod: "aot", func: "f64_nearest", test: 2, params: 1, results: 1
-  { .f64 = 1.6 },
-  { .f64 = 2.0 },
-
-  // mod: "aot", func: "f64_sqrt", test: 0, params: 1, results: 1
-  { .f64 = 4.0 },
-  { .f64 = 2.0 },
-
-  // mod: "aot", func: "f64_sqrt", test: 1, params: 1, results: 1
-  { .f64 = 2.0 },
-  { .f64 = 1.41421 },
-
-  // mod: "aot", func: "f64_sqrt", test: 2, params: 1, results: 1
-  { .f64 = 49.0 },
-  { .f64 = 7.0 },
-
-  // mod: "aot", func: "f64_add", test: 0, params: 2, results: 1
-  { .f64 = 49.0 },
-  { .f64 = 51.0 },
-  { .f64 = 100.0 },
-
-  // mod: "aot", func: "f64_add", test: 1, params: 2, results: 1
-  { .f64 = -49.0 },
-  { .f64 = 51.0 },
-  { .f64 = 2.0 },
-
-  // mod: "aot", func: "f64_add", test: 2, params: 2, results: 1
-  { .f64 = 1024.0 },
-  { .f64 = 321.0 },
-  { .f64 = 1345.0 },
-
-  // mod: "aot", func: "f64_sub", test: 0, params: 2, results: 1
-  { .f64 = 49.0 },
-  { .f64 = 51.0 },
-  { .f64 = -2.0 },
-
-  // mod: "aot", func: "f64_sub", test: 1, params: 2, results: 1
-  { .f64 = -49.0 },
-  { .f64 = 51.0 },
-  { .f64 = -100.0 },
-
-  // mod: "aot", func: "f64_sub", test: 2, params: 2, results: 1
-  { .f64 = 1024.2 },
-  { .f64 = 21.1 },
-  { .f64 = 1003.1 },
-
-  // mod: "aot", func: "f64_mul", test: 0, params: 2, results: 1
-  { .f64 = 4.0 },
-  { .f64 = 5.0 },
-  { .f64 = 20.0 },
-
-  // mod: "aot", func: "f64_mul", test: 1, params: 2, results: 1
-  { .f64 = -9.0 },
-  { .f64 = 5.0 },
-  { .f64 = -45.0 },
-
-  // mod: "aot", func: "f64_mul", test: 2, params: 2, results: 1
-  { .f64 = 1024.0 },
-  { .f64 = 2.1 },
-  { .f64 = 2150.4 },
-
-  // mod: "aot", func: "f64_div", test: 0, params: 2, results: 1
-  { .f64 = 4.0 },
-  { .f64 = 5.0 },
-  { .f64 = 0.8 },
-
-  // mod: "aot", func: "f64_div", test: 1, params: 2, results: 1
-  { .f64 = -15.0 },
-  { .f64 = 5.0 },
-  { .f64 = -3.0 },
-
-  // mod: "aot", func: "f64_div", test: 2, params: 2, results: 1
-  { .f64 = 1024.0 },
-  { .f64 = 2.0 },
-  { .f64 = 512.0 },
-
-  // mod: "aot", func: "f64_min", test: 0, params: 2, results: 1
-  { .f64 = 4.0 },
-  { .f64 = 5.0 },
-  { .f64 = 4.0 },
-
-  // mod: "aot", func: "f64_min", test: 1, params: 2, results: 1
-  { .f64 = -15.0 },
-  { .f64 = 5.0 },
-  { .f64 = -15.0 },
-
-  // mod: "aot", func: "f64_min", test: 2, params: 2, results: 1
-  { .f64 = 1024.0 },
-  { .f64 = 2.0 },
-  { .f64 = 2.0 },
-
-  // mod: "aot", func: "f64_max", test: 0, params: 2, results: 1
-  { .f64 = 4.0 },
-  { .f64 = 5.0 },
-  { .f64 = 5.0 },
-
-  // mod: "aot", func: "f64_max", test: 1, params: 2, results: 1
-  { .f64 = -15.0 },
-  { .f64 = 5.0 },
-  { .f64 = 5.0 },
-
-  // mod: "aot", func: "f64_max", test: 2, params: 2, results: 1
-  { .f64 = 1024.0 },
-  { .f64 = 2.0 },
-  { .f64 = 1024.0 },
-
-  // mod: "aot", func: "f64_copysign", test: 0, params: 2, results: 1
-  { .f64 = -4.0 },
-  { .f64 = 5.0 },
-  { .f64 = 4.0 },
-
-  // mod: "aot", func: "f64_copysign", test: 1, params: 2, results: 1
-  { .f64 = 15.0 },
-  { .f64 = -5.0 },
-  { .f64 = -15.0 },
-
-  // mod: "aot", func: "f64_copysign", test: 2, params: 2, results: 1
-  { .f64 = 1024.0 },
-  { .f64 = 0.0 },
-  { .f64 = 1024.0 },
-};
-
-static const pwasm_value_type_t
-TEST_TYPES[] = {
-  // mod: "aot", func: "add_i32s", test: 0, params: 0, results: 1
-  PWASM_VALUE_TYPE_I32,
-
-  // mod: "aot", func: "if_else_true", test: 0, params: 0, results: 1
-  PWASM_VALUE_TYPE_I32,
-
-  // mod: "aot", func: "if_else_false", test: 0, params: 0, results: 1
-  PWASM_VALUE_TYPE_I32,
-
-  // mod: "aot", func: "if_true", test: 0, params: 0, results: 1
-  PWASM_VALUE_TYPE_I32,
-
-  // mod: "aot", func: "if_false", test: 0, params: 0, results: 1
-  PWASM_VALUE_TYPE_I32,
-
-  // mod: "aot", func: "br_outer", test: 0, params: 0, results: 1
-  PWASM_VALUE_TYPE_I32,
-
-  // mod: "aot", func: "br_inner", test: 0, params: 0, results: 1
-  PWASM_VALUE_TYPE_I32,
-
-  // mod: "aot", func: "sub", test: 0, params: 2, results: 1
-  PWASM_VALUE_TYPE_I32,
-  PWASM_VALUE_TYPE_I32,
-  PWASM_VALUE_TYPE_I32,
-
-  // mod: "aot", func: "is_99", test: 0, params: 1, results: 1
-  PWASM_VALUE_TYPE_I32,
-  PWASM_VALUE_TYPE_I32,
-
-  // mod: "aot", func: "is_99", test: 1, params: 1, results: 1
-  PWASM_VALUE_TYPE_I32,
-  PWASM_VALUE_TYPE_I32,
-
-  // mod: "aot", func: "i32_eqz", test: 0, params: 1, results: 1
-  PWASM_VALUE_TYPE_I32,
-  PWASM_VALUE_TYPE_I32,
-
-  // mod: "aot", func: "i32_eqz", test: 1, params: 1, results: 1
-  PWASM_VALUE_TYPE_I32,
-  PWASM_VALUE_TYPE_I32,
-
-  // mod: "aot", func: "i32_eq", test: 0, params: 2, results: 1
-  PWASM_VALUE_TYPE_I32,
-  PWASM_VALUE_TYPE_I32,
-  PWASM_VALUE_TYPE_I32,
-
-  // mod: "aot", func: "i32_eq", test: 1, params: 2, results: 1
-  PWASM_VALUE_TYPE_I32,
-  PWASM_VALUE_TYPE_I32,
-  PWASM_VALUE_TYPE_I32,
-
-  // mod: "aot", func: "i32_ne", test: 0, params: 2, results: 1
-  PWASM_VALUE_TYPE_I32,
-  PWASM_VALUE_TYPE_I32,
-  PWASM_VALUE_TYPE_I32,
-
-  // mod: "aot", func: "i32_ne", test: 1, params: 2, results: 1
-  PWASM_VALUE_TYPE_I32,
-  PWASM_VALUE_TYPE_I32,
-  PWASM_VALUE_TYPE_I32,
-
-  // mod: "aot", func: "i32_lt_s", test: 0, params: 2, results: 1
-  PWASM_VALUE_TYPE_I32,
-  PWASM_VALUE_TYPE_I32,
-  PWASM_VALUE_TYPE_I32,
-
-  // mod: "aot", func: "i32_lt_s", test: 1, params: 2, results: 1
-  PWASM_VALUE_TYPE_I32,
-  PWASM_VALUE_TYPE_I32,
-  PWASM_VALUE_TYPE_I32,
-
-  // mod: "aot", func: "i32_lt_s", test: 2, params: 2, results: 1
-  PWASM_VALUE_TYPE_I32,
-  PWASM_VALUE_TYPE_I32,
-  PWASM_VALUE_TYPE_I32,
-
-  // mod: "aot", func: "i32_lt_u", test: 0, params: 2, results: 1
-  PWASM_VALUE_TYPE_I32,
-  PWASM_VALUE_TYPE_I32,
-  PWASM_VALUE_TYPE_I32,
-
-  // mod: "aot", func: "i32_lt_u", test: 1, params: 2, results: 1
-  PWASM_VALUE_TYPE_I32,
-  PWASM_VALUE_TYPE_I32,
-  PWASM_VALUE_TYPE_I32,
-
-  // mod: "aot", func: "i32_lt_u", test: 2, params: 2, results: 1
-  PWASM_VALUE_TYPE_I32,
-  PWASM_VALUE_TYPE_I32,
-  PWASM_VALUE_TYPE_I32,
-
-  // mod: "aot", func: "i32_gt_s", test: 0, params: 2, results: 1
-  PWASM_VALUE_TYPE_I32,
-  PWASM_VALUE_TYPE_I32,
-  PWASM_VALUE_TYPE_I32,
-
-  // mod: "aot", func: "i32_gt_s", test: 1, params: 2, results: 1
-  PWASM_VALUE_TYPE_I32,
-  PWASM_VALUE_TYPE_I32,
-  PWASM_VALUE_TYPE_I32,
-
-  // mod: "aot", func: "i32_gt_s", test: 2, params: 2, results: 1
-  PWASM_VALUE_TYPE_I32,
-  PWASM_VALUE_TYPE_I32,
-  PWASM_VALUE_TYPE_I32,
-
-  // mod: "aot", func: "i32_gt_u", test: 0, params: 2, results: 1
-  PWASM_VALUE_TYPE_I32,
-  PWASM_VALUE_TYPE_I32,
-  PWASM_VALUE_TYPE_I32,
-
-  // mod: "aot", func: "i32_gt_u", test: 1, params: 2, results: 1
-  PWASM_VALUE_TYPE_I32,
-  PWASM_VALUE_TYPE_I32,
-  PWASM_VALUE_TYPE_I32,
-
-  // mod: "aot", func: "i32_gt_u", test: 2, params: 2, results: 1
-  PWASM_VALUE_TYPE_I32,
-  PWASM_VALUE_TYPE_I32,
-  PWASM_VALUE_TYPE_I32,
-
-  // mod: "aot", func: "i32_le_s", test: 0, params: 2, results: 1
-  PWASM_VALUE_TYPE_I32,
-  PWASM_VALUE_TYPE_I32,
-  PWASM_VALUE_TYPE_I32,
-
-  // mod: "aot", func: "i32_le_s", test: 1, params: 2, results: 1
-  PWASM_VALUE_TYPE_I32,
-  PWASM_VALUE_TYPE_I32,
-  PWASM_VALUE_TYPE_I32,
-
-  // mod: "aot", func: "i32_le_s", test: 2, params: 2, results: 1
-  PWASM_VALUE_TYPE_I32,
-  PWASM_VALUE_TYPE_I32,
-  PWASM_VALUE_TYPE_I32,
-
-  // mod: "aot", func: "i32_le_u", test: 0, params: 2, results: 1
-  PWASM_VALUE_TYPE_I32,
-  PWASM_VALUE_TYPE_I32,
-  PWASM_VALUE_TYPE_I32,
-
-  // mod: "aot", func: "i32_le_u", test: 1, params: 2, results: 1
-  PWASM_VALUE_TYPE_I32,
-  PWASM_VALUE_TYPE_I32,
-  PWASM_VALUE_TYPE_I32,
-
-  // mod: "aot", func: "i32_le_u", test: 2, params: 2, results: 1
-  PWASM_VALUE_TYPE_I32,
-  PWASM_VALUE_TYPE_I32,
-  PWASM_VALUE_TYPE_I32,
-
-  // mod: "aot", func: "i32_ge_s", test: 0, params: 2, results: 1
-  PWASM_VALUE_TYPE_I32,
-  PWASM_VALUE_TYPE_I32,
-  PWASM_VALUE_TYPE_I32,
-
-  // mod: "aot", func: "i32_ge_s", test: 1, params: 2, results: 1
-  PWASM_VALUE_TYPE_I32,
-  PWASM_VALUE_TYPE_I32,
-  PWASM_VALUE_TYPE_I32,
-
-  // mod: "aot", func: "i32_ge_s", test: 2, params: 2, results: 1
-  PWASM_VALUE_TYPE_I32,
-  PWASM_VALUE_TYPE_I32,
-  PWASM_VALUE_TYPE_I32,
-
-  // mod: "aot", func: "i32_ge_u", test: 0, params: 2, results: 1
-  PWASM_VALUE_TYPE_I32,
-  PWASM_VALUE_TYPE_I32,
-  PWASM_VALUE_TYPE_I32,
-
-  // mod: "aot", func: "i32_ge_u", test: 1, params: 2, results: 1
-  PWASM_VALUE_TYPE_I32,
-  PWASM_VALUE_TYPE_I32,
-  PWASM_VALUE_TYPE_I32,
-
-  // mod: "aot", func: "i32_ge_u", test: 2, params: 2, results: 1
-  PWASM_VALUE_TYPE_I32,
-  PWASM_VALUE_TYPE_I32,
-  PWASM_VALUE_TYPE_I32,
-
-  // mod: "aot", func: "i64_eqz", test: 0, params: 1, results: 1
-  PWASM_VALUE_TYPE_I64,
-  PWASM_VALUE_TYPE_I32,
-
-  // mod: "aot", func: "i64_eqz", test: 1, params: 1, results: 1
-  PWASM_VALUE_TYPE_I64,
-  PWASM_VALUE_TYPE_I32,
-
-  // mod: "aot", func: "i64_eq", test: 0, params: 2, results: 1
-  PWASM_VALUE_TYPE_I64,
-  PWASM_VALUE_TYPE_I64,
-  PWASM_VALUE_TYPE_I32,
-
-  // mod: "aot", func: "i64_eq", test: 1, params: 2, results: 1
-  PWASM_VALUE_TYPE_I64,
-  PWASM_VALUE_TYPE_I64,
-  PWASM_VALUE_TYPE_I32,
-
-  // mod: "aot", func: "i64_ne", test: 0, params: 2, results: 1
-  PWASM_VALUE_TYPE_I64,
-  PWASM_VALUE_TYPE_I64,
-  PWASM_VALUE_TYPE_I32,
-
-  // mod: "aot", func: "i64_ne", test: 1, params: 2, results: 1
-  PWASM_VALUE_TYPE_I64,
-  PWASM_VALUE_TYPE_I64,
-  PWASM_VALUE_TYPE_I32,
-
-  // mod: "aot", func: "i64_lt_s", test: 0, params: 2, results: 1
-  PWASM_VALUE_TYPE_I64,
-  PWASM_VALUE_TYPE_I64,
-  PWASM_VALUE_TYPE_I32,
-
-  // mod: "aot", func: "i64_lt_s", test: 1, params: 2, results: 1
-  PWASM_VALUE_TYPE_I64,
-  PWASM_VALUE_TYPE_I64,
-  PWASM_VALUE_TYPE_I32,
-
-  // mod: "aot", func: "i64_lt_s", test: 2, params: 2, results: 1
-  PWASM_VALUE_TYPE_I64,
-  PWASM_VALUE_TYPE_I64,
-  PWASM_VALUE_TYPE_I32,
-
-  // mod: "aot", func: "i64_lt_u", test: 0, params: 2, results: 1
-  PWASM_VALUE_TYPE_I64,
-  PWASM_VALUE_TYPE_I64,
-  PWASM_VALUE_TYPE_I32,
-
-  // mod: "aot", func: "i64_lt_u", test: 1, params: 2, results: 1
-  PWASM_VALUE_TYPE_I64,
-  PWASM_VALUE_TYPE_I64,
-  PWASM_VALUE_TYPE_I32,
-
-  // mod: "aot", func: "i64_lt_u", test: 2, params: 2, results: 1
-  PWASM_VALUE_TYPE_I64,
-  PWASM_VALUE_TYPE_I64,
-  PWASM_VALUE_TYPE_I32,
-
-  // mod: "aot", func: "i64_gt_s", test: 0, params: 2, results: 1
-  PWASM_VALUE_TYPE_I64,
-  PWASM_VALUE_TYPE_I64,
-  PWASM_VALUE_TYPE_I32,
-
-  // mod: "aot", func: "i64_gt_s", test: 1, params: 2, results: 1
-  PWASM_VALUE_TYPE_I64,
-  PWASM_VALUE_TYPE_I64,
-  PWASM_VALUE_TYPE_I32,
-
-  // mod: "aot", func: "i64_gt_s", test: 2, params: 2, results: 1
-  PWASM_VALUE_TYPE_I64,
-  PWASM_VALUE_TYPE_I64,
-  PWASM_VALUE_TYPE_I32,
-
-  // mod: "aot", func: "i64_gt_u", test: 0, params: 2, results: 1
-  PWASM_VALUE_TYPE_I64,
-  PWASM_VALUE_TYPE_I64,
-  PWASM_VALUE_TYPE_I32,
-
-  // mod: "aot", func: "i64_gt_u", test: 1, params: 2, results: 1
-  PWASM_VALUE_TYPE_I64,
-  PWASM_VALUE_TYPE_I64,
-  PWASM_VALUE_TYPE_I32,
-
-  // mod: "aot", func: "i64_gt_u", test: 2, params: 2, results: 1
-  PWASM_VALUE_TYPE_I64,
-  PWASM_VALUE_TYPE_I64,
-  PWASM_VALUE_TYPE_I32,
-
-  // mod: "aot", func: "i64_le_s", test: 0, params: 2, results: 1
-  PWASM_VALUE_TYPE_I64,
-  PWASM_VALUE_TYPE_I64,
-  PWASM_VALUE_TYPE_I32,
-
-  // mod: "aot", func: "i64_le_s", test: 1, params: 2, results: 1
-  PWASM_VALUE_TYPE_I64,
-  PWASM_VALUE_TYPE_I64,
-  PWASM_VALUE_TYPE_I32,
-
-  // mod: "aot", func: "i64_le_s", test: 2, params: 2, results: 1
-  PWASM_VALUE_TYPE_I64,
-  PWASM_VALUE_TYPE_I64,
-  PWASM_VALUE_TYPE_I32,
-
-  // mod: "aot", func: "i64_le_u", test: 0, params: 2, results: 1
-  PWASM_VALUE_TYPE_I64,
-  PWASM_VALUE_TYPE_I64,
-  PWASM_VALUE_TYPE_I32,
-
-  // mod: "aot", func: "i64_le_u", test: 1, params: 2, results: 1
-  PWASM_VALUE_TYPE_I64,
-  PWASM_VALUE_TYPE_I64,
-  PWASM_VALUE_TYPE_I32,
-
-  // mod: "aot", func: "i64_le_u", test: 2, params: 2, results: 1
-  PWASM_VALUE_TYPE_I64,
-  PWASM_VALUE_TYPE_I64,
-  PWASM_VALUE_TYPE_I32,
-
-  // mod: "aot", func: "i64_ge_s", test: 0, params: 2, results: 1
-  PWASM_VALUE_TYPE_I64,
-  PWASM_VALUE_TYPE_I64,
-  PWASM_VALUE_TYPE_I32,
-
-  // mod: "aot", func: "i64_ge_s", test: 1, params: 2, results: 1
-  PWASM_VALUE_TYPE_I64,
-  PWASM_VALUE_TYPE_I64,
-  PWASM_VALUE_TYPE_I32,
-
-  // mod: "aot", func: "i64_ge_s", test: 2, params: 2, results: 1
-  PWASM_VALUE_TYPE_I64,
-  PWASM_VALUE_TYPE_I64,
-  PWASM_VALUE_TYPE_I32,
-
-  // mod: "aot", func: "i64_ge_u", test: 0, params: 2, results: 1
-  PWASM_VALUE_TYPE_I64,
-  PWASM_VALUE_TYPE_I64,
-  PWASM_VALUE_TYPE_I32,
-
-  // mod: "aot", func: "i64_ge_u", test: 1, params: 2, results: 1
-  PWASM_VALUE_TYPE_I64,
-  PWASM_VALUE_TYPE_I64,
-  PWASM_VALUE_TYPE_I32,
-
-  // mod: "aot", func: "i64_ge_u", test: 2, params: 2, results: 1
-  PWASM_VALUE_TYPE_I64,
-  PWASM_VALUE_TYPE_I64,
-  PWASM_VALUE_TYPE_I32,
-
-  // mod: "aot", func: "f32_eq", test: 0, params: 2, results: 1
-  PWASM_VALUE_TYPE_F32,
-  PWASM_VALUE_TYPE_F32,
-  PWASM_VALUE_TYPE_I32,
-
-  // mod: "aot", func: "f32_eq", test: 1, params: 2, results: 1
-  PWASM_VALUE_TYPE_F32,
-  PWASM_VALUE_TYPE_F32,
-  PWASM_VALUE_TYPE_I32,
-
-  // mod: "aot", func: "f32_ne", test: 0, params: 2, results: 1
-  PWASM_VALUE_TYPE_F32,
-  PWASM_VALUE_TYPE_F32,
-  PWASM_VALUE_TYPE_I32,
-
-  // mod: "aot", func: "f32_ne", test: 1, params: 2, results: 1
-  PWASM_VALUE_TYPE_F32,
-  PWASM_VALUE_TYPE_F32,
-  PWASM_VALUE_TYPE_I32,
-
-  // mod: "aot", func: "f32_lt", test: 0, params: 2, results: 1
-  PWASM_VALUE_TYPE_F32,
-  PWASM_VALUE_TYPE_F32,
-  PWASM_VALUE_TYPE_I32,
-
-  // mod: "aot", func: "f32_lt", test: 1, params: 2, results: 1
-  PWASM_VALUE_TYPE_F32,
-  PWASM_VALUE_TYPE_F32,
-  PWASM_VALUE_TYPE_I32,
-
-  // mod: "aot", func: "f32_gt", test: 0, params: 2, results: 1
-  PWASM_VALUE_TYPE_F32,
-  PWASM_VALUE_TYPE_F32,
-  PWASM_VALUE_TYPE_I32,
-
-  // mod: "aot", func: "f32_gt", test: 1, params: 2, results: 1
-  PWASM_VALUE_TYPE_F32,
-  PWASM_VALUE_TYPE_F32,
-  PWASM_VALUE_TYPE_I32,
-
-  // mod: "aot", func: "f32_le", test: 0, params: 2, results: 1
-  PWASM_VALUE_TYPE_F32,
-  PWASM_VALUE_TYPE_F32,
-  PWASM_VALUE_TYPE_I32,
-
-  // mod: "aot", func: "f32_le", test: 1, params: 2, results: 1
-  PWASM_VALUE_TYPE_F32,
-  PWASM_VALUE_TYPE_F32,
-  PWASM_VALUE_TYPE_I32,
-
-  // mod: "aot", func: "f32_ge", test: 0, params: 2, results: 1
-  PWASM_VALUE_TYPE_F32,
-  PWASM_VALUE_TYPE_F32,
-  PWASM_VALUE_TYPE_I32,
-
-  // mod: "aot", func: "f32_ge", test: 1, params: 2, results: 1
-  PWASM_VALUE_TYPE_F32,
-  PWASM_VALUE_TYPE_F32,
-  PWASM_VALUE_TYPE_I32,
-
-  // mod: "aot", func: "f64_eq", test: 0, params: 2, results: 1
-  PWASM_VALUE_TYPE_F64,
-  PWASM_VALUE_TYPE_F64,
-  PWASM_VALUE_TYPE_I32,
-
-  // mod: "aot", func: "f64_eq", test: 1, params: 2, results: 1
-  PWASM_VALUE_TYPE_F64,
-  PWASM_VALUE_TYPE_F64,
-  PWASM_VALUE_TYPE_I32,
-
-  // mod: "aot", func: "f64_ne", test: 0, params: 2, results: 1
-  PWASM_VALUE_TYPE_F64,
-  PWASM_VALUE_TYPE_F64,
-  PWASM_VALUE_TYPE_I32,
-
-  // mod: "aot", func: "f64_ne", test: 1, params: 2, results: 1
-  PWASM_VALUE_TYPE_F64,
-  PWASM_VALUE_TYPE_F64,
-  PWASM_VALUE_TYPE_I32,
-
-  // mod: "aot", func: "f64_lt", test: 0, params: 2, results: 1
-  PWASM_VALUE_TYPE_F64,
-  PWASM_VALUE_TYPE_F64,
-  PWASM_VALUE_TYPE_I32,
-
-  // mod: "aot", func: "f64_lt", test: 1, params: 2, results: 1
-  PWASM_VALUE_TYPE_F64,
-  PWASM_VALUE_TYPE_F64,
-  PWASM_VALUE_TYPE_I32,
-
-  // mod: "aot", func: "f64_gt", test: 0, params: 2, results: 1
-  PWASM_VALUE_TYPE_F64,
-  PWASM_VALUE_TYPE_F64,
-  PWASM_VALUE_TYPE_I32,
-
-  // mod: "aot", func: "f64_gt", test: 1, params: 2, results: 1
-  PWASM_VALUE_TYPE_F64,
-  PWASM_VALUE_TYPE_F64,
-  PWASM_VALUE_TYPE_I32,
-
-  // mod: "aot", func: "f64_le", test: 0, params: 2, results: 1
-  PWASM_VALUE_TYPE_F64,
-  PWASM_VALUE_TYPE_F64,
-  PWASM_VALUE_TYPE_I32,
-
-  // mod: "aot", func: "f64_le", test: 1, params: 2, results: 1
-  PWASM_VALUE_TYPE_F64,
-  PWASM_VALUE_TYPE_F64,
-  PWASM_VALUE_TYPE_I32,
-
-  // mod: "aot", func: "f64_ge", test: 0, params: 2, results: 1
-  PWASM_VALUE_TYPE_F64,
-  PWASM_VALUE_TYPE_F64,
-  PWASM_VALUE_TYPE_I32,
-
-  // mod: "aot", func: "f64_ge", test: 1, params: 2, results: 1
-  PWASM_VALUE_TYPE_F64,
-  PWASM_VALUE_TYPE_F64,
-  PWASM_VALUE_TYPE_I32,
-
-  // mod: "aot", func: "i32_clz", test: 0, params: 1, results: 1
-  PWASM_VALUE_TYPE_I32,
-  PWASM_VALUE_TYPE_I32,
-
-  // mod: "aot", func: "i32_clz", test: 1, params: 1, results: 1
-  PWASM_VALUE_TYPE_I32,
-  PWASM_VALUE_TYPE_I32,
-
-  // mod: "aot", func: "i32_clz", test: 2, params: 1, results: 1
-  PWASM_VALUE_TYPE_I32,
-  PWASM_VALUE_TYPE_I32,
-
-  // mod: "aot", func: "i32_ctz", test: 0, params: 1, results: 1
-  PWASM_VALUE_TYPE_I32,
-  PWASM_VALUE_TYPE_I32,
-
-  // mod: "aot", func: "i32_ctz", test: 1, params: 1, results: 1
-  PWASM_VALUE_TYPE_I32,
-  PWASM_VALUE_TYPE_I32,
-
-  // mod: "aot", func: "i32_ctz", test: 2, params: 1, results: 1
-  PWASM_VALUE_TYPE_I32,
-  PWASM_VALUE_TYPE_I32,
-
-  // mod: "aot", func: "i32_popcnt", test: 0, params: 1, results: 1
-  PWASM_VALUE_TYPE_I32,
-  PWASM_VALUE_TYPE_I32,
-
-  // mod: "aot", func: "i32_popcnt", test: 1, params: 1, results: 1
-  PWASM_VALUE_TYPE_I32,
-  PWASM_VALUE_TYPE_I32,
-
-  // mod: "aot", func: "i32_popcnt", test: 2, params: 1, results: 1
-  PWASM_VALUE_TYPE_I32,
-  PWASM_VALUE_TYPE_I32,
-
-  // mod: "aot", func: "i32_add", test: 0, params: 2, results: 1
-  PWASM_VALUE_TYPE_I32,
-  PWASM_VALUE_TYPE_I32,
-  PWASM_VALUE_TYPE_I32,
-
-  // mod: "aot", func: "i32_add", test: 1, params: 2, results: 1
-  PWASM_VALUE_TYPE_I32,
-  PWASM_VALUE_TYPE_I32,
-  PWASM_VALUE_TYPE_I32,
-
-  // mod: "aot", func: "i32_add", test: 2, params: 2, results: 1
-  PWASM_VALUE_TYPE_I32,
-  PWASM_VALUE_TYPE_I32,
-  PWASM_VALUE_TYPE_I32,
-
-  // mod: "aot", func: "i32_sub", test: 0, params: 2, results: 1
-  PWASM_VALUE_TYPE_I32,
-  PWASM_VALUE_TYPE_I32,
-  PWASM_VALUE_TYPE_I32,
-
-  // mod: "aot", func: "i32_sub", test: 1, params: 2, results: 1
-  PWASM_VALUE_TYPE_I32,
-  PWASM_VALUE_TYPE_I32,
-  PWASM_VALUE_TYPE_I32,
-
-  // mod: "aot", func: "i32_sub", test: 2, params: 2, results: 1
-  PWASM_VALUE_TYPE_I32,
-  PWASM_VALUE_TYPE_I32,
-  PWASM_VALUE_TYPE_I32,
-
-  // mod: "aot", func: "i32_mul", test: 0, params: 2, results: 1
-  PWASM_VALUE_TYPE_I32,
-  PWASM_VALUE_TYPE_I32,
-  PWASM_VALUE_TYPE_I32,
-
-  // mod: "aot", func: "i32_mul", test: 1, params: 2, results: 1
-  PWASM_VALUE_TYPE_I32,
-  PWASM_VALUE_TYPE_I32,
-  PWASM_VALUE_TYPE_I32,
-
-  // mod: "aot", func: "i32_mul", test: 2, params: 2, results: 1
-  PWASM_VALUE_TYPE_I32,
-  PWASM_VALUE_TYPE_I32,
-  PWASM_VALUE_TYPE_I32,
-
-  // mod: "aot", func: "i32_div_s", test: 0, params: 2, results: 1
-  PWASM_VALUE_TYPE_I32,
-  PWASM_VALUE_TYPE_I32,
-  PWASM_VALUE_TYPE_I32,
-
-  // mod: "aot", func: "i32_div_s", test: 1, params: 2, results: 1
-  PWASM_VALUE_TYPE_I32,
-  PWASM_VALUE_TYPE_I32,
-  PWASM_VALUE_TYPE_I32,
-
-  // mod: "aot", func: "i32_div_s", test: 2, params: 2, results: 1
-  PWASM_VALUE_TYPE_I32,
-  PWASM_VALUE_TYPE_I32,
-  PWASM_VALUE_TYPE_I32,
-
-  // mod: "aot", func: "i32_div_u", test: 0, params: 2, results: 1
-  PWASM_VALUE_TYPE_I32,
-  PWASM_VALUE_TYPE_I32,
-  PWASM_VALUE_TYPE_I32,
-
-  // mod: "aot", func: "i32_div_u", test: 1, params: 2, results: 1
-  PWASM_VALUE_TYPE_I32,
-  PWASM_VALUE_TYPE_I32,
-  PWASM_VALUE_TYPE_I32,
-
-  // mod: "aot", func: "i32_div_u", test: 2, params: 2, results: 1
-  PWASM_VALUE_TYPE_I32,
-  PWASM_VALUE_TYPE_I32,
-  PWASM_VALUE_TYPE_I32,
-
-  // mod: "aot", func: "i32_rem_s", test: 0, params: 2, results: 1
-  PWASM_VALUE_TYPE_I32,
-  PWASM_VALUE_TYPE_I32,
-  PWASM_VALUE_TYPE_I32,
-
-  // mod: "aot", func: "i32_rem_s", test: 1, params: 2, results: 1
-  PWASM_VALUE_TYPE_I32,
-  PWASM_VALUE_TYPE_I32,
-  PWASM_VALUE_TYPE_I32,
-
-  // mod: "aot", func: "i32_rem_s", test: 2, params: 2, results: 1
-  PWASM_VALUE_TYPE_I32,
-  PWASM_VALUE_TYPE_I32,
-  PWASM_VALUE_TYPE_I32,
-
-  // mod: "aot", func: "i32_rem_u", test: 0, params: 2, results: 1
-  PWASM_VALUE_TYPE_I32,
-  PWASM_VALUE_TYPE_I32,
-  PWASM_VALUE_TYPE_I32,
-
-  // mod: "aot", func: "i32_rem_u", test: 1, params: 2, results: 1
-  PWASM_VALUE_TYPE_I32,
-  PWASM_VALUE_TYPE_I32,
-  PWASM_VALUE_TYPE_I32,
-
-  // mod: "aot", func: "i32_rem_u", test: 2, params: 2, results: 1
-  PWASM_VALUE_TYPE_I32,
-  PWASM_VALUE_TYPE_I32,
-  PWASM_VALUE_TYPE_I32,
-
-  // mod: "aot", func: "i32_and", test: 0, params: 2, results: 1
-  PWASM_VALUE_TYPE_I32,
-  PWASM_VALUE_TYPE_I32,
-  PWASM_VALUE_TYPE_I32,
-
-  // mod: "aot", func: "i32_and", test: 1, params: 2, results: 1
-  PWASM_VALUE_TYPE_I32,
-  PWASM_VALUE_TYPE_I32,
-  PWASM_VALUE_TYPE_I32,
-
-  // mod: "aot", func: "i32_and", test: 2, params: 2, results: 1
-  PWASM_VALUE_TYPE_I32,
-  PWASM_VALUE_TYPE_I32,
-  PWASM_VALUE_TYPE_I32,
-
-  // mod: "aot", func: "i32_or", test: 0, params: 2, results: 1
-  PWASM_VALUE_TYPE_I32,
-  PWASM_VALUE_TYPE_I32,
-  PWASM_VALUE_TYPE_I32,
-
-  // mod: "aot", func: "i32_or", test: 1, params: 2, results: 1
-  PWASM_VALUE_TYPE_I32,
-  PWASM_VALUE_TYPE_I32,
-  PWASM_VALUE_TYPE_I32,
-
-  // mod: "aot", func: "i32_or", test: 2, params: 2, results: 1
-  PWASM_VALUE_TYPE_I32,
-  PWASM_VALUE_TYPE_I32,
-  PWASM_VALUE_TYPE_I32,
-
-  // mod: "aot", func: "i32_xor", test: 0, params: 2, results: 1
-  PWASM_VALUE_TYPE_I32,
-  PWASM_VALUE_TYPE_I32,
-  PWASM_VALUE_TYPE_I32,
-
-  // mod: "aot", func: "i32_xor", test: 1, params: 2, results: 1
-  PWASM_VALUE_TYPE_I32,
-  PWASM_VALUE_TYPE_I32,
-  PWASM_VALUE_TYPE_I32,
-
-  // mod: "aot", func: "i32_xor", test: 2, params: 2, results: 1
-  PWASM_VALUE_TYPE_I32,
-  PWASM_VALUE_TYPE_I32,
-  PWASM_VALUE_TYPE_I32,
-
-  // mod: "aot", func: "i32_shl", test: 0, params: 2, results: 1
-  PWASM_VALUE_TYPE_I32,
-  PWASM_VALUE_TYPE_I32,
-  PWASM_VALUE_TYPE_I32,
-
-  // mod: "aot", func: "i32_shl", test: 1, params: 2, results: 1
-  PWASM_VALUE_TYPE_I32,
-  PWASM_VALUE_TYPE_I32,
-  PWASM_VALUE_TYPE_I32,
-
-  // mod: "aot", func: "i32_shl", test: 2, params: 2, results: 1
-  PWASM_VALUE_TYPE_I32,
-  PWASM_VALUE_TYPE_I32,
-  PWASM_VALUE_TYPE_I32,
-
-  // mod: "aot", func: "i32_shr_s", test: 0, params: 2, results: 1
-  PWASM_VALUE_TYPE_I32,
-  PWASM_VALUE_TYPE_I32,
-  PWASM_VALUE_TYPE_I32,
-
-  // mod: "aot", func: "i32_shr_s", test: 1, params: 2, results: 1
-  PWASM_VALUE_TYPE_I32,
-  PWASM_VALUE_TYPE_I32,
-  PWASM_VALUE_TYPE_I32,
-
-  // mod: "aot", func: "i32_shr_s", test: 2, params: 2, results: 1
-  PWASM_VALUE_TYPE_I32,
-  PWASM_VALUE_TYPE_I32,
-  PWASM_VALUE_TYPE_I32,
-
-  // mod: "aot", func: "i32_shr_u", test: 0, params: 2, results: 1
-  PWASM_VALUE_TYPE_I32,
-  PWASM_VALUE_TYPE_I32,
-  PWASM_VALUE_TYPE_I32,
-
-  // mod: "aot", func: "i32_shr_u", test: 1, params: 2, results: 1
-  PWASM_VALUE_TYPE_I32,
-  PWASM_VALUE_TYPE_I32,
-  PWASM_VALUE_TYPE_I32,
-
-  // mod: "aot", func: "i32_shr_u", test: 2, params: 2, results: 1
-  PWASM_VALUE_TYPE_I32,
-  PWASM_VALUE_TYPE_I32,
-  PWASM_VALUE_TYPE_I32,
-
-  // mod: "aot", func: "i32_rotl", test: 0, params: 2, results: 1
-  PWASM_VALUE_TYPE_I32,
-  PWASM_VALUE_TYPE_I32,
-  PWASM_VALUE_TYPE_I32,
-
-  // mod: "aot", func: "i32_rotl", test: 1, params: 2, results: 1
-  PWASM_VALUE_TYPE_I32,
-  PWASM_VALUE_TYPE_I32,
-  PWASM_VALUE_TYPE_I32,
-
-  // mod: "aot", func: "i32_rotl", test: 2, params: 2, results: 1
-  PWASM_VALUE_TYPE_I32,
-  PWASM_VALUE_TYPE_I32,
-  PWASM_VALUE_TYPE_I32,
-
-  // mod: "aot", func: "i32_rotr", test: 0, params: 2, results: 1
-  PWASM_VALUE_TYPE_I32,
-  PWASM_VALUE_TYPE_I32,
-  PWASM_VALUE_TYPE_I32,
-
-  // mod: "aot", func: "i32_rotr", test: 1, params: 2, results: 1
-  PWASM_VALUE_TYPE_I32,
-  PWASM_VALUE_TYPE_I32,
-  PWASM_VALUE_TYPE_I32,
-
-  // mod: "aot", func: "i32_rotr", test: 2, params: 2, results: 1
-  PWASM_VALUE_TYPE_I32,
-  PWASM_VALUE_TYPE_I32,
-  PWASM_VALUE_TYPE_I32,
-
-  // mod: "aot", func: "i64_clz", test: 0, params: 1, results: 1
-  PWASM_VALUE_TYPE_I64,
-  PWASM_VALUE_TYPE_I64,
-
-  // mod: "aot", func: "i64_clz", test: 1, params: 1, results: 1
-  PWASM_VALUE_TYPE_I64,
-  PWASM_VALUE_TYPE_I64,
-
-  // mod: "aot", func: "i64_clz", test: 2, params: 1, results: 1
-  PWASM_VALUE_TYPE_I64,
-  PWASM_VALUE_TYPE_I64,
-
-  // mod: "aot", func: "i64_ctz", test: 0, params: 1, results: 1
-  PWASM_VALUE_TYPE_I64,
-  PWASM_VALUE_TYPE_I64,
-
-  // mod: "aot", func: "i64_ctz", test: 1, params: 1, results: 1
-  PWASM_VALUE_TYPE_I64,
-  PWASM_VALUE_TYPE_I64,
-
-  // mod: "aot", func: "i64_ctz", test: 2, params: 1, results: 1
-  PWASM_VALUE_TYPE_I64,
-  PWASM_VALUE_TYPE_I64,
-
-  // mod: "aot", func: "i64_popcnt", test: 0, params: 1, results: 1
-  PWASM_VALUE_TYPE_I64,
-  PWASM_VALUE_TYPE_I64,
-
-  // mod: "aot", func: "i64_popcnt", test: 1, params: 1, results: 1
-  PWASM_VALUE_TYPE_I64,
-  PWASM_VALUE_TYPE_I64,
-
-  // mod: "aot", func: "i64_popcnt", test: 2, params: 1, results: 1
-  PWASM_VALUE_TYPE_I64,
-  PWASM_VALUE_TYPE_I64,
-
-  // mod: "aot", func: "i64_add", test: 0, params: 2, results: 1
-  PWASM_VALUE_TYPE_I64,
-  PWASM_VALUE_TYPE_I64,
-  PWASM_VALUE_TYPE_I64,
-
-  // mod: "aot", func: "i64_add", test: 1, params: 2, results: 1
-  PWASM_VALUE_TYPE_I64,
-  PWASM_VALUE_TYPE_I64,
-  PWASM_VALUE_TYPE_I64,
-
-  // mod: "aot", func: "i64_add", test: 2, params: 2, results: 1
-  PWASM_VALUE_TYPE_I64,
-  PWASM_VALUE_TYPE_I64,
-  PWASM_VALUE_TYPE_I64,
-
-  // mod: "aot", func: "i64_sub", test: 0, params: 2, results: 1
-  PWASM_VALUE_TYPE_I64,
-  PWASM_VALUE_TYPE_I64,
-  PWASM_VALUE_TYPE_I64,
-
-  // mod: "aot", func: "i64_sub", test: 1, params: 2, results: 1
-  PWASM_VALUE_TYPE_I64,
-  PWASM_VALUE_TYPE_I64,
-  PWASM_VALUE_TYPE_I64,
-
-  // mod: "aot", func: "i64_sub", test: 2, params: 2, results: 1
-  PWASM_VALUE_TYPE_I64,
-  PWASM_VALUE_TYPE_I64,
-  PWASM_VALUE_TYPE_I64,
-
-  // mod: "aot", func: "i64_mul", test: 0, params: 2, results: 1
-  PWASM_VALUE_TYPE_I64,
-  PWASM_VALUE_TYPE_I64,
-  PWASM_VALUE_TYPE_I64,
-
-  // mod: "aot", func: "i64_mul", test: 1, params: 2, results: 1
-  PWASM_VALUE_TYPE_I64,
-  PWASM_VALUE_TYPE_I64,
-  PWASM_VALUE_TYPE_I64,
-
-  // mod: "aot", func: "i64_mul", test: 2, params: 2, results: 1
-  PWASM_VALUE_TYPE_I64,
-  PWASM_VALUE_TYPE_I64,
-  PWASM_VALUE_TYPE_I64,
-
-  // mod: "aot", func: "i64_div_s", test: 0, params: 2, results: 1
-  PWASM_VALUE_TYPE_I64,
-  PWASM_VALUE_TYPE_I64,
-  PWASM_VALUE_TYPE_I64,
-
-  // mod: "aot", func: "i64_div_s", test: 1, params: 2, results: 1
-  PWASM_VALUE_TYPE_I64,
-  PWASM_VALUE_TYPE_I64,
-  PWASM_VALUE_TYPE_I64,
-
-  // mod: "aot", func: "i64_div_s", test: 2, params: 2, results: 1
-  PWASM_VALUE_TYPE_I64,
-  PWASM_VALUE_TYPE_I64,
-  PWASM_VALUE_TYPE_I64,
-
-  // mod: "aot", func: "i64_div_u", test: 0, params: 2, results: 1
-  PWASM_VALUE_TYPE_I64,
-  PWASM_VALUE_TYPE_I64,
-  PWASM_VALUE_TYPE_I64,
-
-  // mod: "aot", func: "i64_div_u", test: 1, params: 2, results: 1
-  PWASM_VALUE_TYPE_I64,
-  PWASM_VALUE_TYPE_I64,
-  PWASM_VALUE_TYPE_I64,
-
-  // mod: "aot", func: "i64_div_u", test: 2, params: 2, results: 1
-  PWASM_VALUE_TYPE_I64,
-  PWASM_VALUE_TYPE_I64,
-  PWASM_VALUE_TYPE_I64,
-
-  // mod: "aot", func: "i64_rem_s", test: 0, params: 2, results: 1
-  PWASM_VALUE_TYPE_I64,
-  PWASM_VALUE_TYPE_I64,
-  PWASM_VALUE_TYPE_I64,
-
-  // mod: "aot", func: "i64_rem_s", test: 1, params: 2, results: 1
-  PWASM_VALUE_TYPE_I64,
-  PWASM_VALUE_TYPE_I64,
-  PWASM_VALUE_TYPE_I64,
-
-  // mod: "aot", func: "i64_rem_s", test: 2, params: 2, results: 1
-  PWASM_VALUE_TYPE_I64,
-  PWASM_VALUE_TYPE_I64,
-  PWASM_VALUE_TYPE_I64,
-
-  // mod: "aot", func: "i64_rem_u", test: 0, params: 2, results: 1
-  PWASM_VALUE_TYPE_I64,
-  PWASM_VALUE_TYPE_I64,
-  PWASM_VALUE_TYPE_I64,
-
-  // mod: "aot", func: "i64_rem_u", test: 1, params: 2, results: 1
-  PWASM_VALUE_TYPE_I64,
-  PWASM_VALUE_TYPE_I64,
-  PWASM_VALUE_TYPE_I64,
-
-  // mod: "aot", func: "i64_rem_u", test: 2, params: 2, results: 1
-  PWASM_VALUE_TYPE_I64,
-  PWASM_VALUE_TYPE_I64,
-  PWASM_VALUE_TYPE_I64,
-
-  // mod: "aot", func: "i64_and", test: 0, params: 2, results: 1
-  PWASM_VALUE_TYPE_I64,
-  PWASM_VALUE_TYPE_I64,
-  PWASM_VALUE_TYPE_I64,
-
-  // mod: "aot", func: "i64_and", test: 1, params: 2, results: 1
-  PWASM_VALUE_TYPE_I64,
-  PWASM_VALUE_TYPE_I64,
-  PWASM_VALUE_TYPE_I64,
-
-  // mod: "aot", func: "i64_and", test: 2, params: 2, results: 1
-  PWASM_VALUE_TYPE_I64,
-  PWASM_VALUE_TYPE_I64,
-  PWASM_VALUE_TYPE_I64,
-
-  // mod: "aot", func: "i64_or", test: 0, params: 2, results: 1
-  PWASM_VALUE_TYPE_I64,
-  PWASM_VALUE_TYPE_I64,
-  PWASM_VALUE_TYPE_I64,
-
-  // mod: "aot", func: "i64_or", test: 1, params: 2, results: 1
-  PWASM_VALUE_TYPE_I64,
-  PWASM_VALUE_TYPE_I64,
-  PWASM_VALUE_TYPE_I64,
-
-  // mod: "aot", func: "i64_or", test: 2, params: 2, results: 1
-  PWASM_VALUE_TYPE_I64,
-  PWASM_VALUE_TYPE_I64,
-  PWASM_VALUE_TYPE_I64,
-
-  // mod: "aot", func: "i64_xor", test: 0, params: 2, results: 1
-  PWASM_VALUE_TYPE_I64,
-  PWASM_VALUE_TYPE_I64,
-  PWASM_VALUE_TYPE_I64,
-
-  // mod: "aot", func: "i64_xor", test: 1, params: 2, results: 1
-  PWASM_VALUE_TYPE_I64,
-  PWASM_VALUE_TYPE_I64,
-  PWASM_VALUE_TYPE_I64,
-
-  // mod: "aot", func: "i64_xor", test: 2, params: 2, results: 1
-  PWASM_VALUE_TYPE_I64,
-  PWASM_VALUE_TYPE_I64,
-  PWASM_VALUE_TYPE_I64,
-
-  // mod: "aot", func: "i64_shl", test: 0, params: 2, results: 1
-  PWASM_VALUE_TYPE_I64,
-  PWASM_VALUE_TYPE_I64,
-  PWASM_VALUE_TYPE_I64,
-
-  // mod: "aot", func: "i64_shl", test: 1, params: 2, results: 1
-  PWASM_VALUE_TYPE_I64,
-  PWASM_VALUE_TYPE_I64,
-  PWASM_VALUE_TYPE_I64,
-
-  // mod: "aot", func: "i64_shl", test: 2, params: 2, results: 1
-  PWASM_VALUE_TYPE_I64,
-  PWASM_VALUE_TYPE_I64,
-  PWASM_VALUE_TYPE_I64,
-
-  // mod: "aot", func: "i64_shr_s", test: 0, params: 2, results: 1
-  PWASM_VALUE_TYPE_I64,
-  PWASM_VALUE_TYPE_I64,
-  PWASM_VALUE_TYPE_I64,
-
-  // mod: "aot", func: "i64_shr_s", test: 1, params: 2, results: 1
-  PWASM_VALUE_TYPE_I64,
-  PWASM_VALUE_TYPE_I64,
-  PWASM_VALUE_TYPE_I64,
-
-  // mod: "aot", func: "i64_shr_s", test: 2, params: 2, results: 1
-  PWASM_VALUE_TYPE_I64,
-  PWASM_VALUE_TYPE_I64,
-  PWASM_VALUE_TYPE_I64,
-
-  // mod: "aot", func: "i64_shr_u", test: 0, params: 2, results: 1
-  PWASM_VALUE_TYPE_I64,
-  PWASM_VALUE_TYPE_I64,
-  PWASM_VALUE_TYPE_I64,
-
-  // mod: "aot", func: "i64_shr_u", test: 1, params: 2, results: 1
-  PWASM_VALUE_TYPE_I64,
-  PWASM_VALUE_TYPE_I64,
-  PWASM_VALUE_TYPE_I64,
-
-  // mod: "aot", func: "i64_shr_u", test: 2, params: 2, results: 1
-  PWASM_VALUE_TYPE_I64,
-  PWASM_VALUE_TYPE_I64,
-  PWASM_VALUE_TYPE_I64,
-
-  // mod: "aot", func: "i64_rotl", test: 0, params: 2, results: 1
-  PWASM_VALUE_TYPE_I64,
-  PWASM_VALUE_TYPE_I64,
-  PWASM_VALUE_TYPE_I64,
-
-  // mod: "aot", func: "i64_rotl", test: 1, params: 2, results: 1
-  PWASM_VALUE_TYPE_I64,
-  PWASM_VALUE_TYPE_I64,
-  PWASM_VALUE_TYPE_I64,
-
-  // mod: "aot", func: "i64_rotl", test: 2, params: 2, results: 1
-  PWASM_VALUE_TYPE_I64,
-  PWASM_VALUE_TYPE_I64,
-  PWASM_VALUE_TYPE_I64,
-
-  // mod: "aot", func: "i64_rotr", test: 0, params: 2, results: 1
-  PWASM_VALUE_TYPE_I64,
-  PWASM_VALUE_TYPE_I64,
-  PWASM_VALUE_TYPE_I64,
-
-  // mod: "aot", func: "i64_rotr", test: 1, params: 2, results: 1
-  PWASM_VALUE_TYPE_I64,
-  PWASM_VALUE_TYPE_I64,
-  PWASM_VALUE_TYPE_I64,
-
-  // mod: "aot", func: "i64_rotr", test: 2, params: 2, results: 1
-  PWASM_VALUE_TYPE_I64,
-  PWASM_VALUE_TYPE_I64,
-  PWASM_VALUE_TYPE_I64,
-
-  // mod: "aot", func: "f32_abs", test: 0, params: 1, results: 1
-  PWASM_VALUE_TYPE_F32,
-  PWASM_VALUE_TYPE_F32,
-
-  // mod: "aot", func: "f32_abs", test: 1, params: 1, results: 1
-  PWASM_VALUE_TYPE_F32,
-  PWASM_VALUE_TYPE_F32,
-
-  // mod: "aot", func: "f32_abs", test: 2, params: 1, results: 1
-  PWASM_VALUE_TYPE_F32,
-  PWASM_VALUE_TYPE_F32,
-
-  // mod: "aot", func: "f32_neg", test: 0, params: 1, results: 1
-  PWASM_VALUE_TYPE_F32,
-  PWASM_VALUE_TYPE_F32,
-
-  // mod: "aot", func: "f32_neg", test: 1, params: 1, results: 1
-  PWASM_VALUE_TYPE_F32,
-  PWASM_VALUE_TYPE_F32,
-
-  // mod: "aot", func: "f32_neg", test: 2, params: 1, results: 1
-  PWASM_VALUE_TYPE_F32,
-  PWASM_VALUE_TYPE_F32,
-
-  // mod: "aot", func: "f32_ceil", test: 0, params: 1, results: 1
-  PWASM_VALUE_TYPE_F32,
-  PWASM_VALUE_TYPE_F32,
-
-  // mod: "aot", func: "f32_ceil", test: 1, params: 1, results: 1
-  PWASM_VALUE_TYPE_F32,
-  PWASM_VALUE_TYPE_F32,
-
-  // mod: "aot", func: "f32_ceil", test: 2, params: 1, results: 1
-  PWASM_VALUE_TYPE_F32,
-  PWASM_VALUE_TYPE_F32,
-
-  // mod: "aot", func: "f32_floor", test: 0, params: 1, results: 1
-  PWASM_VALUE_TYPE_F32,
-  PWASM_VALUE_TYPE_F32,
-
-  // mod: "aot", func: "f32_floor", test: 1, params: 1, results: 1
-  PWASM_VALUE_TYPE_F32,
-  PWASM_VALUE_TYPE_F32,
-
-  // mod: "aot", func: "f32_floor", test: 2, params: 1, results: 1
-  PWASM_VALUE_TYPE_F32,
-  PWASM_VALUE_TYPE_F32,
-
-  // mod: "aot", func: "f32_trunc", test: 0, params: 1, results: 1
-  PWASM_VALUE_TYPE_F32,
-  PWASM_VALUE_TYPE_F32,
-
-  // mod: "aot", func: "f32_trunc", test: 1, params: 1, results: 1
-  PWASM_VALUE_TYPE_F32,
-  PWASM_VALUE_TYPE_F32,
-
-  // mod: "aot", func: "f32_trunc", test: 2, params: 1, results: 1
-  PWASM_VALUE_TYPE_F32,
-  PWASM_VALUE_TYPE_F32,
-
-  // mod: "aot", func: "f32_nearest", test: 0, params: 1, results: 1
-  PWASM_VALUE_TYPE_F32,
-  PWASM_VALUE_TYPE_F32,
-
-  // mod: "aot", func: "f32_nearest", test: 1, params: 1, results: 1
-  PWASM_VALUE_TYPE_F32,
-  PWASM_VALUE_TYPE_F32,
-
-  // mod: "aot", func: "f32_nearest", test: 2, params: 1, results: 1
-  PWASM_VALUE_TYPE_F32,
-  PWASM_VALUE_TYPE_F32,
-
-  // mod: "aot", func: "f32_sqrt", test: 0, params: 1, results: 1
-  PWASM_VALUE_TYPE_F32,
-  PWASM_VALUE_TYPE_F32,
-
-  // mod: "aot", func: "f32_sqrt", test: 1, params: 1, results: 1
-  PWASM_VALUE_TYPE_F32,
-  PWASM_VALUE_TYPE_F32,
-
-  // mod: "aot", func: "f32_sqrt", test: 2, params: 1, results: 1
-  PWASM_VALUE_TYPE_F32,
-  PWASM_VALUE_TYPE_F32,
-
-  // mod: "aot", func: "f32_add", test: 0, params: 2, results: 1
-  PWASM_VALUE_TYPE_F32,
-  PWASM_VALUE_TYPE_F32,
-  PWASM_VALUE_TYPE_F32,
-
-  // mod: "aot", func: "f32_add", test: 1, params: 2, results: 1
-  PWASM_VALUE_TYPE_F32,
-  PWASM_VALUE_TYPE_F32,
-  PWASM_VALUE_TYPE_F32,
-
-  // mod: "aot", func: "f32_add", test: 2, params: 2, results: 1
-  PWASM_VALUE_TYPE_F32,
-  PWASM_VALUE_TYPE_F32,
-  PWASM_VALUE_TYPE_F32,
-
-  // mod: "aot", func: "f32_sub", test: 0, params: 2, results: 1
-  PWASM_VALUE_TYPE_F32,
-  PWASM_VALUE_TYPE_F32,
-  PWASM_VALUE_TYPE_F32,
-
-  // mod: "aot", func: "f32_sub", test: 1, params: 2, results: 1
-  PWASM_VALUE_TYPE_F32,
-  PWASM_VALUE_TYPE_F32,
-  PWASM_VALUE_TYPE_F32,
-
-  // mod: "aot", func: "f32_sub", test: 2, params: 2, results: 1
-  PWASM_VALUE_TYPE_F32,
-  PWASM_VALUE_TYPE_F32,
-  PWASM_VALUE_TYPE_F32,
-
-  // mod: "aot", func: "f32_mul", test: 0, params: 2, results: 1
-  PWASM_VALUE_TYPE_F32,
-  PWASM_VALUE_TYPE_F32,
-  PWASM_VALUE_TYPE_F32,
-
-  // mod: "aot", func: "f32_mul", test: 1, params: 2, results: 1
-  PWASM_VALUE_TYPE_F32,
-  PWASM_VALUE_TYPE_F32,
-  PWASM_VALUE_TYPE_F32,
-
-  // mod: "aot", func: "f32_mul", test: 2, params: 2, results: 1
-  PWASM_VALUE_TYPE_F32,
-  PWASM_VALUE_TYPE_F32,
-  PWASM_VALUE_TYPE_F32,
-
-  // mod: "aot", func: "f32_div", test: 0, params: 2, results: 1
-  PWASM_VALUE_TYPE_F32,
-  PWASM_VALUE_TYPE_F32,
-  PWASM_VALUE_TYPE_F32,
-
-  // mod: "aot", func: "f32_div", test: 1, params: 2, results: 1
-  PWASM_VALUE_TYPE_F32,
-  PWASM_VALUE_TYPE_F32,
-  PWASM_VALUE_TYPE_F32,
-
-  // mod: "aot", func: "f32_div", test: 2, params: 2, results: 1
-  PWASM_VALUE_TYPE_F32,
-  PWASM_VALUE_TYPE_F32,
-  PWASM_VALUE_TYPE_F32,
-
-  // mod: "aot", func: "f32_min", test: 0, params: 2, results: 1
-  PWASM_VALUE_TYPE_F32,
-  PWASM_VALUE_TYPE_F32,
-  PWASM_VALUE_TYPE_F32,
-
-  // mod: "aot", func: "f32_min", test: 1, params: 2, results: 1
-  PWASM_VALUE_TYPE_F32,
-  PWASM_VALUE_TYPE_F32,
-  PWASM_VALUE_TYPE_F32,
-
-  // mod: "aot", func: "f32_min", test: 2, params: 2, results: 1
-  PWASM_VALUE_TYPE_F32,
-  PWASM_VALUE_TYPE_F32,
-  PWASM_VALUE_TYPE_F32,
-
-  // mod: "aot", func: "f32_max", test: 0, params: 2, results: 1
-  PWASM_VALUE_TYPE_F32,
-  PWASM_VALUE_TYPE_F32,
-  PWASM_VALUE_TYPE_F32,
-
-  // mod: "aot", func: "f32_max", test: 1, params: 2, results: 1
-  PWASM_VALUE_TYPE_F32,
-  PWASM_VALUE_TYPE_F32,
-  PWASM_VALUE_TYPE_F32,
-
-  // mod: "aot", func: "f32_max", test: 2, params: 2, results: 1
-  PWASM_VALUE_TYPE_F32,
-  PWASM_VALUE_TYPE_F32,
-  PWASM_VALUE_TYPE_F32,
-
-  // mod: "aot", func: "f32_copysign", test: 0, params: 2, results: 1
-  PWASM_VALUE_TYPE_F32,
-  PWASM_VALUE_TYPE_F32,
-  PWASM_VALUE_TYPE_F32,
-
-  // mod: "aot", func: "f32_copysign", test: 1, params: 2, results: 1
-  PWASM_VALUE_TYPE_F32,
-  PWASM_VALUE_TYPE_F32,
-  PWASM_VALUE_TYPE_F32,
-
-  // mod: "aot", func: "f32_copysign", test: 2, params: 2, results: 1
-  PWASM_VALUE_TYPE_F32,
-  PWASM_VALUE_TYPE_F32,
-  PWASM_VALUE_TYPE_F32,
-
-  // mod: "aot", func: "f64_abs", test: 0, params: 1, results: 1
-  PWASM_VALUE_TYPE_F64,
-  PWASM_VALUE_TYPE_F64,
-
-  // mod: "aot", func: "f64_abs", test: 1, params: 1, results: 1
-  PWASM_VALUE_TYPE_F64,
-  PWASM_VALUE_TYPE_F64,
-
-  // mod: "aot", func: "f64_abs", test: 2, params: 1, results: 1
-  PWASM_VALUE_TYPE_F64,
-  PWASM_VALUE_TYPE_F64,
-
-  // mod: "aot", func: "f64_neg", test: 0, params: 1, results: 1
-  PWASM_VALUE_TYPE_F64,
-  PWASM_VALUE_TYPE_F64,
-
-  // mod: "aot", func: "f64_neg", test: 1, params: 1, results: 1
-  PWASM_VALUE_TYPE_F64,
-  PWASM_VALUE_TYPE_F64,
-
-  // mod: "aot", func: "f64_neg", test: 2, params: 1, results: 1
-  PWASM_VALUE_TYPE_F64,
-  PWASM_VALUE_TYPE_F64,
-
-  // mod: "aot", func: "f64_ceil", test: 0, params: 1, results: 1
-  PWASM_VALUE_TYPE_F64,
-  PWASM_VALUE_TYPE_F64,
-
-  // mod: "aot", func: "f64_ceil", test: 1, params: 1, results: 1
-  PWASM_VALUE_TYPE_F64,
-  PWASM_VALUE_TYPE_F64,
-
-  // mod: "aot", func: "f64_ceil", test: 2, params: 1, results: 1
-  PWASM_VALUE_TYPE_F64,
-  PWASM_VALUE_TYPE_F64,
-
-  // mod: "aot", func: "f64_floor", test: 0, params: 1, results: 1
-  PWASM_VALUE_TYPE_F64,
-  PWASM_VALUE_TYPE_F64,
-
-  // mod: "aot", func: "f64_floor", test: 1, params: 1, results: 1
-  PWASM_VALUE_TYPE_F64,
-  PWASM_VALUE_TYPE_F64,
-
-  // mod: "aot", func: "f64_floor", test: 2, params: 1, results: 1
-  PWASM_VALUE_TYPE_F64,
-  PWASM_VALUE_TYPE_F64,
-
-  // mod: "aot", func: "f64_trunc", test: 0, params: 1, results: 1
-  PWASM_VALUE_TYPE_F64,
-  PWASM_VALUE_TYPE_F64,
-
-  // mod: "aot", func: "f64_trunc", test: 1, params: 1, results: 1
-  PWASM_VALUE_TYPE_F64,
-  PWASM_VALUE_TYPE_F64,
-
-  // mod: "aot", func: "f64_trunc", test: 2, params: 1, results: 1
-  PWASM_VALUE_TYPE_F64,
-  PWASM_VALUE_TYPE_F64,
-
-  // mod: "aot", func: "f64_nearest", test: 0, params: 1, results: 1
-  PWASM_VALUE_TYPE_F64,
-  PWASM_VALUE_TYPE_F64,
-
-  // mod: "aot", func: "f64_nearest", test: 1, params: 1, results: 1
-  PWASM_VALUE_TYPE_F64,
-  PWASM_VALUE_TYPE_F64,
-
-  // mod: "aot", func: "f64_nearest", test: 2, params: 1, results: 1
-  PWASM_VALUE_TYPE_F64,
-  PWASM_VALUE_TYPE_F64,
-
-  // mod: "aot", func: "f64_sqrt", test: 0, params: 1, results: 1
-  PWASM_VALUE_TYPE_F64,
-  PWASM_VALUE_TYPE_F64,
-
-  // mod: "aot", func: "f64_sqrt", test: 1, params: 1, results: 1
-  PWASM_VALUE_TYPE_F64,
-  PWASM_VALUE_TYPE_F64,
-
-  // mod: "aot", func: "f64_sqrt", test: 2, params: 1, results: 1
-  PWASM_VALUE_TYPE_F64,
-  PWASM_VALUE_TYPE_F64,
-
-  // mod: "aot", func: "f64_add", test: 0, params: 2, results: 1
-  PWASM_VALUE_TYPE_F64,
-  PWASM_VALUE_TYPE_F64,
-  PWASM_VALUE_TYPE_F64,
-
-  // mod: "aot", func: "f64_add", test: 1, params: 2, results: 1
-  PWASM_VALUE_TYPE_F64,
-  PWASM_VALUE_TYPE_F64,
-  PWASM_VALUE_TYPE_F64,
-
-  // mod: "aot", func: "f64_add", test: 2, params: 2, results: 1
-  PWASM_VALUE_TYPE_F64,
-  PWASM_VALUE_TYPE_F64,
-  PWASM_VALUE_TYPE_F64,
-
-  // mod: "aot", func: "f64_sub", test: 0, params: 2, results: 1
-  PWASM_VALUE_TYPE_F64,
-  PWASM_VALUE_TYPE_F64,
-  PWASM_VALUE_TYPE_F64,
-
-  // mod: "aot", func: "f64_sub", test: 1, params: 2, results: 1
-  PWASM_VALUE_TYPE_F64,
-  PWASM_VALUE_TYPE_F64,
-  PWASM_VALUE_TYPE_F64,
-
-  // mod: "aot", func: "f64_sub", test: 2, params: 2, results: 1
-  PWASM_VALUE_TYPE_F64,
-  PWASM_VALUE_TYPE_F64,
-  PWASM_VALUE_TYPE_F64,
-
-  // mod: "aot", func: "f64_mul", test: 0, params: 2, results: 1
-  PWASM_VALUE_TYPE_F64,
-  PWASM_VALUE_TYPE_F64,
-  PWASM_VALUE_TYPE_F64,
-
-  // mod: "aot", func: "f64_mul", test: 1, params: 2, results: 1
-  PWASM_VALUE_TYPE_F64,
-  PWASM_VALUE_TYPE_F64,
-  PWASM_VALUE_TYPE_F64,
-
-  // mod: "aot", func: "f64_mul", test: 2, params: 2, results: 1
-  PWASM_VALUE_TYPE_F64,
-  PWASM_VALUE_TYPE_F64,
-  PWASM_VALUE_TYPE_F64,
-
-  // mod: "aot", func: "f64_div", test: 0, params: 2, results: 1
-  PWASM_VALUE_TYPE_F64,
-  PWASM_VALUE_TYPE_F64,
-  PWASM_VALUE_TYPE_F64,
-
-  // mod: "aot", func: "f64_div", test: 1, params: 2, results: 1
-  PWASM_VALUE_TYPE_F64,
-  PWASM_VALUE_TYPE_F64,
-  PWASM_VALUE_TYPE_F64,
-
-  // mod: "aot", func: "f64_div", test: 2, params: 2, results: 1
-  PWASM_VALUE_TYPE_F64,
-  PWASM_VALUE_TYPE_F64,
-  PWASM_VALUE_TYPE_F64,
-
-  // mod: "aot", func: "f64_min", test: 0, params: 2, results: 1
-  PWASM_VALUE_TYPE_F64,
-  PWASM_VALUE_TYPE_F64,
-  PWASM_VALUE_TYPE_F64,
-
-  // mod: "aot", func: "f64_min", test: 1, params: 2, results: 1
-  PWASM_VALUE_TYPE_F64,
-  PWASM_VALUE_TYPE_F64,
-  PWASM_VALUE_TYPE_F64,
-
-  // mod: "aot", func: "f64_min", test: 2, params: 2, results: 1
-  PWASM_VALUE_TYPE_F64,
-  PWASM_VALUE_TYPE_F64,
-  PWASM_VALUE_TYPE_F64,
-
-  // mod: "aot", func: "f64_max", test: 0, params: 2, results: 1
-  PWASM_VALUE_TYPE_F64,
-  PWASM_VALUE_TYPE_F64,
-  PWASM_VALUE_TYPE_F64,
-
-  // mod: "aot", func: "f64_max", test: 1, params: 2, results: 1
-  PWASM_VALUE_TYPE_F64,
-  PWASM_VALUE_TYPE_F64,
-  PWASM_VALUE_TYPE_F64,
-
-  // mod: "aot", func: "f64_max", test: 2, params: 2, results: 1
-  PWASM_VALUE_TYPE_F64,
-  PWASM_VALUE_TYPE_F64,
-  PWASM_VALUE_TYPE_F64,
-
-  // mod: "aot", func: "f64_copysign", test: 0, params: 2, results: 1
-  PWASM_VALUE_TYPE_F64,
-  PWASM_VALUE_TYPE_F64,
-  PWASM_VALUE_TYPE_F64,
-
-  // mod: "aot", func: "f64_copysign", test: 1, params: 2, results: 1
-  PWASM_VALUE_TYPE_F64,
-  PWASM_VALUE_TYPE_F64,
-  PWASM_VALUE_TYPE_F64,
-
-  // mod: "aot", func: "f64_copysign", test: 2, params: 2, results: 1
-  PWASM_VALUE_TYPE_F64,
-  PWASM_VALUE_TYPE_F64,
-  PWASM_VALUE_TYPE_F64,
+typedef enum {
+  PROTO_VOID,
+  PROTO_VOID_I32,
+  PROTO_I32_UNOP,
+  PROTO_I32_BINOP,
+  PROTO_I64_TESTOP,
+  PROTO_I64_UNOP,
+  PROTO_I64_RELOP,
+  PROTO_I64_BINOP,
+  PROTO_F32_TESTOP,
+  PROTO_F32_UNOP,
+  PROTO_F32_RELOP,
+  PROTO_F32_BINOP,
+  PROTO_F64_TESTOP,
+  PROTO_F64_UNOP,
+  PROTO_F64_RELOP,
+  PROTO_F64_BINOP,
+  PROTO_LAST,
+} proto_type_t;
+
+typedef struct {
+  pwasm_value_type_t params[4];
+  size_t num_params;
+
+  pwasm_value_type_t results[4];
+  size_t num_results;
+} proto_t;
+
+static const proto_t
+TEST_PROTOS[] = {
+  [PROTO_VOID] = {
+    .num_results = 0,
+  },
+
+  [PROTO_VOID_I32] = {
+    .results  = { PWASM_VALUE_TYPE_I32 },
+    .num_results = 1,
+  },
+
+  [PROTO_I32_UNOP] = {
+    .params = { PWASM_VALUE_TYPE_I32 },
+    .num_params = 1,
+
+    .results = { PWASM_VALUE_TYPE_I32 },
+    .num_results = 1,
+  },
+
+  [PROTO_I32_BINOP] = {
+    .params = { PWASM_VALUE_TYPE_I32, PWASM_VALUE_TYPE_I32 },
+    .num_params = 2,
+
+    .results = { PWASM_VALUE_TYPE_I32 },
+    .num_results = 1,
+  },
+
+  [PROTO_I64_TESTOP] = {
+    .params = { PWASM_VALUE_TYPE_I64 },
+    .num_params = 1,
+
+    .results = { PWASM_VALUE_TYPE_I32 },
+    .num_results = 1,
+  },
+
+  [PROTO_I64_UNOP] = {
+    .params = { PWASM_VALUE_TYPE_I64 },
+    .num_params = 1,
+
+    .results = { PWASM_VALUE_TYPE_I64 },
+    .num_results = 1,
+  },
+
+  [PROTO_I64_RELOP] = {
+    .params = { PWASM_VALUE_TYPE_I64, PWASM_VALUE_TYPE_I64 },
+    .num_params = 2,
+
+    .results = { PWASM_VALUE_TYPE_I32 },
+    .num_results = 1,
+  },
+
+  [PROTO_I64_BINOP] = {
+    .params = { PWASM_VALUE_TYPE_I64, PWASM_VALUE_TYPE_I64 },
+    .num_params = 2,
+
+    .results = { PWASM_VALUE_TYPE_I64 },
+    .num_results = 1,
+  },
+
+  [PROTO_F32_TESTOP] = {
+    .params = { PWASM_VALUE_TYPE_F32 },
+    .num_params = 1,
+
+    .results = { PWASM_VALUE_TYPE_I32 },
+    .num_results = 1,
+  },
+
+  [PROTO_F32_UNOP] = {
+    .params = { PWASM_VALUE_TYPE_F32 },
+    .num_params = 1,
+
+    .results = { PWASM_VALUE_TYPE_F32 },
+    .num_results = 1,
+  },
+
+  [PROTO_F32_RELOP] = {
+    .params = { PWASM_VALUE_TYPE_F32, PWASM_VALUE_TYPE_F32 },
+    .num_params = 2,
+
+    .results = { PWASM_VALUE_TYPE_I32 },
+    .num_results = 1,
+  },
+
+  [PROTO_F32_BINOP] = {
+    .params = { PWASM_VALUE_TYPE_F32, PWASM_VALUE_TYPE_F32 },
+    .num_params = 2,
+
+    .results = { PWASM_VALUE_TYPE_F32 },
+    .num_results = 1,
+  },
+
+  [PROTO_F64_TESTOP] = {
+    .params = { PWASM_VALUE_TYPE_F64 },
+    .num_params = 1,
+
+    .results = { PWASM_VALUE_TYPE_I32 },
+    .num_results = 1,
+  },
+
+  [PROTO_F64_UNOP] = {
+    .params = { PWASM_VALUE_TYPE_F64 },
+    .num_params = 1,
+
+    .results = { PWASM_VALUE_TYPE_F64 },
+    .num_results = 1,
+  },
+
+  [PROTO_F64_RELOP] = {
+    .params = { PWASM_VALUE_TYPE_F64, PWASM_VALUE_TYPE_F64 },
+    .num_params = 2,
+
+    .results = { PWASM_VALUE_TYPE_I32 },
+    .num_results = 1,
+  },
+
+  [PROTO_F64_BINOP] = {
+    .params = { PWASM_VALUE_TYPE_F64, PWASM_VALUE_TYPE_F64 },
+    .num_params = 2,
+
+    .results = { PWASM_VALUE_TYPE_F64 },
+    .num_results = 1,
+  },
 };
 
 typedef struct {
   const char * const mod;
   const char * const func;
   const bool fails;
-  const pwasm_slice_t params;
-  const pwasm_slice_t results;
+
+  const proto_type_t type;
+  const pwasm_val_t params[4];
+  const pwasm_val_t results[4];
 } test_call_t;
 
 static const test_call_t
 TEST_CALLS[] = {{
   .mod      = "aot",
   .func     = "add_i32s",
-  .results  = { 0, 1 },
+  .type     = PROTO_VOID_I32,
+  .results  = {{ .i32 = 579 }},
 }, {
   .mod      = "aot",
   .func     = "trap",
   .fails    = true,
+  .type     = PROTO_VOID,
 }, {
   .mod      = "aot",
   .func     = "if_else_true",
-  .results  = { 1, 1 },
+  .type     = PROTO_VOID_I32,
+  .results = {{ .i32 = 321 }},
 }, {
   .mod      = "aot",
   .func     = "if_else_false",
-  .results  = { 2, 1 },
+  .type     = PROTO_VOID_I32,
+  .results = {{ .i32 = 45 }},
 }, {
   .mod      = "aot",
   .func     = "if_true",
-  .results  = { 3, 1 },
+  .type     = PROTO_VOID_I32,
+  .results = {{ .i32 = 314159 }},
 }, {
   .mod      = "aot",
   .func     = "if_false",
-  .results  = { 4, 1 },
+  .type     = PROTO_VOID_I32,
+  .results = {{ .i32 = 22 }},
 }, {
   .mod      = "aot",
   .func     = "br_outer",
-  .results  = { 5, 1 },
+  .type     = PROTO_VOID_I32,
+  .results = {{ .i32 = 1234 }},
 }, {
   .mod      = "aot",
   .func     = "br_inner",
-  .results  = { 6, 1 },
+  .type     = PROTO_VOID_I32,
+  .results = {{ .i32 = 5678 }},
 }, {
   .mod      = "aot",
   .func     = "sub",
-  .params  = { 7, 2 },
-  .results = { 9, 1 },
+  .type     = PROTO_I32_BINOP,
+  .params = {{ .i32 = 99 }, { .i32 = 77 }},
+  .results = {{ .i32 = 22 }},
 }, {
   .mod      = "aot",
   .func     = "is_99",
-  .params  = { 10, 1 },
-  .results = { 11, 1 },
+  .type     = PROTO_I32_UNOP,
+  .params = {{ .i32 = 99 }},
+  .results = {{ .i32 = 1 }},
 }, {
   .mod      = "aot",
   .func     = "is_99",
-  .params  = { 12, 1 },
-  .results = { 13, 1 },
+  .type     = PROTO_I32_UNOP,
+  .params = {{ .i32 = 2 }},
+  .results = {{ .i32 = 0 }},
 }, {
   .mod      = "aot",
   .func     = "i32_eqz",
-  .params  = { 14, 1 },
-  .results = { 15, 1 },
+  .type     = PROTO_I32_UNOP,
+  .params = {{ .i32 = 0 }},
+  .results = {{ .i32 = 1 }},
 }, {
   .mod      = "aot",
   .func     = "i32_eqz",
-  .params  = { 16, 1 },
-  .results = { 17, 1 },
+  .type     = PROTO_I32_UNOP,
+  .params = {{ .i32 = 1 }},
+  .results = {{ .i32 = 0 }},
 }, {
   .mod      = "aot",
   .func     = "i32_eq",
-  .params  = { 18, 2 },
-  .results = { 20, 1 },
+  .type     = PROTO_I32_BINOP,
+  .params = {{ .i32 = 314 }, { .i32 = 314 }},
+  .results = {{ .i32 = 1 }},
 }, {
   .mod      = "aot",
   .func     = "i32_eq",
-  .params  = { 21, 2 },
-  .results = { 23, 1 },
+  .type     = PROTO_I32_BINOP,
+  .params = {{ .i32 = 123 }, { .i32 = 456 }},
+  .results = {{ .i32 = 0 }},
 }, {
   .mod      = "aot",
   .func     = "i32_ne",
-  .params  = { 24, 2 },
-  .results = { 26, 1 },
+  .type     = PROTO_I32_BINOP,
+  .params = {{ .i32 = 654 }, { .i32 = 789 }},
+  .results = {{ .i32 = 1 },},
 }, {
   .mod      = "aot",
   .func     = "i32_ne",
-  .params  = { 27, 2 },
-  .results = { 29, 1 },
+  .type     = PROTO_I32_BINOP,
+  .params = {{ .i32 = 44422 }, { .i32 = 44422 }},
+  .results = {{ .i32 = 0 }},
 }, {
   .mod      = "aot",
   .func     = "i32_lt_s",
-  .params  = { 30, 2 },
-  .results = { 32, 1 },
+  .type     = PROTO_I32_BINOP,
+  .params = {{ .i32 = -22 }, { .i32 = 44 }},
+  .results = {{ .i32 = 1 }},
 }, {
   .mod      = "aot",
   .func     = "i32_lt_s",
-  .params  = { 33, 2 },
-  .results = { 35, 1 },
+  .type     = PROTO_I32_BINOP,
+  .params = {{ .i32 = 4122 }, { .i32 = 4122 }},
+  .results = {{ .i32 = 0 }},
 }, {
   .mod      = "aot",
   .func     = "i32_lt_s",
-  .params  = { 36, 2 },
-  .results = { 38, 1 },
+  .type     = PROTO_I32_BINOP,
+  .params = {{ .i32 = 2020 }, { .i32 = 5 }},
+  .results = {{ .i32 = 0 }},
 }, {
   .mod      = "aot",
   .func     = "i32_lt_u",
-  .params  = { 39, 2 },
-  .results = { 41, 1 },
+  .type     = PROTO_I32_BINOP,
+  .params = {{ .i32 = 12 }, { .i32 = (1UL << 31) }},
+  .results = {{ .i32 = 1 }},
 }, {
   .mod      = "aot",
   .func     = "i32_lt_u",
-  .params  = { 42, 2 },
-  .results = { 44, 1 },
+  .type     = PROTO_I32_BINOP,
+  .params = {{ .i32 = 4122 }, { .i32 = 4122 }},
+  .results = {{ .i32 = 0 }},
 }, {
   .mod      = "aot",
   .func     = "i32_lt_u",
-  .params  = { 45, 2 },
-  .results = { 47, 1 },
+  .type     = PROTO_I32_BINOP,
+  .params = {{ .i32 = 2020 }, { .i32 = 5 }},
+  .results = {{ .i32 = 0 }},
 }, {
   .mod      = "aot",
   .func     = "i32_gt_s",
-  .params  = { 48, 2 },
-  .results = { 50, 1 },
+  .type     = PROTO_I32_BINOP,
+  .params = {{ .i32 = 22 }, { .i32 = -44 }},
+  .results = {{ .i32 = 1 }},
 }, {
   .mod      = "aot",
   .func     = "i32_gt_s",
-  .params  = { 51, 2 },
-  .results = { 53, 1 },
+  .type     = PROTO_I32_BINOP,
+  .params = {{ .i32 = 4122 }, { .i32 = 4122 }},
+  .results = {{ .i32 = 0 }},
 }, {
   .mod      = "aot",
   .func     = "i32_gt_s",
-  .params  = { 54, 2 },
-  .results = { 56, 1 },
+  .type     = PROTO_I32_BINOP,
+  .params = {{ .i32 = 123 }, { .i32 = 4212 }},
+  .results = {{ .i32 = 0 }},
 }, {
   .mod      = "aot",
   .func     = "i32_gt_u",
-  .params  = { 57, 2 },
-  .results = { 59, 1 },
+  .type     = PROTO_I32_BINOP,
+  .params = {{ .i32 = (1UL << 31) }, { .i32 = 12 }},
+  .results = {{ .i32 = 1 }},
 }, {
   .mod      = "aot",
   .func     = "i32_gt_u",
-  .params  = { 60, 2 },
-  .results = { 62, 1 },
+  .type     = PROTO_I32_BINOP,
+  .params = {{ .i32 = 4122 }, { .i32 = 4122 }},
+  .results = {{ .i32 = 0 }},
 }, {
   .mod      = "aot",
   .func     = "i32_gt_u",
-  .params  = { 63, 2 },
-  .results = { 65, 1 },
+  .type     = PROTO_I32_BINOP,
+  .params = {{ .i32 = 5 }, { .i32 = 2020 }},
+  .results = {{ .i32 = 0 }},
 }, {
   .mod      = "aot",
   .func     = "i32_le_s",
-  .params  = { 66, 2 },
-  .results = { 68, 1 },
+  .type     = PROTO_I32_BINOP,
+  .params = {{ .i32 = -22 }, { .i32 = 44 }},
+  .results = {{ .i32 = 1 }},
 }, {
   .mod      = "aot",
   .func     = "i32_le_s",
-  .params  = { 69, 2 },
-  .results = { 71, 1 },
+  .type     = PROTO_I32_BINOP,
+  .params = {{ .i32 = 4122 }, { .i32 = 4122 }},
+  .results = {{ .i32 = 1 }},
 }, {
   .mod      = "aot",
   .func     = "i32_le_s",
-  .params  = { 72, 2 },
-  .results = { 74, 1 },
+  .type     = PROTO_I32_BINOP,
+  .params = {{ .i32 = 2020 }, { .i32 = 5 }},
+  .results = {{ .i32 = 0 }},
 }, {
   .mod      = "aot",
   .func     = "i32_le_u",
-  .params  = { 75, 2 },
-  .results = { 77, 1 },
+  .type     = PROTO_I32_BINOP,
+  .params = {{ .i32 = 12 }, { .i32 = (1UL << 31) }},
+  .results = {{ .i32 = 1 }},
 }, {
   .mod      = "aot",
   .func     = "i32_le_u",
-  .params  = { 78, 2 },
-  .results = { 80, 1 },
+  .type     = PROTO_I32_BINOP,
+  .params = {{ .i32 = 4122 }, { .i32 = 4122 }},
+  .results = {{ .i32 = 1 }},
 }, {
   .mod      = "aot",
   .func     = "i32_le_u",
-  .params  = { 81, 2 },
-  .results = { 83, 1 },
+  .type     = PROTO_I32_BINOP,
+  .params = {{ .i32 = 2020 }, { .i32 = 5 }},
+  .results = {{ .i32 = 0 }},
 }, {
   .mod      = "aot",
   .func     = "i32_ge_s",
-  .params  = { 84, 2 },
-  .results = { 86, 1 },
+  .type     = PROTO_I32_BINOP,
+  .params = {{ .i32 = 22 }, { .i32 = -44 }},
+  .results = {{ .i32 = 1 }},
 }, {
   .mod      = "aot",
   .func     = "i32_ge_s",
-  .params  = { 87, 2 },
-  .results = { 89, 1 },
+  .type     = PROTO_I32_BINOP,
+  .params = {{ .i32 = 4122 }, { .i32 = 4122 }},
+  .results = {{ .i32 = 1 }},
 }, {
   .mod      = "aot",
   .func     = "i32_ge_s",
-  .params  = { 90, 2 },
-  .results = { 92, 1 },
+  .type     = PROTO_I32_BINOP,
+  .params = {{ .i32 = 2 }, { .i32 = 3030 }},
+  .results = {{ .i32 = 0 }},
 }, {
   .mod      = "aot",
   .func     = "i32_ge_u",
-  .params  = { 93, 2 },
-  .results = { 95, 1 },
+  .type     = PROTO_I32_BINOP,
+  .params = {{ .i32 = (1UL << 31) }, { .i32 = 9 }},
+  .results = {{ .i32 = 1 }},
 }, {
   .mod      = "aot",
   .func     = "i32_ge_u",
-  .params  = { 96, 2 },
-  .results = { 98, 1 },
+  .type     = PROTO_I32_BINOP,
+  .params = {{ .i32 = 4122 }, { .i32 = 4122 }},
+  .results = {{ .i32 = 1 }},
 }, {
   .mod      = "aot",
   .func     = "i32_ge_u",
-  .params  = { 99, 2 },
-  .results = { 101, 1 },
+  .type     = PROTO_I32_BINOP,
+  .params = {{ .i32 = 0 }, { .i32 = 5053 }},
+  .results = {{ .i32 = 0 }},
 }, {
   .mod      = "aot",
   .func     = "i64_eqz",
-  .params  = { 102, 1 },
-  .results = { 103, 1 },
+  .type     = PROTO_I64_TESTOP,
+  .params = {{ .i64 = 0 }},
+  .results = {{ .i32 = 1 }},
 }, {
   .mod      = "aot",
   .func     = "i64_eqz",
-  .params  = { 104, 1 },
-  .results = { 105, 1 },
+  .type     = PROTO_I64_TESTOP,
+  .params = {{ .i64 = 1 }},
+  .results = {{ .i32 = 0 }},
 }, {
   .mod      = "aot",
   .func     = "i64_eq",
-  .params  = { 106, 2 },
-  .results = { 108, 1 },
+  .type     = PROTO_I64_RELOP,
+  .params = {{ .i64 = 314 }, { .i64 = 314 }},
+  .results = {{ .i32 = 1 }},
 }, {
   .mod      = "aot",
   .func     = "i64_eq",
-  .params  = { 109, 2 },
-  .results = { 111, 1 },
+  .type     = PROTO_I64_RELOP,
+  .params = {{ .i64 = 123 }, { .i64 = 456 }},
+  .results = {{ .i32 = 0 }},
 }, {
   .mod      = "aot",
   .func     = "i64_ne",
-  .params  = { 112, 2 },
-  .results = { 114, 1 },
+  .type     = PROTO_I64_RELOP,
+  .params = {{ .i64 = 654 }, { .i64 = 789 }},
+  .results = {{ .i32 = 1 }},
 }, {
   .mod      = "aot",
   .func     = "i64_ne",
-  .params  = { 115, 2 },
-  .results = { 117, 1 },
+  .type     = PROTO_I64_RELOP,
+  .params = {{ .i64 = 44422 }, { .i64 = 44422 }},
+  .results = {{ .i32 = 0 }},
 }, {
   .mod      = "aot",
   .func     = "i64_lt_s",
-  .params  = { 118, 2 },
-  .results = { 120, 1 },
+  .type     = PROTO_I64_RELOP,
+  .params = {{ .i64 = -22 }, { .i64 = 44 }},
+  .results = {{ .i32 = 1 }},
 }, {
   .mod      = "aot",
   .func     = "i64_lt_s",
-  .params  = { 121, 2 },
-  .results = { 123, 1 },
+  .type     = PROTO_I64_RELOP,
+  .params = {{ .i64 = 4122 }, { .i64 = 4122 }},
+  .results = {{ .i32 = 0 }},
 }, {
   .mod      = "aot",
   .func     = "i64_lt_s",
-  .params  = { 124, 2 },
-  .results = { 126, 1 },
+  .type     = PROTO_I64_RELOP,
+  .params = {{ .i64 = 2020 }, { .i64 = 5 }},
+  .results = {{ .i32 = 0 }},
 }, {
   .mod      = "aot",
   .func     = "i64_lt_u",
-  .params  = { 127, 2 },
-  .results = { 129, 1 },
+  .type     = PROTO_I64_RELOP,
+  .params = {{ .i64 = 12 }, { .i64 = (1UL << 31) }},
+  .results = {{ .i32 = 1 }},
 }, {
   .mod      = "aot",
   .func     = "i64_lt_u",
-  .params  = { 130, 2 },
-  .results = { 132, 1 },
+  .type     = PROTO_I64_RELOP,
+  .params = {{ .i64 = 4122 }, { .i64 = 4122 }},
+  .results = {{ .i32 = 0 }},
 }, {
   .mod      = "aot",
   .func     = "i64_lt_u",
-  .params  = { 133, 2 },
-  .results = { 135, 1 },
+  .type     = PROTO_I64_RELOP,
+  .params = {{ .i64 = 22 }, { .i64 = -44 }},
+  .results = {{ .i32 = 1 }},
 }, {
   .mod      = "aot",
   .func     = "i64_gt_s",
-  .params  = { 136, 2 },
-  .results = { 138, 1 },
+  .type     = PROTO_I64_RELOP,
+  .params = {{ .i64 = 4122 }, { .i64 = 4122 }},
+  .results = {{ .i32 = 0 }},
 }, {
   .mod      = "aot",
   .func     = "i64_gt_s",
-  .params  = { 139, 2 },
-  .results = { 141, 1 },
-}, {
-  .mod      = "aot",
-  .func     = "i64_gt_s",
-  .params  = { 142, 2 },
-  .results = { 144, 1 },
+  .type     = PROTO_I64_RELOP,
+  .params = {{ .i64 = 123 }, { .i64 = 4212 }},
+  .results = {{ .i32 = 0 }},
 }, {
   .mod      = "aot",
   .func     = "i64_gt_u",
-  .params  = { 145, 2 },
-  .results = { 147, 1 },
+  .type     = PROTO_I64_RELOP,
+  .params = {{ .i64 = (1UL << 31) }, { .i64 = 12 }},
+  .results = {{ .i32 = 1 }},
 }, {
   .mod      = "aot",
   .func     = "i64_gt_u",
-  .params  = { 148, 2 },
-  .results = { 150, 1 },
+  .type     = PROTO_I64_RELOP,
+  .params = {{ .i64 = 4122 }, { .i64 = 4122 }},
+  .results = {{ .i32 = 0 }},
 }, {
   .mod      = "aot",
   .func     = "i64_gt_u",
-  .params  = { 151, 2 },
-  .results = { 153, 1 },
+  .type     = PROTO_I64_RELOP,
+  .params = {{ .i64 = 5 }, { .i64 = 2020 }},
+  .results = {{ .i32 = 0 }},
 }, {
   .mod      = "aot",
   .func     = "i64_le_s",
-  .params  = { 154, 2 },
-  .results = { 156, 1 },
+  .type     = PROTO_I64_RELOP,
+  .params = {{ .i64 = -22 }, { .i64 = 44 }},
+  .results = {{ .i32 = 1 }},
 }, {
   .mod      = "aot",
   .func     = "i64_le_s",
-  .params  = { 157, 2 },
-  .results = { 159, 1 },
+  .type     = PROTO_I64_RELOP,
+  .params = {{ .i64 = 4122 }, { .i64 = 4122 }},
+  .results = {{ .i32 = 1 }},
 }, {
   .mod      = "aot",
   .func     = "i64_le_s",
-  .params  = { 160, 2 },
-  .results = { 162, 1 },
+  .type     = PROTO_I64_RELOP,
+  .params = {{ .i64 = 2020 }, { .i64 = 5 }},
+  .results = {{ .i32 = 0 }},
 }, {
   .mod      = "aot",
   .func     = "i64_le_u",
-  .params  = { 163, 2 },
-  .results = { 165, 1 },
+  .type     = PROTO_I64_RELOP,
+  .params = {{ .i64 = 12 }, { .i64 = (1UL << 31) }},
+  .results = {{ .i32 = 1 }},
 }, {
   .mod      = "aot",
   .func     = "i64_le_u",
-  .params  = { 166, 2 },
-  .results = { 168, 1 },
+  .type     = PROTO_I64_RELOP,
+  .params = {{ .i64 = 4122 }, { .i64 = 4122 }},
+  .results = {{ .i32 = 1 }},
 }, {
   .mod      = "aot",
   .func     = "i64_le_u",
-  .params  = { 169, 2 },
-  .results = { 171, 1 },
+  .type     = PROTO_I64_RELOP,
+  .params = {{ .i64 = 2020 }, { .i64 = 5 }},
+  .results = {{ .i32 = 0 }},
 }, {
   .mod      = "aot",
   .func     = "i64_ge_s",
-  .params  = { 172, 2 },
-  .results = { 174, 1 },
+  .type     = PROTO_I64_RELOP,
+  .params = {{ .i64 = 22 }, { .i64 = -44 }},
+  .results = {{ .i32 = 1 }},
 }, {
   .mod      = "aot",
   .func     = "i64_ge_s",
-  .params  = { 175, 2 },
-  .results = { 177, 1 },
+  .type     = PROTO_I64_RELOP,
+  .params = {{ .i64 = 4122 }, { .i64 = 4122 }},
+  .results = {{ .i32 = 1 }},
 }, {
   .mod      = "aot",
   .func     = "i64_ge_s",
-  .params  = { 178, 2 },
-  .results = { 180, 1 },
+  .type     = PROTO_I64_RELOP,
+  .params = {{ .i64 = 2 }, { .i64 = 3030 }},
+  .results = {{ .i32 = 0 }},
 }, {
   .mod      = "aot",
   .func     = "i64_ge_u",
-  .params  = { 181, 2 },
-  .results = { 183, 1 },
+  .type     = PROTO_I64_RELOP,
+  .params = {{ .i64 = (1UL << 31) }, { .i64 = 9 }},
+  .results = {{ .i32 = 1 }},
 }, {
   .mod      = "aot",
   .func     = "i64_ge_u",
-  .params  = { 184, 2 },
-  .results = { 186, 1 },
+  .type     = PROTO_I64_RELOP,
+  .params = {{ .i64 = 4122 }, { .i64 = 4122 }},
+  .results = {{ .i32 = 1 }},
 }, {
   .mod      = "aot",
   .func     = "i64_ge_u",
-  .params  = { 187, 2 },
-  .results = { 189, 1 },
+  .type     = PROTO_I64_RELOP,
+  .params = {{ .i64 = 0 }, { .i64 = 5053 }},
+  .results = {{ .i32 = 0 }},
 }, {
   .mod      = "aot",
   .func     = "f32_eq",
-  .params  = { 190, 2 },
-  .results = { 192, 1 },
+  .type     = PROTO_F32_RELOP,
+  .params = {{ .f32 = 1.0f }, { .f32 = 1.0f }},
+  .results = {{ .i32 = 1 }},
 }, {
   .mod      = "aot",
   .func     = "f32_eq",
-  .params  = { 193, 2 },
-  .results = { 195, 1 },
+  .type     = PROTO_F32_RELOP,
+  .params = {{ .f32 = 2.0f }, { .f32 = 1.0f }},
+  .results = {{ .i32 = 0 }},
 }, {
   .mod      = "aot",
   .func     = "f32_ne",
-  .params  = { 196, 2 },
-  .results = { 198, 1 },
+  .type     = PROTO_F32_RELOP,
+  .params = {{ .f32 = -1.0f }, { .f32 = 1.0f }},
+  .results = {{ .i32 = 1 }},
 }, {
   .mod      = "aot",
   .func     = "f32_ne",
-  .params  = { 199, 2 },
-  .results = { 201, 1 },
+  .type     = PROTO_F32_RELOP,
+  .params = {{ .f32 = 2.0f }, { .f32 = 2.0f }},
+  .results = {{ .i32 = 0 }},
 }, {
   .mod      = "aot",
   .func     = "f32_lt",
-  .params  = { 202, 2 },
-  .results = { 204, 1 },
+  .type     = PROTO_F32_RELOP,
+  .params = {{ .f32 = -1.0f }, { .f32 = 1.0f }},
+  .results = {{ .i32 = 1 }},
 }, {
   .mod      = "aot",
   .func     = "f32_lt",
-  .params  = { 205, 2 },
-  .results = { 207, 1 },
+  .type     = PROTO_F32_RELOP,
+  .params = {{ .f32 = 2.0f }, { .f32 = 2.0f }},
+  .results = {{ .i32 = 0 }},
 }, {
   .mod      = "aot",
   .func     = "f32_gt",
-  .params  = { 208, 2 },
-  .results = { 210, 1 },
+  .type     = PROTO_F32_RELOP,
+  .params = {{ .f32 = 10.0f }, { .f32 = 1.0f }},
+  .results = {{ .i32 = 1 }},
 }, {
   .mod      = "aot",
   .func     = "f32_gt",
-  .params  = { 211, 2 },
-  .results = { 213, 1 },
+  .type     = PROTO_F32_RELOP,
+  .params = {{ .f32 = 3.0f }, { .f32 = 3.0f }},
+  .results = {{ .i32 = 0 }},
 }, {
   .mod      = "aot",
   .func     = "f32_le",
-  .params  = { 214, 2 },
-  .results = { 216, 1 },
+  .type     = PROTO_F32_RELOP,
+  .params = {{ .f32 = -1.0f }, { .f32 = 1.0f }},
+  .results = {{ .i32 = 1 }},
 }, {
   .mod      = "aot",
   .func     = "f32_le",
-  .params  = { 217, 2 },
-  .results = { 219, 1 },
+  .type     = PROTO_F32_RELOP,
+  .params = {{ .f32 = 2.0f }, { .f32 = 2.0f }},
+  .results = {{ .i32 = 1 }},
 }, {
   .mod      = "aot",
   .func     = "f32_ge",
-  .params  = { 220, 2 },
-  .results = { 222, 1 },
+  .type     = PROTO_F32_RELOP,
+  .params = {{ .f32 = 10.0f }, { .f32 = 1.0f }},
+  .results = {{ .i32 = 1 }},
 }, {
   .mod      = "aot",
   .func     = "f32_ge",
-  .params  = { 223, 2 },
-  .results = { 225, 1 },
+  .type     = PROTO_F32_RELOP,
+  .params = {{ .f32 = 3.0f }, { .f32 = 3.0f }},
+  .results = {{ .i32 = 1 }},
 }, {
   .mod      = "aot",
   .func     = "f64_eq",
-  .params  = { 226, 2 },
-  .results = { 228, 1 },
+  .type     = PROTO_F64_RELOP,
+  .params = {{ .f64 = 1.0f }, { .f64 = 1.0f }},
+  .results = {{ .i32 = 1 }},
 }, {
   .mod      = "aot",
   .func     = "f64_eq",
-  .params  = { 229, 2 },
-  .results = { 231, 1 },
+  .type     = PROTO_F64_RELOP,
+  .params = {{ .f64 = 2.0f }, { .f64 = 1.0f }},
+  .results = {{ .i32 = 0 }},
 }, {
   .mod      = "aot",
   .func     = "f64_ne",
-  .params  = { 232, 2 },
-  .results = { 234, 1 },
+  .type     = PROTO_F64_RELOP,
+  .params = {{ .f64 = -1.0f }, { .f64 = 1.0f }},
+  .results = {{ .i32 = 1 }},
 }, {
   .mod      = "aot",
   .func     = "f64_ne",
-  .params  = { 235, 2 },
-  .results = { 237, 1 },
+  .type     = PROTO_F64_RELOP,
+  .params = {{ .f64 = 2.0f }, { .f64 = 2.0f }},
+  .results = {{ .i32 = 0 }},
 }, {
   .mod      = "aot",
   .func     = "f64_lt",
-  .params  = { 238, 2 },
-  .results = { 240, 1 },
+  .type     = PROTO_F64_RELOP,
+  .params = {{ .f64 = -1.0f }, { .f64 = 1.0f }},
+  .results = {{ .i32 = 1 }},
 }, {
   .mod      = "aot",
   .func     = "f64_lt",
-  .params  = { 241, 2 },
-  .results = { 243, 1 },
+  .type     = PROTO_F64_RELOP,
+  .params = {{ .f64 = 2.0f }, { .f64 = 2.0f }},
+  .results = {{ .i32 = 0 }},
 }, {
   .mod      = "aot",
   .func     = "f64_gt",
-  .params  = { 244, 2 },
-  .results = { 246, 1 },
+  .type     = PROTO_F64_RELOP,
+  .params = {{ .f64 = 10.0f }, { .f64 = 1.0f }},
+  .results = {{ .i32 = 1 }},
 }, {
   .mod      = "aot",
   .func     = "f64_gt",
-  .params  = { 247, 2 },
-  .results = { 249, 1 },
+  .type     = PROTO_F64_RELOP,
+  .params = {{ .f64 = 3.0f }, { .f64 = 3.0f }},
+  .results = {{ .i32 = 0 }},
 }, {
   .mod      = "aot",
   .func     = "f64_le",
-  .params  = { 250, 2 },
-  .results = { 252, 1 },
+  .type     = PROTO_F64_RELOP,
+  .params = {{ .f64 = -1.0f }, { .f64 = 1.0f }},
+  .results = {{ .i32 = 1 }},
 }, {
   .mod      = "aot",
   .func     = "f64_le",
-  .params  = { 253, 2 },
-  .results = { 255, 1 },
+  .type     = PROTO_F64_RELOP,
+  .params = {{ .f64 = 2.0f }, { .f64 = 2.0f }},
+  .results = {{ .i32 = 1 }},
 }, {
   .mod      = "aot",
   .func     = "f64_ge",
-  .params  = { 256, 2 },
-  .results = { 258, 1 },
+  .type     = PROTO_F64_RELOP,
+  .params = {{ .f64 = 10.0f }, { .f64 = 1.0f }},
+  .results = {{ .i32 = 1 }},
 }, {
   .mod      = "aot",
   .func     = "f64_ge",
-  .params  = { 259, 2 },
-  .results = { 261, 1 },
+  .type     = PROTO_F64_RELOP,
+  .params = {{ .f64 = 3.0f }, { .f64 = 3.0f }},
+  .results = {{ .i32 = 1 }},
 }, {
   .mod      = "aot",
   .func     = "i32_clz",
-  .params  = { 262, 1 },
-  .results = { 263, 1 },
+  .type     = PROTO_I32_UNOP,
+  .params = {{ .i32 = 1 }},
+  .results = {{ .i32 = 31 }},
 }, {
   .mod      = "aot",
   .func     = "i32_clz",
-  .params  = { 264, 1 },
-  .results = { 265, 1 },
+  .type     = PROTO_I32_UNOP,
+  .params = {{ .i32 = 0x0000FFFF }},
+  .results = {{ .i32 = 16 }},
 }, {
   .mod      = "aot",
   .func     = "i32_clz",
-  .params  = { 266, 1 },
-  .results = { 267, 1 },
+  .type     = PROTO_I32_UNOP,
+  .params = {{ .i32 = 0x00FF0000 }},
+  .results = {{ .i32 = 8 }},
 }, {
   .mod      = "aot",
   .func     = "i32_ctz",
-  .params  = { 268, 1 },
-  .results = { 269, 1 },
+  .type     = PROTO_I32_UNOP,
+  .params = {{ .i32 = 0x80000000 }},
+  .results = {{ .i32 = 31 }},
 }, {
   .mod      = "aot",
   .func     = "i32_ctz",
-  .params  = { 270, 1 },
-  .results = { 271, 1 },
+  .type     = PROTO_I32_UNOP,
+  .params = {{ .i32 = 0xFFFF0000 }},
+  .results = {{ .i32 = 16 }},
 }, {
   .mod      = "aot",
   .func     = "i32_ctz",
-  .params  = { 272, 1 },
-  .results = { 273, 1 },
+  .type     = PROTO_I32_UNOP,
+  .params = {{ .i32 = 0x0000FF00 }},
+  .results = {{ .i32 = 8 }},
 }, {
   .mod      = "aot",
   .func     = "i32_popcnt",
-  .params  = { 274, 1 },
-  .results = { 275, 1 },
+  .type     = PROTO_I32_UNOP,
+  .params = {{ .i32 = 0x8000000 }},
+  .results = {{ .i32 = 1 }},
 }, {
   .mod      = "aot",
   .func     = "i32_popcnt",
-  .params  = { 276, 1 },
-  .results = { 277, 1 },
+  .type     = PROTO_I32_UNOP,
+  .params = {{ .i32 = 0xFFFF0000 }},
+  .results = {{ .i32 = 16 }},
 }, {
   .mod      = "aot",
   .func     = "i32_popcnt",
-  .params  = { 278, 1 },
-  .results = { 279, 1 },
+  .type     = PROTO_I32_UNOP,
+  .params = {{ .i32 = 0x0F0F0F00 }},
+  .results = {{ .i32 = 12 }},
 }, {
   .mod      = "aot",
   .func     = "i32_add",
-  .params  = { 280, 2 },
-  .results = { 282, 1 },
+  .type     = PROTO_I32_BINOP,
+  .params = {{ .i32 = 5 }, { .i32 = 127 }},
+  .results = {{ .i32 = 132 }},
 }, {
   .mod      = "aot",
   .func     = "i32_add",
-  .params  = { 283, 2 },
-  .results = { 285, 1 },
+  .type     = PROTO_I32_BINOP,
+  .params = {{ .i32 = 123123 }, { .i32 = 321321 }},
+  .results = {{ .i32 = 444444 }},
 }, {
   .mod      = "aot",
   .func     = "i32_add",
-  .params  = { 286, 2 },
-  .results = { 288, 1 },
+  .type     = PROTO_I32_BINOP,
+  .params = {{ .i32 = -100 }, { .i32 = 200 }},
+  .results = {{ .i32 = 100 }},
 }, {
   .mod      = "aot",
   .func     = "i32_sub",
-  .params  = { 289, 2 },
-  .results = { 291, 1 },
+  .type     = PROTO_I32_BINOP,
+  .params = {{ .i32 = 132 }, { .i32 = 127 }},
+  .results = {{ .i32 = 5 }},
 }, {
   .mod      = "aot",
   .func     = "i32_sub",
-  .params  = { 292, 2 },
-  .results = { 294, 1 },
+  .type     = PROTO_I32_BINOP,
+  .params = {{ .i32 = 444444 }, { .i32 = 321321 }},
+  .results = {{ .i32 = 123123 }},
 }, {
   .mod      = "aot",
   .func     = "i32_sub",
-  .params  = { 295, 2 },
-  .results = { 297, 1 },
+  .type     = PROTO_I32_BINOP,
+  .params = {{ .i32 = -100 }, { .i32 = 200 }},
+  .results = {{ .i32 = -300 }},
 }, {
   .mod      = "aot",
   .func     = "i32_mul",
-  .params  = { 298, 2 },
-  .results = { 300, 1 },
+  .type     = PROTO_I32_BINOP,
+  .params = {{ .i32 = 132 }, { .i32 = 127 }},
+  .results = {{ .i32 = 16764 }},
 }, {
   .mod      = "aot",
   .func     = "i32_mul",
-  .params  = { 301, 2 },
-  .results = { 303, 1 },
+  .type     = PROTO_I32_BINOP,
+  .params = {{ .i32 = -20 }, { .i32 = 44 }},
+  .results = {{ .i32 = -880 }},
 }, {
   .mod      = "aot",
   .func     = "i32_mul",
-  .params  = { 304, 2 },
-  .results = { 306, 1 },
+  .type     = PROTO_I32_BINOP,
+  .params = {{ .i32 = -100 }, { .i32 = -200 }},
+  .results = {{ .i32 = 20000 }},
 }, {
   .mod      = "aot",
   .func     = "i32_div_s",
-  .params  = { 307, 2 },
-  .results = { 309, 1 },
+  .type     = PROTO_I32_BINOP,
+  .params = {{ .i32 = 100 }, { .i32 = 50 }},
+  .results = {{ .i32 = 2 }},
 }, {
   .mod      = "aot",
   .func     = "i32_div_s",
-  .params  = { 310, 2 },
-  .results = { 312, 1 },
+  .type     = PROTO_I32_BINOP,
+  .params = {{ .i32 = -20 }, { .i32 = 2 }},
+  .results = {{ .i32 = -10 }},
 }, {
   .mod      = "aot",
   .func     = "i32_div_s",
-  .params  = { 313, 2 },
-  .results = { 315, 1 },
+  .type     = PROTO_I32_BINOP,
+  .params = {{ .i32 = -39 }, { .i32 = -3 }},
+  .results = {{ .i32 = 13 }},
 }, {
   .mod      = "aot",
   .func     = "i32_div_u",
-  .params  = { 316, 2 },
-  .results = { 318, 1 },
+  .type     = PROTO_I32_BINOP,
+  .params = {{ .i32 = 100 }, { .i32 = 50 }},
+  .results = {{ .i32 = 2 }},
 }, {
   .mod      = "aot",
   .func     = "i32_div_u",
-  .params  = { 319, 2 },
-  .results = { 321, 1 },
+  .type     = PROTO_I32_BINOP,
+  .params = {{ .i32 = 20 }, { .i32 = 2 }},
+  .results = {{ .i32 = 10 }},
 }, {
   .mod      = "aot",
   .func     = "i32_div_u",
-  .params  = { 322, 2 },
-  .results = { 324, 1 },
+  .type     = PROTO_I32_BINOP,
+  .params = {{ .i32 = 39 }, { .i32 = 3 }},
+  .results = {{ .i32 = 13 }},
 }, {
   .mod      = "aot",
   .func     = "i32_rem_s",
-  .params  = { 325, 2 },
-  .results = { 327, 1 },
+  .type     = PROTO_I32_BINOP,
+  .params = {{ .i32 = 102 }, { .i32 = 50 }},
+  .results = {{ .i32 = 2 }},
 }, {
   .mod      = "aot",
   .func     = "i32_rem_s",
-  .params  = { 328, 2 },
-  .results = { 330, 1 },
+  .type     = PROTO_I32_BINOP,
+  .params = {{ .i32 = -20 }, { .i32 = 2 }},
+  .results = {{ .i32 = 0 }},
 }, {
   .mod      = "aot",
   .func     = "i32_rem_s",
-  .params  = { 331, 2 },
-  .results = { 333, 1 },
+  .type     = PROTO_I32_BINOP,
+  .params = {{ .i32 = 41 }, { .i32 = -3 }},
+  .results = {{ .i32 = 2 }},
 }, {
   .mod      = "aot",
   .func     = "i32_rem_u",
-  .params  = { 334, 2 },
-  .results = { 336, 1 },
+  .type     = PROTO_I32_BINOP,
+  .params = {{ .i32 = 109 }, { .i32 = 50 }},
+  .results = {{ .i32 = 9 }},
 }, {
   .mod      = "aot",
   .func     = "i32_rem_u",
-  .params  = { 337, 2 },
-  .results = { 339, 1 },
+  .type     = PROTO_I32_BINOP,
+  .params = {{ .i32 = 29 }, { .i32 = 6 }},
+  .results = {{ .i32 = 5 }},
 }, {
   .mod      = "aot",
   .func     = "i32_rem_u",
-  .params  = { 340, 2 },
-  .results = { 342, 1 },
+  .type     = PROTO_I32_BINOP,
+  .params = {{ .i32 = 40 }, { .i32 = 3 }},
+  .results = {{ .i32 = 1 }},
 }, {
   .mod      = "aot",
   .func     = "i32_and",
-  .params  = { 343, 2 },
-  .results = { 345, 1 },
+  .type     = PROTO_I32_BINOP,
+  .params = {{ .i32 = 0x00FFFF00 }, { .i32 = 0xFFFF0000 }},
+  .results = {{ .i32 = 0x00FF0000 }},
 }, {
   .mod      = "aot",
   .func     = "i32_and",
-  .params  = { 346, 2 },
-  .results = { 348, 1 },
+  .type     = PROTO_I32_BINOP,
+  .params = {{ .i32 = 0x00000000 }, { .i32 = 0xFFFFFFFF }},
+  .results = {{ .i32 = 0x00000000 }},
 }, {
   .mod      = "aot",
   .func     = "i32_and",
-  .params  = { 349, 2 },
-  .results = { 351, 1 },
+  .type     = PROTO_I32_BINOP,
+  .params = {{ .i32 = 0xFFFFFFFF }, { .i32 = 0x0000FFFF }},
+  .results = {{ .i32 = 0x0000FFFF }},
 }, {
   .mod      = "aot",
   .func     = "i32_or",
-  .params  = { 352, 2 },
-  .results = { 354, 1 },
+  .type     = PROTO_I32_BINOP,
+  .params = {{ .i32 = 0xF0F0F0F0 }, { .i32 = 0x0F0F0F0F }},
+  .results = {{ .i32 = 0xFFFFFFFF }},
 }, {
   .mod      = "aot",
   .func     = "i32_or",
-  .params  = { 355, 2 },
-  .results = { 357, 1 },
+  .type     = PROTO_I32_BINOP,
+  .params = {{ .i32 = 0xFFFF0000 }, { .i32 = 0x00000000 }},
+  .results = {{ .i32 = 0xFFFF0000 }},
 }, {
   .mod      = "aot",
   .func     = "i32_or",
-  .params  = { 358, 2 },
-  .results = { 360, 1 },
+  .type     = PROTO_I32_BINOP,
+  .params = {{ .i32 = 0x00000000 }, { .i32 = 0x00000000 }},
+  .results = {{ .i32 = 0x00000000 }},
 }, {
   .mod      = "aot",
   .func     = "i32_xor",
-  .params  = { 361, 2 },
-  .results = { 363, 1 },
+  .type     = PROTO_I32_BINOP,
+  .params = {{ .i32 = 0xF0F0F0F0 }, { .i32 = 0x0F0F0F0F }},
+  .results = {{ .i32 = 0xFFFFFFFF }},
 }, {
   .mod      = "aot",
   .func     = "i32_xor",
-  .params  = { 364, 2 },
-  .results = { 366, 1 },
+  .type     = PROTO_I32_BINOP,
+  .params = {{ .i32 = 0xFFFFF000 }, { .i32 = 0x000FFFFF }},
+  .results = {{ .i32 = 0xFFF00FFF }},
 }, {
   .mod      = "aot",
   .func     = "i32_xor",
-  .params  = { 367, 2 },
-  .results = { 369, 1 },
+  .type     = PROTO_I32_BINOP,
+  .params = {{ .i32 = 0xFFFFFF00 }, { .i32 = 0x00FFFFFF }},
+  .results = {{ .i32 = 0xFF0000FF }},
 }, {
   .mod      = "aot",
   .func     = "i32_shl",
-  .params  = { 370, 2 },
-  .results = { 372, 1 },
+  .type     = PROTO_I32_BINOP,
+  .params = {{ .i32 = 0x0000FFFF }, { .i32 = 16 }},
+  .results = {{ .i32 = 0xFFFF0000 }},
 }, {
   .mod      = "aot",
   .func     = "i32_shl",
-  .params  = { 373, 2 },
-  .results = { 375, 1 },
+  .type     = PROTO_I32_BINOP,
+  .params = {{ .i32 = 0xFFFF0000 }, { .i32 = 8 }},
+  .results = {{ .i32 = 0xFF000000 }},
 }, {
   .mod      = "aot",
   .func     = "i32_shl",
-  .params  = { 376, 2 },
-  .results = { 378, 1 },
+  .type     = PROTO_I32_BINOP,
+  .params = {{ .i32 = 0xFFFFFFFF }, { .i32 = 31 }},
+  .results = {{ .i32 = 0x80000000 }},
 }, {
   .mod      = "aot",
   .func     = "i32_shr_s",
-  .params  = { 379, 2 },
-  .results = { 381, 1 },
+  .type     = PROTO_I32_BINOP,
+  .params = {{ .i32 = 0x0000FFFF }, { .i32 = 16 }},
+  .results = {{ .i32 = 0x00000000 }},
 }, {
   .mod      = "aot",
   .func     = "i32_shr_s",
-  .params  = { 382, 2 },
-  .results = { 384, 1 },
+  .type     = PROTO_I32_BINOP,
+  .params = {{ .i32 = 0xFFFFFFF0 }, { .i32 = 4 }},
+  .results = {{ .i32 = 0xFFFFFFFF }},
 }, {
   .mod      = "aot",
   .func     = "i32_shr_s",
-  .params  = { 385, 2 },
-  .results = { 387, 1 },
+  .type     = PROTO_I32_BINOP,
+  .params = {{ .i32 = 0xFFFFFFFF }, { .i32 = 31 }},
+  .results = {{ .i32 = 0xFFFFFFFF }},
 }, {
   .mod      = "aot",
   .func     = "i32_shr_u",
-  .params  = { 388, 2 },
-  .results = { 390, 1 },
+  .type     = PROTO_I32_BINOP,
+  .params = {{ .i32 = 0x0000FFFF }, { .i32 = 16 }},
+  .results = {{ .i32 = 0x00000000 }},
 }, {
   .mod      = "aot",
   .func     = "i32_shr_u",
-  .params  = { 391, 2 },
-  .results = { 393, 1 },
+  .type     = PROTO_I32_BINOP,
+  .params = {{ .i32 = 0xFFFFFFF0 }, { .i32 = 4 }},
+  .results = {{ .i32 = 0x0FFFFFFF }},
 }, {
   .mod      = "aot",
   .func     = "i32_shr_u",
-  .params  = { 394, 2 },
-  .results = { 396, 1 },
+  .type     = PROTO_I32_BINOP,
+  .params = {{ .i32 = 0x80000000 }, { .i32 = 31 }},
+  .results = {{ .i32 = 0x00000001 }},
 }, {
   .mod      = "aot",
   .func     = "i32_rotl",
-  .params  = { 397, 2 },
-  .results = { 399, 1 },
+  .type     = PROTO_I32_BINOP,
+  .params = {{ .i32 = 0xFF0000FF }, { .i32 = 8 }},
+  .results = {{ .i32 = 0x0000FFFF }},
 }, {
   .mod      = "aot",
   .func     = "i32_rotl",
-  .params  = { 400, 2 },
-  .results = { 402, 1 },
+  .type     = PROTO_I32_BINOP,
+  .params = {{ .i32 = 0x0000FFFF }, { .i32 = 16 }},
+  .results = {{ .i32 = 0xFFFF0000 }},
 }, {
   .mod      = "aot",
   .func     = "i32_rotl",
-  .params  = { 403, 2 },
-  .results = { 405, 1 },
+  .type     = PROTO_I32_BINOP,
+  .params = {{ .i32 = 0x00FF00FF }, { .i32 = 8 }},
+  .results = {{ .i32 = 0xFF00FF00 }},
 }, {
   .mod      = "aot",
   .func     = "i32_rotr",
-  .params  = { 406, 2 },
-  .results = { 408, 1 },
+  .type     = PROTO_I32_BINOP,
+  .params = {{ .i32 = 0xFF0000FF }, { .i32 = 8 }},
+  .results = {{ .i32 = 0xFFFF0000 }},
 }, {
   .mod      = "aot",
   .func     = "i32_rotr",
-  .params  = { 409, 2 },
-  .results = { 411, 1 },
+  .type     = PROTO_I32_BINOP,
+  .params = {{ .i32 = 0x00FFFFFF }, { .i32 = 16 }},
+  .results = {{ .i32 = 0xFFFF00FF }},
 }, {
   .mod      = "aot",
   .func     = "i32_rotr",
-  .params  = { 412, 2 },
-  .results = { 414, 1 },
+  .type     = PROTO_I32_BINOP,
+  .params = {{ .i32 = 0x00FF00FF }, { .i32 = 4 }},
+  .results = {{ .i32 = 0xF00FF00F }},
 }, {
   .mod      = "aot",
   .func     = "i64_clz",
-  .params  = { 415, 1 },
-  .results = { 416, 1 },
+  .type     = PROTO_I64_UNOP,
+  .params = {{ .i64 = 0x100000000 }},
+  .results = {{ .i64 = 31 }},
 }, {
   .mod      = "aot",
   .func     = "i64_clz",
-  .params  = { 417, 1 },
-  .results = { 418, 1 },
+  .type     = PROTO_I64_UNOP,
+  .params = {{ .i64 = 0x0000FFFF00000000 }},
+  .results = {{ .i64 = 16 }},
 }, {
   .mod      = "aot",
   .func     = "i64_clz",
-  .params  = { 419, 1 },
-  .results = { 420, 1 },
+  .type     = PROTO_I64_UNOP,
+  .params = {{ .i64 = 0x00FF000000000000 }},
+  .results = {{ .i64 = 8 }},
 }, {
   .mod      = "aot",
   .func     = "i64_ctz",
-  .params  = { 421, 1 },
-  .results = { 422, 1 },
+  .type     = PROTO_I64_UNOP,
+  .params = {{ .i64 = 0x80000000 }},
+  .results = {{ .i64 = 31 }},
 }, {
   .mod      = "aot",
   .func     = "i64_ctz",
-  .params  = { 423, 1 },
-  .results = { 424, 1 },
+  .type     = PROTO_I64_UNOP,
+  .params = {{ .i64 = 0xFFFF0000 }},
+  .results = {{ .i64 = 16 }},
 }, {
   .mod      = "aot",
   .func     = "i64_ctz",
-  .params  = { 425, 1 },
-  .results = { 426, 1 },
+  .type     = PROTO_I64_UNOP,
+  .params = {{ .i64 = 0x0000FF00 }},
+  .results = {{ .i64 = 8 }},
 }, {
   .mod      = "aot",
   .func     = "i64_popcnt",
-  .params  = { 427, 1 },
-  .results = { 428, 1 },
+  .type     = PROTO_I64_UNOP,
+  .params = {{ .i64 = 0x8000000 }},
+  .results = {{ .i64 = 1 }},
 }, {
   .mod      = "aot",
   .func     = "i64_popcnt",
-  .params  = { 429, 1 },
-  .results = { 430, 1 },
+  .type     = PROTO_I64_UNOP,
+  .params = {{ .i64 = 0xFFFF0000 }},
+  .results = {{ .i64 = 16 }},
 }, {
   .mod      = "aot",
   .func     = "i64_popcnt",
-  .params  = { 431, 1 },
-  .results = { 432, 1 },
+  .type     = PROTO_I64_UNOP,
+  .params = {{ .i64 = 0x0F0F0F00 }},
+  .results = {{ .i64 = 12 }},
 }, {
   .mod      = "aot",
   .func     = "i64_add",
-  .params  = { 433, 2 },
-  .results = { 435, 1 },
+  .type     = PROTO_I64_BINOP,
+  .params = {{ .i64 = 5 }, { .i64 = 127 }},
+  .results = {{ .i64 = 132 }},
 }, {
   .mod      = "aot",
   .func     = "i64_add",
-  .params  = { 436, 2 },
-  .results = { 438, 1 },
+  .type     = PROTO_I64_BINOP,
+  .params = {{ .i64 = 123123 }, { .i64 = 321321 }},
+  .results = {{ .i64 = 444444 }},
 }, {
   .mod      = "aot",
   .func     = "i64_add",
-  .params  = { 439, 2 },
-  .results = { 441, 1 },
+  .type     = PROTO_I64_BINOP,
+  .params = {{ .i64 = -100 }, { .i64 = 200 }},
+  .results = {{ .i64 = 100 }},
 }, {
   .mod      = "aot",
   .func     = "i64_sub",
-  .params  = { 442, 2 },
-  .results = { 444, 1 },
+  .type     = PROTO_I64_BINOP,
+  .params = {{ .i64 = 132 }, { .i64 = 127 }},
+  .results = {{ .i64 = 5 }},
 }, {
   .mod      = "aot",
   .func     = "i64_sub",
-  .params  = { 445, 2 },
-  .results = { 447, 1 },
+  .type     = PROTO_I64_BINOP,
+  .params = {{ .i64 = 444444 }, { .i64 = 321321 }},
+  .results = {{ .i64 = 123123 }},
 }, {
   .mod      = "aot",
   .func     = "i64_sub",
-  .params  = { 448, 2 },
-  .results = { 450, 1 },
+  .type     = PROTO_I64_BINOP,
+  .params = {{ .i64 = -100 }, { .i64 = 200 }},
+  .results = {{ .i64 = -300 }},
 }, {
   .mod      = "aot",
   .func     = "i64_mul",
-  .params  = { 451, 2 },
-  .results = { 453, 1 },
+  .type     = PROTO_I64_BINOP,
+  .params = {{ .i64 = 132 }, { .i64 = 127 }},
+  .results = {{ .i64 = 16764 }},
 }, {
   .mod      = "aot",
   .func     = "i64_mul",
-  .params  = { 454, 2 },
-  .results = { 456, 1 },
+  .type     = PROTO_I64_BINOP,
+  .params = {{ .i64 = -20 }, { .i64 = 44 }},
+  .results = {{ .i64 = -880 }},
 }, {
   .mod      = "aot",
   .func     = "i64_mul",
-  .params  = { 457, 2 },
-  .results = { 459, 1 },
+  .type     = PROTO_I64_BINOP,
+  .params = {{ .i64 = -100 }, { .i64 = -200 }},
+  .results = {{ .i64 = 20000 }},
 }, {
   .mod      = "aot",
   .func     = "i64_div_s",
-  .params  = { 460, 2 },
-  .results = { 462, 1 },
+  .type     = PROTO_I64_BINOP,
+  .params = {{ .i64 = 100 }, { .i64 = 50 }},
+  .results = {{ .i64 = 2 }},
 }, {
   .mod      = "aot",
   .func     = "i64_div_s",
-  .params  = { 463, 2 },
-  .results = { 465, 1 },
+  .type     = PROTO_I64_BINOP,
+  .params = {{ .i64 = -20 }, { .i64 = 2 }},
+  .results = {{ .i64 = -10 }},
 }, {
   .mod      = "aot",
   .func     = "i64_div_s",
-  .params  = { 466, 2 },
-  .results = { 468, 1 },
+  .type     = PROTO_I64_BINOP,
+  .params = {{ .i64 = -39 }, { .i64 = -3 }},
+  .results = {{ .i64 = 13 }},
 }, {
   .mod      = "aot",
   .func     = "i64_div_u",
-  .params  = { 469, 2 },
-  .results = { 471, 1 },
+  .type     = PROTO_I64_BINOP,
+  .params = {{ .i64 = 100 }, { .i64 = 50 }},
+  .results = {{ .i64 = 2 }},
 }, {
   .mod      = "aot",
   .func     = "i64_div_u",
-  .params  = { 472, 2 },
-  .results = { 474, 1 },
+  .type     = PROTO_I64_BINOP,
+  .params = {{ .i64 = 20 }, { .i64 = 2 }},
+  .results = {{ .i64 = 10 }},
 }, {
   .mod      = "aot",
   .func     = "i64_div_u",
-  .params  = { 475, 2 },
-  .results = { 477, 1 },
+  .type     = PROTO_I64_BINOP,
+  .params = {{ .i64 = 39 }, { .i64 = 3 }},
+  .results = {{ .i64 = 13 }},
 }, {
   .mod      = "aot",
   .func     = "i64_rem_s",
-  .params  = { 478, 2 },
-  .results = { 480, 1 },
+  .type     = PROTO_I64_BINOP,
+  .params = {{ .i64 = 102 }, { .i64 = 50 }},
+  .results = {{ .i64 = 2 }},
 }, {
   .mod      = "aot",
   .func     = "i64_rem_s",
-  .params  = { 481, 2 },
-  .results = { 483, 1 },
+  .type     = PROTO_I64_BINOP,
+  .params = {{ .i64 = -20 }, { .i64 = 2 }},
+  .results = {{ .i64 = 0 }},
 }, {
   .mod      = "aot",
   .func     = "i64_rem_s",
-  .params  = { 484, 2 },
-  .results = { 486, 1 },
+  .type     = PROTO_I64_BINOP,
+  .params = {{ .i64 = 41 }, { .i64 = -3 }},
+  .results = {{ .i64 = 2 }},
 }, {
   .mod      = "aot",
   .func     = "i64_rem_u",
-  .params  = { 487, 2 },
-  .results = { 489, 1 },
+  .type     = PROTO_I64_BINOP,
+  .params = {{ .i64 = 109 }, { .i64 = 50 }},
+  .results = {{ .i64 = 9 }},
 }, {
   .mod      = "aot",
   .func     = "i64_rem_u",
-  .params  = { 490, 2 },
-  .results = { 492, 1 },
+  .type     = PROTO_I64_BINOP,
+  .params = {{ .i64 = 29 }, { .i64 = 6 }},
+  .results = {{ .i64 = 5 }},
 }, {
   .mod      = "aot",
   .func     = "i64_rem_u",
-  .params  = { 493, 2 },
-  .results = { 495, 1 },
+  .type     = PROTO_I64_BINOP,
+  .params = {{ .i64 = 40 }, { .i64 = 3 }},
+  .results = {{ .i64 = 1 }},
 }, {
   .mod      = "aot",
   .func     = "i64_and",
-  .params  = { 496, 2 },
-  .results = { 498, 1 },
+  .type     = PROTO_I64_BINOP,
+  .params = {{ .i64 = 0x00FFFF0000FFFF00 }, { .i64 = 0xFFFF0000FFFF0000 }},
+  .results = {{ .i64 = 0x00FF000000FF0000 }},
 }, {
   .mod      = "aot",
   .func     = "i64_and",
-  .params  = { 499, 2 },
-  .results = { 501, 1 },
+  .type     = PROTO_I64_BINOP,
+  .params = {{ .i64 = 0x0000000000000000 }, { .i64 = 0xFFFFFFFFFFFFFFFF }},
+  .results = {{ .i64 = 0x0000000000000000 }},
 }, {
   .mod      = "aot",
   .func     = "i64_and",
-  .params  = { 502, 2 },
-  .results = { 504, 1 },
+  .type     = PROTO_I64_BINOP,
+  .params = {{ .i64 = 0xFFFFFFFFFFFFFFFF }, { .i64 = 0x0000FFFF0000FFFF }},
+  .results = {{ .i64 = 0x0000FFFF0000FFFF }},
 }, {
   .mod      = "aot",
   .func     = "i64_or",
-  .params  = { 505, 2 },
-  .results = { 507, 1 },
+  .type     = PROTO_I64_BINOP,
+  .params = {{ .i64 = 0xF0F0F0F0F0F0F0F0 }, { .i64 = 0x0F0F0F0F0F0F0F0F }},
+  .results = {{ .i64 = 0xFFFFFFFFFFFFFFFF }},
 }, {
   .mod      = "aot",
   .func     = "i64_or",
-  .params  = { 508, 2 },
-  .results = { 510, 1 },
+  .type     = PROTO_I64_BINOP,
+  .params = {{ .i64 = 0xFFFF0000FFFF0000 }, { .i64 = 0x0000000000000000 }},
+  .results = {{ .i64 = 0xFFFF0000FFFF0000 }},
 }, {
   .mod      = "aot",
   .func     = "i64_or",
-  .params  = { 511, 2 },
-  .results = { 513, 1 },
+  .type     = PROTO_I64_BINOP,
+  .params = {{ .i64 = 0x0000000000000000 }, { .i64 = 0x0000000000000000 }},
+  .results = {{ .i64 = 0x0000000000000000 }},
 }, {
   .mod      = "aot",
   .func     = "i64_xor",
-  .params  = { 514, 2 },
-  .results = { 516, 1 },
+  .type     = PROTO_I64_BINOP,
+  .params = {{ .i64 = 0xF0F0F0F0F0F0F0F0 }, { .i64 = 0x0F0F0F0F0F0F0F0F }},
+  .results = {{ .i64 = 0xFFFFFFFFFFFFFFFF }},
 }, {
   .mod      = "aot",
   .func     = "i64_xor",
-  .params  = { 517, 2 },
-  .results = { 519, 1 },
+  .type     = PROTO_I64_BINOP,
+  .params = {{ .i64 = 0xFFFFF000FFFFF000 }, { .i64 = 0x000FFFFF000FFFFF }},
+  .results = {{ .i64 = 0xFFF00FFFFFF00FFF }},
 }, {
   .mod      = "aot",
   .func     = "i64_xor",
-  .params  = { 520, 2 },
-  .results = { 522, 1 },
+  .type     = PROTO_I64_BINOP,
+  .params = {{ .i64 = 0xFFFFFF00FFFFFF00 }, { .i64 = 0x00FFFFFF00FFFFFF }},
+  .results = {{ .i64 = 0xFF0000FFFF0000FF }},
 }, {
   .mod      = "aot",
   .func     = "i64_shl",
-  .params  = { 523, 2 },
-  .results = { 525, 1 },
+  .type     = PROTO_I64_BINOP,
+  .params = {{ .i64 = 0x0000FFFF0000FFFF }, { .i64 = 16 }},
+  .results = {{ .i64 = 0xFFFF0000FFFF0000 }},
 }, {
   .mod      = "aot",
   .func     = "i64_shl",
-  .params  = { 526, 2 },
-  .results = { 528, 1 },
+  .type     = PROTO_I64_BINOP,
+  .params = {{ .i64 = 0xFFFF0000FFFF0000 }, { .i64 = 8 }},
+  .results = {{ .i64 = 0xFF0000FFFF000000 }},
 }, {
   .mod      = "aot",
   .func     = "i64_shl",
-  .params  = { 529, 2 },
-  .results = { 531, 1 },
+  .type     = PROTO_I64_BINOP,
+  .params = {{ .i64 = 0xFFFFFFFFFFFFFFFF }, { .i64 = 63 }},
+  .results = {{ .i64 = 0x8000000000000000 }},
 }, {
   .mod      = "aot",
   .func     = "i64_shr_s",
-  .params  = { 532, 2 },
-  .results = { 534, 1 },
+  .type     = PROTO_I64_BINOP,
+  .params = {{ .i64 = 0x000000000000FFFF }, { .i64 = 16 }},
+  .results = {{ .i64 = 0x0000000000000000 }},
 }, {
   .mod      = "aot",
   .func     = "i64_shr_s",
-  .params  = { 535, 2 },
-  .results = { 537, 1 },
+  .type     = PROTO_I64_BINOP,
+  .params = {{ .i64 = 0xFFFFFFFFFFFFFFF0 }, { .i64 = 4 }},
+  .results = {{ .i64 = 0xFFFFFFFFFFFFFFFF }},
 }, {
   .mod      = "aot",
   .func     = "i64_shr_s",
-  .params  = { 538, 2 },
-  .results = { 540, 1 },
+  .type     = PROTO_I64_BINOP,
+  .params = {{ .i64 = 0xFFFFFFFFFFFFFFFF }, { .i64 = 63 }},
+  .results = {{ .i64 = 0xFFFFFFFFFFFFFFFF }},
 }, {
   .mod      = "aot",
   .func     = "i64_shr_u",
-  .params  = { 541, 2 },
-  .results = { 543, 1 },
+  .type     = PROTO_I64_BINOP,
+  .params = {{ .i64 = 0x000000000000FFFF }, { .i64 = 16 }},
+  .results = {{ .i64 = 0x0000000000000000 }},
 }, {
   .mod      = "aot",
   .func     = "i64_shr_u",
-  .params  = { 544, 2 },
-  .results = { 546, 1 },
+  .type     = PROTO_I64_BINOP,
+  .params = {{ .i64 = 0x00000000FFFFFFF0 }, { .i64 = 4 }},
+  .results = {{ .i64 = 0x000000000FFFFFFF }},
 }, {
   .mod      = "aot",
   .func     = "i64_shr_u",
-  .params  = { 547, 2 },
-  .results = { 549, 1 },
+  .type     = PROTO_I64_BINOP,
+  .params = {{ .i64 = 0x8000000000000000 }, { .i64 = 63 }},
+  .results = {{ .i64 = 0x0000000000000001 }},
 }, {
   .mod      = "aot",
   .func     = "i64_rotl",
-  .params  = { 550, 2 },
-  .results = { 552, 1 },
+  .type     = PROTO_I64_BINOP,
+  .params = {{ .i64 = 0xFF0000FFFF0000FF }, { .i64 = 8 }},
+  .results = {{ .i64 = 0x0000FFFF0000FFFF }},
 }, {
   .mod      = "aot",
   .func     = "i64_rotl",
-  .params  = { 553, 2 },
-  .results = { 555, 1 },
+  .type     = PROTO_I64_BINOP,
+  .params = {{ .i64 = 0x0000FFFF0000FFFF }, { .i64 = 16 }},
+  .results = {{ .i64 = 0xFFFF0000FFFF0000 }},
 }, {
   .mod      = "aot",
   .func     = "i64_rotl",
-  .params  = { 556, 2 },
-  .results = { 558, 1 },
+  .type     = PROTO_I64_BINOP,
+  .params = {{ .i64 = 0x00FF00FF00FF00FF }, { .i64 = 8 }},
+  .results = {{ .i64 = 0xFF00FF00FF00FF00 }},
 }, {
   .mod      = "aot",
   .func     = "i64_rotr",
-  .params  = { 559, 2 },
-  .results = { 561, 1 },
+  .type     = PROTO_I64_BINOP,
+  .params = {{ .i64 = 0xFF0000FFFF0000FF }, { .i64 = 8 }},
+  .results = {{ .i64 = 0xFFFF0000FFFF0000 }},
 }, {
   .mod      = "aot",
   .func     = "i64_rotr",
-  .params  = { 562, 2 },
-  .results = { 564, 1 },
+  .type     = PROTO_I64_BINOP,
+  .params = {{ .i64 = 0x00FFFFFF00FFFFFF }, { .i64 = 16 }},
+  .results = {{ .i64 = 0xFFFF00FFFFFF00FF }},
 }, {
   .mod      = "aot",
   .func     = "i64_rotr",
-  .params  = { 565, 2 },
-  .results = { 567, 1 },
+  .type     = PROTO_I64_BINOP,
+  .params = {{ .i64 = 0x00FF00FF00FF00FF }, { .i64 = 4 }},
+  .results = {{ .i64 = 0xF00FF00FF00FF00F }},
 }, {
   .mod      = "aot",
   .func     = "f32_abs",
-  .params  = { 568, 1 },
-  .results = { 569, 1 },
+  .type     = PROTO_F32_UNOP,
+  .params = {{ .f32 = -1 }},
+  .results = {{ .f32 = 1 }},
 }, {
   .mod      = "aot",
   .func     = "f32_abs",
-  .params  = { 570, 1 },
-  .results = { 571, 1 },
+  .type     = PROTO_F32_UNOP,
+  .params = {{ .f32 = 0 }},
+  .results = {{ .f32 = 0 }},
 }, {
   .mod      = "aot",
   .func     = "f32_abs",
-  .params  = { 572, 1 },
-  .results = { 573, 1 },
+  .type     = PROTO_F32_UNOP,
+  .params = {{ .f32 = 1 }},
+  .results = {{ .f32 = 1 }},
 }, {
   .mod      = "aot",
   .func     = "f32_neg",
-  .params  = { 574, 1 },
-  .results = { 575, 1 },
+  .type     = PROTO_F32_UNOP,
+  .params = {{ .f32 = -1 }},
+  .results = {{ .f32 = 1 }},
 }, {
   .mod      = "aot",
   .func     = "f32_neg",
-  .params  = { 576, 1 },
-  .results = { 577, 1 },
+  .type     = PROTO_F32_UNOP,
+  .params = {{ .f32 = 0 }},
+  .results = {{ .f32 = 0 }},
 }, {
   .mod      = "aot",
   .func     = "f32_neg",
-  .params  = { 578, 1 },
-  .results = { 579, 1 },
+  .type     = PROTO_F32_UNOP,
+  .params = {{ .f32 = 1 }},
+  .results = {{ .f32 = -1 }},
 }, {
   .mod      = "aot",
   .func     = "f32_ceil",
-  .params  = { 580, 1 },
-  .results = { 581, 1 },
+  .type     = PROTO_F32_UNOP,
+  .params = {{ .f32 = -1.1 }},
+  .results = {{ .f32 = -1.0 }},
 }, {
   .mod      = "aot",
   .func     = "f32_ceil",
-  .params  = { 582, 1 },
-  .results = { 583, 1 },
+  .type     = PROTO_F32_UNOP,
+  .params = {{ .f32 = 0 }},
+  .results = {{ .f32 = 0 }},
 }, {
   .mod      = "aot",
   .func     = "f32_ceil",
-  .params  = { 584, 1 },
-  .results = { 585, 1 },
+  .type     = PROTO_F32_UNOP,
+  .params = {{ .f32 = 1.1 }},
+  .results = {{ .f32 = 2 }},
 }, {
   .mod      = "aot",
   .func     = "f32_floor",
-  .params  = { 586, 1 },
-  .results = { 587, 1 },
+  .type     = PROTO_F32_UNOP,
+  .params = {{ .f32 = -1.1 }},
+  .results = {{ .f32 = -2.0 }},
 }, {
   .mod      = "aot",
   .func     = "f32_floor",
-  .params  = { 588, 1 },
-  .results = { 589, 1 },
+  .type     = PROTO_F32_UNOP,
+  .params = {{ .f32 = 0 }},
+  .results = {{ .f32 = 0 }},
 }, {
   .mod      = "aot",
   .func     = "f32_floor",
-  .params  = { 590, 1 },
-  .results = { 591, 1 },
+  .type     = PROTO_F32_UNOP,
+  .params = {{ .f32 = 1.1 }},
+  .results = {{ .f32 = 1.0 }},
 }, {
   .mod      = "aot",
   .func     = "f32_trunc",
-  .params  = { 592, 1 },
-  .results = { 593, 1 },
+  .type     = PROTO_F32_UNOP,
+  .params = {{ .f32 = -1.1 }},
+  .results = {{ .f32 = -1.0 }},
 }, {
   .mod      = "aot",
   .func     = "f32_trunc",
-  .params  = { 594, 1 },
-  .results = { 595, 1 },
+  .type     = PROTO_F32_UNOP,
+  .params = {{ .f32 = 0 }},
+  .results = {{ .f32 = 0 }},
 }, {
   .mod      = "aot",
   .func     = "f32_trunc",
-  .params  = { 596, 1 },
-  .results = { 597, 1 },
+  .type     = PROTO_F32_UNOP,
+  .params = {{ .f32 = 1.1 }},
+  .results = {{ .f32 = 1.0 }},
 }, {
   .mod      = "aot",
   .func     = "f32_nearest",
-  .params  = { 598, 1 },
-  .results = { 599, 1 },
+  .type     = PROTO_F32_UNOP,
+  .params = {{ .f32 = -1.1 }},
+  .results = {{ .f32 = -1.0 }},
 }, {
   .mod      = "aot",
   .func     = "f32_nearest",
-  .params  = { 600, 1 },
-  .results = { 601, 1 },
+  .type     = PROTO_F32_UNOP,
+  .params = {{ .f32 = 0 }},
+  .results = {{ .f32 = 0 }},
 }, {
   .mod      = "aot",
   .func     = "f32_nearest",
-  .params  = { 602, 1 },
-  .results = { 603, 1 },
+  .type     = PROTO_F32_UNOP,
+  .params = {{ .f32 = 1.6 }},
+  .results = {{ .f32 = 2.0 }},
 }, {
   .mod      = "aot",
   .func     = "f32_sqrt",
-  .params  = { 604, 1 },
-  .results = { 605, 1 },
+  .type     = PROTO_F32_UNOP,
+  .params = {{ .f32 = 4.0 }},
+  .results = {{ .f32 = 2.0 }},
 }, {
   .mod      = "aot",
   .func     = "f32_sqrt",
-  .params  = { 606, 1 },
-  .results = { 607, 1 },
+  .type     = PROTO_F32_UNOP,
+  .params = {{ .f32 = 2.0 }},
+  .results = {{ .f32 = 1.41421 }},
 }, {
   .mod      = "aot",
   .func     = "f32_sqrt",
-  .params  = { 608, 1 },
-  .results = { 609, 1 },
+  .type     = PROTO_F32_UNOP,
+  .params = {{ .f32 = 49.0 }},
+  .results = {{ .f32 = 7.0 }},
 }, {
   .mod      = "aot",
   .func     = "f32_add",
-  .params  = { 610, 2 },
-  .results = { 612, 1 },
+  .type     = PROTO_F32_BINOP,
+  .params = {{ .f32 = 49.0 }, { .f32 = 51.0 }},
+  .results = {{ .f32 = 100.0 }},
 }, {
   .mod      = "aot",
   .func     = "f32_add",
-  .params  = { 613, 2 },
-  .results = { 615, 1 },
+  .type     = PROTO_F32_BINOP,
+  .params = {{ .f32 = -49.0 }, { .f32 = 51.0 }},
+  .results = {{ .f32 = 2.0 }},
 }, {
   .mod      = "aot",
   .func     = "f32_add",
-  .params  = { 616, 2 },
-  .results = { 618, 1 },
+  .type     = PROTO_F32_BINOP,
+  .params = {{ .f32 = 1024.0 }, { .f32 = 321.0 }},
+  .results = {{ .f32 = 1345.0 }},
 }, {
   .mod      = "aot",
   .func     = "f32_sub",
-  .params  = { 619, 2 },
-  .results = { 621, 1 },
+  .type     = PROTO_F32_BINOP,
+  .params = {{ .f32 = 49.0 }, { .f32 = 51.0 }},
+  .results = {{ .f32 = -2.0 }},
 }, {
   .mod      = "aot",
   .func     = "f32_sub",
-  .params  = { 622, 2 },
-  .results = { 624, 1 },
+  .type     = PROTO_F32_BINOP,
+  .params = {{ .f32 = -49.0 }, { .f32 = 51.0 }},
+  .results = {{ .f32 = -100.0 }},
 }, {
   .mod      = "aot",
   .func     = "f32_sub",
-  .params  = { 625, 2 },
-  .results = { 627, 1 },
+  .type     = PROTO_F32_BINOP,
+  .params = {{ .f32 = 1024.2 }, { .f32 = 21.1 }},
+  .results = {{ .f32 = 1003.1 }},
 }, {
   .mod      = "aot",
   .func     = "f32_mul",
-  .params  = { 628, 2 },
-  .results = { 630, 1 },
+  .type     = PROTO_F32_BINOP,
+  .params = {{ .f32 = 4.0 }, { .f32 = 5.0 }},
+  .results = {{ .f32 = 20.0 }},
 }, {
   .mod      = "aot",
   .func     = "f32_mul",
-  .params  = { 631, 2 },
-  .results = { 633, 1 },
+  .type     = PROTO_F32_BINOP,
+  .params = {{ .f32 = -9.0 }, { .f32 = 5.0 }},
+  .results = {{ .f32 = -45.0 }},
 }, {
   .mod      = "aot",
   .func     = "f32_mul",
-  .params  = { 634, 2 },
-  .results = { 636, 1 },
+  .type     = PROTO_F32_BINOP,
+  .params = {{ .f32 = 1024.0 }, { .f32 = 2.1 }},
+  .results = {{ .f32 = 2150.4 }},
 }, {
   .mod      = "aot",
   .func     = "f32_div",
-  .params  = { 637, 2 },
-  .results = { 639, 1 },
+  .type     = PROTO_F32_BINOP,
+  .params = {{ .f32 = 4.0 }, { .f32 = 5.0 }},
+  .results = {{ .f32 = 0.8 }},
 }, {
   .mod      = "aot",
   .func     = "f32_div",
-  .params  = { 640, 2 },
-  .results = { 642, 1 },
+  .type     = PROTO_F32_BINOP,
+  .params = {{ .f32 = -15.0 }, { .f32 = 5.0 }},
+  .results = {{ .f32 = -3.0 }},
 }, {
   .mod      = "aot",
   .func     = "f32_div",
-  .params  = { 643, 2 },
-  .results = { 645, 1 },
+  .type     = PROTO_F32_BINOP,
+  .params = {{ .f32 = 1024.0 }, { .f32 = 2.0 }},
+  .results = {{ .f32 = 512.0 }},
 }, {
   .mod      = "aot",
   .func     = "f32_min",
-  .params  = { 646, 2 },
-  .results = { 648, 1 },
+  .type     = PROTO_F32_BINOP,
+  .params = {{ .f32 = 4.0 }, { .f32 = 5.0 }},
+  .results = {{ .f32 = 4.0 }},
 }, {
   .mod      = "aot",
   .func     = "f32_min",
-  .params  = { 649, 2 },
-  .results = { 651, 1 },
+  .type     = PROTO_F32_BINOP,
+  .params = {{ .f32 = -15.0 }, { .f32 = 5.0 }},
+  .results = {{ .f32 = -15.0 }},
 }, {
   .mod      = "aot",
   .func     = "f32_min",
-  .params  = { 652, 2 },
-  .results = { 654, 1 },
+  .type     = PROTO_F32_BINOP,
+  .params = {{ .f32 = 1024.0 }, { .f32 = 2.0 }},
+  .results = {{ .f32 = 2.0 }},
 }, {
   .mod      = "aot",
   .func     = "f32_max",
-  .params  = { 655, 2 },
-  .results = { 657, 1 },
+  .type     = PROTO_F32_BINOP,
+  .params = {{ .f32 = 4.0 }, { .f32 = 5.0 }},
+  .results = {{ .f32 = 5.0 }},
 }, {
   .mod      = "aot",
   .func     = "f32_max",
-  .params  = { 658, 2 },
-  .results = { 660, 1 },
+  .type     = PROTO_F32_BINOP,
+  .params = {{ .f32 = -15.0 }, { .f32 = 5.0 }},
+  .results = {{ .f32 = 5.0 }},
 }, {
   .mod      = "aot",
   .func     = "f32_max",
-  .params  = { 661, 2 },
-  .results = { 663, 1 },
+  .type     = PROTO_F32_BINOP,
+  .params = {{ .f32 = 1024.0 }, { .f32 = 2.0 }},
+  .results = {{ .f32 = 1024.0 }},
 }, {
   .mod      = "aot",
   .func     = "f32_copysign",
-  .params  = { 664, 2 },
-  .results = { 666, 1 },
+  .type     = PROTO_F32_BINOP,
+  .params = {{ .f32 = -4.0 }, { .f32 = 5.0 }},
+  .results = {{ .f32 = 4.0 }},
 }, {
   .mod      = "aot",
   .func     = "f32_copysign",
-  .params  = { 667, 2 },
-  .results = { 669, 1 },
+  .type     = PROTO_F32_BINOP,
+  .params = {{ .f32 = 15.0 }, { .f32 = -5.0 }},
+  .results = {{ .f32 = -15.0 }},
 }, {
   .mod      = "aot",
   .func     = "f32_copysign",
-  .params  = { 670, 2 },
-  .results = { 672, 1 },
+  .type     = PROTO_F32_BINOP,
+  .params = {{ .f32 = 1024.0 }, { .f32 = 0.0 }},
+  .results = {{ .f32 = 1024.0 }},
 }, {
   .mod      = "aot",
   .func     = "f64_abs",
-  .params  = { 673, 1 },
-  .results = { 674, 1 },
+  .type     = PROTO_F64_UNOP,
+  .params = {{ .f64 = -1 }},
+  .results = {{ .f64 = 1 }},
 }, {
   .mod      = "aot",
   .func     = "f64_abs",
-  .params  = { 675, 1 },
-  .results = { 676, 1 },
+  .type     = PROTO_F64_UNOP,
+  .params = {{ .f64 = 0 }},
+  .results = {{ .f64 = 0 }},
 }, {
   .mod      = "aot",
   .func     = "f64_abs",
-  .params  = { 677, 1 },
-  .results = { 678, 1 },
+  .type     = PROTO_F64_UNOP,
+  .params = {{ .f64 = 1 }},
+  .results = {{ .f64 = 1 }},
 }, {
   .mod      = "aot",
   .func     = "f64_neg",
-  .params  = { 679, 1 },
-  .results = { 680, 1 },
+  .type     = PROTO_F64_UNOP,
+  .params = {{ .f64 = -1 }},
+  .results = {{ .f64 = 1 }},
 }, {
   .mod      = "aot",
   .func     = "f64_neg",
-  .params  = { 681, 1 },
-  .results = { 682, 1 },
+  .type     = PROTO_F64_UNOP,
+  .params = {{ .f64 = 0 }},
+  .results = {{ .f64 = 0 }},
 }, {
   .mod      = "aot",
   .func     = "f64_neg",
-  .params  = { 683, 1 },
-  .results = { 684, 1 },
+  .type     = PROTO_F64_UNOP,
+  .params = {{ .f64 = 1 }},
+  .results = {{ .f64 = -1 }},
 }, {
   .mod      = "aot",
   .func     = "f64_ceil",
-  .params  = { 685, 1 },
-  .results = { 686, 1 },
+  .type     = PROTO_F64_UNOP,
+  .params = {{ .f64 = -1.1 }},
+  .results = {{ .f64 = -1.0 }},
 }, {
   .mod      = "aot",
   .func     = "f64_ceil",
-  .params  = { 687, 1 },
-  .results = { 688, 1 },
+  .type     = PROTO_F64_UNOP,
+  .params = {{ .f64 = 0 }},
+  .results = {{ .f64 = 0 }},
 }, {
   .mod      = "aot",
   .func     = "f64_ceil",
-  .params  = { 689, 1 },
-  .results = { 690, 1 },
+  .type     = PROTO_F64_UNOP,
+  .params = {{ .f64 = 1.1 }},
+  .results = {{ .f64 = 2 }},
 }, {
   .mod      = "aot",
   .func     = "f64_floor",
-  .params  = { 691, 1 },
-  .results = { 692, 1 },
+  .type     = PROTO_F64_UNOP,
+  .params = {{ .f64 = -1.1 }},
+  .results = {{ .f64 = -2.0 }},
 }, {
   .mod      = "aot",
   .func     = "f64_floor",
-  .params  = { 693, 1 },
-  .results = { 694, 1 },
+  .type     = PROTO_F64_UNOP,
+  .params = {{ .f64 = 0 }},
+  .results = {{ .f64 = 0 }},
 }, {
   .mod      = "aot",
   .func     = "f64_floor",
-  .params  = { 695, 1 },
-  .results = { 696, 1 },
+  .type     = PROTO_F64_UNOP,
+  .params = {{ .f64 = 1.1 }},
+  .results = {{ .f64 = 1.0 }},
 }, {
   .mod      = "aot",
   .func     = "f64_trunc",
-  .params  = { 697, 1 },
-  .results = { 698, 1 },
+  .type     = PROTO_F64_UNOP,
+  .params = {{ .f64 = -1.1 }},
+  .results = {{ .f64 = -1.0 }},
 }, {
   .mod      = "aot",
   .func     = "f64_trunc",
-  .params  = { 699, 1 },
-  .results = { 700, 1 },
+  .type     = PROTO_F64_UNOP,
+  .params = {{ .f64 = 0 }},
+  .results = {{ .f64 = 0 }},
 }, {
   .mod      = "aot",
   .func     = "f64_trunc",
-  .params  = { 701, 1 },
-  .results = { 702, 1 },
+  .type     = PROTO_F64_UNOP,
+  .params = {{ .f64 = 1.1 }},
+  .results = {{ .f64 = 1.0 }},
 }, {
   .mod      = "aot",
   .func     = "f64_nearest",
-  .params  = { 703, 1 },
-  .results = { 704, 1 },
+  .type     = PROTO_F64_UNOP,
+  .params = {{ .f64 = -1.1 }},
+  .results = {{ .f64 = -1.0 }},
 }, {
   .mod      = "aot",
   .func     = "f64_nearest",
-  .params  = { 705, 1 },
-  .results = { 706, 1 },
+  .type     = PROTO_F64_UNOP,
+  .params = {{ .f64 = 0 }},
+  .results = {{ .f64 = 0 }},
 }, {
   .mod      = "aot",
   .func     = "f64_nearest",
-  .params  = { 707, 1 },
-  .results = { 708, 1 },
+  .type     = PROTO_F64_UNOP,
+  .params = {{ .f64 = 1.6 }},
+  .results = {{ .f64 = 2.0 }},
 }, {
   .mod      = "aot",
   .func     = "f64_sqrt",
-  .params  = { 709, 1 },
-  .results = { 710, 1 },
+  .type     = PROTO_F64_UNOP,
+  .params = {{ .f64 = 4.0 }},
+  .results = {{ .f64 = 2.0 }},
 }, {
   .mod      = "aot",
   .func     = "f64_sqrt",
-  .params  = { 711, 1 },
-  .results = { 712, 1 },
+  .type     = PROTO_F64_UNOP,
+  .params = {{ .f64 = 2.0 }},
+  .results = {{ .f64 = 1.41421 }},
 }, {
   .mod      = "aot",
   .func     = "f64_sqrt",
-  .params  = { 713, 1 },
-  .results = { 714, 1 },
+  .type     = PROTO_F64_UNOP,
+  .params = {{ .f64 = 49.0 }},
+  .results = {{ .f64 = 7.0 }},
 }, {
   .mod      = "aot",
   .func     = "f64_add",
-  .params  = { 715, 2 },
-  .results = { 717, 1 },
+  .type     = PROTO_F64_BINOP,
+  .params = {{ .f64 = 49.0 }, { .f64 = 51.0 }},
+  .results = {{ .f64 = 100.0 }},
 }, {
   .mod      = "aot",
   .func     = "f64_add",
-  .params  = { 718, 2 },
-  .results = { 720, 1 },
+  .type     = PROTO_F64_BINOP,
+  .params = {{ .f64 = -49.0 }, { .f64 = 51.0 }},
+  .results = {{ .f64 = 2.0 }},
 }, {
   .mod      = "aot",
   .func     = "f64_add",
-  .params  = { 721, 2 },
-  .results = { 723, 1 },
+  .type     = PROTO_F64_BINOP,
+  .params = {{ .f64 = 1024.0 }, { .f64 = 321.0 }},
+  .results = {{ .f64 = 1345.0 }},
 }, {
   .mod      = "aot",
   .func     = "f64_sub",
-  .params  = { 724, 2 },
-  .results = { 726, 1 },
+  .type     = PROTO_F64_BINOP,
+  .params = {{ .f64 = 49.0 }, { .f64 = 51.0 }},
+  .results = {{ .f64 = -2.0 }},
 }, {
   .mod      = "aot",
   .func     = "f64_sub",
-  .params  = { 727, 2 },
-  .results = { 729, 1 },
+  .type     = PROTO_F64_BINOP,
+  .params = {{ .f64 = -49.0 }, { .f64 = 51.0 }},
+  .results = {{ .f64 = -100.0 }},
 }, {
   .mod      = "aot",
   .func     = "f64_sub",
-  .params  = { 730, 2 },
-  .results = { 732, 1 },
+  .type     = PROTO_F64_BINOP,
+  .params = {{ .f64 = 1024.2 }, { .f64 = 21.1 }},
+  .results = {{ .f64 = 1003.1 }},
 }, {
   .mod      = "aot",
   .func     = "f64_mul",
-  .params  = { 733, 2 },
-  .results = { 735, 1 },
+  .type     = PROTO_F64_BINOP,
+  .params = {{ .f64 = 4.0 }, { .f64 = 5.0 }},
+  .results = {{ .f64 = 20.0 }},
 }, {
   .mod      = "aot",
   .func     = "f64_mul",
-  .params  = { 736, 2 },
-  .results = { 738, 1 },
+  .type     = PROTO_F64_BINOP,
+  .params = {{ .f64 = -9.0 }, { .f64 = 5.0 }},
+  .results = {{ .f64 = -45.0 }},
 }, {
   .mod      = "aot",
   .func     = "f64_mul",
-  .params  = { 739, 2 },
-  .results = { 741, 1 },
+  .type     = PROTO_F64_BINOP,
+  .params = {{ .f64 = 1024.0 }, { .f64 = 2.1 }},
+  .results = {{ .f64 = 2150.4 }},
 }, {
   .mod      = "aot",
   .func     = "f64_div",
-  .params  = { 742, 2 },
-  .results = { 744, 1 },
+  .type     = PROTO_F64_BINOP,
+  .params = {{ .f64 = 4.0 }, { .f64 = 5.0 }},
+  .results = {{ .f64 = 0.8 }},
 }, {
   .mod      = "aot",
   .func     = "f64_div",
-  .params  = { 745, 2 },
-  .results = { 747, 1 },
+  .type     = PROTO_F64_BINOP,
+  .params = {{ .f64 = -15.0 }, { .f64 = 5.0 }},
+  .results = {{ .f64 = -3.0 }},
 }, {
   .mod      = "aot",
   .func     = "f64_div",
-  .params  = { 748, 2 },
-  .results = { 750, 1 },
+  .type     = PROTO_F64_BINOP,
+  .params = {{ .f64 = 1024.0 }, { .f64 = 2.0 }},
+  .results = {{ .f64 = 512.0 }},
 }, {
   .mod      = "aot",
   .func     = "f64_min",
-  .params  = { 751, 2 },
-  .results = { 753, 1 },
+  .type     = PROTO_F64_BINOP,
+  .params = {{ .f64 = 4.0 }, { .f64 = 5.0 }},
+  .results = {{ .f64 = 4.0 }},
 }, {
   .mod      = "aot",
   .func     = "f64_min",
-  .params  = { 754, 2 },
-  .results = { 756, 1 },
+  .type     = PROTO_F64_BINOP,
+  .params = {{ .f64 = -15.0 }, { .f64 = 5.0 }},
+  .results = {{ .f64 = -15.0 }},
 }, {
   .mod      = "aot",
   .func     = "f64_min",
-  .params  = { 757, 2 },
-  .results = { 759, 1 },
+  .type     = PROTO_F64_BINOP,
+  .params = {{ .f64 = 1024.0 }, { .f64 = 2.0 }},
+  .results = {{ .f64 = 2.0 }},
 }, {
   .mod      = "aot",
   .func     = "f64_max",
-  .params  = { 760, 2 },
-  .results = { 762, 1 },
+  .type     = PROTO_F64_BINOP,
+  .params = {{ .f64 = 4.0 }, { .f64 = 5.0 }},
+  .results = {{ .f64 = 5.0 }},
 }, {
   .mod      = "aot",
   .func     = "f64_max",
-  .params  = { 763, 2 },
-  .results = { 765, 1 },
+  .type     = PROTO_F64_BINOP,
+  .params = {{ .f64 = -15.0 }, { .f64 = 5.0 }},
+  .results = {{ .f64 = 5.0 }},
 }, {
   .mod      = "aot",
   .func     = "f64_max",
-  .params  = { 766, 2 },
-  .results = { 768, 1 },
+  .type     = PROTO_F64_BINOP,
+  .params = {{ .f64 = 1024.0 }, { .f64 = 2.0 }},
+  .results = {{ .f64 = 1024.0 }},
 }, {
   .mod      = "aot",
   .func     = "f64_copysign",
-  .params  = { 769, 2 },
-  .results = { 771, 1 },
+  .type     = PROTO_F64_BINOP,
+  .params = {{ .f64 = -4.0 }, { .f64 = 5.0 }},
+  .results = {{ .f64 = 4.0 }},
 }, {
   .mod      = "aot",
   .func     = "f64_copysign",
-  .params  = { 772, 2 },
-  .results = { 774, 1 },
+  .type     = PROTO_F64_BINOP,
+  .params = {{ .f64 = 15.0 }, { .f64 = -5.0 }},
+  .results = {{ .f64 = -15.0 }},
 }, {
   .mod      = "aot",
   .func     = "f64_copysign",
-  .params  = { 775, 2 },
-  .results = { 777, 1 },
+  .type     = PROTO_F64_BINOP,
+  .params = {{ .f64 = 1024.0 }, { .f64 = 0.0 }},
+  .results = {{ .f64 = 1024.0 }},
 }};
 
 static size_t get_test_name(
@@ -4455,6 +2184,7 @@ static size_t get_test_name(
   const size_t mod_len = strlen(test.mod);
   const size_t func_len = strlen(test.func);
   size_t ofs = 0;
+  (void) TEST_PROTOS;
 
   memcpy(dst, test.mod, mod_len);
   ofs += mod_len;
@@ -4468,21 +2198,23 @@ static size_t get_test_name(
   dst[ofs] = '(';
   ofs += 1;
 
-  for (size_t i = 0; i < test.params.len; i++) {
-    const pwasm_value_type_t type = TEST_TYPES[test.params.ofs + i];
+  proto_t proto = TEST_PROTOS[test.type];
+
+  for (size_t i = 0; i < proto.num_params; i++) {
+    const pwasm_value_type_t type = proto.params[i];
 
     switch (type) {
     case PWASM_VALUE_TYPE_I32:
-      ofs += sprintf(dst + ofs, "%s%u", ((i > 0) ? ", " : ""), TEST_VALS[test.params.ofs + i].i32);
+      ofs += sprintf(dst + ofs, "%s%u", ((i > 0) ? ", " : ""), test.params[i].i32);
       break;
     case PWASM_VALUE_TYPE_I64:
-      ofs += sprintf(dst + ofs, "%s%lu", ((i > 0) ? ", " : ""), TEST_VALS[test.params.ofs + i].i64);
+      ofs += sprintf(dst + ofs, "%s%lu", ((i > 0) ? ", " : ""), test.params[i].i64);
       break;
     case PWASM_VALUE_TYPE_F32:
-      ofs += sprintf(dst + ofs, "%s%f", ((i > 0) ? ", " : ""), TEST_VALS[test.params.ofs + i].f32);
+      ofs += sprintf(dst + ofs, "%s%f", ((i > 0) ? ", " : ""), test.params[i].f32);
       break;
     case PWASM_VALUE_TYPE_F64:
-      ofs += sprintf(dst + ofs, "%s%f", ((i > 0) ? ", " : ""), TEST_VALS[test.params.ofs + i].f64);
+      ofs += sprintf(dst + ofs, "%s%f", ((i > 0) ? ", " : ""), test.params[i].f64);
       break;
     default:
       // never reached
@@ -4493,8 +2225,8 @@ static size_t get_test_name(
   memcpy(dst + ofs, "), [", 4);
   ofs += 4;
 
-  for (size_t i = 0; i < test.params.len; i++) {
-    const pwasm_value_type_t type = TEST_TYPES[test.params.ofs + i];
+  for (size_t i = 0; i < proto.num_params; i++) {
+    const pwasm_value_type_t type = proto.params[i];
     const char * const name = pwasm_value_type_get_name(type);
     const size_t name_len = strlen(name);
 
@@ -4511,8 +2243,8 @@ static size_t get_test_name(
   memcpy(dst + ofs, "] -> [", 6);
   ofs += 6;
 
-  for (size_t i = 0; i < test.results.len; i++) {
-    const pwasm_value_type_t type = TEST_TYPES[test.results.ofs + i];
+  for (size_t i = 0; i < proto.num_results; i++) {
+    const pwasm_value_type_t type = proto.results[i];
     const char * const name = pwasm_value_type_get_name(type);
     const size_t name_len = strlen(name);
 
@@ -4546,10 +2278,12 @@ static void check_results(
   char buf[1024];
   char name_buf[512];
 
-  for (size_t i = 0; i < test.results.len; i++) {
-    const pwasm_value_type_t type = TEST_TYPES[test.results.ofs + i];
+  const proto_t proto = TEST_PROTOS[test.type];
+
+  for (size_t i = 0; i < proto.num_results; i++) {
+    const pwasm_value_type_t type = proto.results[i];
     const pwasm_val_t got_val = stack->ptr[i];
-    const pwasm_val_t exp_val = TEST_VALS[test.results.ofs + i];
+    const pwasm_val_t exp_val = test.results[i];
 
     snprintf(name_buf, sizeof(name_buf), "%s: check results[%zu]", test_name, i);
 
@@ -4657,12 +2391,13 @@ void test_aot_jit(
 
   for (size_t i = 0; i < LEN(TEST_CALLS); i++) {
     const test_call_t test = TEST_CALLS[i];
+    const proto_t proto = TEST_PROTOS[test.type];
 
     // populate stack
-    stack.pos = test.params.len;
-    if (test.params.len > 0) {
-      const size_t num_bytes =  test.params.len * sizeof(pwasm_val_t);
-      memcpy(stack.ptr, TEST_VALS + test.params.ofs, num_bytes);
+    stack.pos = proto.num_params;
+    if (proto.num_params > 0) {
+      const size_t num_bytes =  proto.num_params * sizeof(pwasm_val_t);
+      memcpy(stack.ptr, test.params, num_bytes);
     }
 
     char name_buf[512];
@@ -4681,11 +2416,11 @@ void test_aot_jit(
 
     // check stack size
     if (call_ok && !test.fails) {
-      if (stack.pos == test.results.len) {
+      if (stack.pos == proto.num_results) {
         snprintf(buf, sizeof(buf), "%s: stack size == %zu", name_buf, stack.pos);
         cli_test_pass(test_ctx, cli_test, buf);
       } else {
-        snprintf(buf, sizeof(buf), "%s: stack size: got %zu, expected %zu", name_buf, stack.pos, test.results.len);
+        snprintf(buf, sizeof(buf), "%s: stack size: got %zu, expected %zu", name_buf, stack.pos, proto.num_results);
         cli_test_fail(test_ctx, cli_test, buf);
       }
     } else if (call_ok && test.fails) {
