@@ -3068,27 +3068,6 @@ _Bool pwasm_call(
 const pwasm_env_cbs_t *pwasm_new_interpreter_get_cbs(void);
 
 /**
- * Prototype for compile function for JIT environments.
- *
- * @ingroup jit
- *
- * @param[out] dst       Destination buffer.
- * @param[in]  env       Execution environment.
- * @param[in]  mod       Module instance handle.
- * @param[in]  mod       Module.
- * @param[in]  func_ofs  Function offset in module.
- *
- * @return `true` on success or `false` on error.
- */
-typedef _Bool (pwasm_compile_func_t)(
-  pwasm_buf_t *dst,
-  pwasm_env_t *env,
-  const uint32_t mod_id,
-  const pwasm_mod_t *mod,
-  const size_t func_ofs
-);
-
-/**
  * Get AOT JIT environment callbacks.
  *
  * Populate environment variable callbacks for an ahead-of-time (AOT),
