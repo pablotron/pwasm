@@ -1603,12 +1603,14 @@ pwasm_dynasm_jit_on_compile(
       // do nothing
       break;
     case PWASM_OP_I32_TRUNC_F32_S:
+    case PWASM_OP_I32_TRUNC_SAT_F32_S:
       | movss xmm0, dword [r_stack - sizeof(pwasm_val_t)]
       | cvttss2si eax, xmm0
       | mov [r_stack - sizeof(pwasm_val_t)], eax
 
       break;
     case PWASM_OP_I32_TRUNC_F32_U:
+    case PWASM_OP_I32_TRUNC_SAT_F32_U:
       // FIXME: requires avx512
       // | vcvttss2usi eax, xmm0
 
@@ -1642,12 +1644,14 @@ pwasm_dynasm_jit_on_compile(
 
       break;
     case PWASM_OP_I32_TRUNC_F64_S:
+    case PWASM_OP_I32_TRUNC_SAT_F64_S:
       | movsd xmm0, qword [r_stack - sizeof(pwasm_val_t)]
       | cvttsd2si eax, xmm0
       | mov [r_stack - sizeof(pwasm_val_t)], eax
 
       break;
     case PWASM_OP_I32_TRUNC_F64_U:
+    case PWASM_OP_I32_TRUNC_SAT_F64_U:
       | movsd xmm0, qword [r_stack - sizeof(pwasm_val_t)]
       // FIXME: requires avx512
       // | cvttsd2usi eax, xmm0
