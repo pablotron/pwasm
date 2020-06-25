@@ -1982,4 +1982,134 @@
   )
 
   (export "i8x16_ge_u" (func $i8x16_ge_u))
+
+  ;;
+  ;; i16x8_eq
+  ;;   expect i32 0x0000ffff
+  ;;
+  (func $i16x8_eq (result i32)
+    (i32x4.extract_lane 0
+      (i16x8.eq
+        (v128.const i16x8 0 0  0 0  0 0  0 0)
+        (v128.const i16x8 0 1  0 0  0 0  0 0)))
+  )
+
+  (export "i16x8_eq" (func $i16x8_eq))
+
+  ;;
+  ;; i16x8_ne
+  ;;   expect i32 0xffff0000
+  ;;
+  (func $i16x8_ne (result i32)
+    (i32x4.extract_lane 0
+      (i16x8.ne
+        (v128.const i16x8 0 0  0 0  0 0  0 0)
+        (v128.const i16x8 0 1  0 0  0 0  0 0)))
+  )
+
+  (export "i16x8_ne" (func $i16x8_ne))
+
+  ;;
+  ;; i16x8_lt_s
+  ;;   expect i32 0xffff0000
+  ;;
+  (func $i16x8_lt_s (result i32)
+    (i32x4.extract_lane 0
+      (i16x8.lt_s
+        (v128.const i16x8 0 -1  0 0  0 0  0 0)
+        (v128.const i16x8 0  0  0 0  0 0  0 0)))
+  )
+
+  (export "i16x8_lt_s" (func $i16x8_lt_s))
+
+  ;;
+  ;; i16x8_lt_u
+  ;;   expect i32 0xffff0000
+  ;;
+  (func $i16x8_lt_u (result i32)
+    (i32x4.extract_lane 0
+      (i16x8.lt_u
+        (v128.const i16x8 0 0x0000  0 0  0 0  0 0)
+        (v128.const i16x8 0 0xFFFF  0 0  0 0  0 0)))
+  )
+
+  (export "i16x8_lt_u" (func $i16x8_lt_u))
+
+  ;;
+  ;; i16x8_gt_s
+  ;;   expect i32 0xffff0000
+  ;;
+  (func $i16x8_gt_s (result i32)
+    (i32x4.extract_lane 0
+      (i16x8.gt_s
+        (v128.const i16x8 0  0  0 0  0 0  0 0)
+        (v128.const i16x8 0 -1  0 0  0 0  0 0)))
+  )
+
+  (export "i16x8_gt_s" (func $i16x8_gt_s))
+
+  ;;
+  ;; i16x8_gt_u
+  ;;   expect i32 0xffff0000
+  ;;
+  (func $i16x8_gt_u (result i32)
+    (i32x4.extract_lane 0
+      (i16x8.gt_u
+        (v128.const i16x8 0 0xFFFF  0 0  0 0  0 0)
+        (v128.const i16x8 0 0x0000  0 0  0 0  0 0)))
+  )
+
+  (export "i16x8_gt_u" (func $i16x8_gt_u))
+
+  ;;
+  ;; i16x8_le_s
+  ;;   expect i32 0xffff0000
+  ;;
+  (func $i16x8_le_s (result i32)
+    (i32x4.extract_lane 0
+      (i16x8.le_s
+        (v128.const i16x8  0 0  0 0  0 0  0 0)
+        (v128.const i16x8 -1 0  0 0  0 0  0 0)))
+  )
+
+  (export "i16x8_le_s" (func $i16x8_le_s))
+
+  ;;
+  ;; i16x8_le_u
+  ;;   expect i32 0xffff0000
+  ;;
+  (func $i16x8_le_u (result i32)
+    (i32x4.extract_lane 0
+      (i16x8.le_u
+        (v128.const i16x8 0xFFFF 0  0 0  0 0  0 0)
+        (v128.const i16x8 0x0000 0  0 0  0 0  0 0)))
+  )
+
+  (export "i16x8_le_u" (func $i16x8_le_u))
+
+  ;;
+  ;; i16x8_ge_s
+  ;;   expect i32 0xffff0000
+  ;;
+  (func $i16x8_ge_s (result i32)
+    (i32x4.extract_lane 0
+      (i16x8.ge_s
+        (v128.const i16x8 -1 0  0 0  0 0  0 0)
+        (v128.const i16x8  0 0  0 0  0 0  0 0)))
+  )
+
+  (export "i16x8_ge_s" (func $i16x8_ge_s))
+
+  ;;
+  ;; i16x8_ge_u
+  ;;   expect i32 0xffff0000
+  ;;
+  (func $i16x8_ge_u (result i32)
+    (i32x4.extract_lane 0
+      (i16x8.ge_u
+        (v128.const i16x8 0x0000 0  0 0  0 0  0 0)
+        (v128.const i16x8 0xFFFF 0  0 0  0 0  0 0)))
+  )
+
+  (export "i16x8_ge_u" (func $i16x8_ge_u))
 )
