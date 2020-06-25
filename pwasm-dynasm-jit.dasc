@@ -1603,9 +1603,21 @@ pwasm_dynasm_jit_on_compile(
       // do nothing
       break;
     case PWASM_OP_I32_TRUNC_F32_S:
-    case PWASM_OP_I32_TRUNC_SAT_F32_S:
       | movss xmm0, dword [r_stack - sizeof(pwasm_val_t)]
       | cvttss2si eax, xmm0
+      | mov [r_stack - sizeof(pwasm_val_t)], eax
+
+      break;
+    case PWASM_OP_I32_TRUNC_SAT_F32_S:
+      | pxor xmm1, xmm1
+      | mov ebx, 0x80000000UL
+      | mov ecx, 0x7FFFFFFFUL
+      | movss xmm0, dword [r_stack - sizeof(pwasm_val_t)]
+      | ucomiss xmm0, xmm1
+      | cmova ebx, ecx
+      | cvttss2si eax, xmm0
+      | cmp eax, 0x80000000UL
+      | cmovz eax, ebx
       | mov [r_stack - sizeof(pwasm_val_t)], eax
 
       break;
@@ -1616,46 +1628,71 @@ pwasm_dynasm_jit_on_compile(
 
       // xmm0 = stack[-1].f32
       | movss xmm0, dword [r_stack - sizeof(pwasm_val_t)]
-      // is val > 0?
-      | xorps xmm6, xmm6            // xmm6 = 0
-      | comiss xmm0, xmm6           // cmp xmm0 xmm6
-      | jg ->i32_trunc_f32_u_above_zero
-      // (val < 0), clamp to 0
-      | xor eax, eax                // eax = 0
-      | jmp ->i32_trunc_f32_u_done
 
-      | ->i32_trunc_f32_u_above_zero:
-      // (val > 0), is (val < max(u32))?
-      | mov rax, 0x100000000ULL     // rax = 1<<32
-      | cvtsi2ss xmm1, rax          // xmm1 = (float) rax
-      | comiss xmm0, xmm1           // cmp xmm0 xmm1
-      | jl ->i32_trunc_f32_u_below_max_u32
-      // val > max(u32), clamp to max(u32)
-      | xor eax, eax                // eax = 0
-      | not eax                     // eax = ~eax
-      | jmp ->i32_trunc_f32_u_done
+      // xmm2 = 0x10000000
+      | mov ebx, 0x10000
+      | cvtsi2ss xmm2, ebx
+      | mulss xmm2, xmm2
 
-      |->i32_trunc_f32_u_below_max_u32:
-      // 0 < val < max(uint32_t), convert to u32
-      | cvtss2si rax, xmm0          // rax = trunc(xmm0)
+      | xor eax, eax
+      | xorps xmm1, xmm1
+      | ucomiss xmm1, xmm0
+      | ja ->i32_trunc_sat_f32_u_done
 
-      | ->i32_trunc_f32_u_done:
-      | mov [r_stack - sizeof(pwasm_val_t)], eax  // stack[-1].i32 = eax
+      | comiss xmm0, xmm2
+      | mov eax, 0xFFFFFFFF
+      | ja ->i32_trunc_sat_f32_u_done
+      | cvttss2si rax, xmm0
+
+      // stack[-1].i32 = eax
+      | ->i32_trunc_sat_f32_u_done:
+      | mov [r_stack - sizeof(pwasm_val_t)], eax
 
       break;
     case PWASM_OP_I32_TRUNC_F64_S:
-    case PWASM_OP_I32_TRUNC_SAT_F64_S:
       | movsd xmm0, qword [r_stack - sizeof(pwasm_val_t)]
       | cvttsd2si eax, xmm0
       | mov [r_stack - sizeof(pwasm_val_t)], eax
 
       break;
+    case PWASM_OP_I32_TRUNC_SAT_F64_S:
+      | pxor xmm1, xmm1
+      | mov ebx, 0x80000000UL
+      | mov ecx, 0x7FFFFFFFUL
+      | movsd xmm0, qword [r_stack - sizeof(pwasm_val_t)]
+      | ucomisd xmm0, xmm1
+      | cmova ebx, ecx
+      | cvttsd2si eax, xmm0
+      | cmp eax, 0x80000000UL
+      | cmovz eax, ebx
+      | mov [r_stack - sizeof(pwasm_val_t)], eax
+
+      break;
     case PWASM_OP_I32_TRUNC_F64_U:
     case PWASM_OP_I32_TRUNC_SAT_F64_U:
-      | movsd xmm0, qword [r_stack - sizeof(pwasm_val_t)]
       // FIXME: requires avx512
       // | cvttsd2usi eax, xmm0
-      // TODO
+
+      // xmm0 = stack[-1].f64
+      | movsd xmm0, qword [r_stack - sizeof(pwasm_val_t)]
+
+      // xmm2 = 0x10000000
+      | mov ebx, 0x10000
+      | cvtsi2sd xmm2, ebx
+      | mulsd xmm2, xmm2
+
+      | xor eax, eax
+      | xorpd xmm1, xmm1
+      | ucomisd xmm1, xmm0
+      | ja ->i32_trunc_sat_f64_u_done
+
+      | comisd xmm0, xmm2
+      | mov eax, 0xFFFFFFFF
+      | ja ->i32_trunc_sat_f64_u_done
+      | cvttsd2si rax, xmm0
+
+      // stack[-1].i32 = eax
+      | ->i32_trunc_sat_f64_u_done:
       | mov [r_stack - sizeof(pwasm_val_t)], eax
 
       break;
@@ -1667,55 +1704,77 @@ pwasm_dynasm_jit_on_compile(
       break;
     case PWASM_OP_I64_EXTEND_I32_U:
       | xor eax, eax
-      | mov [r_stack - sizeof(pwasm_val_t) + sizeof(uint16_t)], eax
+      | mov [r_stack - sizeof(pwasm_val_t) + sizeof(uint32_t)], eax
 
       break;
     case PWASM_OP_I64_TRUNC_F32_S:
-    case PWASM_OP_I64_TRUNC_SAT_F32_S:
       | movss xmm0, dword [r_stack - sizeof(pwasm_val_t)]
       | cvttss2si rax, xmm0
+      | mov [r_stack - sizeof(pwasm_val_t)], rax
+
+      break;
+    case PWASM_OP_I64_TRUNC_SAT_F32_S:
+      | xorps xmm1, xmm1 // xmm1 = 0
+      | mov rbx, 0x8000000000000000ULL // rbx = min(s64)
+      | mov rcx, 0x7FFFFFFFFFFFFFFFULL // rcx = max(s64)
+      | mov rdx, 0x8000000000000000ULL // rdx = min(s64)
+
+      | movss xmm0, dword [r_stack - sizeof(pwasm_val_t)]
+      | ucomiss xmm0, xmm1 // cmp(xmm0, xmm1)
+      | cmova rbx, rcx // rbx = max(s64) if (xmm0 > 0)
+      | cvttss2si rax, xmm0 // rax = cvt(xmm0)
+      | cmp rax, rdx // cmp(rax, rdx) (rax valid?)
+      | cmovz rax, rbx // rax = min/max if invalid
       | mov [r_stack - sizeof(pwasm_val_t)], rax
 
       break;
     case PWASM_OP_I64_TRUNC_F32_U:
     case PWASM_OP_I64_TRUNC_SAT_F32_U:
       // FIXME: requires avx512
-      // | vcvttsd2si rax, xmm0
+      // | vcvttss2si rax, xmm0
 
       // xmm0 = stack[-1].f32
       | movss xmm0, dword [r_stack - sizeof(pwasm_val_t)]
-      // is val > 0?
-      | xorps xmm6, xmm6            // xmm6 = 0
-      | comiss xmm0, xmm6           // cmp xmm0 xmm6
-      | jg ->i64_trunc_f32_u_above_zero
-      // (val < 0), clamp to 0
-      | xor rax, rax                // rax = 0
-      | jmp ->i64_trunc_f32_u_done
 
-      | ->i64_trunc_f32_u_above_zero:
-      // (val > 0), is (val < max(u64))?
-      | mov rax, 0x100000000ULL     // rax = 1<<32
-      | cvtsi2ss xmm1, rax          // xmm1 = (float) rax
-      | mulss xmm1, xmm1            //   xmm1 *= xmm1 (xmm1 = (1<<64))
-      | comiss xmm0, xmm1           // cmp xmm0 xmm1 (xmm0 > (1<<64))
-      | jl ->i64_trunc_f32_u_below_max_u32
-      // val > max(u64), clamp to max(u64)
-      | xor rax, rax                // rax = 0
-      | not rax                     // rax = ~eax
-      | jmp ->i64_trunc_f32_u_done
+      // xmm2 = 0x10000000
+      | mov ebx, 0x10000
+      | cvtsi2ss xmm2, ebx
+      | mulss xmm2, xmm2
+      | mulss xmm2, xmm2
 
-      |->i64_trunc_f32_u_below_max_u32:
-      // 0 < val < max(uint32_t), convert to u32
-      | cvtss2si rax, xmm0          // rax = trunc(xmm0)
+      | xor rax, rax
+      | xorps xmm1, xmm1
+      | ucomiss xmm1, xmm0
+      | ja ->i64_trunc_sat_f32_u_done
 
-      | ->i64_trunc_f32_u_done:
-      | mov [r_stack - sizeof(pwasm_val_t)], eax  // stack[-1].i32 = eax
+      | comiss xmm0, xmm2
+      | mov rax, 0xFFFFFFFFFFFFFFFFULL
+      | ja ->i64_trunc_sat_f32_u_done
+      | cvttss2si rax, xmm0
+
+      // stack[-1].i32 = rax
+      | ->i64_trunc_sat_f32_u_done:
+      | mov [r_stack - sizeof(pwasm_val_t)], rax
 
       break;
     case PWASM_OP_I64_TRUNC_F64_S:
-    case PWASM_OP_I64_TRUNC_SAT_F64_S:
       | movsd xmm0, qword [r_stack - sizeof(pwasm_val_t)]
       | cvttsd2si rax, xmm0
+      | mov [r_stack - sizeof(pwasm_val_t)], rax
+
+      break;
+    case PWASM_OP_I64_TRUNC_SAT_F64_S:
+      | xorps xmm1, xmm1 // xmm1 = 0
+      | mov rbx, 0x8000000000000000ULL // rbx = min(s64)
+      | mov rcx, 0x7FFFFFFFFFFFFFFFULL // rcx = max(s64)
+      | mov rdx, 0x8000000000000000ULL // rdx = min(s64)
+
+      | movsd xmm0, qword [r_stack - sizeof(pwasm_val_t)]
+      | ucomisd xmm0, xmm1 // cmp(xmm0, xmm1)
+      | cmova rbx, rcx // rbx = max(s64) if (xmm0 > 0)
+      | cvttsd2si rax, xmm0 // rax = cvt(xmm0)
+      | cmp rax, rdx // cmp(rax, rdx) (rax valid?)
+      | cmovz rax, rbx // rax = min/max if invalid
       | mov [r_stack - sizeof(pwasm_val_t)], rax
 
       break;
@@ -1726,32 +1785,26 @@ pwasm_dynasm_jit_on_compile(
 
       // xmm0 = stack[-1].f64
       | movsd xmm0, qword [r_stack - sizeof(pwasm_val_t)]
-      // is val > 0?
-      | xorps xmm6, xmm6            // xmm6 = 0
-      | comisd xmm0, xmm6           // cmp xmm0 xmm6
-      | jg ->i64_trunc_f64_u_above_zero
-      // (val < 0), clamp to 0
-      | xor rax, rax                // rax = 0
-      | jmp ->i64_trunc_f64_u_done
 
-      | ->i64_trunc_f64_u_above_zero:
-      // (val > 0), is (val < max(u64))?
-      | mov rax, 0x100000000ULL     // rax = 1<<32
-      | cvtsi2sd xmm1, rax          // xmm1 = (double) rax
-      | mulsd xmm1, xmm1            //   xmm1 *= xmm1 (xmm1 = (1<<64))
-      | comisd xmm0, xmm1           // cmp xmm0 xmm1 (xmm0 > (1<<64))
-      | jl ->i64_trunc_f64_u_below_max_u64
-      // val > max(u64), clamp to max(u64)
-      | xor rax, rax                // rax = 0
-      | not rax                     // rax = ~eax
-      | jmp ->i64_trunc_f64_u_done
+      // xmm2 = 0x1000000000000000
+      | mov ebx, 0x10000
+      | cvtsi2sd xmm2, ebx
+      | mulsd xmm2, xmm2
+      | mulsd xmm2, xmm2
 
-      |->i64_trunc_f64_u_below_max_u64:
-      // 0 < val < max(u64), convert to u64
-      | cvttsd2si rax, xmm0          // rax = trunc(xmm0)
+      | xor rax, rax
+      | xorpd xmm1, xmm1
+      | ucomisd xmm1, xmm0
+      | ja ->i64_trunc_sat_f64_u_done
 
-      | ->i64_trunc_f64_u_done:
-      | mov [r_stack - sizeof(pwasm_val_t)], rax  // stack[-1].i64 = rax
+      | comisd xmm0, xmm2
+      | mov rax, 0xFFFFFFFFFFFFFFFFULL
+      | ja ->i64_trunc_sat_f64_u_done
+      | cvttsd2si rax, xmm0
+
+      // stack[-1].i32 = rax
+      | ->i64_trunc_sat_f64_u_done:
+      | mov [r_stack - sizeof(pwasm_val_t)], rax
 
       break;
     case PWASM_OP_F32_CONVERT_I32_S:
