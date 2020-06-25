@@ -2229,4 +2229,17 @@
   )
 
   (export "i32x4_ge_s" (func $i32x4_ge_s))
+
+  ;;
+  ;; i32x4_ge_u
+  ;;   expect i64 0xffffffff00000000
+  ;;
+  (func $i32x4_ge_u (result i64)
+    (i64x2.extract_lane 0
+      (i32x4.ge_u
+        (v128.const i32x4 0x00000000 0 0 0)
+        (v128.const i32x4 0xffffffff 0 0 0)))
+  )
+
+  (export "i32x4_ge_u" (func $i32x4_ge_u))
 )
