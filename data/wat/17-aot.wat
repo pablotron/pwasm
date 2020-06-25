@@ -1176,4 +1176,234 @@
   )
 
   (export "f64_copysign" (func $f64_copysign))
+
+  ;;
+  ;; i32_wrap_i64:
+  ;;   expect i32 wrap($a)
+  ;;
+  (func $i32_wrap_i64 (param $a i64) (result i32)
+    (i32.wrap_i64 (local.get $a))
+  )
+
+  (export "i32_wrap_i64" (func $i32_wrap_i64))
+
+  ;;
+  ;; i32_trunc_f32_s:
+  ;;   expect i32 trunc($a)
+  ;;
+  (func $i32_trunc_f32_s (param $a f32) (result i32)
+    (i32.trunc_f32_s (local.get $a))
+  )
+
+  (export "i32_trunc_f32_s" (func $i32_trunc_f32_s))
+
+  ;;
+  ;; i32_trunc_f32_u:
+  ;;   expect i32 trunc($a)
+  ;;
+  (func $i32_trunc_f32_u (param $a f32) (result i32)
+    (i32.trunc_f32_u (local.get $a))
+  )
+
+  (export "i32_trunc_f32_u" (func $i32_trunc_f32_u))
+
+  ;;
+  ;; i32_trunc_f64_s:
+  ;;   expect i32 trunc($a)
+  ;;
+  (func $i32_trunc_f64_s (param $a f64) (result i32)
+    (i32.trunc_f64_s (local.get $a))
+  )
+
+  (export "i32_trunc_f64_s" (func $i32_trunc_f64_s))
+
+  ;;
+  ;; i32_trunc_f64_u:
+  ;;   expect i32 trunc($a)
+  ;;
+  (func $i32_trunc_f64_u (param $a f64) (result i32)
+    (i32.trunc_f64_u (local.get $a))
+  )
+
+  (export "i32_trunc_f64_u" (func $i32_trunc_f64_u))
+
+  ;;
+  ;; i64_trunc_f32_s:
+  ;;   expect i64 trunc($a)
+  ;;
+  (func $i64_trunc_f32_s (param $a f32) (result i64)
+    (i64.trunc_f32_s (local.get $a))
+  )
+
+  (export "i64_trunc_f32_s" (func $i64_trunc_f32_s))
+
+  ;;
+  ;; i64_trunc_f32_u:
+  ;;   expect i64 trunc($a)
+  ;;
+  (func $i64_trunc_f32_u (param $a f32) (result i64)
+    (i64.trunc_f32_u (local.get $a))
+  )
+
+  (export "i64_trunc_f32_u" (func $i64_trunc_f32_u))
+
+  ;;
+  ;; i64_trunc_f64_s:
+  ;;   expect i64 trunc($a)
+  ;;
+  (func $i64_trunc_f64_s (param $a f64) (result i64)
+    (i64.trunc_f64_s (local.get $a))
+  )
+
+  (export "i64_trunc_f64_s" (func $i64_trunc_f64_s))
+
+  ;;
+  ;; i64_trunc_f64_u:
+  ;;   expect i64 trunc($a)
+  ;;
+  (func $i64_trunc_f64_u (param $a f64) (result i64)
+    (i64.trunc_f64_u (local.get $a))
+  )
+
+  (export "i64_trunc_f64_u" (func $i64_trunc_f64_u))
+
+  ;;
+  ;; f32_convert_i32_s:
+  ;;   expect f32 convert_i32_s($a)
+  ;;
+  (func $f32_convert_i32_s (param $a i32) (result f32)
+    (f32.convert_i32_s (local.get $a))
+  )
+
+  (export "f32_convert_i32_s" (func $f32_convert_i32_s))
+
+  ;;
+  ;; f32_convert_i32_u:
+  ;;   expect f32 convert_i32_u($a)
+  ;;
+  (func $f32_convert_i32_u (param $a i32) (result f32)
+    (f32.convert_i32_u (local.get $a))
+  )
+
+  (export "f32_convert_i32_u" (func $f32_convert_i32_u))
+
+  ;;
+  ;; f32_convert_i64_s:
+  ;;   expect f32 convert_i64_s($a)
+  ;;
+  (func $f32_convert_i64_s (param $a i64) (result f32)
+    (f32.convert_i64_s (local.get $a))
+  )
+
+  (export "f32_convert_i64_s" (func $f32_convert_i64_s))
+
+  ;;
+  ;; f32_convert_i64_u:
+  ;;   expect f32 convert_i64_u($a)
+  ;;
+  (func $f32_convert_i64_u (param $a i64) (result f32)
+    (f32.convert_i64_u (local.get $a))
+  )
+
+  (export "f32_convert_i64_u" (func $f32_convert_i64_u))
+
+  ;;
+  ;; f32_demote_f64:
+  ;;   expect f32 demote_f64($a)
+  ;;
+  (func $f32_demote_f64 (param $a f64) (result f32)
+    (f32.demote_f64 (local.get $a))
+  )
+
+  (export "f32_demote_f64" (func $f32_demote_f64))
+
+  ;;
+  ;; f64_convert_i32_s:
+  ;;   expect f64 convert_i32_s($a)
+  ;;
+  (func $f64_convert_i32_s (param $a i32) (result f64)
+    (f64.convert_i32_s (local.get $a))
+  )
+
+  (export "f64_convert_i32_s" (func $f64_convert_i32_s))
+
+  ;;
+  ;; f64_convert_i32_u:
+  ;;   expect f64 convert_i32_u($a)
+  ;;
+  (func $f64_convert_i32_u (param $a i32) (result f64)
+    (f64.convert_i32_u (local.get $a))
+  )
+
+  (export "f64_convert_i32_u" (func $f64_convert_i32_u))
+
+  ;;
+  ;; f64_convert_i64_s:
+  ;;   expect f64 convert_i64_s($a)
+  ;;
+  (func $f64_convert_i64_s (param $a i64) (result f64)
+    (f64.convert_i64_s (local.get $a))
+  )
+
+  (export "f64_convert_i64_s" (func $f64_convert_i64_s))
+
+  ;;
+  ;; f64_convert_i64_u:
+  ;;   expect f64 convert_i64_u($a)
+  ;;
+  (func $f64_convert_i64_u (param $a i64) (result f64)
+    (f64.convert_i64_u (local.get $a))
+  )
+
+  (export "f64_convert_i64_u" (func $f64_convert_i64_u))
+
+  ;;
+  ;; f64_promote_f32:
+  ;;   expect f64 promote_f32($a)
+  ;;
+  (func $f64_promote_f32 (param $a f32) (result f64)
+    (f64.promote_f32 (local.get $a))
+  )
+
+  (export "f64_promote_f32" (func $f64_promote_f32))
+
+  ;;
+  ;; i32_reinterpret_f32:
+  ;;   expect i32 reinterpret($a)
+  ;;
+  (func $i32_reinterpret_f32 (param $a f32) (result i32)
+    (i32.reinterpret_f32 (local.get $a))
+  )
+
+  (export "i32_reinterpret_f32" (func $i32_reinterpret_f32))
+
+  ;;
+  ;; i64_reinterpret_f64:
+  ;;   expect i64 reinterpret($a)
+  ;;
+  (func $i64_reinterpret_f64 (param $a f64) (result i64)
+    (i64.reinterpret_f64 (local.get $a))
+  )
+
+  (export "i64_reinterpret_f64" (func $i64_reinterpret_f64))
+
+  ;;
+  ;; f32_reinterpret_i32:
+  ;;   expect f32 reinterpret($a)
+  ;;
+  (func $f32_reinterpret_i32 (param $a i32) (result f32)
+    (f32.reinterpret_i32 (local.get $a))
+  )
+
+  (export "f32_reinterpret_i32" (func $f32_reinterpret_i32))
+
+  ;;
+  ;; f64_reinterpret_i64:
+  ;;   expect f64 reinterpret($a)
+  ;;
+  (func $f64_reinterpret_i64 (param $a i64) (result f64)
+    (f64.reinterpret_i64 (local.get $a))
+  )
+
+  (export "f64_reinterpret_i64" (func $f64_reinterpret_i64))
 )

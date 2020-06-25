@@ -20,13 +20,13 @@ extern "C" {
  *
  * @ingroup jit
  *
- * @param[out] cc      Destination compiler.
+ * @param[out] jit     Destination JIT compiler.
  * @param[in]  mem_ctx Memory context.
  *
  * @return `true` on success or `false` if an error occurred.
  */
 _Bool pwasm_dynasm_jit_init(
-  pwasm_jit_compiler_t *cc, ///< destination compiler
+  pwasm_jit_t *jit, ///< destination JIT compiler
   pwasm_mem_ctx_t *mem_ctx  ///< memory context
 );
 

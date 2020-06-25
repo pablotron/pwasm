@@ -376,7 +376,7 @@ pwasm_ctrl_stack_push(
  */
 static bool
 pwasm_dynasm_jit_on_compile(
-  pwasm_jit_compiler_t * const cc,
+  pwasm_jit_t * const jit,
   pwasm_buf_t * const dst,
   pwasm_env_t *env,
   const uint32_t mod_id,
@@ -386,7 +386,7 @@ pwasm_dynasm_jit_on_compile(
   const pwasm_type_t type = mod->types[mod->funcs[func_ofs]];
   const pwasm_func_t func = mod->codes[func_ofs];
   const pwasm_inst_t * const insts = mod->insts + func.expr.ofs;
-  (void) cc;
+  (void) jit;
 
   // init control stack
   size_t ctrl_depth = 0;
@@ -1642,15 +1642,15 @@ pwasm_dynasm_jit_on_compile(
 
       break;
     case PWASM_OP_I32_TRUNC_F64_S:
-      | movss xmm0, dword [r_stack - sizeof(pwasm_val_t)]
+      | movsd xmm0, qword [r_stack - sizeof(pwasm_val_t)]
       | cvttsd2si eax, xmm0
       | mov [r_stack - sizeof(pwasm_val_t)], eax
 
       break;
     case PWASM_OP_I32_TRUNC_F64_U:
-      | movss xmm0, dword [r_stack - sizeof(pwasm_val_t)]
+      | movsd xmm0, qword [r_stack - sizeof(pwasm_val_t)]
       // FIXME: requires avx512
-      // | vcvttsd2usi eax, xmm0
+      // | cvttsd2usi eax, xmm0
       // TODO
       | mov [r_stack - sizeof(pwasm_val_t)], eax
 
@@ -1708,8 +1708,9 @@ pwasm_dynasm_jit_on_compile(
       | mov [r_stack - sizeof(pwasm_val_t)], eax  // stack[-1].i32 = eax
 
       break;
+    case PWASM_OP_I64_TRUNC_F64_S:
     case PWASM_OP_I64_TRUNC_SAT_F64_S:
-      | movss xmm0, dword [r_stack - sizeof(pwasm_val_t)]
+      | movsd xmm0, qword [r_stack - sizeof(pwasm_val_t)]
       | cvttsd2si rax, xmm0
       | mov [r_stack - sizeof(pwasm_val_t)], rax
 
@@ -1756,25 +1757,50 @@ pwasm_dynasm_jit_on_compile(
 
       break;
     case PWASM_OP_F32_CONVERT_I32_U:
+      // new
       | xor rax, rax
       | mov eax, [r_stack - sizeof(pwasm_val_t)]
-      | cvtsi2ss xmm0, rax // xmm0 = (float) rax
+      | mov rbx, rax
+      | and rbx, 0x80000000
+      | jz ->f32_convert_i32_u_no_shift
+
+      | shr eax, 1          // rax /= 2
+      | cvtsi2ss xmm0, eax  // xmm0 = (float) eax
+      | mov eax, 2          // eax = 2
+      | cvtsi2ss xmm1, eax  // xmm1 = (float) eax (xmm1 = 2.0)
+      | mulss xmm0, xmm1    // xmm0 *= xmm1 (xmm0 *= 2.0)
+      | jmp ->f32_convert_i32_u_done
+
+      | ->f32_convert_i32_u_no_shift:
+      | cvtsi2ss xmm0, eax  // xmm0 = (float) eax
+
+      | ->f32_convert_i32_u_done:
       | movss dword [r_stack - sizeof(pwasm_val_t)], xmm0
 
       break;
     case PWASM_OP_F32_CONVERT_I64_S:
       | mov rax, [r_stack - sizeof(pwasm_val_t)]
-      | cvtsi2ss xmm0, rax // xmm0 = (float) rax
+      | cvtsi2ss xmm0, rax // xmm0 = (double) rax
       | movss dword [r_stack - sizeof(pwasm_val_t)], xmm0
 
       break;
     case PWASM_OP_F32_CONVERT_I64_U:
       | mov rax, [r_stack - sizeof(pwasm_val_t)]
+      | mov rbx, 0x8000000000000000ULL
+      | and rbx, rax
+      | jz ->f32_convert_i64_u_no_shift
+
       | shr rax, 1          // rax /= 2
       | cvtsi2ss xmm0, rax  // xmm0 = (float) rax
-      | mov eax, 2          // eax = 2
-      | cvtsi2ss xmm1, eax  // xmm1 = (float) eax (xmm1 = 2.0)
+      | mov rax, 2          // eax = 2
+      | cvtsi2ss xmm1, rax  // xmm1 = (float) rax (xmm1 = 2.0)
       | mulss xmm0, xmm1    // xmm0 *= xmm1 (xmm0 *= 2.0)
+      | jmp ->f32_convert_i64_u_done
+
+      | ->f32_convert_i64_u_no_shift:
+      | cvtsi2ss xmm0, rax  // xmm0 = (float) rax
+
+      | ->f32_convert_i64_u_done:
       | movss dword [r_stack - sizeof(pwasm_val_t)], xmm0
 
       break;
@@ -1805,11 +1831,21 @@ pwasm_dynasm_jit_on_compile(
       break;
     case PWASM_OP_F64_CONVERT_I64_U:
       | mov rax, [r_stack - sizeof(pwasm_val_t)]
+      | mov rbx, 0x8000000000000000ULL
+      | and rbx, rax
+      | jz ->f64_convert_i64_u_no_shift
+
       | shr rax, 1          // rax /= 2
       | cvtsi2sd xmm0, rax  // xmm0 = (double) rax
-      | mov eax, 2          // eax = 2
-      | cvtsi2sd xmm1, eax  // xmm1 = (double) eax
-      | mulsd xmm0, xmm1    // xmm0 *= xmm1
+      | mov rax, 2          // eax = 2
+      | cvtsi2sd xmm1, rax  // xmm1 = (double) rax (xmm1 = 2.0)
+      | mulsd xmm0, xmm1    // xmm0 *= xmm1 (xmm0 *= 2.0)
+      | jmp ->f64_convert_i64_u_done
+
+      | ->f64_convert_i64_u_no_shift:
+      | cvtsi2sd xmm0, rax  // xmm0 = (double) rax
+
+      | ->f64_convert_i64_u_done:
       | movsd qword [r_stack - sizeof(pwasm_val_t)], xmm0
 
       break;
@@ -2960,13 +2996,13 @@ pwasm_dynasm_jit_on_compile(
 
 static void
 pwasm_dynasm_jit_on_fini(
-  pwasm_jit_compiler_t * const cc
+  pwasm_jit_t * const jit
 ) {
-  (void) cc;
+  (void) jit;
   // TODO: free memory
 }
 
-static const pwasm_jit_compiler_cbs_t
+static const pwasm_jit_cbs_t
 PWASM_DYNASM_JIT_CBS = {
   .compile  = pwasm_dynasm_jit_on_compile,
   .fini     = pwasm_dynasm_jit_on_fini,
@@ -2974,10 +3010,10 @@ PWASM_DYNASM_JIT_CBS = {
 
 bool
 pwasm_dynasm_jit_init(
-  pwasm_jit_compiler_t *cc, ///< destination compiler
+  pwasm_jit_t *jit, ///< destination JIT compiler
   pwasm_mem_ctx_t *mem_ctx  ///< memory context
 ) {
-  *cc = (pwasm_jit_compiler_t) {
+  *jit = (pwasm_jit_t) {
     .mem_ctx  = mem_ctx,
     .cbs      = &PWASM_DYNASM_JIT_CBS,
     .data     = NULL, // TODO
