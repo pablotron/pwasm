@@ -935,22 +935,15 @@ pwasm_dynasm_jit_on_compile(
     // TODO: load, store, mem.grow, mem.size, v128.load
     // (need call to work before i can implement these)
     case PWASM_OP_I32_CONST:
+    case PWASM_OP_F32_CONST:
       | mov dword [r_stack], in.v_i32
       | stack_inc
 
       break;
     case PWASM_OP_I64_CONST:
-      | mov qword [r_stack], in.v_i64
-      | stack_inc
-
-      break;
-    case PWASM_OP_F32_CONST:
-      | mov qword [r_stack], in.v_f32
-      | stack_inc
-
-      break;
     case PWASM_OP_F64_CONST:
-      | mov qword [r_stack], in.v_f64
+      | mov dword [r_stack], (uint32_t) in.v_i64
+      | mov dword [r_stack + sizeof(uint32_t)], (in.v_i64 >> 32)
       | stack_inc
 
       break;
@@ -1949,10 +1942,16 @@ pwasm_dynasm_jit_on_compile(
 
       break;
     case PWASM_OP_V128_CONST:
-      | mov rax, in.v_v128.i64[0]
-      | mov rbx, in.v_v128.i64[1]
-      | mov qword [r_stack], rax
-      | mov qword [r_stack + sizeof(uint64_t)], rbx
+      | mov eax, in.v_v128.i32[0]
+      | mov ebx, in.v_v128.i32[1]
+      | mov ecx, in.v_v128.i32[2]
+      | mov edx, in.v_v128.i32[3]
+
+      | mov dword [r_stack + 0 * sizeof(uint32_t)], eax
+      | mov dword [r_stack + 1 * sizeof(uint32_t)], ebx
+      | mov dword [r_stack + 2 * sizeof(uint32_t)], ecx
+      | mov dword [r_stack + 3 * sizeof(uint32_t)], edx
+
       | stack_inc
       // note: the following movd's are actually "movq", but dynasm does
       // not understand "movq xmm, r64", see the comments here:
@@ -1962,6 +1961,27 @@ pwasm_dynasm_jit_on_compile(
       // | unpcklpd xmm0, xmm1
       // | movups [r_stack], xmm0
 
+      break;
+    case PWASM_OP_V8X16_SHUFFLE:
+      // FIXME: this could be faster
+      for (size_t j = 0; j < 16; j++) {
+        const uint8_t ofs = in.v_v128.i8[j] & 0x1F;
+        const uint8_t dst = ((ofs < 16) ? 2 : 1) * sizeof(pwasm_val_t);
+        | mov al, byte [r_stack - dst + (ofs & 0xF)]
+        | mov byte [r_stack + j], al
+      }
+
+      | mov rax, qword [r_stack]
+      | mov rbx, qword [r_stack + 8]
+      | mov qword [r_stack - 2 * sizeof(pwasm_val_t)], rax
+      | mov qword [r_stack - 2 * sizeof(pwasm_val_t) + 8], rbx
+      | stack_dec
+
+      break;
+    case PWASM_OP_V8X16_SWIZZLE:
+      | v128_binop_init
+      | pshufb xmm0, xmm1
+      | v128_binop_fini
       break;
     case PWASM_OP_I8X16_SPLAT:
       // vbroadcast is avx512-only
@@ -2002,27 +2022,24 @@ pwasm_dynasm_jit_on_compile(
     case PWASM_OP_I32X4_SPLAT:
     case PWASM_OP_F32X4_SPLAT:
       // vbroadcast is avx512-only
-      | xor rax, rax    // zero rax
       | mov eax, dword [r_stack - sizeof(pwasm_val_t)]
 
-      | mov rbx, rax    // rbx = rax
-      | shl rbx, 32     // rbx <<= 32
-      | or rax, rbx     // rax |= rbx
-
-      | mov qword [r_stack - sizeof(pwasm_val_t)], rax
-      | mov qword [r_stack - sizeof(pwasm_val_t) + sizeof(uint64_t)], rax
+      | mov dword [r_stack - sizeof(pwasm_val_t) + 0 * sizeof(uint32_t)], eax
+      | mov dword [r_stack - sizeof(pwasm_val_t) + 1 * sizeof(uint32_t)], eax
+      | mov dword [r_stack - sizeof(pwasm_val_t) + 2 * sizeof(uint32_t)], eax
+      | mov dword [r_stack - sizeof(pwasm_val_t) + 3 * sizeof(uint32_t)], eax
 
       break;
     case PWASM_OP_I64X2_SPLAT:
     case PWASM_OP_F64X2_SPLAT:
       // vbroadcast is avx512-only
       | mov rax, qword [r_stack - sizeof(pwasm_val_t)]
-      | mov qword [r_stack - sizeof(pwasm_val_t) + sizeof(uint64_t)], rax
+      | mov qword [r_stack - sizeof(pwasm_val_t) + 8], rax
 
       break;
     case PWASM_OP_I8X16_EXTRACT_LANE_S:
       // pextrb, movsx/cbd
-      | movzx eax, byte [r_stack - sizeof(pwasm_val_t) + in.v_index]
+      | movsx eax, byte [r_stack - sizeof(pwasm_val_t) + in.v_index]
       | mov [r_stack - sizeof(pwasm_val_t)], eax
 
       break;
@@ -2041,7 +2058,7 @@ pwasm_dynasm_jit_on_compile(
       break;
     case PWASM_OP_I16X8_EXTRACT_LANE_S:
       // pextrw, movsx/cwd
-      | movzx eax, word [r_stack - sizeof(pwasm_val_t) + in.v_index * 2]
+      | movsx eax, word [r_stack - sizeof(pwasm_val_t) + in.v_index * 2]
       | mov [r_stack - sizeof(pwasm_val_t)], eax
 
       break;
@@ -2062,7 +2079,7 @@ pwasm_dynasm_jit_on_compile(
     case PWASM_OP_F32X4_EXTRACT_LANE:
       // pextrd
       | mov eax, dword [r_stack - sizeof(pwasm_val_t) + in.v_index * 4]
-      | mov [r_stack - sizeof(pwasm_val_t)], eax
+      | mov dword [r_stack - sizeof(pwasm_val_t)], eax
 
       break;
     case PWASM_OP_I32X4_REPLACE_LANE:
@@ -2076,7 +2093,7 @@ pwasm_dynasm_jit_on_compile(
     case PWASM_OP_F64X2_EXTRACT_LANE:
       // pextrq
       | mov rax, qword [r_stack - sizeof(pwasm_val_t) + in.v_index * 8]
-      | mov [r_stack - sizeof(pwasm_val_t)], rax
+      | mov qword [r_stack - sizeof(pwasm_val_t)], rax
 
       break;
     case PWASM_OP_I64X2_REPLACE_LANE:
