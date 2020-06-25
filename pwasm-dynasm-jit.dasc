@@ -7,6 +7,11 @@
 #include <dlfcn.h> // dlsym()
 #include <dynasm/dasm_proto.h>
 
+// internal jit data
+typedef struct {
+  uint64_t flags;
+} pwasm_dynasm_jit_t;
+
 |.arch x64
 |.actionlist actions
 |.globals lbl_
@@ -3055,8 +3060,11 @@ static void
 pwasm_dynasm_jit_on_fini(
   pwasm_jit_t * const jit
 ) {
-  (void) jit;
-  // TODO: free memory
+  if (jit->data) {
+    // free memory, zero pointer
+    pwasm_realloc(jit->mem_ctx, jit->data, 0);
+    jit->data = NULL;
+  }
 }
 
 static const pwasm_jit_cbs_t
@@ -3070,13 +3078,21 @@ pwasm_dynasm_jit_init(
   pwasm_jit_t *jit, ///< destination JIT compiler
   pwasm_mem_ctx_t *mem_ctx  ///< memory context
 ) {
+  // TODO: check cpuid here
+
+  // allocate jit data, check for error
+  pwasm_dynasm_jit_t *data = pwasm_realloc(mem_ctx, 0, sizeof(pwasm_dynasm_jit_t));
+  if (!data) {
+    pwasm_fail(mem_ctx, "pwasm_realloc() failed");
+    return false;
+  }
+
+  // populate result
   *jit = (pwasm_jit_t) {
     .mem_ctx  = mem_ctx,
     .cbs      = &PWASM_DYNASM_JIT_CBS,
-    .data     = NULL, // TODO
+    .data     = data,
   };
-
-  // TODO: check cpuid here
 
   // return success
   return true;
