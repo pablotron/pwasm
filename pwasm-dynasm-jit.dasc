@@ -2469,10 +2469,9 @@ pwasm_dynasm_jit_on_compile(
       | movupd xmm2, [r_stack - 1 * sizeof(pwasm_val_t)] // mask
 
       | pcmpeqd xmm3, xmm3    // xmm3 = 0xFF..
-      | pxor xmm3, xmm2       // xmm3 = ~mask
       | pand xmm0, xmm2       // a &= mask
-      | pand xmm1, xmm3       // b &= ~mask
-      | por xmm0, xmm1        // a = a | b
+      | pandn xmm2, xmm1      // xmm2 = (b & ~mask)
+      | por xmm0, xmm2        // a = a | b
 
       | movupd [r_stack - 3 * sizeof(pwasm_val_t)], xmm0
       | stack_decn 2
