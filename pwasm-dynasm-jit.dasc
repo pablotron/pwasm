@@ -2444,7 +2444,7 @@ pwasm_dynasm_jit_on_compile(
 
       break;
     case PWASM_OP_V128_ANDNOT:
-      | v128_binop_init
+      | v128_inv_binop_init
       | pandn xmm0, xmm1      // xmm0 &= ~xmm1
       | v128_binop_fini
 
