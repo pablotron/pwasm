@@ -2414,4 +2414,84 @@
   )
 
   (export "f64x2_ge" (func $f64x2_ge))
+
+  ;;
+  ;; v128_not
+  ;;   expect i32 0xffffffff
+  ;;
+  (func $v128_not (result i32)
+    (i32x4.extract_lane 0
+      (v8x16.shuffle 0 2 4 6  0 0 0 0  0 0 0 0  0 0 0 0
+        (v128.not (v128.const i64x2 0 0))
+        (v128.const i64x2 0 0)))
+  )
+
+  (export "v128_not" (func $v128_not))
+
+  ;;
+  ;; v128_and
+  ;;   expect i32 0x00ffff00
+  ;;
+  (func $v128_and (result i32)
+    (i32x4.extract_lane 0
+        (v128.and
+          (v128.const i32x4 0x00ffff00 0 0 0)
+          (v128.const i32x4 0xffffffff 0 0 0)))
+  )
+
+  (export "v128_and" (func $v128_and))
+
+  ;;
+  ;; v128_or
+  ;;   expect i32 0xf00ff00f
+  ;;
+  (func $v128_or (result i32)
+    (i32x4.extract_lane 0
+        (v128.or
+          (v128.const i32x4 0x000ff000 0 0 0)
+          (v128.const i32x4 0xf000000f 0 0 0)))
+  )
+
+  (export "v128_or" (func $v128_or))
+
+  ;;
+  ;; v128_xor
+  ;;   expect i32 0x0ff00ff0
+  ;;
+  (func $v128_xor (result i32)
+    (i32x4.extract_lane 0
+        (v128.xor
+          (v128.const i32x4 0x0f0ff0f0 0 0 0)
+          (v128.const i32x4 0x00ffff00 0 0 0)))
+  )
+
+  (export "v128_xor" (func $v128_xor))
+
+  ;;
+  ;; v128_andnot
+  ;;   expect i32 0x000ff000
+  ;;
+  (func $v128_andnot (result i32)
+    (i32x4.extract_lane 0
+        (v128.andnot
+          (v128.const i32x4 0x0ffffff0 0 0 0)
+          (v128.const i32x4 0xfff00fff 0 0 0)))
+  )
+
+  (export "v128_andnot" (func $v128_andnot))
+
+  ;;
+  ;; v128_bitselect
+  ;;   expect i32 0x033ffff0
+  ;;
+  (func $v128_bitselect (result i32)
+    (i32x4.extract_lane 0
+        (v128.bitselect
+          (v128.const i32x4 0x0f0ff0f0 0 0 0)
+          (v128.const i32x4 0x00ffff00 0 0 0)
+          (v128.const i32x4 0x03c000f0 0 0 0)))
+  )
+
+  (export "v128_bitselect" (func $v128_bitselect))
+
 )
