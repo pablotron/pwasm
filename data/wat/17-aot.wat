@@ -1536,4 +1536,320 @@
   )
 
   (export "i64_trunc_sat_f64_u" (func $i64_trunc_sat_f64_u))
+
+  ;;
+  ;; v128_const
+  ;;   expect i32 0x03020100
+  ;;
+  (func $v128_const (result i32)
+    (i32x4.extract_lane 0
+      (v128.const i32x4 0x03020100 0x07060504 0x0b0a0908 0x0f0e0d0c))
+  )
+
+  (export "v128_const" (func $v128_const))
+
+  ;;
+  ;; v8x16_shuffle
+  ;;   expect i32 0x0b090301
+  ;;
+  (func $v8x16_shuffle (result i32)
+    (i32x4.extract_lane 0
+      (v8x16.shuffle 1 3 17 19  0 0 0 0  0 0 0 0  0 0 0 0
+        (v128.const i32x4 0x03020100 0x07060504 0x0b0a0908 0x0f0e0d0c)
+        (v128.const i32x4 0x0b0a0908 0x0f0e0d0c 0x03020100 0x07060504)))
+  )
+
+  (export "v8x16_shuffle" (func $v8x16_shuffle))
+
+  ;;
+  ;; v8x16_swizzle
+  ;;   expect i32 0xf6f4f2f0
+  ;;
+  (func $v8x16_swizzle (result i32)
+    (i32x4.extract_lane 0
+      (v8x16.swizzle
+        (v128.const i32x4 0xf3f2f1f0 0xf7f6f5f4 0x0b0a0908 0x0f0e0d0c)
+        (v128.const i32x4 0x06040200 0x00000000 0x00000000 0x00000000)))
+  )
+
+  (export "v8x16_swizzle" (func $v8x16_swizzle))
+
+  ;;
+  ;; i8x16_splat
+  ;;   expect i32 0xF2F2F2F2
+  ;;
+  (func $i8x16_splat (result i32)
+    (i32x4.extract_lane 0
+      (i8x16.splat (i32.const 0xF2)))
+  )
+
+  (export "i8x16_splat" (func $i8x16_splat))
+
+  ;;
+  ;; i16x8_splat
+  ;;   expect i32 0xF00FF00F
+  ;;
+  (func $i16x8_splat (result i32)
+    (i32x4.extract_lane 0
+      (i16x8.splat (i32.const 0xF00F)))
+  )
+
+  (export "i16x8_splat" (func $i16x8_splat))
+
+  ;;
+  ;; i32x4_splat
+  ;;   expect i32 0x08070605
+  ;;
+  (func $i32x4_splat (result i32)
+    (i32x4.extract_lane 0
+      (i32x4.splat (i32.const 0x08070605)))
+  )
+
+  (export "i32x4_splat" (func $i32x4_splat))
+
+  ;;
+  ;; i64x2_splat
+  ;;   expect i64 0x7EDCBA9876543210
+  ;;
+  ;; NOTE: this was originally 0xFEDCBA..., but there appears to be a
+  ;; bug in WABT when extracting the high bit of i64 constants.
+  ;;
+  (func $i64x2_splat (result i64)
+    (i64x2.extract_lane 0
+      (i64x2.splat (i64.const 0x7EDCBA9876543210)))
+  )
+
+  (export "i64x2_splat" (func $i64x2_splat))
+
+  ;;
+  ;; f32x4_splat
+  ;;   expect f32 3.14159
+  ;;
+  (func $f32x4_splat (result f32)
+    (f32x4.extract_lane 1
+      (f32x4.splat (f32.const 3.14159)))
+  )
+
+  (export "f32x4_splat" (func $f32x4_splat))
+
+  ;;
+  ;; f64x2_splat
+  ;;   expect f64 3.14159
+  ;;
+  (func $f64x2_splat (result f64)
+    (f64x2.extract_lane 1
+      (f64x2.splat (f64.const 3.14159)))
+  )
+
+  (export "f64x2_splat" (func $f64x2_splat))
+
+  ;;
+  ;; i8x16_extract_lane_s
+  ;;   expect i32 -2
+  ;;
+  (func $i8x16_extract_lane_s (result i32)
+    (i8x16.extract_lane_s 3
+      (v128.const i32x4 0xfe040200 0x00000000 0x00000000 0x00000000))
+  )
+
+  (export "i8x16_extract_lane_s" (func $i8x16_extract_lane_s))
+
+  ;;
+  ;; i8x16_extract_lane_u
+  ;;   expect i32 0x7f
+  ;;
+  (func $i8x16_extract_lane_u (result i32)
+    (i8x16.extract_lane_u 4
+      (v128.const i32x4 0x00040200 0x0000007f 0x00000000 0x00000000))
+  )
+
+  (export "i8x16_extract_lane_u" (func $i8x16_extract_lane_u))
+
+  ;;
+  ;; i8x16_replace_lane
+  ;;   expect i32 0xcd
+  ;;
+  (func $i8x16_replace_lane (result i32)
+    (i8x16.extract_lane_u 4
+      (i8x16.replace_lane 4
+        (v128.const i32x4 0x00000000 0x00000000 0x00000000 0x00000000)
+        (i32.const 0xcd)))
+  )
+
+  (export "i8x16_replace_lane" (func $i8x16_replace_lane))
+
+  ;;
+  ;; i16x8_extract_lane_s
+  ;;   expect i32 -1
+  ;;
+  (func $i16x8_extract_lane_s (result i32)
+    (i16x8.extract_lane_s 0
+      (i16x8.splat (i32.const 0x0000FFFF)))
+  )
+
+  (export "i16x8_extract_lane_s" (func $i16x8_extract_lane_s))
+
+  ;;
+  ;; i16x8_extract_lane_u
+  ;;   expect i32 0xFFFF
+  ;;
+  (func $i16x8_extract_lane_u (result i32)
+    (i16x8.extract_lane_u 0
+      (i16x8.splat (i32.const 0x0000FFFF)))
+  )
+
+  (export "i16x8_extract_lane_u" (func $i16x8_extract_lane_u))
+
+  ;;
+  ;; i16x8_replace_lane
+  ;;   expect i32 0xF00F
+  ;;
+  (func $i16x8_replace_lane (result i32)
+    (i16x8.extract_lane_u 0
+      (i16x8.replace_lane 0
+        (i16x8.splat (i32.const 0x0000FFFF))
+        (i32.const 0xF00F)))
+  )
+
+  (export "i16x8_replace_lane" (func $i16x8_replace_lane))
+
+  ;;
+  ;; i32x4_extract_lane
+  ;;   expect i32 0xFEDCBA98
+  ;;
+  (func $i32x4_extract_lane (result i32)
+    (i32x4.extract_lane 1
+      (v128.const i32x4 0x00000000 0xFEDCBA98 0x00000000 0x00000000))
+  )
+
+  (export "i32x4_extract_lane" (func $i32x4_extract_lane))
+
+  ;;
+  ;; i32x4_replace_lane
+  ;;   expect i32 0xBEDCBA98
+  ;;
+  ;; NOTE: The original value was 0xFEDCBA98, but the current version of
+  ;; WABT (1.0.13) is incorrectly treating i32.const values as signed
+  ;; and compacting them.
+  ;;
+  (func $i32x4_replace_lane (result i32)
+    (i32x4.extract_lane 3
+      (i32x4.replace_lane 3
+        (i32x4.splat (i32.const 0x0))
+        (i32.const 0xBEDCBA98)))
+  )
+
+  (export "i32x4_replace_lane" (func $i32x4_replace_lane))
+
+  ;;
+  ;; i64x2_extract_lane
+  ;;   expect i64 0xBEDCBA9876543210
+  ;;
+  ;; NOTE: The original value was 0xFEDCBA9876543210, but the current
+  ;; version of WABT (1.0.13) is incorrectly treating i64.const values
+  ;; as signed and compacting them.
+  ;;
+  (func $i64x2_extract_lane (result i64)
+    (i64x2.extract_lane 1
+      (i64x2.replace_lane 1
+        (i64x2.splat (i64.const 0x0))
+        (i64.const 0xBEDCBA9876543210)))
+  )
+
+  (export "i64x2_extract_lane" (func $i64x2_extract_lane))
+
+  ;;
+  ;; i64x2_replace_lane
+  ;;   expect i64 0xBDDDFFFFDDDDFFFF
+  ;;
+  ;; NOTE: The original value was 0xDDDDFFFFDDDDFFFF, but the current
+  ;; version of WABT (1.0.13) is incorrectly treating i64.const values
+  ;; as signed and compacting them.
+  ;;
+  (func $i64x2_replace_lane (result i64)
+    (i64x2.extract_lane 0
+      (i64x2.replace_lane 0
+        (i64x2.splat (i64.const 0x0))
+        (i64.const 0xBDDDFFFFDDDDFFFF)))
+  )
+
+  (export "i64x2_replace_lane" (func $i64x2_replace_lane))
+
+  ;;
+  ;; f32x4_extract_lane
+  ;;   expect f32 3.14159
+  ;;
+  (func $f32x4_extract_lane (result f32)
+    (f32x4.extract_lane 0
+      (v128.const f32x4 3.14159 0 0 0))
+  )
+
+  (export "f32x4_extract_lane" (func $f32x4_extract_lane))
+
+  ;;
+  ;; f32x4_replace_lane
+  ;;   expect f32 -1.5
+  ;;
+  (func $f32x4_replace_lane (result f32)
+    (f32x4.extract_lane 1
+      (f32x4.replace_lane 1
+        (v128.const f32x4 0 0 0 0)
+        (f32.const -1.5)))
+  )
+
+  (export "f32x4_replace_lane" (func $f32x4_replace_lane))
+
+  ;;
+  ;; f64x2_extract_lane
+  ;;   expect f64 3.14159
+  ;;
+  (func $f64x2_extract_lane (result f64)
+    (f64x2.extract_lane 0
+      (v128.const f64x2 3.14159 0))
+  )
+
+  (export "f64x2_extract_lane" (func $f64x2_extract_lane))
+
+  ;;
+  ;; f64x2_replace_lane
+  ;;   expect f64 -3.14159
+  ;;
+  (func $f64x2_replace_lane (result f64)
+    (f64x2.extract_lane 1
+      (f64x2.replace_lane 1
+        (v128.const f64x2 0 0)
+        (f64.const -3.14159)))
+  )
+
+  (export "f64x2_replace_lane" (func $f64x2_replace_lane))
+
+  ;;
+  ;; i64_const
+  ;;   expect i64 0x0123456789abcdef
+  ;;
+  (func $i64_const (result i64)
+    (i64.const 0x0123456789abcdef)
+  )
+
+  (export "i64_const" (func $i64_const))
+
+  ;;
+  ;; f32_const
+  ;;   expect f32 3.14159
+  ;;
+  (func $f32_const (result f32)
+    (f32.const 3.14159)
+  )
+
+  (export "f32_const" (func $f32_const))
+
+  ;;
+  ;; f64_const
+  ;;   expect f64 3.14159
+  ;;
+  (func $f64_const (result f64)
+    (f64.const 3.14159)
+  )
+
+  (export "f64_const" (func $f64_const))
 )
