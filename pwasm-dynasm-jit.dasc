@@ -2297,10 +2297,12 @@ pwasm_dynasm_jit_on_compile(
       break;
     case PWASM_OP_I32X4_LT_U:
       // ref: https://stackoverflow.com/questions/16204663/sse-compare-packed-unsigned-bytes
-      | v128_inv_binop_init
+      | v128_binop_init
       | movaps xmm2, xmm0     // xmm2 = xmm1
       | pmaxud xmm0, xmm1     // xmm0 = maxu(xmm0, xmm1)
       | pcmpeqd xmm0, xmm2    // xmm0 = (xmm0 == xmm2)
+      | pcmpeqd xmm2, xmm2    // xmm2 = 0xff...
+      | pxor xmm0, xmm2       // xmm0 = ~xmm0
       | v128_binop_fini
 
       break;
@@ -2323,8 +2325,10 @@ pwasm_dynasm_jit_on_compile(
 
       break;
     case PWASM_OP_I32X4_LE_S:
-      | v128_inv_binop_init
+      | v128_binop_init
       | pcmpgtd xmm0, xmm1  // xmm1 = (xmm1 > xmm0)
+      | pcmpeqd xmm2, xmm2  // xmm2 = 0xFF...
+      | pxor xmm0, xmm2     // xmm0 = ~xmm0
       | v128_binop_fini
 
       break;
@@ -2340,15 +2344,15 @@ pwasm_dynasm_jit_on_compile(
       // ref: https://stackoverflow.com/questions/16204663/sse-compare-packed-unsigned-bytes
       | v128_binop_init
       | movaps xmm2, xmm0     // xmm2 = xmm1
-      | pmaxud xmm0, xmm1     // xmm0 = maxu(xmm0, xmm1)
+      | pmaxsd xmm0, xmm1     // xmm0 = maxu(xmm0, xmm1)
       | pcmpeqd xmm0, xmm2    // xmm0 = (xmm0 == xmm2)
       | v128_binop_fini
 
       break;
     case PWASM_OP_I32X4_GE_U:
       // ref: https://stackoverflow.com/questions/16204663/sse-compare-packed-unsigned-bytes
-      | v128_inv_binop_init
-      | movaps xmm2, xmm0     // xmm2 = xmm1
+      | v128_binop_init
+      | movapd xmm2, xmm0     // xmm2 = xmm1
       | pmaxud xmm0, xmm1     // xmm0 = maxu(xmm0, xmm1)
       | pcmpeqd xmm0, xmm2    // xmm0 = (xmm0 == xmm2)
       | v128_binop_fini
