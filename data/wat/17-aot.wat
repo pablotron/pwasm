@@ -1406,4 +1406,134 @@
   )
 
   (export "f64_reinterpret_i64" (func $f64_reinterpret_i64))
+
+  ;;
+  ;; i32_extend8_s:
+  ;;   expect i32 extend8_s($a)
+  ;;
+  (func $i32_extend8_s (param $a i32) (result i32)
+    (i32.extend8_s (local.get $a))
+  )
+
+  (export "i32_extend8_s" (func $i32_extend8_s))
+
+  ;;
+  ;; i32_extend16_s:
+  ;;   expect i32 extend16_s($a)
+  ;;
+  (func $i32_extend16_s (param $a i32) (result i32)
+    (i32.extend16_s (local.get $a))
+  )
+
+  (export "i32_extend16_s" (func $i32_extend16_s))
+
+  ;;
+  ;; i64_extend8_s:
+  ;;   expect i64 extend8_s($a)
+  ;;
+  (func $i64_extend8_s (param $a i64) (result i64)
+    (i64.extend8_s (local.get $a))
+  )
+
+  (export "i64_extend8_s" (func $i64_extend8_s))
+
+  ;;
+  ;; i64_extend16_s:
+  ;;   expect i64 extend16_s($a)
+  ;;
+  (func $i64_extend16_s (param $a i64) (result i64)
+    (i64.extend16_s (local.get $a))
+  )
+
+  (export "i64_extend16_s" (func $i64_extend16_s))
+
+  ;;
+  ;; i64_extend32_s:
+  ;;   expect i64 extend32_s($a)
+  ;;
+  (func $i64_extend32_s (param $a i64) (result i64)
+    (i64.extend32_s (local.get $a))
+  )
+
+  (export "i64_extend32_s" (func $i64_extend32_s))
+
+  ;;
+  ;; i32_trunc_sat_f32_s
+  ;;   expect i32 trunc_sat_f32_s($a)
+  ;;
+  (func $i32_trunc_sat_f32_s (param $a f32) (result i32)
+    (i32.trunc_sat_f32_s (local.get $a))
+  )
+
+  (export "i32_trunc_sat_f32_s" (func $i32_trunc_sat_f32_s))
+
+  ;;
+  ;; i32_trunc_sat_f32_u
+  ;;   expect i32 trunc_sat_f32_u($a)
+  ;;
+  (func $i32_trunc_sat_f32_u (param $a f32) (result i32)
+    (i32.trunc_sat_f32_u (local.get $a))
+  )
+
+  (export "i32_trunc_sat_f32_u" (func $i32_trunc_sat_f32_u))
+
+  ;;
+  ;; i32_trunc_sat_f64_s
+  ;;   expect i32 trunc_sat_f64_s($a)
+  ;;
+  (func $i32_trunc_sat_f64_s (param $a f64) (result i32)
+    (i32.trunc_sat_f64_s (local.get $a))
+  )
+
+  (export "i32_trunc_sat_f64_s" (func $i32_trunc_sat_f64_s))
+
+  ;;
+  ;; i32_trunc_sat_f64_u
+  ;;   expect i32 trunc_sat_f64_u($a)
+  ;;
+  (func $i32_trunc_sat_f64_u (param $a f64) (result i32)
+    (i32.trunc_sat_f64_u (local.get $a))
+  )
+
+  (export "i32_trunc_sat_f64_u" (func $i32_trunc_sat_f64_u))
+
+  ;;
+  ;; i64_trunc_sat_f32_s
+  ;;   expect i64 trunc_sat_f32_s($a)
+  ;;
+  (func $i64_trunc_sat_f32_s (param $a f32) (result i64)
+    (i64.trunc_sat_f32_s (local.get $a))
+  )
+
+  (export "i64_trunc_sat_f32_s" (func $i64_trunc_sat_f32_s))
+
+  ;;
+  ;; i64_trunc_sat_f32_u
+  ;;   expect i64 trunc_sat_f32_u($a)
+  ;;
+  (func $i64_trunc_sat_f32_u (param $a f32) (result i64)
+    (i64.trunc_sat_f32_u (local.get $a))
+  )
+
+  (export "i64_trunc_sat_f32_u" (func $i64_trunc_sat_f32_u))
+
+  ;;
+  ;; i64_trunc_sat_f64_s
+  ;;   expect i64 trunc_sat_f64_s($a)
+  ;;
+  (func $i64_trunc_sat_f64_s (param $a f64) (result i64)
+    (i64.trunc_sat_f64_s (local.get $a))
+  )
+
+  (export "i64_trunc_sat_f64_s" (func $i64_trunc_sat_f64_s))
+
+  ;;
+  ;; i64_trunc_sat_f64_u
+  ;;   expect i64 trunc_sat_f64_u($a)
+  ;;
+  (func $i64_trunc_sat_f64_u (param $a f64) (result i64)
+    (i64.trunc_sat_f64_u (local.get $a))
+  )
+
+  (export "i64_trunc_sat_f64_u" (func $i64_trunc_sat_f64_u))
 )
