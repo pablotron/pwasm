@@ -1666,6 +1666,7 @@ enum proto_id_t {
   PROTO_F64_CVT_I32,
   PROTO_F64_CVT_I64,
   PROTO_F64_CVT_F32,
+  PROTO_VOID_I32,
   PROTO_LAST,
 };
 
@@ -1895,6 +1896,11 @@ TEST_PROTOS[] = {
 
     .results = { PWASM_VALUE_TYPE_F64 },
     .num_results = 1,
+  },
+
+  [PROTO_VOID_I32] = {
+    .params = { PWASM_VALUE_TYPE_I32 },
+    .num_params = 1,
   },
 };
 
@@ -5174,6 +5180,21 @@ TEST_CALLS[] = {{
   .func     = "f32x4_convert_i32x4_u",
   .type     = PROTO_F32_VOID,
   .results = {{ .f32 = 1000000.0 }},
+}, {
+  .mod      = "aot",
+  .func     = "i32_get",
+  .type     = PROTO_I32_VOID,
+  .results = {{ .i32 = 42 }},
+}, {
+  .mod      = "aot",
+  .func     = "i32_set",
+  .type     = PROTO_VOID_I32,
+  .params = {{ .i32 = 31337 }},
+}, {
+  .mod      = "aot",
+  .func     = "i32_get",
+  .type     = PROTO_I32_VOID,
+  .results = {{ .i32 = 31337 }},
 }};
 
 static size_t params_to_s(
