@@ -2501,14 +2501,59 @@ pwasm_dynasm_jit_on_compile(
       break;
     case PWASM_OP_I8X16_ALL_TRUE:
     case PWASM_OP_I16X8_ALL_TRUE:
-      // FIXME: this looks wrong
-      | v128_unop_init
-      | pxor xmm1, xmm1       // xmm1 = 0
-      | pcmpeqd xmm2, xmm2    // xmm2 = 0xFF...
-      | pcmpeqd xmm0, xmm1    // xmm0 = (xmm0 == 0)
-      | ptest xmm0, xmm0      // (xmm0 != 0)
-      | setz al
-      | i32_unop_fini
+      | xor rax, rax
+      | xor rbx, rbx
+      | cmp byte [r_stack - sizeof(pwasm_val_t) + 0], 0
+      | setz bl
+      | or al, bl
+      | cmp byte [r_stack - sizeof(pwasm_val_t) + 1], 0
+      | setz bl
+      | or al, bl
+      | cmp byte [r_stack - sizeof(pwasm_val_t) + 2], 0
+      | setz bl
+      | or al, bl
+      | cmp byte [r_stack - sizeof(pwasm_val_t) + 3], 0
+      | setz bl
+      | or al, bl
+      | cmp byte [r_stack - sizeof(pwasm_val_t) + 4], 0
+      | setz bl
+      | or al, bl
+      | cmp byte [r_stack - sizeof(pwasm_val_t) + 5], 0
+      | setz bl
+      | or al, bl
+      | cmp byte [r_stack - sizeof(pwasm_val_t) + 6], 0
+      | setz bl
+      | or al, bl
+      | cmp byte [r_stack - sizeof(pwasm_val_t) + 7], 0
+      | setz bl
+      | or al, bl
+      | cmp byte [r_stack - sizeof(pwasm_val_t) + 8], 0
+      | setz bl
+      | or al, bl
+      | cmp byte [r_stack - sizeof(pwasm_val_t) + 9], 0
+      | setz bl
+      | or al, bl
+      | cmp byte [r_stack - sizeof(pwasm_val_t) + 10], 0
+      | setz bl
+      | or al, bl
+      | cmp byte [r_stack - sizeof(pwasm_val_t) + 11], 0
+      | setz bl
+      | or al, bl
+      | cmp byte [r_stack - sizeof(pwasm_val_t) + 12], 0
+      | setz bl
+      | or al, bl
+      | cmp byte [r_stack - sizeof(pwasm_val_t) + 13], 0
+      | setz bl
+      | or al, bl
+      | cmp byte [r_stack - sizeof(pwasm_val_t) + 14], 0
+      | setz bl
+      | or al, bl
+      | cmp byte [r_stack - sizeof(pwasm_val_t) + 15], 0
+      | setz bl
+      | or al, bl
+      | cmp al, 0
+      | setnz al
+      | mov [r_stack - sizeof(pwasm_val_t)], eax
 
       break;
     case PWASM_OP_I8X16_NARROW_I16X8_S:
@@ -2523,10 +2568,43 @@ pwasm_dynasm_jit_on_compile(
       | v128_binop_fini
 
       break;
-    // TODO: case PWASM_OP_I8X16_SHL:
-    // TODO: case PWASM_OP_I8X16_SHR_S:
-    // TODO: case PWASM_OP_I8X16_SHR_U:
+    case PWASM_OP_I8X16_SHL:
+      // FIXME: there has to be a less idiotic way to do this
+      | mov cl, byte [r_stack - 1 * sizeof(pwasm_val_t)]
 
+      for (size_t j = 0; j < 16; j++) {
+        | mov al, byte [r_stack - 2 * sizeof(pwasm_val_t) + j]
+        | shl al, cl
+        | mov byte [r_stack - 2 * sizeof(pwasm_val_t) + j], al
+      }
+
+      | stack_dec
+
+      break;
+    case PWASM_OP_I8X16_SHR_S:
+      | mov cl, byte [r_stack - 1 * sizeof(pwasm_val_t)]
+
+      for (size_t j = 0; j < 16; j++) {
+        | mov al, byte [r_stack - 2 * sizeof(pwasm_val_t) + j]
+        | sar al, cl
+        | mov byte [r_stack - 2 * sizeof(pwasm_val_t) + j], al
+      }
+
+      | stack_dec
+
+      break;
+    case PWASM_OP_I8X16_SHR_U:
+      | mov cl, byte [r_stack - 1 * sizeof(pwasm_val_t)]
+
+      for (size_t j = 0; j < 16; j++) {
+        | mov al, byte [r_stack - 2 * sizeof(pwasm_val_t) + j]
+        | shr al, cl
+        | mov byte [r_stack - 2 * sizeof(pwasm_val_t) + j], al
+      }
+
+      | stack_dec
+
+      break;
     case PWASM_OP_I8X16_ADD:
       | v128_binop_init
       | paddb xmm0, xmm1
