@@ -20,3 +20,6 @@ uint64_t i64_trunc_sat_f64_u(const double a) {
   return (uint64_t) CLAMP(a, (float) 0ULL, (float) UINT64_MAX);
 }
 
+int64_t i64_trunc_sat_f32_s(const float a) {
+  return (int64_t) CLAMP(a, (float) INT64_MIN, (float) INT64_MAX);
+}
