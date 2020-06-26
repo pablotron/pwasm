@@ -5,7 +5,13 @@
 #include "pwasm-dynasm-jit.h"
 #include "pwasm-dump.h"
 #include <dlfcn.h> // dlsym()
+
+static int32_t pwasm_dynasm_jit_get_extern(const uint8_t *, unsigned int, int);
+#define DASM_EXTERN(ctx, addr, idx, type) \
+  pwasm_dynasm_jit_get_extern(addr, idx, type)
+
 #include <dynasm/dasm_proto.h>
+#include <dynasm/dasm_x86.h>
 
 // internal jit data
 typedef struct {
@@ -17,14 +23,23 @@ typedef struct {
 |.globals lbl_
 |.externnames externs
 
-#undef DASM_EXTERN
-#define DASM_EXTERN(ctx, addr, idx, type) (\
-  (type) ? \
-  (uintptr_t) ((unsigned char*) dlsym(RTLD_DEFAULT, externs[idx]) - (addr) - 4) : \
-  (uintptr_t) dlsym(RTLD_DEFAULT, externs[idx]) \
-)
-
-#include <dynasm/dasm_x86.h>
+static int32_t
+pwasm_dynasm_jit_get_extern(
+  const uint8_t * const addr,
+  const unsigned int idx,
+  const int type
+) {
+  const void *dst_addr = dlsym(RTLD_DEFAULT, externs[idx]);
+  if (type) {
+    return ((unsigned char*) dst_addr - (addr) - sizeof(int32_t));
+  } else {
+    const union {
+      int32_t i32;
+      unsigned char *ptr;
+    } val = { .ptr = (unsigned char *) dst_addr };
+    return val.i32;
+  }
+}
 
 #ifdef PWASM_DEBUG
 #define D(fmt, ...) fprintf( \
@@ -256,6 +271,7 @@ typedef struct {
 /**
  * Call error handler.
  */
+
 static void
 fail(
   pwasm_env_t * const env,
@@ -263,6 +279,14 @@ fail(
 ) {
   D("%s", text);
   pwasm_fail(env->mem_ctx, text);
+}
+
+void
+pwasm_dynasm_jit_fail(
+  pwasm_env_t * const env,
+  const char * const text
+) {
+  fail(env, text);
 }
 
 static void
@@ -372,6 +396,9 @@ pwasm_ctrl_stack_push(
   return pwasm_vec_push(&(stack->stack), 1, &entry, NULL);
 }
 
+const char * const
+PWASM_DYNASM_JIT_ERROR_UNREACHABLE = "unreachable";
+
 /**
  * Compile the given module function and then populate the given
  * destination buffer with the length of the generated code and a
@@ -441,10 +468,14 @@ pwasm_dynasm_jit_on_compile(
     case PWASM_OP_UNREACHABLE:
       {
         // log error message (FIXME)
-        // const char * const err = "unreachable";
+        // static const char * const err = "unreachable";
         // | mov r_arg0, env
         // | mov r_arg1, err
-        // | call aword fail
+        // | call extern pwasm_dynasm_jit_fail
+
+        // second attempt (FIXME)
+        // | mov r_arg0, aword extern PWASM_DYNASM_JIT_ERROR_UNREACHABLE
+        // | call extern puts
 
         // return failure
         | jmp ->exit_failure
@@ -1624,27 +1655,33 @@ pwasm_dynasm_jit_on_compile(
       // FIXME: requires avx512
       // | vcvttss2usi eax, xmm0
 
-      // xmm0 = stack[-1].f32
-      | movss xmm0, dword [r_stack - sizeof(pwasm_val_t)]
+      {
+        const size_t done = max_label;
+        max_label += 1;
+        dasm_growpc(&dasm, max_label);
 
-      // xmm2 = 0x10000000
-      | mov ebx, 0x10000
-      | cvtsi2ss xmm2, ebx
-      | mulss xmm2, xmm2
+        // xmm0 = stack[-1].f32
+        | movss xmm0, dword [r_stack - sizeof(pwasm_val_t)]
 
-      | xor eax, eax
-      | xorps xmm1, xmm1
-      | ucomiss xmm1, xmm0
-      | ja ->i32_trunc_sat_f32_u_done
+        // xmm2 = 0x10000000
+        | mov ebx, 0x10000
+        | cvtsi2ss xmm2, ebx
+        | mulss xmm2, xmm2
 
-      | comiss xmm0, xmm2
-      | mov eax, 0xFFFFFFFF
-      | ja ->i32_trunc_sat_f32_u_done
-      | cvttss2si rax, xmm0
+        | xor eax, eax
+        | xorps xmm1, xmm1
+        | ucomiss xmm1, xmm0
+        | ja =>done
 
-      // stack[-1].i32 = eax
-      | ->i32_trunc_sat_f32_u_done:
-      | mov [r_stack - sizeof(pwasm_val_t)], eax
+        | comiss xmm0, xmm2
+        | mov eax, 0xFFFFFFFF
+        | ja =>done
+        | cvttss2si rax, xmm0
+
+        // stack[-1].i32 = eax
+        | =>done:
+        | mov [r_stack - sizeof(pwasm_val_t)], eax
+      }
 
       break;
     case PWASM_OP_I32_TRUNC_F64_S:
@@ -1671,27 +1708,33 @@ pwasm_dynasm_jit_on_compile(
       // FIXME: requires avx512
       // | cvttsd2usi eax, xmm0
 
-      // xmm0 = stack[-1].f64
-      | movsd xmm0, qword [r_stack - sizeof(pwasm_val_t)]
+      {
+        const size_t done = max_label;
+        max_label += 1;
+        dasm_growpc(&dasm, max_label);
 
-      // xmm2 = 0x10000000
-      | mov ebx, 0x10000
-      | cvtsi2sd xmm2, ebx
-      | mulsd xmm2, xmm2
+        // xmm0 = stack[-1].f64
+        | movsd xmm0, qword [r_stack - sizeof(pwasm_val_t)]
 
-      | xor eax, eax
-      | xorpd xmm1, xmm1
-      | ucomisd xmm1, xmm0
-      | ja ->i32_trunc_sat_f64_u_done
+        // xmm2 = 0x10000000
+        | mov ebx, 0x10000
+        | cvtsi2sd xmm2, ebx
+        | mulsd xmm2, xmm2
 
-      | comisd xmm0, xmm2
-      | mov eax, 0xFFFFFFFF
-      | ja ->i32_trunc_sat_f64_u_done
-      | cvttsd2si rax, xmm0
+        | xor eax, eax
+        | xorpd xmm1, xmm1
+        | ucomisd xmm1, xmm0
+        | ja =>done
 
-      // stack[-1].i32 = eax
-      | ->i32_trunc_sat_f64_u_done:
-      | mov [r_stack - sizeof(pwasm_val_t)], eax
+        | comisd xmm0, xmm2
+        | mov eax, 0xFFFFFFFF
+        | ja =>done
+        | cvttsd2si rax, xmm0
+
+        // stack[-1].i32 = eax
+        | =>done:
+        | mov [r_stack - sizeof(pwasm_val_t)], eax
+      }
 
       break;
     case PWASM_OP_I64_EXTEND_I32_S:
@@ -1712,47 +1755,72 @@ pwasm_dynasm_jit_on_compile(
 
       break;
     case PWASM_OP_I64_TRUNC_SAT_F32_S:
-      | xorps xmm1, xmm1 // xmm1 = 0
-      | mov rbx, 0x8000000000000000ULL // rbx = min(s64)
-      | mov rcx, 0x7FFFFFFFFFFFFFFFULL // rcx = max(s64)
-      | mov rdx, 0x8000000000000000ULL // rdx = min(s64)
+      {
+        const size_t done = max_label;
+        max_label += 1;
+        dasm_growpc(&dasm, max_label);
 
-      | movss xmm0, dword [r_stack - sizeof(pwasm_val_t)]
-      | ucomiss xmm0, xmm1 // cmp(xmm0, xmm1)
-      | cmova rbx, rcx // rbx = max(s64) if (xmm0 > 0)
-      | cvttss2si rax, xmm0 // rax = cvt(xmm0)
-      | cmp rax, rdx // cmp(rax, rdx) (rax valid?)
-      | cmovz rax, rbx // rax = min/max if invalid
-      | mov [r_stack - sizeof(pwasm_val_t)], rax
+        // xmm0 = stack[-1].f32
+        | movss xmm0, dword [r_stack - sizeof(pwasm_val_t)]
+
+        // rbx = 0x8000_0000_0000_0000
+        | xor rbx, rbx
+        | not rbx
+        | shr rbx, 1
+        | not rbx
+
+        | cvttss2si rax, xmm0 // rax = cvtt(xmm0)
+        | cmp rax, rbx        // rax == rbx?
+        | jne =>done          // jmp done if (rax != rbx)
+
+        | pxor xmm1, xmm1    // xmm1 = 0
+        | ucomiss xmm1, xmm0   // cmp(xmm1, xmm0)
+        | ja =>done           // jmp done if (xmm0 < 0)
+
+        // rax = 0x7FFF_FFFF_FFFF_FFFF
+        | xor rax, rax
+        | not rax
+        | shr rax, 1
+
+        // stack[-1].i32 = rax
+        | =>done:
+        | mov [r_stack - sizeof(pwasm_val_t)], rax
+      }
 
       break;
     case PWASM_OP_I64_TRUNC_F32_U:
     case PWASM_OP_I64_TRUNC_SAT_F32_U:
-      // FIXME: requires avx512
-      // | vcvttss2si rax, xmm0
+      {
+        const size_t done = max_label;
+        max_label++;
+        dasm_growpc(&dasm, max_label);
 
-      // xmm0 = stack[-1].f32
-      | movss xmm0, dword [r_stack - sizeof(pwasm_val_t)]
+        // FIXME: requires avx512
+        // | vcvttss2si rax, xmm0
 
-      // xmm2 = 0x10000000
-      | mov ebx, 0x10000
-      | cvtsi2ss xmm2, ebx
-      | mulss xmm2, xmm2
-      | mulss xmm2, xmm2
+        // xmm0 = stack[-1].f32
+        | movss xmm0, dword [r_stack - sizeof(pwasm_val_t)]
 
-      | xor rax, rax
-      | xorps xmm1, xmm1
-      | ucomiss xmm1, xmm0
-      | ja ->i64_trunc_sat_f32_u_done
+        // xmm2 = 0x10000000
+        | mov ebx, 0x10000
+        | cvtsi2ss xmm2, ebx
+        | mulss xmm2, xmm2
+        | mulss xmm2, xmm2
 
-      | comiss xmm0, xmm2
-      | mov rax, 0xFFFFFFFFFFFFFFFFULL
-      | ja ->i64_trunc_sat_f32_u_done
-      | cvttss2si rax, xmm0
+        | xor rax, rax
+        | xorps xmm1, xmm1
+        | ucomiss xmm1, xmm0
+        | ja =>done
 
-      // stack[-1].i32 = rax
-      | ->i64_trunc_sat_f32_u_done:
-      | mov [r_stack - sizeof(pwasm_val_t)], rax
+        | comiss xmm0, xmm2
+        | mov rax, 0xFFFFFFFFFFFFFFFFULL
+        | ja =>done
+        | cvttss2si rax, xmm0
+
+        // stack[-1].i32 = rax
+        | =>done:
+        | mov [r_stack - sizeof(pwasm_val_t)], rax
+      }
 
       break;
     case PWASM_OP_I64_TRUNC_F64_S:
@@ -1762,47 +1830,72 @@ pwasm_dynasm_jit_on_compile(
 
       break;
     case PWASM_OP_I64_TRUNC_SAT_F64_S:
-      | xorps xmm1, xmm1 // xmm1 = 0
-      | mov rbx, 0x8000000000000000ULL // rbx = min(s64)
-      | mov rcx, 0x7FFFFFFFFFFFFFFFULL // rcx = max(s64)
-      | mov rdx, 0x8000000000000000ULL // rdx = min(s64)
+      {
+        const size_t done = max_label;
+        max_label += 1;
+        dasm_growpc(&dasm, max_label);
 
-      | movsd xmm0, qword [r_stack - sizeof(pwasm_val_t)]
-      | ucomisd xmm0, xmm1 // cmp(xmm0, xmm1)
-      | cmova rbx, rcx // rbx = max(s64) if (xmm0 > 0)
-      | cvttsd2si rax, xmm0 // rax = cvt(xmm0)
-      | cmp rax, rdx // cmp(rax, rdx) (rax valid?)
-      | cmovz rax, rbx // rax = min/max if invalid
-      | mov [r_stack - sizeof(pwasm_val_t)], rax
+        // xmm0 = stack[-1].f32
+        | movsd xmm0, qword [r_stack - sizeof(pwasm_val_t)]
+
+        // rbx = 0x8000_0000_0000_0000
+        | xor rbx, rbx
+        | not rbx
+        | shr rbx, 1
+        | not rbx
+
+        | cvttsd2si rax, xmm0 // rax = cvtt(xmm0)
+        | cmp rax, rbx        // rax == rbx?
+        | jne =>done          // jmp done if (rax != rbx)
+
+        | pxor xmm1, xmm1    // xmm1 = 0
+        | ucomisd xmm1, xmm0   // cmp(xmm1, xmm0)
+        | ja =>done           // jmp done if (xmm0 < 0)
+
+        // rax = 0x7FFF_FFFF_FFFF_FFFF
+        | xor rax, rax
+        | not rax
+        | shr rax, 1
+
+        // stack[-1].i32 = rax
+        | =>done:
+        | mov [r_stack - sizeof(pwasm_val_t)], rax
+      }
 
       break;
     case PWASM_OP_I64_TRUNC_F64_U:
     case PWASM_OP_I64_TRUNC_SAT_F64_U:
-      // FIXME: requires avx512
-      // | vcvttsd2usi rax, xmm0
+      {
+        const size_t done = max_label;
+        max_label++;
+        dasm_growpc(&dasm, max_label);
 
-      // xmm0 = stack[-1].f64
-      | movsd xmm0, qword [r_stack - sizeof(pwasm_val_t)]
+        // FIXME: requires avx512
+        // | vcvttsd2usi rax, xmm0
 
-      // xmm2 = 0x1000000000000000
-      | mov ebx, 0x10000
-      | cvtsi2sd xmm2, ebx
-      | mulsd xmm2, xmm2
-      | mulsd xmm2, xmm2
+        // xmm0 = stack[-1].f64
+        | movsd xmm0, qword [r_stack - sizeof(pwasm_val_t)]
 
-      | xor rax, rax
-      | xorpd xmm1, xmm1
-      | ucomisd xmm1, xmm0
-      | ja ->i64_trunc_sat_f64_u_done
+        // xmm2 = 0x1000000000000000
+        | mov ebx, 0x10000
+        | cvtsi2sd xmm2, ebx
+        | mulsd xmm2, xmm2
+        | mulsd xmm2, xmm2
 
-      | comisd xmm0, xmm2
-      | mov rax, 0xFFFFFFFFFFFFFFFFULL
-      | ja ->i64_trunc_sat_f64_u_done
-      | cvttsd2si rax, xmm0
+        | xor rax, rax
+        | xorpd xmm1, xmm1
+        | ucomisd xmm1, xmm0
+        | ja =>done
 
-      // stack[-1].i32 = rax
-      | ->i64_trunc_sat_f64_u_done:
-      | mov [r_stack - sizeof(pwasm_val_t)], rax
+        | comisd xmm0, xmm2
+        | mov rax, 0xFFFFFFFFFFFFFFFFULL
+        | ja =>done
+        | cvttsd2si rax, xmm0
+
+        // stack[-1].i32 = rax
+        | =>done:
+        | mov [r_stack - sizeof(pwasm_val_t)], rax
+      }
 
       break;
     case PWASM_OP_F32_CONVERT_I32_S:
@@ -1812,25 +1905,31 @@ pwasm_dynasm_jit_on_compile(
 
       break;
     case PWASM_OP_F32_CONVERT_I32_U:
-      // new
-      | xor rax, rax
-      | mov eax, [r_stack - sizeof(pwasm_val_t)]
-      | mov rbx, rax
-      | and rbx, 0x80000000
-      | jz ->f32_convert_i32_u_no_shift
+      {
+        const size_t no_shift = max_label,
+                     done = max_label + 1;
+        max_label += 2;
+        dasm_growpc(&dasm, max_label);
 
-      | shr eax, 1          // rax /= 2
-      | cvtsi2ss xmm0, eax  // xmm0 = (float) eax
-      | mov eax, 2          // eax = 2
-      | cvtsi2ss xmm1, eax  // xmm1 = (float) eax (xmm1 = 2.0)
-      | mulss xmm0, xmm1    // xmm0 *= xmm1 (xmm0 *= 2.0)
-      | jmp ->f32_convert_i32_u_done
+        | xor rax, rax
+        | mov eax, [r_stack - sizeof(pwasm_val_t)]
+        | mov rbx, rax
+        | and rbx, 0x80000000
+        | jz =>no_shift
 
-      | ->f32_convert_i32_u_no_shift:
-      | cvtsi2ss xmm0, eax  // xmm0 = (float) eax
+        | shr eax, 1          // rax /= 2
+        | cvtsi2ss xmm0, eax  // xmm0 = (float) eax
+        | mov eax, 2          // eax = 2
+        | cvtsi2ss xmm1, eax  // xmm1 = (float) eax (xmm1 = 2.0)
+        | mulss xmm0, xmm1    // xmm0 *= xmm1 (xmm0 *= 2.0)
+        | jmp =>done
 
-      | ->f32_convert_i32_u_done:
-      | movss dword [r_stack - sizeof(pwasm_val_t)], xmm0
+        | =>no_shift:
+        | cvtsi2ss xmm0, eax  // xmm0 = (float) eax
+
+        | =>done:
+        | movss dword [r_stack - sizeof(pwasm_val_t)], xmm0
+      }
 
       break;
     case PWASM_OP_F32_CONVERT_I64_S:
@@ -1840,23 +1939,30 @@ pwasm_dynasm_jit_on_compile(
 
       break;
     case PWASM_OP_F32_CONVERT_I64_U:
-      | mov rax, [r_stack - sizeof(pwasm_val_t)]
-      | mov rbx, 0x8000000000000000ULL
-      | and rbx, rax
-      | jz ->f32_convert_i64_u_no_shift
+      {
+        const size_t no_shift = max_label,
+                     done = max_label + 1;
+        max_label += 2;
+        dasm_growpc(&dasm, max_label);
 
-      | shr rax, 1          // rax /= 2
-      | cvtsi2ss xmm0, rax  // xmm0 = (float) rax
-      | mov rax, 2          // eax = 2
-      | cvtsi2ss xmm1, rax  // xmm1 = (float) rax (xmm1 = 2.0)
-      | mulss xmm0, xmm1    // xmm0 *= xmm1 (xmm0 *= 2.0)
-      | jmp ->f32_convert_i64_u_done
+        | mov rax, [r_stack - sizeof(pwasm_val_t)]
+        | mov rbx, 0x8000000000000000ULL
+        | and rbx, rax
+        | jz =>no_shift
 
-      | ->f32_convert_i64_u_no_shift:
-      | cvtsi2ss xmm0, rax  // xmm0 = (float) rax
+        | shr rax, 1          // rax /= 2
+        | cvtsi2ss xmm0, rax  // xmm0 = (float) rax
+        | mov rax, 2          // eax = 2
+        | cvtsi2ss xmm1, rax  // xmm1 = (float) rax (xmm1 = 2.0)
+        | mulss xmm0, xmm1    // xmm0 *= xmm1 (xmm0 *= 2.0)
+        | jmp =>done
 
-      | ->f32_convert_i64_u_done:
-      | movss dword [r_stack - sizeof(pwasm_val_t)], xmm0
+        | =>no_shift:
+        | cvtsi2ss xmm0, rax  // xmm0 = (float) rax
+
+        | =>done:
+        | movss dword [r_stack - sizeof(pwasm_val_t)], xmm0
+      }
 
       break;
     case PWASM_OP_F32_DEMOTE_F64:
@@ -1885,23 +1991,30 @@ pwasm_dynasm_jit_on_compile(
 
       break;
     case PWASM_OP_F64_CONVERT_I64_U:
-      | mov rax, [r_stack - sizeof(pwasm_val_t)]
-      | mov rbx, 0x8000000000000000ULL
-      | and rbx, rax
-      | jz ->f64_convert_i64_u_no_shift
+      {
+        const size_t no_shift = max_label,
+                     done = max_label + 1;
+        max_label += 2;
+        dasm_growpc(&dasm, max_label);
 
-      | shr rax, 1          // rax /= 2
-      | cvtsi2sd xmm0, rax  // xmm0 = (double) rax
-      | mov rax, 2          // eax = 2
-      | cvtsi2sd xmm1, rax  // xmm1 = (double) rax (xmm1 = 2.0)
-      | mulsd xmm0, xmm1    // xmm0 *= xmm1 (xmm0 *= 2.0)
-      | jmp ->f64_convert_i64_u_done
+        | mov rax, [r_stack - sizeof(pwasm_val_t)]
+        | mov rbx, 0x8000000000000000ULL
+        | and rbx, rax
+        | jz =>no_shift
 
-      | ->f64_convert_i64_u_no_shift:
-      | cvtsi2sd xmm0, rax  // xmm0 = (double) rax
+        | shr rax, 1          // rax /= 2
+        | cvtsi2sd xmm0, rax  // xmm0 = (double) rax
+        | mov rax, 2          // eax = 2
+        | cvtsi2sd xmm1, rax  // xmm1 = (double) rax (xmm1 = 2.0)
+        | mulsd xmm0, xmm1    // xmm0 *= xmm1 (xmm0 *= 2.0)
+        | jmp =>done
 
-      | ->f64_convert_i64_u_done:
-      | movsd qword [r_stack - sizeof(pwasm_val_t)], xmm0
+        | =>no_shift:
+        | cvtsi2sd xmm0, rax  // xmm0 = (double) rax
+
+        | =>done:
+        | movsd qword [r_stack - sizeof(pwasm_val_t)], xmm0
+      }
 
       break;
     case PWASM_OP_F64_PROMOTE_F32:
@@ -2492,6 +2605,7 @@ pwasm_dynasm_jit_on_compile(
       break;
     case PWASM_OP_I8X16_ANY_TRUE:
     case PWASM_OP_I16X8_ANY_TRUE:
+    case PWASM_OP_I32X4_ANY_TRUE:
       | v128_unop_init
       | xor eax, eax
       | ptest xmm0, xmm0
@@ -2500,57 +2614,15 @@ pwasm_dynasm_jit_on_compile(
 
       break;
     case PWASM_OP_I8X16_ALL_TRUE:
-    case PWASM_OP_I16X8_ALL_TRUE:
       | xor rax, rax
       | xor rbx, rbx
-      | cmp byte [r_stack - sizeof(pwasm_val_t) + 0], 0
-      | setz bl
-      | or al, bl
-      | cmp byte [r_stack - sizeof(pwasm_val_t) + 1], 0
-      | setz bl
-      | or al, bl
-      | cmp byte [r_stack - sizeof(pwasm_val_t) + 2], 0
-      | setz bl
-      | or al, bl
-      | cmp byte [r_stack - sizeof(pwasm_val_t) + 3], 0
-      | setz bl
-      | or al, bl
-      | cmp byte [r_stack - sizeof(pwasm_val_t) + 4], 0
-      | setz bl
-      | or al, bl
-      | cmp byte [r_stack - sizeof(pwasm_val_t) + 5], 0
-      | setz bl
-      | or al, bl
-      | cmp byte [r_stack - sizeof(pwasm_val_t) + 6], 0
-      | setz bl
-      | or al, bl
-      | cmp byte [r_stack - sizeof(pwasm_val_t) + 7], 0
-      | setz bl
-      | or al, bl
-      | cmp byte [r_stack - sizeof(pwasm_val_t) + 8], 0
-      | setz bl
-      | or al, bl
-      | cmp byte [r_stack - sizeof(pwasm_val_t) + 9], 0
-      | setz bl
-      | or al, bl
-      | cmp byte [r_stack - sizeof(pwasm_val_t) + 10], 0
-      | setz bl
-      | or al, bl
-      | cmp byte [r_stack - sizeof(pwasm_val_t) + 11], 0
-      | setz bl
-      | or al, bl
-      | cmp byte [r_stack - sizeof(pwasm_val_t) + 12], 0
-      | setz bl
-      | or al, bl
-      | cmp byte [r_stack - sizeof(pwasm_val_t) + 13], 0
-      | setz bl
-      | or al, bl
-      | cmp byte [r_stack - sizeof(pwasm_val_t) + 14], 0
-      | setz bl
-      | or al, bl
-      | cmp byte [r_stack - sizeof(pwasm_val_t) + 15], 0
-      | setz bl
-      | or al, bl
+
+      for (size_t j = 0; j < 16; j++) {
+        | cmp byte [r_stack - sizeof(pwasm_val_t) + j], 0
+        | setz bl
+        | or al, bl
+      }
+
       | cmp al, 0
       | setnz al
       | mov [r_stack - sizeof(pwasm_val_t)], eax
@@ -2682,6 +2754,21 @@ pwasm_dynasm_jit_on_compile(
       | pcmpeqd xmm1, xmm1    // xmm1 = 0xFF...
       | psignw xmm0, xmm1     // xmm0 = -xmm0
       | v128_unop_fini
+
+      break;
+    case PWASM_OP_I16X8_ALL_TRUE:
+      | xor rax, rax
+      | xor rbx, rbx
+
+      for (size_t j = 0; j < 8; j++) {
+        | cmp word [r_stack - sizeof(pwasm_val_t) + j * sizeof(uint16_t)], 0
+        | setz bl
+        | or al, bl
+      }
+
+      | cmp al, 0
+      | setnz al
+      | mov [r_stack - sizeof(pwasm_val_t)], eax
 
       break;
     case PWASM_OP_I16X8_NARROW_I32X4_S:
@@ -2823,6 +2910,21 @@ pwasm_dynasm_jit_on_compile(
       | v128_unop_fini
 
       break;
+    case PWASM_OP_I32X4_ALL_TRUE:
+      | xor rax, rax
+      | xor rbx, rbx
+
+      for (size_t j = 0; j < 4; j++) {
+        | cmp dword [r_stack - sizeof(pwasm_val_t) + j * sizeof(uint32_t)], 0
+        | setz bl
+        | or al, bl
+      }
+
+      | cmp al, 0
+      | setnz al
+      | mov [r_stack - sizeof(pwasm_val_t)], eax
+
+      break;
     case PWASM_OP_I32X4_WIDEN_LOW_I16X8_S:
       | v128_unop_init
       | pmovsxwd xmm0, xmm0
@@ -2909,10 +3011,9 @@ pwasm_dynasm_jit_on_compile(
       break;
     case PWASM_OP_I64X2_NEG:
       | v128_unop_init
-      | pcmpeqd xmm1, xmm1    // xmm1 = 0xFF...
-      | psrlq xmm1, 1         // xmm1 >>= 1
-      | pandn xmm1, xmm0      // xmm1 = ~xmm1 & xmm0
-      | movdqu xmm0, xmm1
+      | pxor xmm1, xmm1       // xmm1 = 0
+      | psubq xmm1, xmm0      // xmm1 -= xmm0
+      | movdqu xmm0, xmm1     // xmm0 = xmm1
       | v128_unop_fini
 
       break;
@@ -2923,9 +3024,18 @@ pwasm_dynasm_jit_on_compile(
 
       break;
     case PWASM_OP_I64X2_SHR_S:
-      | v128_r32_binop_init
       // FIXME: | psraq xmm0, xmm1
-      | v128_binop_fini
+      | mov rax, qword [r_stack - 2 * sizeof(pwasm_val_t)]
+      | mov rbx, qword [r_stack - 2 * sizeof(pwasm_val_t) + sizeof(uint64_t)]
+      | mov cl, byte [r_stack - 1 * sizeof(pwasm_val_t)]
+
+      | sar rax, cl
+      | sar rbx, cl
+
+      | mov qword [r_stack - 2 * sizeof(pwasm_val_t)], rax
+      | mov qword [r_stack - 2 * sizeof(pwasm_val_t) + sizeof(uint64_t)], rbx
+
+      | stack_dec
 
       break;
     case PWASM_OP_I64X2_SHR_U:
@@ -3073,16 +3183,98 @@ pwasm_dynasm_jit_on_compile(
 
       break;
     case PWASM_OP_I32X4_TRUNC_SAT_F32X4_S:
-      | v128_unop_init
-      // FIXME: | cvtps2pi xmm0, xmm0
-      | v128_unop_fini
+      // FIXME: | cvttps2pi xmm0, xmm0 (add to dynasm?)
+
+      | pxor xmm1, xmm1 // xmm1 = 0
+      for (size_t j = 0; j < 4; j++) {
+        | mov ebx, 0x80000000UL
+        | mov ecx, 0x7FFFFFFFUL
+        | movss xmm0, dword [r_stack - sizeof(pwasm_val_t) + j * 4]
+        | ucomiss xmm0, xmm1
+        | cmova ebx, ecx
+        | cvttss2si eax, xmm0
+        | cmp eax, 0x80000000UL
+        | cmovz eax, ebx
+        | mov [r_stack - sizeof(pwasm_val_t) + j * 4], eax
+      }
 
       break;
     case PWASM_OP_I32X4_TRUNC_SAT_F32X4_U:
-      | v128_unop_init
-      // FIXME: want VCVTPS2UDQ, but that's AVX512
-      // | cvtps2pi xmm0, xmm0
+      // FIXME: want vcvtps2udq, but that's AVX512
+
+      {
+        const size_t label = max_label;
+        max_label += 4;
+        dasm_growpc(&dasm, max_label);
+
+        // xmm1 = 0
+        | xorps xmm1, xmm1
+
+        // xmm2 = 0x10000000
+        | mov ebx, 0x10000
+        | cvtsi2ss xmm2, ebx
+        | mulss xmm2, xmm2
+
+        for (size_t j = 0; j < 4; j++) {
+          const size_t done = label + j;
+
+          // xmm0 = r_stack[-1].v128.f32[j]
+          | movss xmm0, dword [r_stack - sizeof(pwasm_val_t) + j * 4]
+
+          // clamp to min(u32)
+          | xor eax, eax
+          | ucomiss xmm1, xmm0
+          | ja =>done
+
+          // clamp to max(u32)
+          | mov eax, 0xFFFFFFFF
+          | ucomiss xmm0, xmm2
+          | ja =>done
+          | cvttss2si eax, xmm0
+
+          // stack[-1].v128.i32[j] = eax
+          | =>done:
+          | mov dword [r_stack - sizeof(pwasm_val_t) + j * 4], eax
+        }
+      }
+
+      break;
+    case PWASM_OP_F32X4_CONVERT_I32X4_S:
+      | cvtpi2ps xmm0, qword [r_stack - sizeof(pwasm_val_t)]
       | v128_unop_fini
+
+      break;
+    case PWASM_OP_F32X4_CONVERT_I32X4_U:
+      // FIXME: want vcvtps2udq (avx512)
+      {
+        const size_t label = max_label;
+        max_label += 8;
+        dasm_growpc(&dasm, max_label);
+
+        for (size_t j = 0; j < 4; j++) {
+          const size_t no_shift = label + 2 * j,
+                       done = label + 2 * j + 1;
+
+          | xor rax, rax
+          | mov eax, [r_stack - sizeof(pwasm_val_t) + j * 4]
+          | mov rbx, rax
+          | and rbx, 0x80000000
+          | jz =>no_shift // jz no_shift
+
+          | shr eax, 1          // rax /= 2
+          | cvtsi2ss xmm0, eax  // xmm0 = (float) eax
+          | mov eax, 2          // eax = 2
+          | cvtsi2ss xmm1, eax  // xmm1 = (float) eax (xmm1 = 2.0)
+          | mulss xmm0, xmm1    // xmm0 *= xmm1 (xmm0 *= 2.0)
+          | jmp =>done // jmp done
+
+          | =>no_shift:
+          | cvtsi2ss xmm0, eax  // xmm0 = (float) eax
+
+          | =>done:
+          | movss dword [r_stack - sizeof(pwasm_val_t) + j * 4], xmm0
+        }
+      }
 
       break;
     default:
