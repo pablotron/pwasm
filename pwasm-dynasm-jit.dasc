@@ -469,13 +469,15 @@ pwasm_dynasm_jit_on_compile(
       {
         // log error message (FIXME)
         // static const char * const err = "unreachable";
-        // | mov r_arg0, env
-        // | mov r_arg1, err
-        // | call extern pwasm_dynasm_jit_fail
+        | mov64 r_arg0, (uintptr_t) env
+        | mov64 r_arg1, (uintptr_t) PWASM_DYNASM_JIT_ERROR_UNREACHABLE
+        | mov64 rax, (uintptr_t) pwasm_dynasm_jit_fail
+        | call rax
 
-        // second attempt (FIXME)
-        // | mov r_arg0, aword extern PWASM_DYNASM_JIT_ERROR_UNREACHABLE
-        // | call extern puts
+        // second attempt (works!!!!)
+        // | mov64 r_arg0, (uintptr_t)PWASM_DYNASM_JIT_ERROR_UNREACHABLE
+        // | mov64 rax, (uintptr_t)puts
+        // | call rax
 
         // return failure
         | jmp ->exit_failure
@@ -922,8 +924,8 @@ pwasm_dynasm_jit_on_compile(
         | mov r_arg0, r_env
         | mov r_arg1, global_id
         | mov r_arg2, r_stack
-        // | mov rax, aword pwasm_env_get_global
-        | call extern pwasm_env_get_global
+        | mov64 rax, (uintptr_t) pwasm_env_get_global
+        | call rax
         | restore_regs
 
         // check for error
@@ -942,24 +944,28 @@ pwasm_dynasm_jit_on_compile(
         D("global_id = %u", global_id);
 
         // push value to stack
-        | push qword [r_stack - sizeof(pwasm_val_t)]
-        | push qword [r_stack - sizeof(pwasm_val_t) + sizeof(uint64_t)]
+        // | push qword [r_stack - sizeof(pwasm_val_t)]
+        // | push qword [r_stack - sizeof(pwasm_val_t) + sizeof(uint64_t)]
 
         // emit call
+        | save_regs
         | mov r_arg0, r_env
         | mov r_arg1, global_id
-        | mov rax, aword pwasm_env_set_global
+        | mov r_arg2, [r_stack - sizeof(pwasm_val_t)]
+        | mov r_arg3, [r_stack - sizeof(pwasm_val_t) + sizeof(uint64_t)]
+        | mov64 rax, (uintptr_t) pwasm_env_set_global
         | call rax
+        | restore_regs
 
         // check for error
         | cmp eax, 0
         | je ->exit_failure
 
         // pop value from stack
-        | add rsp, 32
+        // | add rsp, 32
 
         // increment stack
-        | stack_inc
+        | stack_dec
       }
 
       break;
