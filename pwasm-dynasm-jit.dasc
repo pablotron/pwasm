@@ -281,13 +281,6 @@ fail(
   pwasm_fail(env->mem_ctx, text);
 }
 
-static void
-test_func(
-  const char * const text
-) {
-  D("text = %s", text);
-}
-
 //
 // control stack: used by compiler to manage control frames
 //
@@ -897,18 +890,6 @@ pwasm_dynasm_jit_on_compile(
       {
         // get global index
         const uint32_t global_id = env->cbs->get_global_index(env, mod_id, in.v_index);
-
-        union {
-          void (*ptr_func)();
-          void *ptr_void;
-        } tmp = { .ptr_func = test_func };
-
-        D("global_id = %u, test_func = 0x%p", global_id, tmp.ptr_void);
-
-        // DEBUG: emit fail
-        // FIXME: "call extern" is not documented on the dynasm page
-        // | call aword &test_func
-        // | mov rax, 0
 
         // emit call
         | save_regs
