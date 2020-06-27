@@ -15,6 +15,8 @@ tag.
 * [ ] code, test: check jit functions to make sure they are supported
       by cpuflags, and add fallback implementations
 * [ ] code, test: loop with params
+* [ ] code, test: test single `mem_id` (and remove aot-jit `mem_id`
+      hack)
 * [ ] code, test: check `call_immediate` table ID in validation layer
       instead of parser
 * [ ] code, test: check stack size at start of call
@@ -48,7 +50,8 @@ tag.
 * [ ] code: add `uint64_t pwasm_platform_get_value()` (e.g. compile-time limits, flags, etc)
 
 ## In Progress
-* [ ] code, jit: add jit (`dynasm`?)
+* [ ] code, jit: add jit (added all of dynasm JIT except `store`, `call`,
+  and `call_indirect`)
 
 ## Done
 
