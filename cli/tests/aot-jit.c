@@ -1695,6 +1695,7 @@ enum proto_id_t {
   PROTO_I64_UNOP,
   PROTO_I64_RELOP,
   PROTO_I64_BINOP,
+  PROTO_I64_CVT_I32,
   PROTO_I64_CVT_F32,
   PROTO_I64_CVT_F64,
   PROTO_F32_VOID,
@@ -1802,6 +1803,14 @@ TEST_PROTOS[] = {
   [PROTO_I64_BINOP] = {
     .params = { PWASM_VALUE_TYPE_I64, PWASM_VALUE_TYPE_I64 },
     .num_params = 2,
+
+    .results = { PWASM_VALUE_TYPE_I64 },
+    .num_results = 1,
+  },
+
+  [PROTO_I64_CVT_I32] = {
+    .params = { PWASM_VALUE_TYPE_I32 },
+    .num_params = 1,
 
     .results = { PWASM_VALUE_TYPE_I64 },
     .num_results = 1,
@@ -5322,6 +5331,78 @@ TEST_CALLS[] = {{
   .type     = PROTO_I32_UNOP,
   .params   = {{ .i32 = 15 }},
   .results  = {{ .i32 = 0xFE }},
+}, {
+  .mod      = "aot",
+  .func     = "i32x4_load16x4_s",
+  .type     = PROTO_I32_UNOP,
+  .params   = {{ .i32 = 0 }},
+  .results  = {{ .i32 = 0x0103 }},
+}, {
+  .mod      = "aot",
+  .func     = "i32x4_load16x4_s",
+  .type     = PROTO_I32_UNOP,
+  .params   = {{ .i32 = 11 }},
+  .results  = {{ .i32 = 0xFFFFFBFA }},
+}, {
+  .mod      = "aot",
+  .func     = "i32x4_load16x4_s",
+  .type     = PROTO_I32_UNOP,
+  .params   = {{ .i32 = 15 }},
+  .results  = {{ .i32 = 0xFFFFFFFE }},
+}, {
+  .mod      = "aot",
+  .func     = "i32x4_load16x4_u",
+  .type     = PROTO_I32_UNOP,
+  .params   = {{ .i32 = 0 }},
+  .results  = {{ .i32 = 0x0103 }},
+}, {
+  .mod      = "aot",
+  .func     = "i32x4_load16x4_u",
+  .type     = PROTO_I32_UNOP,
+  .params   = {{ .i32 = 11 }},
+  .results  = {{ .i32 = 0xFBFA }},
+}, {
+  .mod      = "aot",
+  .func     = "i32x4_load16x4_u",
+  .type     = PROTO_I32_UNOP,
+  .params   = {{ .i32 = 15 }},
+  .results  = {{ .i32 = 0xFFFE }},
+}, {
+  .mod      = "aot",
+  .func     = "i64x2_load32x2_s",
+  .type     = PROTO_I64_CVT_I32,
+  .params   = {{ .i32 = 0 }},
+  .results  = {{ .i64 = 0x01040103 }},
+}, {
+  .mod      = "aot",
+  .func     = "i64x2_load32x2_s",
+  .type     = PROTO_I64_CVT_I32,
+  .params   = {{ .i32 = 11 }},
+  .results  = {{ .i64 = 0xFFFFFFFFFDFCFBFA }},
+}, {
+  .mod      = "aot",
+  .func     = "i64x2_load32x2_s",
+  .type     = PROTO_I64_CVT_I32,
+  .params   = {{ .i32 = 13 }},
+  .results  = {{ .i64 = 0xFFFFFFFFFFFEFDFC }},
+}, {
+  .mod      = "aot",
+  .func     = "i64x2_load32x2_u",
+  .type     = PROTO_I64_CVT_I32,
+  .params   = {{ .i32 = 0 }},
+  .results  = {{ .i64 = 0x01040103 }},
+}, {
+  .mod      = "aot",
+  .func     = "i64x2_load32x2_u",
+  .type     = PROTO_I64_CVT_I32,
+  .params   = {{ .i32 = 11 }},
+  .results  = {{ .i64 = 0xFDFCFBFA }},
+}, {
+  .mod      = "aot",
+  .func     = "i64x2_load32x2_u",
+  .type     = PROTO_I64_CVT_I32,
+  .params   = {{ .i32 = 13 }},
+  .results  = {{ .i64 = 0xFFFEFDFC }},
 }};
 
 static size_t params_to_s(
