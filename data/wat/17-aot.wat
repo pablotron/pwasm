@@ -3713,7 +3713,7 @@
 
   (export "f32x4_convert_i32x4_u" (func $f32x4_convert_i32x4_u))
 
-  (memory $mem (data "\03\01\04\01\05\09\02\06"))
+  (memory $mem (data "\03\01\04\01\05\09\02\06\07\08\09\fa\fb\fc\fd\fe\ff\10\11\12\13\14\15\16\17\18\19\1a\1b\1c\1d\1e\1f\20\21\22\23\24\25\26\27\28\29"))
 
   ;;
   ;; i32_load:
@@ -3765,4 +3765,58 @@
   )
 
   (export "memory_grow" (func $memory_grow))
+
+  ;;
+  ;; i16x8_load8x8_s
+  ;;
+  (func $i16x8_load8x8_s (param $a i32) (result i32)
+    (i16x8.extract_lane_s 0 (i16x8.load8x8_s (local.get $a)))
+  )
+
+  (export "i16x8_load8x8_s" (func $i16x8_load8x8_s))
+
+  ;;
+  ;; i16x8_load8x8_u
+  ;;
+  (func $i16x8_load8x8_u (param $a i32) (result i32)
+    (i16x8.extract_lane_s 0 (i16x8.load8x8_s (local.get $a)))
+  )
+
+  (export "i16x8_load8x8_u" (func $i16x8_load8x8_u))
+
+  ;;
+  ;; i32x4_load16x4_s
+  ;;
+  (func $i32x4_load16x4_s (param $a i32) (result i32)
+    (i32x4.extract_lane 0 (i32x4.load16x4_s (local.get $a)))
+  )
+
+  (export "i32x4_load16x4_s" (func $i32x4_load16x4_s))
+
+  ;;
+  ;; i32x4_load16x4_u
+  ;;
+  (func $i32x4_load16x4_u (param $a i32) (result i32)
+    (i32x4.extract_lane 0 (i32x4.load16x4_s (local.get $a)))
+  )
+
+  (export "i32x4_load16x4_u" (func $i32x4_load16x4_u))
+
+  ;;
+  ;; i64x2_load32x2_s
+  ;;
+  (func $i64x2_load32x2_s (param $a i32) (result i64)
+    (i64x2.extract_lane 0 (i64x2.load32x2_s (local.get $a)))
+  )
+
+  (export "i64x2_load32x2_s" (func $i64x2_load32x2_s))
+
+  ;;
+  ;; i64x2_load32x2_u
+  ;;
+  (func $i64x2_load32x2_u (param $a i32) (result i64)
+    (i64x2.extract_lane 0 (i64x2.load32x2_s (local.get $a)))
+  )
+
+  (export "i64x2_load32x2_u" (func $i64x2_load32x2_u))
 )
