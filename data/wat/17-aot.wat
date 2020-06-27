@@ -3724,4 +3724,14 @@
   )
 
   (export "i32_load" (func $i32_load))
+
+  ;;
+  ;; i32_load_2:
+  ;;   expect i32 0x09050104
+  ;;
+  (func $i32_load_2 (result i32)
+    (i32.load (i32.const 2))
+  )
+
+  (export "i32_load_2" (func $i32_load_2))
 )
