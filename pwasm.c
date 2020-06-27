@@ -20089,7 +20089,10 @@ pwasm_aot_jit_init_segments(
     const pwasm_segment_t segment = segments[i];
 
     // get interpreter memory ID
-    const uint32_t mem_id = u32s[frame.mod->mems.ofs + segment.mem_id];
+    // FIXME
+    const uint32_t real_mem_id = u32s[frame.mod->mems.ofs + segment.mem_id];
+    const uint32_t mem_id = 1;
+    D("frame.mod->mems.ofs = %zu, segment.mem_id = %u, real_mem_id = %u", frame.mod->mems.ofs, segment.mem_id, real_mem_id);
 
     // get memory, check for error
     pwasm_env_mem_t * const mem = pwasm_aot_jit_get_mem(frame.env, mem_id);
