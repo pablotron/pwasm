@@ -3734,4 +3734,35 @@
   )
 
   (export "i32_load_2" (func $i32_load_2))
+
+  ;;
+  ;; i32_store:
+  ;;   expect i32 0x04030201
+  ;;
+  (func $i32_store (result i32)
+    (i32.store (i32.const 0) (i32.const 0x04030201))
+    (i32.load (i32.const 0))
+  )
+
+  (export "i32_store" (func $i32_store))
+
+  ;;
+  ;; memory_size:
+  ;;   expect i32 1
+  ;;
+  (func $memory_size (result i32)
+    (memory.size)
+  )
+
+  (export "memory_size" (func $memory_size))
+
+  ;;
+  ;; memory_grow:
+  ;;   expect i32 1
+  ;;
+  (func $memory_grow (result i32)
+    (memory.grow (i32.const 1))
+  )
+
+  (export "memory_grow" (func $memory_grow))
 )
