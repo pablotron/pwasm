@@ -256,6 +256,24 @@ typedef struct {
   | stack_dec
 |.endmacro
 
+|.macro mem_load
+  | save_regs
+  | mov r_arg0, r_env // environment
+  | mov r_arg1, 1 // mem_id (FIXME)
+  | mov r_arg2, in.op
+  | mov r_arg3d, in.v_mem.offset
+  | mov r_arg4d, in.v_mem.align
+  | mov r_arg5, r_stack
+  | sub r_arg5, sizeof(pwasm_val_t)
+  | mov64 rax, (uintptr_t) pwasm_dynasm_jit_mem_load
+  | call rax
+  | restore_regs
+
+  // check for error
+  | cmp eax, 0
+  | je ->exit_failure
+|.endmacro
+
 /**
  * Call error handler.
  */
@@ -3327,25 +3345,7 @@ pwasm_dynasm_jit_on_compile(
     case PWASM_OP_I64_LOAD32_S:
     case PWASM_OP_I64_LOAD32_U:
     case PWASM_OP_V128_LOAD:
-      {
-        // emit call
-        | save_regs
-        | mov r_arg0, r_env // environment
-        | mov r_arg1, 1 // mem_id (FIXME)
-        | mov r_arg2, in.op
-        | mov r_arg3d, in.v_mem.offset
-        | mov r_arg4d, in.v_mem.align
-        | mov r_arg5, r_stack
-        | sub r_arg5, sizeof(pwasm_val_t)
-        | mov64 rax, (uintptr_t) pwasm_dynasm_jit_mem_load
-        | call rax
-        | restore_regs
-
-        // check for error
-        | cmp eax, 0
-        | je ->exit_failure
-      }
-
+      | mem_load
       break;
     case PWASM_OP_I32_STORE:
     case PWASM_OP_I64_STORE:
@@ -3414,22 +3414,7 @@ pwasm_dynasm_jit_on_compile(
 
       break;
     case PWASM_OP_V8X16_LOAD_SPLAT:
-      // emit call
-      | save_regs
-      | mov r_arg0, r_env // environment
-      | mov r_arg1, 1 // mem_id (FIXME)
-      | mov r_arg2, in.op
-      | mov r_arg3d, in.v_mem.offset
-      | mov r_arg4d, in.v_mem.align
-      | mov r_arg5, r_stack
-      | sub r_arg5, sizeof(pwasm_val_t)
-      | mov64 rax, (uintptr_t) pwasm_dynasm_jit_mem_load
-      | call rax
-      | restore_regs
-
-      // check for error
-      | cmp eax, 0
-      | je ->exit_failure
+      | mem_load
 
       // splat
       | xor eax, eax
@@ -3446,23 +3431,7 @@ pwasm_dynasm_jit_on_compile(
 
       break;
     case PWASM_OP_V16X8_LOAD_SPLAT:
-      // emit call
-      | save_regs
-      | mov r_arg0, r_env // environment
-      | mov r_arg1, 1 // mem_id (FIXME)
-      | mov r_arg2, in.op
-      | mov r_arg3d, in.v_mem.offset
-      | mov r_arg4d, in.v_mem.align
-      | mov r_arg5, r_stack
-      | sub r_arg5, sizeof(pwasm_val_t)
-      | mov64 rax, (uintptr_t) pwasm_dynasm_jit_mem_load
-      | call rax
-      | restore_regs
-
-      // check for error
-      | cmp eax, 0
-      | je ->exit_failure
-
+      | mem_load
       // splat
       | xor eax, eax
       | mov ax, word [r_stack]
@@ -3475,23 +3444,7 @@ pwasm_dynasm_jit_on_compile(
 
       break;
     case PWASM_OP_V32X4_LOAD_SPLAT:
-      // emit call
-      | save_regs
-      | mov r_arg0, r_env // environment
-      | mov r_arg1, 1 // mem_id (FIXME)
-      | mov r_arg2, in.op
-      | mov r_arg3d, in.v_mem.offset
-      | mov r_arg4d, in.v_mem.align
-      | mov r_arg5, r_stack
-      | sub r_arg5, sizeof(pwasm_val_t)
-      | mov64 rax, (uintptr_t) pwasm_dynasm_jit_mem_load
-      | call rax
-      | restore_regs
-
-      // check for error
-      | cmp eax, 0
-      | je ->exit_failure
-
+      | mem_load
       // splat
       | mov eax, dword [r_stack]
       for (size_t j = 0; j < 4; j++) {
@@ -3500,26 +3453,45 @@ pwasm_dynasm_jit_on_compile(
 
       break;
     case PWASM_OP_V64X2_LOAD_SPLAT:
-      // emit call
-      | save_regs
-      | mov r_arg0, r_env // environment
-      | mov r_arg1, 1 // mem_id (FIXME)
-      | mov r_arg2, in.op
-      | mov r_arg3d, in.v_mem.offset
-      | mov r_arg4d, in.v_mem.align
-      | mov r_arg5, r_stack
-      | sub r_arg5, sizeof(pwasm_val_t)
-      | mov64 rax, (uintptr_t) pwasm_dynasm_jit_mem_load
-      | call rax
-      | restore_regs
-
-      // check for error
-      | cmp eax, 0
-      | je ->exit_failure
-
-      // splat
+      | mem_load
       | mov rax, qword [r_stack]
       | mov [r_stack + sizeof(uint64_t)], rax
+
+      break;
+    case PWASM_OP_I16X8_LOAD8X8_S:
+      | mem_load
+      | pmovsxbw xmm0, qword [r_stack - sizeof(pwasm_val_t)]
+      | movdqu [r_stack - sizeof(pwasm_val_t)], xmm0
+
+      break;
+    case PWASM_OP_I16X8_LOAD8X8_U:
+      | mem_load
+      | pmovzxbw xmm0, qword [r_stack - sizeof(pwasm_val_t)]
+      | movdqu [r_stack - sizeof(pwasm_val_t)], xmm0
+
+      break;
+    case PWASM_OP_I32X4_LOAD16X4_S:
+      | mem_load
+      | pmovsxwd xmm0, qword [r_stack - sizeof(pwasm_val_t)]
+      | movdqu [r_stack - sizeof(pwasm_val_t)], xmm0
+
+      break;
+    case PWASM_OP_I32X4_LOAD16X4_U:
+      | mem_load
+      | pmovzxwd xmm0, qword [r_stack - sizeof(pwasm_val_t)]
+      | movdqu [r_stack - sizeof(pwasm_val_t)], xmm0
+
+      break;
+    case PWASM_OP_I64X2_LOAD32X2_S:
+      | mem_load
+      | pmovsxdq xmm0, qword [r_stack - sizeof(pwasm_val_t)]
+      | movdqu [r_stack - sizeof(pwasm_val_t)], xmm0
+
+      break;
+    case PWASM_OP_I64X2_LOAD32X2_U:
+      | mem_load
+      | pmovzxdq xmm0, qword [r_stack - sizeof(pwasm_val_t)]
+      | movdqu [r_stack - sizeof(pwasm_val_t)], xmm0
 
       break;
     default:
