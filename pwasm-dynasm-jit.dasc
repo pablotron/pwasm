@@ -2221,8 +2221,7 @@ pwasm_dynasm_jit_on_compile(
       break;
     case PWASM_OP_I8X16_EXTRACT_LANE_U:
       // pextrb, movzx/cbd
-      | xor eax, eax
-      | mov al, byte [r_stack - sizeof(pwasm_val_t) + in.v_index]
+      | movzx eax, byte [r_stack - sizeof(pwasm_val_t) + in.v_index]
       | mov [r_stack - sizeof(pwasm_val_t)], eax
 
       break;
@@ -3428,7 +3427,7 @@ pwasm_dynasm_jit_on_compile(
 
       // splat
       | xor eax, eax
-      | mov al, byte [r_stack]
+      | mov al, byte [r_stack - sizeof(pwasm_val_t)]
       | mov bl, al
       | shl bx, 8
       | or ax, bx
@@ -3436,7 +3435,7 @@ pwasm_dynasm_jit_on_compile(
       | shl ebx, 16
       | or eax, ebx
       for (size_t j = 0; j < 4; j++) {
-        | mov dword [r_stack + j], eax
+        | mov dword [r_stack - sizeof(pwasm_val_t) + j], eax
       }
 
       break;
@@ -3444,28 +3443,28 @@ pwasm_dynasm_jit_on_compile(
       | mem_load
       // splat
       | xor eax, eax
-      | mov ax, word [r_stack]
+      | mov ax, word [r_stack - sizeof(pwasm_val_t)]
       | mov bx, ax
       | shl ebx, 16
       | or eax, ebx
       for (size_t j = 0; j < 4; j++) {
-        | mov dword [r_stack + j], eax
+        | mov dword [r_stack - sizeof(pwasm_val_t) + j], eax
       }
 
       break;
     case PWASM_OP_V32X4_LOAD_SPLAT:
       | mem_load
       // splat
-      | mov eax, dword [r_stack]
+      | mov eax, dword [r_stack - sizeof(pwasm_val_t)]
       for (size_t j = 0; j < 4; j++) {
-        | mov dword [r_stack + j], eax
+        | mov dword [r_stack - sizeof(pwasm_val_t) + j], eax
       }
 
       break;
     case PWASM_OP_V64X2_LOAD_SPLAT:
       | mem_load
-      | mov rax, qword [r_stack]
-      | mov [r_stack + sizeof(uint64_t)], rax
+      | mov rax, qword [r_stack - sizeof(pwasm_val_t)]
+      | mov [r_stack - sizeof(pwasm_val_t) + sizeof(uint64_t)], rax
 
       break;
     case PWASM_OP_I16X8_LOAD8X8_S:
