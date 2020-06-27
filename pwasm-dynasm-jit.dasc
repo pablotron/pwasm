@@ -913,11 +913,6 @@ pwasm_dynasm_jit_on_compile(
       {
         // get global index
         const uint32_t global_id = env->cbs->get_global_index(env, mod_id, in.v_index);
-        D("global_id = %u", global_id);
-
-        // push value to stack
-        // | push qword [r_stack - sizeof(pwasm_val_t)]
-        // | push qword [r_stack - sizeof(pwasm_val_t) + sizeof(uint64_t)]
 
         // emit call
         | save_regs
@@ -933,10 +928,7 @@ pwasm_dynasm_jit_on_compile(
         | cmp eax, 0
         | je ->exit_failure
 
-        // pop value from stack
-        // | add rsp, 32
-
-        // increment stack
+        // decriment stack
         | stack_dec
       }
 
