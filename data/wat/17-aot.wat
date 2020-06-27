@@ -3739,8 +3739,8 @@
   ;; i32_store:
   ;;   expect i32 0x04030201
   ;;
-  (func $i32_store (result i32)
-    (i32.store (i32.const 0) (i32.const 0x04030201))
+  (func $i32_store (param $a i32) (result i32)
+    (i32.store (i32.const 0) (local.get $a))
     (i32.load (i32.const 0))
   )
 
@@ -3779,7 +3779,7 @@
   ;; i16x8_load8x8_u
   ;;
   (func $i16x8_load8x8_u (param $a i32) (result i32)
-    (i16x8.extract_lane_s 0 (i16x8.load8x8_s (local.get $a)))
+    (i16x8.extract_lane_u 0 (i16x8.load8x8_u (local.get $a)))
   )
 
   (export "i16x8_load8x8_u" (func $i16x8_load8x8_u))
@@ -3797,7 +3797,7 @@
   ;; i32x4_load16x4_u
   ;;
   (func $i32x4_load16x4_u (param $a i32) (result i32)
-    (i32x4.extract_lane 0 (i32x4.load16x4_s (local.get $a)))
+    (i32x4.extract_lane 0 (i32x4.load16x4_u (local.get $a)))
   )
 
   (export "i32x4_load16x4_u" (func $i32x4_load16x4_u))
@@ -3815,7 +3815,7 @@
   ;; i64x2_load32x2_u
   ;;
   (func $i64x2_load32x2_u (param $a i32) (result i64)
-    (i64x2.extract_lane 0 (i64x2.load32x2_s (local.get $a)))
+    (i64x2.extract_lane 0 (i64x2.load32x2_u (local.get $a)))
   )
 
   (export "i64x2_load32x2_u" (func $i64x2_load32x2_u))
