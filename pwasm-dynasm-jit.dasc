@@ -256,18 +256,28 @@ typedef struct {
   | stack_dec
 |.endmacro
 
+// load value from memory and place it at the top of the stack.
+// this macro assumes the top of the stack contains an i32 offset
+// operand, which is popped and replaced with the loaded value.
+//
+// this macro calls pwasm_dynasm_jit_mem_load(), which is a convenience
+// shim around pwasm_env_mem_load().
 |.macro mem_load
-  | save_regs
-  | mov r_arg0, r_env // environment
-  | mov r_arg1, 1 // mem_id (FIXME)
-  | mov r_arg2, in.op
-  | mov r_arg3d, in.v_mem.offset
-  | mov r_arg4d, in.v_mem.align
-  | mov r_arg5, r_stack
-  | sub r_arg5, sizeof(pwasm_val_t)
+  | save_regs                         // push regs
+
+  // populate parameters (sysv x86-64 abi)
+  | mov r_arg0, r_env                 // env ptr
+  | mov r_arg1, 1                     // mem_id (FIXME, hard-coded)
+  | mov r_arg2, in.op                 // opcode
+  | mov r_arg3d, in.v_mem.offset      // offset immediate
+  | mov r_arg4d, in.v_mem.align       // align immediate
+  | mov r_arg5, r_stack               // stack ptr
+  | sub r_arg5, sizeof(pwasm_val_t)   // point at tail of stack
+
+  // call pwasm_dynasm_jit_mem_load
   | mov64 rax, (uintptr_t) pwasm_dynasm_jit_mem_load
-  | call rax
-  | restore_regs
+  | call rax                          // call
+  | restore_regs                      // restore regs
 
   // check for error
   | cmp eax, 0
