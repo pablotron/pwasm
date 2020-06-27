@@ -3413,6 +3413,115 @@ pwasm_dynasm_jit_on_compile(
       | je ->exit_failure
 
       break;
+    case PWASM_OP_V8X16_LOAD_SPLAT:
+      // emit call
+      | save_regs
+      | mov r_arg0, r_env // environment
+      | mov r_arg1, 1 // mem_id (FIXME)
+      | mov r_arg2, in.op
+      | mov r_arg3d, in.v_mem.offset
+      | mov r_arg4d, in.v_mem.align
+      | mov r_arg5, r_stack
+      | sub r_arg5, sizeof(pwasm_val_t)
+      | mov64 rax, (uintptr_t) pwasm_dynasm_jit_mem_load
+      | call rax
+      | restore_regs
+
+      // check for error
+      | cmp eax, 0
+      | je ->exit_failure
+
+      // splat
+      | xor eax, eax
+      | mov al, byte [r_stack]
+      | mov bl, al
+      | shl bx, 8
+      | or ax, bx
+      | mov bx, ax
+      | shl ebx, 16
+      | or eax, ebx
+      for (size_t j = 0; j < 4; j++) {
+        | mov dword [r_stack + j], eax
+      }
+
+      break;
+    case PWASM_OP_V16X8_LOAD_SPLAT:
+      // emit call
+      | save_regs
+      | mov r_arg0, r_env // environment
+      | mov r_arg1, 1 // mem_id (FIXME)
+      | mov r_arg2, in.op
+      | mov r_arg3d, in.v_mem.offset
+      | mov r_arg4d, in.v_mem.align
+      | mov r_arg5, r_stack
+      | sub r_arg5, sizeof(pwasm_val_t)
+      | mov64 rax, (uintptr_t) pwasm_dynasm_jit_mem_load
+      | call rax
+      | restore_regs
+
+      // check for error
+      | cmp eax, 0
+      | je ->exit_failure
+
+      // splat
+      | xor eax, eax
+      | mov ax, word [r_stack]
+      | mov bx, ax
+      | shl ebx, 16
+      | or eax, ebx
+      for (size_t j = 0; j < 4; j++) {
+        | mov dword [r_stack + j], eax
+      }
+
+      break;
+    case PWASM_OP_V32X4_LOAD_SPLAT:
+      // emit call
+      | save_regs
+      | mov r_arg0, r_env // environment
+      | mov r_arg1, 1 // mem_id (FIXME)
+      | mov r_arg2, in.op
+      | mov r_arg3d, in.v_mem.offset
+      | mov r_arg4d, in.v_mem.align
+      | mov r_arg5, r_stack
+      | sub r_arg5, sizeof(pwasm_val_t)
+      | mov64 rax, (uintptr_t) pwasm_dynasm_jit_mem_load
+      | call rax
+      | restore_regs
+
+      // check for error
+      | cmp eax, 0
+      | je ->exit_failure
+
+      // splat
+      | mov eax, dword [r_stack]
+      for (size_t j = 0; j < 4; j++) {
+        | mov dword [r_stack + j], eax
+      }
+
+      break;
+    case PWASM_OP_V64X2_LOAD_SPLAT:
+      // emit call
+      | save_regs
+      | mov r_arg0, r_env // environment
+      | mov r_arg1, 1 // mem_id (FIXME)
+      | mov r_arg2, in.op
+      | mov r_arg3d, in.v_mem.offset
+      | mov r_arg4d, in.v_mem.align
+      | mov r_arg5, r_stack
+      | sub r_arg5, sizeof(pwasm_val_t)
+      | mov64 rax, (uintptr_t) pwasm_dynasm_jit_mem_load
+      | call rax
+      | restore_regs
+
+      // check for error
+      | cmp eax, 0
+      | je ->exit_failure
+
+      // splat
+      | mov rax, qword [r_stack]
+      | mov [r_stack + sizeof(uint64_t)], rax
+
+      break;
     default:
       {
         // log error
