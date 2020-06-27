@@ -292,7 +292,7 @@ pwasm_dynasm_jit_get_extern(
  * This is a shim function to make calling pwasm_env_mem_load() from
  * DynASM slightly easier.
  */
-static _Bool
+static bool
 pwasm_dynasm_jit_mem_load(
   pwasm_env_t * const env,
   const uint32_t mem_id,
@@ -314,6 +314,36 @@ pwasm_dynasm_jit_mem_load(
   };
 
   return pwasm_env_mem_load(env, mem_id, in, ofs, val);
+}
+
+/**
+ * Store value to memory.
+ *
+ * This is a shim function to make calling pwasm_env_mem_store() from
+ * DynASM slightly easier.
+ */
+static bool
+pwasm_dynasm_jit_mem_store(
+  pwasm_env_t * const env,
+  const uint32_t mem_id,
+  const pwasm_op_t op,
+  const uint32_t offset_imm,
+  const uint32_t align_imm,
+  pwasm_val_t * const vals
+) {
+  // pop offset operand from stack
+  const uint32_t ofs = vals[0].i32;
+
+  // synthesize instruction from opcode and offset immediate
+  const pwasm_inst_t in = {
+    .op = op,
+    .v_mem = {
+      .offset = offset_imm,
+      .align = align_imm,
+    },
+  };
+
+  return pwasm_env_mem_store(env, mem_id, in, ofs, vals[1]);
 }
 
 //
@@ -3315,6 +3345,72 @@ pwasm_dynasm_jit_on_compile(
         | cmp eax, 0
         | je ->exit_failure
       }
+
+      break;
+    case PWASM_OP_I32_STORE:
+    case PWASM_OP_I64_STORE:
+    case PWASM_OP_F32_STORE:
+    case PWASM_OP_F64_STORE:
+    case PWASM_OP_I32_STORE8:
+    case PWASM_OP_I32_STORE16:
+    case PWASM_OP_I64_STORE8:
+    case PWASM_OP_I64_STORE16:
+    case PWASM_OP_I64_STORE32:
+    case PWASM_OP_V128_STORE:
+      {
+        // emit call
+        | save_regs
+        | mov r_arg0, r_env // environment
+        | mov r_arg1, 1 // mem_id (FIXME)
+        | mov r_arg2, in.op
+        | mov r_arg3d, in.v_mem.offset
+        | mov r_arg4d, in.v_mem.align
+        | mov r_arg5, r_stack
+        | sub r_arg5, 2 * sizeof(pwasm_val_t)
+        | mov64 rax, (uintptr_t) pwasm_dynasm_jit_mem_store
+        | call rax
+        | restore_regs
+
+        // check for error
+        | cmp eax, 0
+        | je ->exit_failure
+
+        // pop two values from stack
+        | stack_decn 2
+      }
+
+      break;
+    case PWASM_OP_MEMORY_SIZE:
+      | save_regs
+      | mov r_arg0, r_env // environment
+      | mov r_arg1, 1 // mem_id (FIXME)
+      | mov r_arg2, r_stack // stack tail
+      | mov64 rax, (uintptr_t) pwasm_env_mem_size
+      | call rax
+      | restore_regs
+
+      // check for error
+      | cmp eax, 0
+      | je ->exit_failure
+
+      // increment stack
+      | stack_inc
+
+      break;
+    case PWASM_OP_MEMORY_GROW:
+      | save_regs
+      | mov r_arg0, r_env // environment
+      | mov r_arg1, 1 // mem_id (FIXME)
+      | mov r_arg2d, dword [r_stack - sizeof(pwasm_val_t)]
+      | mov r_arg3, r_stack // stack tail
+      | sub r_arg3, sizeof(pwasm_val_t)
+      | mov64 rax, (uintptr_t) pwasm_env_mem_grow
+      | call rax
+      | restore_regs
+
+      // check for error
+      | cmp eax, 0
+      | je ->exit_failure
 
       break;
     default:
