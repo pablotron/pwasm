@@ -281,14 +281,6 @@ fail(
   pwasm_fail(env->mem_ctx, text);
 }
 
-void
-pwasm_dynasm_jit_fail(
-  pwasm_env_t * const env,
-  const char * const text
-) {
-  fail(env, text);
-}
-
 static void
 test_func(
   const char * const text
@@ -396,9 +388,6 @@ pwasm_ctrl_stack_push(
   return pwasm_vec_push(&(stack->stack), 1, &entry, NULL);
 }
 
-const char * const
-PWASM_DYNASM_JIT_ERROR_UNREACHABLE = "unreachable";
-
 /**
  * Compile the given module function and then populate the given
  * destination buffer with the length of the generated code and a
@@ -467,11 +456,13 @@ pwasm_dynasm_jit_on_compile(
     switch (in.op) {
     case PWASM_OP_UNREACHABLE:
       {
+        static const char * const text = "unreachable";
+
         // log error message (FIXME)
         // static const char * const err = "unreachable";
         | mov64 r_arg0, (uintptr_t) env
-        | mov64 r_arg1, (uintptr_t) PWASM_DYNASM_JIT_ERROR_UNREACHABLE
-        | mov64 rax, (uintptr_t) pwasm_dynasm_jit_fail
+        | mov64 r_arg1, (uintptr_t) text
+        | mov64 rax, (uintptr_t) fail
         | call rax
 
         // second attempt (works!!!!)
