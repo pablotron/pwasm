@@ -13,34 +13,6 @@ static int32_t pwasm_dynasm_jit_get_extern(const uint8_t *, unsigned int, int);
 #include <dynasm/dasm_proto.h>
 #include <dynasm/dasm_x86.h>
 
-// internal jit data
-typedef struct {
-  uint64_t flags;
-} pwasm_dynasm_jit_t;
-
-|.arch x64
-|.actionlist actions
-|.globals lbl_
-|.externnames externs
-
-static int32_t
-pwasm_dynasm_jit_get_extern(
-  const uint8_t * const addr,
-  const unsigned int idx,
-  const int type
-) {
-  const void *dst_addr = dlsym(RTLD_DEFAULT, externs[idx]);
-  if (type) {
-    return ((unsigned char*) dst_addr - (addr) - sizeof(int32_t));
-  } else {
-    const union {
-      int32_t i32;
-      unsigned char *ptr;
-    } val = { .ptr = (unsigned char *) dst_addr };
-    return val.i32;
-  }
-}
-
 #ifdef PWASM_DEBUG
 #define D(fmt, ...) fprintf( \
   stderr, \
@@ -51,6 +23,16 @@ pwasm_dynasm_jit_get_extern(
 #define D(fmt, ...)
 #endif /* PWASM_DEBUG */
 
+|.arch x64
+|.actionlist actions
+|.globals lbl_
+|.externnames externs
+
+// internal jit data
+typedef struct {
+  uint64_t flags;
+} pwasm_dynasm_jit_t;
+
 // function args
 // sysv amd64 calling convention
 // (https://en.wikipedia.org/wiki/X86_calling_conventions#List_of_x86_calling_conventions)
@@ -58,6 +40,12 @@ pwasm_dynasm_jit_get_extern(
 |.define r_arg1, rsi
 |.define r_arg2, rdx
 |.define r_arg3, rcx
+|.define r_arg4, r8
+|.define r_arg5, r9
+|.define r_arg2d, edx
+|.define r_arg3d, ecx
+|.define r_arg4d, r8d
+|.define r_arg5d, r9d
 
 // pointer to base and tail of stack
 |.define r_env, r12
@@ -271,7 +259,6 @@ pwasm_dynasm_jit_get_extern(
 /**
  * Call error handler.
  */
-
 static void
 fail(
   pwasm_env_t * const env,
@@ -279,6 +266,54 @@ fail(
 ) {
   D("%s", text);
   pwasm_fail(env->mem_ctx, text);
+}
+
+static int32_t
+pwasm_dynasm_jit_get_extern(
+  const uint8_t * const addr,
+  const unsigned int idx,
+  const int type
+) {
+  const void *dst_addr = dlsym(RTLD_DEFAULT, externs[idx]);
+  if (type) {
+    return ((unsigned char*) dst_addr - (addr) - sizeof(int32_t));
+  } else {
+    const union {
+      int32_t i32;
+      unsigned char *ptr;
+    } val = { .ptr = (unsigned char *) dst_addr };
+    return val.i32;
+  }
+}
+
+/**
+ * Load value from memory.
+ *
+ * This is a shim function to make calling pwasm_env_mem_load() from
+ * DynASM slightly easier.
+ */
+static _Bool
+pwasm_dynasm_jit_mem_load(
+  pwasm_env_t * const env,
+  const uint32_t mem_id,
+  const pwasm_op_t op,
+  const uint32_t offset_imm,
+  const uint32_t align_imm,
+  pwasm_val_t * const val
+) {
+  // pop offset operand from stack
+  const uint32_t ofs = val->i32;
+
+  // synthesize instruction from opcode and offset immediate
+  const pwasm_inst_t in = {
+    .op = op,
+    .v_mem = {
+      .offset = offset_imm,
+      .align = align_imm,
+    },
+  };
+
+  return pwasm_env_mem_load(env, mem_id, in, ofs, val);
 }
 
 //
@@ -3244,6 +3279,41 @@ pwasm_dynasm_jit_on_compile(
           | =>done:
           | movss dword [r_stack - sizeof(pwasm_val_t) + j * 4], xmm0
         }
+      }
+
+      break;
+    case PWASM_OP_I32_LOAD:
+    case PWASM_OP_I64_LOAD:
+    case PWASM_OP_F32_LOAD:
+    case PWASM_OP_F64_LOAD:
+    case PWASM_OP_I32_LOAD8_S:
+    case PWASM_OP_I32_LOAD8_U:
+    case PWASM_OP_I32_LOAD16_S:
+    case PWASM_OP_I32_LOAD16_U:
+    case PWASM_OP_I64_LOAD8_S:
+    case PWASM_OP_I64_LOAD8_U:
+    case PWASM_OP_I64_LOAD16_S:
+    case PWASM_OP_I64_LOAD16_U:
+    case PWASM_OP_I64_LOAD32_S:
+    case PWASM_OP_I64_LOAD32_U:
+    case PWASM_OP_V128_LOAD:
+      {
+        // emit call
+        | save_regs
+        | mov r_arg0, r_env // environment
+        | mov r_arg1, 1 // mem_id (FIXME)
+        | mov r_arg2, in.op
+        | mov r_arg3d, in.v_mem.offset
+        | mov r_arg4d, in.v_mem.align
+        | mov r_arg5, r_stack
+        | sub r_arg5, sizeof(pwasm_val_t)
+        | mov64 rax, (uintptr_t) pwasm_dynasm_jit_mem_load
+        | call rax
+        | restore_regs
+
+        // check for error
+        | cmp eax, 0
+        | je ->exit_failure
       }
 
       break;
