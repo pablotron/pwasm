@@ -3712,4 +3712,16 @@
   )
 
   (export "f32x4_convert_i32x4_u" (func $f32x4_convert_i32x4_u))
+
+  (memory $mem (data "\03\01\04\01\05\09\02\06"))
+
+  ;;
+  ;; i32_load:
+  ;;   expect i32 0x01040103
+  ;;
+  (func $i32_load (result i32)
+    (i32.load (i32.const 0))
+  )
+
+  (export "i32_load" (func $i32_load))
 )
