@@ -18,12 +18,13 @@
  *
  */
 
+#define _GNU_SOURCE // MAP_ANONYMOUS
 #include <stdlib.h> // EXIT_FAILURE
 #include <stdio.h> // printf()
 #include <stdint.h> // uint8_t, etc
 #include <err.h> // errx()
 #include <pwasm.h> // PWASM
-#include <pwasm-dynasm-jit.h> // PWASM JIT
+#include <pwasm-dynasm-jit.h> // pwasm_dynasm_jit_init()
 
 /**
  * Blob containing a small WebAssembly (WASM) module.  The module
