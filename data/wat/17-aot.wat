@@ -3819,4 +3819,13 @@
   )
 
   (export "i64x2_load32x2_u" (func $i64x2_load32x2_u))
+
+  ;;
+  ;; call
+  ;;
+  (func $call (param $a i32) (param $b i32) (result i32)
+    (call $sub (local.get $a) (local.get $b))
+  )
+
+  (export "call" (func $call))
 )
