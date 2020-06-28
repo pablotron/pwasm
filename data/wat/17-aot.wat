@@ -3828,4 +3828,42 @@
   )
 
   (export "call" (func $call))
+
+  ;; test for call_indirect
+  (func $add (param $a i32)
+             (param $b i32)
+             (result i32)
+    (i32.add (local.get $a) (local.get $b))
+  )
+
+  ;; test for call_indirect
+  (func $mul (param $a i32)
+             (param $b i32)
+             (result i32)
+    (i32.mul (local.get $a) (local.get $b))
+  )
+
+  ;; test for call_indirect
+  (func $none (param $a i32)
+              (param $b i32)
+              (result i32)
+    (local.get $a)
+  )
+
+  ;; call indirect function table
+  (table $fns funcref (elem $add $sub $mul $none))
+
+  ;; call_indirect
+  (func $call_indirect (param $op i32)
+                            (param $a i32)
+                            (param $b i32)
+                            (result i32)
+    (local.get $a)
+    (local.get $b)
+    (local.get $op)
+    (call_indirect (param i32) (param i32) (result i32))
+  )
+
+  (export "call_indirect" (func $call_indirect))
+
 )
