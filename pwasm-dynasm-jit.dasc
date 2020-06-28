@@ -2,8 +2,8 @@
 #include <stdbool.h> // bool
 #include <stdio.h> // snprintf()
 #include <sys/mman.h> // mprotect
-#include "pwasm-dynasm-jit.h"
 #include <dlfcn.h> // dlsym()
+#include "pwasm-dynasm-jit.h"
 
 // FIXME: do i need this any more?
 static int32_t pwasm_dynasm_jit_get_extern(const uint8_t *, unsigned int, int);
