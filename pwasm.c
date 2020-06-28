@@ -1016,7 +1016,7 @@ pwasm_block_type_compare_params(
   }
 
   // set comparison
-  *ret_same = (num_diffs > 0);
+  *ret_same = (num_diffs == 0);
 
   // return success
   return true;
