@@ -27,3 +27,9 @@ plugins:
   - search # necessary for search to work
   - minify: # pip install mkdocs-minify-plugin
       minify_html: true
+
+nav:
+  - "About": about.md
+  - "Command": command.md
+  - "Library": library.md
+  - "JIT Compiler": jit.md
