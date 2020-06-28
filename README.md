@@ -112,12 +112,12 @@ The [PWASM][] library has the following features:
 * Written in modern [C11][].
 * [MIT-licensed][mit].
 * Multi-value block, [SIMD][], and `trunc_sat` extended opcode support.
-* [AOT][] [x86-64][] [SysV][][JIT][] compiler (via [DynASM][]).
+* [x86-64][] [JIT][] compiler (via [DynASM][]).
 
 **Coming Soon**
-* [ARM][] [JIT][]
-* [Windows][] [JIT][]
 
+* [ARM][] [JIT][].
+* [Windows][] [JIT][].
 * Threaded parser.
 
 ### Usage

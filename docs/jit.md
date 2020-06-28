@@ -6,15 +6,29 @@
 execution environment which compiles the functions in a module to native
 code at load time.
 
-The [JIT][] compiler currently only supports [x86-64][] Linux.
+*Note:* The [PWASM][] [JIT][] compiler currently only supports
+[x86-64][] Linux.
 
 ## Features
-* No external dependencies.
-* [Ahead of Time (AOT)][aot] 
+* [Ahead of Time (AOT)][aot].
 * Modular (replace stock [DynASM][] [JIT][] compiler with your own
-  implementation)
+  implementation).
+* [SIMD][] support.
+* No runtime dependencies other than the [C standard library][stdlib].
+* Written using [DynASM][].
+
+**Coming Soon**
+
+* [ARM][] [JIT][].
+* [Windows][] [JIT][].
+* Register allocator.
+* [CPUID][] support.
 
 ## Usage
+
+The [PWASM][] [JIT][] support is broken into two components:
+1. A [JIT][] compiler (`pwasm_dynasm_jit_init()`).
+2. An [AOT][] [JIT][] execution environment (`pwasm_aot_jit_get_cbs()`).
 
 To enable the [JIT][] in an application, do the following:
 
@@ -22,8 +36,11 @@ To enable the [JIT][] in an application, do the following:
    directory of an existing application.
 2. Add `pwasm-dynasm-jit.c` to your build.
 3. Link against `-ldl`.
-4. Use `pwasm_dynasm_jit_init()` to create a `pwasm_jit_t` instance.
-5. Replace `pwasm_new_interp_get_cbs()` with `pwasm_aot_jit_get_cbs()`
+4. Use `pwasm_dynasm_jit_init()` to create a [JIT][] compiler
+   (`pwasm_jit_t`) instance.
+5. Replace `pwasm_new_interp_get_cbs()` with `pwasm_aot_jit_get_cbs()`.
+   Use the [JIT][] compiler instance from the previous step as the
+   second parameter to `pwasm_aot_jit_get_cbs()`.
 
 ## Example
 
@@ -219,3 +236,5 @@ int main(void) {
   "ARM architecture"
 [windows]: https://en.wikipedia.org/wiki/Microsoft_Windows
   "Microsoft Windows"
+[cpuid]: https://en.wikipedia.org/wiki/CPUID
+  "CPUID instruction"

@@ -7,7 +7,6 @@ Each entry in this list is prefixed with category tags.
 See the "Tag Definitions" section below for a brief description of each
 tag.
 
-* [ ] doc: document `pwasm-dynasm-jit.c` build
 * [ ] code: add `get_handle` to replace `get_*_index` env cbs
 * [ ] code, test: add tests with random values for math ops
 * [ ] code: cache 0xFF... in xmm7 (e.g. pcmpeqd xmm7, xmm7) for negating
@@ -51,6 +50,8 @@ tag.
 * [ ] code: add `uint64_t pwasm_platform_get_value()` (e.g. compile-time limits, flags, etc)
 
 ## In Progress
+* [ ] doc: document JIT and `pwasm-dynasm-jit.c` build (`docs/jit.md`
+  and `examples/01-jit.c`)
 
 ## Done
 
