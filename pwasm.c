@@ -25182,6 +25182,18 @@ pwasm_aot_jit_eval_expr(
   return true;
 }
 
+#if 0
+static void
+pwasm_aot_jit_dump_stack(
+  pwasm_env_t * const env,
+  const char * const text
+) {
+  for (size_t i = 0; i < env->stack->pos; i++) {
+    D("%s: env->stack->ptr[%zu] = 0x%016lx", text, i, env->stack->ptr[i].i64);
+  }
+}
+#endif /* 0 */
+
 /*
  * world's second shittiest initial interpreter
  */
@@ -25249,6 +25261,8 @@ pwasm_aot_jit_call_func(
     bool (*ptr_func)(pwasm_env_t *, const pwasm_mod_t *, uint32_t);
   } pun = { .ptr_void = interp_mod->fns[func_ofs].ptr };
 
+  // pwasm_aot_jit_dump_stack(env, "before");
+
   // D("calling func (%p)", (void*) pun.ptr_void);
   const bool ok = pun.ptr_func(env, interp_mod->mod, func_ofs);
   D("call done, ok == %d", ok);
@@ -25266,11 +25280,13 @@ pwasm_aot_jit_call_func(
     const size_t src_pos = stack->pos - results.len;
     const size_t num_bytes = sizeof(pwasm_val_t) * results.len;
 
-    // D("stack->pos: old = %zu, new = %zu", stack->pos, dst_pos + results.len);
+    // D("stack->pos =  %zu, dst_pos = %zu, src_pos = %zu", stack->pos, dst_pos, src_pos);
     // copy results, update stack position
     memmove(stack->ptr + dst_pos, stack->ptr + src_pos, num_bytes);
     stack->pos = dst_pos + results.len;
   }
+
+  // pwasm_aot_jit_dump_stack(env, "after");
 
   // return success
   return true;
