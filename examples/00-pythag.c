@@ -1,9 +1,9 @@
 /**
- * example-00-pythag.c: minimal standalone pwasm example.
+ * 00-pythag.c: minimal standalone PWASM example.
  *
  * Usage:
  *   # compile examples/00-pythag.c and pwasm.c
- *   cc -c -W -Wall -Wextra -Werror -pedantic -std=c11 -I. -O3 examples/example-00-pythag.c
+ *   cc -c -W -Wall -Wextra -Werror -pedantic -std=c11 -I. -O3 examples/00-pythag.c
  *   cc -c -W -Wall -Wextra -Werror -pedantic -std=c11 -I. -O3 pwasm.c
  *
  *   # link and build as ./example-00-pythag
@@ -28,63 +28,60 @@
  *
  * This WASM module exports two functions:
  *
- * * f32.pythag (f32, f32 -> f32): Calculate the length of the
+ * * f32 (f32, f32 -> f32): Calculate the length of the
  *   hypotenuse of a right triangle from the lengths of the other
  *   two sides of the triangle.
  *
- * * f64.pythag (f64, f64 -> f64): Calculate the length of the
+ * * f64 (f64, f64 -> f64): Calculate the length of the
  *   hypotenuse of a right triangle from the lengths of the other
  *   two sides of the triangle.
  */
 static const uint8_t PYTHAG_WASM[] = {
   0x00, 0x61, 0x73, 0x6d, 0x01, 0x00, 0x00, 0x00,
-  0x01, 0x0D, 0x02, 0x60, 0x02, 0x7E, 0x7E, 0x01,
-  0x7E, 0x60, 0x02, 0x7C, 0x7C, 0x01, 0x7C, 0x03,
-  0x03, 0x02, 0x00, 0x01, 0x07, 0x1B, 0x02, 0x0A,
-  'f',  '3',  '2',  '.',  'p',  'y',  't',  'h',
-  'a',  'g',  0x00, 0x00, 0x0A, 'f',  '6',  '4',
-  '.',  'p',  'y',  't',  'h',  'a',  'g',  0x00,
-  0x01, 0x0A, 0x1F, 0x02, 0x0E, 0x00, 0x20, 0x00,
-  0x20, 0x00, 0x94, 0x20, 0x01, 0x20, 0x01, 0x94,
-  0x92, 0x91, 0x0B, 0x0E, 0x00, 0x20, 0x00, 0x20,
-  0x00, 0xA2, 0x20, 0x01, 0x20, 0x01, 0xA2, 0xA0,
-  0x9F, 0x0B,
+  0x01, 0x0d, 0x02, 0x60, 0x02, 0x7d, 0x7d, 0x01,
+  0x7d, 0x60, 0x02, 0x7c, 0x7c, 0x01, 0x7c, 0x03,
+  0x03, 0x02, 0x00, 0x01, 0x07, 0x0d, 0x02, 0x03,
+  0x66, 0x33, 0x32, 0x00, 0x00, 0x03, 0x66, 0x36,
+  0x34, 0x00, 0x01, 0x0a, 0x1f, 0x02, 0x0e, 0x00,
+  0x20, 0x00, 0x20, 0x00, 0x94, 0x20, 0x01, 0x20,
+  0x01, 0x94, 0x92, 0x91, 0x0b, 0x0e, 0x00, 0x20,
+  0x00, 0x20, 0x00, 0xa2, 0x20, 0x01, 0x20, 0x01,
+  0xa2, 0xa0, 0x9f, 0x0b
 };
 
-static void test_f32_pythag(
-  pwasm_env_t * const env,
-  pwasm_stack_t * const stack
-) {
+static void test_pythag_f32(pwasm_env_t * const env) {
+  pwasm_stack_t * const stack = env->stack;
+
   // set parameters values and parameter count
   stack->ptr[0].f32 = 3;
   stack->ptr[1].f32 = 4;
   stack->pos = 2;
 
-  // call function "f32.pythag" in the "pythag" module, check for error
-  if (!pwasm_call(env, "pythag", "f32.pythag")) {
-    errx(EXIT_FAILURE, "f32.pythag: pwasm_call() failed");
+  // call function, check for error
+  if (!pwasm_call(env, "pythag", "f32")) {
+    errx(EXIT_FAILURE, "pythag.f32: pwasm_call() failed");
   }
 
   // print result (the first stack entry) to standard output
-  printf("f32.pythag(3.0, 4.0) = %f\n", stack->ptr[0].f32);
+  printf("pythag.f32(3.0, 4.0) = %f\n", stack->ptr[0].f32);
 }
 
-static void test_f64_pythag(
-  pwasm_env_t * const env,
-  pwasm_stack_t * const stack
-) {
+static void test_pythag_f64(pwasm_env_t * const env) {
+  // get stack from environment
+  pwasm_stack_t * const stack = env->stack;
+
   // set parameters
   stack->ptr[0].f64 = 5;
   stack->ptr[1].f64 = 6;
   stack->pos = 2;
 
   // call function, check for error
-  if (!pwasm_call(env, "pythag", "f64.pythag")) {
-    errx(EXIT_FAILURE, "f64.pythag: pwasm_call() failed");
+  if (!pwasm_call(env, "pythag", "f64")) {
+    errx(EXIT_FAILURE, "f64: pwasm_call() failed");
   }
 
   // print result (the first stack entry) to standard output
-  printf("f64.pythag(5.0, 6.0) = %f\n", stack->ptr[0].f64);
+  printf("pythag.f64(5.0, 6.0) = %f\n", stack->ptr[0].f64);
 }
 
 int main(void) {
@@ -125,11 +122,11 @@ int main(void) {
     errx(EXIT_FAILURE, "pythag: pwasm_env_add_mod() failed");
   }
 
-  // call "f32.pythag" function
-  test_f32_pythag(&env, &stack);
+  // call "f32" function
+  test_pythag_f32(&env);
 
-  // call "f64.pythag" function
-  test_f64_pythag(&env, &stack);
+  // call "f64" function
+  test_pythag_f64(&env);
 
   // finalize interpreter environment and parsed module
   pwasm_env_fini(&env);
