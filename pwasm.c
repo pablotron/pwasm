@@ -25517,6 +25517,46 @@ pwasm_aot_jit_get_global_index(
   return u32s[global_ofs] + 1;
 }
 
+/*
+ * Convert an internal table ID to an externally visible table handle.
+ *
+ * Returns 0 on error.
+ */
+static uint32_t
+pwasm_aot_jit_get_table_index(
+  pwasm_env_t * const env,
+  const uint32_t mod_id,
+  const uint32_t table_ofs
+) {
+  pwasm_aot_jit_t * const interp = env->env_data;
+  const pwasm_new_interp_mod_t *rows = pwasm_vec_get_data(&(interp->mods));
+  const size_t num_rows = pwasm_vec_get_size(&(interp->mods));
+
+  // check mod_id
+  if (!mod_id || mod_id > num_rows) {
+    // log error, return failure
+    pwasm_env_fail(env, "get_table_index: invalid mod ID");
+    return false;
+  }
+
+  // get slice
+  const pwasm_slice_t tables = rows[mod_id - 1].tables;
+
+  // check table offset
+  if (table_ofs >= tables.len) {
+    // log error, return failure
+    pwasm_env_fail(env, "get_table_index: invalid mod ID");
+    return false;
+  }
+
+  // get u32s
+  const pwasm_vec_t * const vec = &(interp->u32s);
+  const uint32_t * const u32s = ((uint32_t*) pwasm_vec_get_data(vec)) + tables.ofs;
+
+  // return table handle
+  return u32s[table_ofs] + 1;
+}
+
 //
 // aot jit callbacks
 //
@@ -25722,6 +25762,15 @@ pwasm_aot_jit_on_get_global_index(
   return pwasm_aot_jit_get_global_index(env, mod_id, global_ofs);
 }
 
+static uint32_t
+pwasm_aot_jit_on_get_table_index(
+  pwasm_env_t * const env,
+  const uint32_t mod_id,
+  const uint32_t table_ofs
+) {
+  return pwasm_aot_jit_get_table_index(env, mod_id, table_ofs);
+}
+
 /*
  * AOT JIT environment callbacks.
  */
@@ -25749,6 +25798,7 @@ PWASM_AOT_JIT_CBS = {
   .call         = pwasm_aot_jit_on_call,
   .call_func    = pwasm_aot_jit_on_call_func,
   .get_global_index = pwasm_aot_jit_on_get_global_index,
+  .get_table_index = pwasm_aot_jit_on_get_table_index,
 };
 
 /*

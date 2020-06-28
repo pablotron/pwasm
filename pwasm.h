@@ -2436,6 +2436,21 @@ typedef struct {
   );
 
   /**
+   * Map module table index to environment table handle.
+   *
+   * @param[in]   env         Execution environment
+   * @param[in]   mod_id      Module instance handle
+   * @param[in]   table_ofs   Table offset in module
+   *
+   * @return Table handle, or `0` on error.
+   */
+  uint32_t (*get_table_index)(
+    pwasm_env_t *env, // env
+    const uint32_t mod_id, // module instance handle
+    const uint32_t table_ofs // table index in module
+  );
+
+  /**
    * Call function within module instance.
    *
    * @param[in]   env         Execution environment
@@ -2898,6 +2913,25 @@ _Bool pwasm_env_set_global(
   pwasm_env_t *env,
   const uint32_t global_id,
   const pwasm_val_t val
+);
+
+/**
+ * Get element from table.
+ *
+ * @ingroup env-low
+ *
+ * @param[in]   env       Execution environment
+ * @param[in]   table_id  Table handle
+ * @param[in]   elem_ofs  Element offset in table
+ * @param[out]  ret       Return value
+ *
+ * @return `true` on success, or `false` on error.
+ */
+_Bool pasm_env_get_elem(
+  pwasm_env_t * const env, ///< Execution environment
+  const uint32_t table_id, ///< table handle (or id?)
+  const uint32_t elem_ofs, ///< Element offset in table
+  uint32_t * const ret     ///< Return value
 );
 
 /**
