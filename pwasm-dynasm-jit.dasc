@@ -85,6 +85,29 @@ typedef struct {
   | sub r_stack, (num * sizeof(pwasm_val_t))
 |.endmacro
 
+|.macro stack_save_depth
+  | mov rax, [r_env + offsetof(pwasm_env_t, stack)]
+  | mov rax, [rax + offsetof(pwasm_stack_t, ptr)]
+  | mov rbx, r_stack
+  | sub rbx, rax
+  | shr rbx, 4
+  | mov rax, [r_env + offsetof(pwasm_env_t, stack)]
+  | mov [rax + offsetof(pwasm_stack_t, pos)], rbx
+|.endmacro
+
+|.macro stack_reg_init
+  // load stack pointer
+  | mov rax, [r_env + offsetof(pwasm_env_t, stack)]
+  | mov r_stack, [rax + offsetof(pwasm_stack_t, ptr)]
+
+  // get stack offset
+  | mov rbx, [rax + offsetof(pwasm_stack_t, pos)]
+  | shl rbx, 4
+
+  // increment stack pointer
+  | add r_stack, rbx
+|.endmacro
+
 |.macro i32_testop_init
   | mov eax, [r_stack - sizeof(pwasm_val_t)]
 |.endmacro
@@ -490,7 +513,7 @@ pwasm_dynasm_jit_on_compile(
   const size_t func_ofs
 ) {
   const pwasm_mod_t * const mod = pwasm_env_get_mod(env, mod_id);
-  const pwasm_type_t type = mod->types[mod->funcs[func_ofs]];
+  // const pwasm_type_t type = mod->types[mod->funcs[func_ofs]];
   const pwasm_func_t func = mod->codes[func_ofs];
   const pwasm_inst_t * const insts = mod->insts + func.expr.ofs;
   (void) jit;
@@ -517,15 +540,8 @@ pwasm_dynasm_jit_on_compile(
   // get env pointer
   | mov r_env, r_arg0
 
-  // get stack pointer from env
-  | mov rax, [r_env + offsetof(pwasm_env_t, stack)]
-  | mov r_stack, [rax + offsetof(pwasm_stack_t, ptr)]
-
-  // get stack offset
-  | imul rbx, [rax + offsetof(pwasm_stack_t, pos)], sizeof(pwasm_val_t)
-
-  // increment stack pointer
-  | add r_stack, rbx
+  // init stack register, cache stack base
+  | stack_reg_init
   | mov r_base, r_stack
 
   size_t max_label = 0;
@@ -908,14 +924,28 @@ pwasm_dynasm_jit_on_compile(
 
       break;
     case PWASM_OP_CALL:
-      // TODO: emit store stack position, push registers
-      | mov r_arg0, env
-      | mov r_arg1, mod
+      // save stack position, push registers
+      | stack_save_depth
+      | save_regs
+
+      // set parameters
+      | mov r_arg0, r_env
+      | mov r_arg1, mod_id
       | mov r_arg2, in.v_index
-      // TODO: | call aword pwasm_aot_jit_call_func
+
+      // call func
+      | mov64 rax, (uintptr_t) pwasm_env_call_func
+      | call rax
+
+      // restore frame
+      | restore_regs
+
+      // check for error
       | cmp eax, 0
       | je ->exit_failure
-      // TODO: pop registers, restore stack position
+
+      // restore stack register
+      | stack_reg_init
 
       break;
     // TODO: case PWASM_OP_CALL_INDIRECT:
@@ -3520,9 +3550,7 @@ pwasm_dynasm_jit_on_compile(
   | ->exit_success:
 
   // save stack depth
-  | mov rax, [r_env + offsetof(pwasm_env_t, stack)]
-  | add rax, offsetof(pwasm_stack_t, pos)
-  | add qword [rax], type.results.len
+  | stack_save_depth
 
   // return success
   | mov rax, 1
