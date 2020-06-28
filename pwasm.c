@@ -20114,6 +20114,9 @@ pwasm_aot_jit_init_segments(
     // FIXME
     const uint32_t real_mem_id = u32s[frame.mod->mems.ofs + segment.mem_id];
     const uint32_t mem_id = 1;
+    #ifndef PWASM_DEBUG
+    (void) real_mem_id
+    #endif /* !PWASM_DEBUG */
     D("frame.mod->mems.ofs = %zu, segment.mem_id = %u, real_mem_id = %u", frame.mod->mems.ofs, segment.mem_id, real_mem_id);
 
     // get memory, check for error
