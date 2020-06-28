@@ -1,82 +1,48 @@
-# PWASM Library
+# PWASM JIT Compiler
 
 ## Overview
 
-The [PWASM][] library allows you to parse [WebAssembly][] modules and
-and run functions from [WebAssembly][] modules inside your application.
+[PWASM][] ships with an optional [Just in Time (JIT)][jit] compiler
+execution environment which compiles the functions in a module to native
+code at load time.
+
+The [JIT][] compiler currently only supports [x86-64][] Linux.
 
 ## Features
-
-The [PWASM][] library has the following features:
-
-* Easy to embed. Two files: `pwasm.c` and `pwasm.h`.
-* Supports isolated execution environments.
-* Built-in [interpreter][] which should run just about anywhere.
-* Modular architecture.  Use the parser and ignore the interpreter,
-  write your own [JIT][], etc.
-* No dependencies other than the [C standard library][stdlib].
-* Customizable memory allocator.
-* Parser uses amortized O(1) memory allocation.
-* "Native" module support.  Call native functions from a [WebAssembly][]
-  module.
-* Written in modern [C11][].
-* [MIT-licensed][mit].
-* Multi-value block, [SIMD][], and `trunc_sat` extended opcode support.
-* [AOT][] [x86-64][] [SysV][][JIT][] compiler (via [DynASM][]).
-
-**Coming Soon**
-* [ARM][] [JIT][]
-* [Windows][] [JIT][]
-* Threaded parser.
+* No external dependencies.
+* [Ahead of Time (AOT)][aot] 
+* Modular (replace stock [DynASM][] [JIT][] compiler with your own
+  implementation)
 
 ## Usage
 
-PWASM is meant to be embedded in an existing application.
+To enable the [JIT][] in an application, do the following:
 
-Here's how:
-
-1. Copy `pwasm.h` and `pwasm.c` into the source directory of an existing
-   application.
-2. Add `pwasm.c` to your build.
-3. Link against `-lm`.
-
-To execute functions from a [WebAssembly][] module, do the following:
-
-1. Create a PWASM memory context.
-2. Read the contents of the module.
-3. Parse the module with `pwasm_mod_init()`.
-4. Create an interpreter environment with `pwasm_env_init()`.
-5. Add the parsed module into the environment with `pwasm_env_add_mod()`.
-6. Call module functions with `pwasm_call()`.
+1. Copy `pwasm-dynasm-jit.h` and `pwasm-dynasm-jit.c` into the source
+   directory of an existing application.
+2. Add `pwasm-dynasm-jit.c` to your build.
+3. Link against `-ldl`.
+4. Use `pwasm_dynasm_jit_init()` to create a `pwasm_jit_t` instance.
+5. Replace `pwasm_new_interp_get_cbs()` with `pwasm_aot_jit_get_cbs()`
 
 ## Example
 
-The example below does the following:
-
-1. Parses a [WebAssembly][] module.
-2. Creates an interpreter environment.
-3. Adds the parsed module to the interpreter.
-4. Executes the `pythag.f32()` function.
-5. Prints the result to standard output.
-6. Executes `pythag.f64()` module function.
-7. Prints the result to standard output.
-8. Finalizes the interpreter and the parsed module.
-
 ```c
 /**
- * 00-pythag.c: minimal standalone PWASM example.
+ * 01-jit.c: minimal pwasm jit example.
  *
  * Usage:
- *   # compile examples/00-pythag.c and pwasm.c
- *   cc -c -W -Wall -Wextra -Werror -pedantic -std=c11 -I. -O3 examples/00-pythag.c
+ *   # compile examples/01-jit.c and pwasm.c
+ *   cc -c -W -Wall -Wextra -Werror -pedantic -std=c11 -I. -O3 examples/01-jit.c
  *   cc -c -W -Wall -Wextra -Werror -pedantic -std=c11 -I. -O3 pwasm.c
+ *   cc -c -W -Wall -Wextra -Werror -pedantic -std=c11 -I. -Ipath/to/luajit-2.0 -O3 pwasm-dynasm-jit.c
  *
- *   # link and build as ./example-00-pythag
- *   cc -o ./example-00-pythag {00-pythag,pwasm}.o -lm
+ *   # link and build as ./example-01-jit
+ *   cc -o ./example-01-jit {01-jit,pwasm,pwasm-dynasm-jit}.o -ldl -lm
  *
  * Output:
- *   # run example-00-pythag
- *   > ./example-00-pythag
+ *   # run example-01-jit
+ *   > ./example-01-jit
  *   pythag.f32(3.0, 4.0) = 5.000000
  *   pythag.f64(5.0, 6.0) = 7.810250
  *
@@ -86,20 +52,20 @@ The example below does the following:
 #include <stdio.h> // printf()
 #include <stdint.h> // uint8_t, etc
 #include <err.h> // errx()
-#include <pwasm.h>
+#include <pwasm.h> // PWASM
+#include <pwasm-dynasm-jit.h> // PWASM JIT
 
 /**
- * Blob containing a small WebAssembly (WASM) module.
+ * Blob containing a small WebAssembly (WASM) module.  The module
+ * exports two functions: 
  *
- * This WASM module exports two functions:
+ * * f32: Takes the length of the adjacent and opposite sides of a
+ *   right triangle and returns the length of the hypotenuse.  All
+ *   lengths are 32-bit, single-precision floating point values.
  *
- * * f32 (f32, f32 -> f32): Calculate the length of the
- *   hypotenuse of a right triangle from the lengths of the other
- *   two sides of the triangle.
- *
- * * f64 (f64, f64 -> f64): Calculate the length of the
- *   hypotenuse of a right triangle from the lengths of the other
- *   two sides of the triangle.
+ * * f64: Takes the length of the adjacent and opposite sides of a
+ *   right triangle and returns the length of the hypotenuse.  All
+ *   lengths are 64-bit, double-precision floating point values.
  */
 static const uint8_t PYTHAG_WASM[] = {
   0x00, 0x61, 0x73, 0x6d, 0x01, 0x00, 0x00, 0x00,
@@ -115,6 +81,7 @@ static const uint8_t PYTHAG_WASM[] = {
 };
 
 static void test_pythag_f32(pwasm_env_t * const env) {
+  // get stack from environment
   pwasm_stack_t * const stack = env->stack;
 
   // set parameters values and parameter count
@@ -122,9 +89,9 @@ static void test_pythag_f32(pwasm_env_t * const env) {
   stack->ptr[1].f32 = 4;
   stack->pos = 2;
 
-  // call function, check for error
+  // call function "f32" in the "pythag" module, check for error
   if (!pwasm_call(env, "pythag", "f32")) {
-    errx(EXIT_FAILURE, "pythag.f32: pwasm_call() failed");
+    errx(EXIT_FAILURE, "f32: pwasm_call() failed");
   }
 
   // print result (the first stack entry) to standard output
@@ -164,6 +131,16 @@ int main(void) {
     }
   }
 
+  // initialize jit compiler
+  pwasm_jit_t jit;
+  if (!pwasm_dynasm_jit_init(&jit, &mem_ctx)) {
+    errx(EXIT_FAILURE, "pwasm_dynasm_jit_init() failed");
+  }
+
+  // get AOT JIT callbacks
+  pwasm_env_cbs_t cbs;
+  pwasm_aot_jit_get_cbs(&cbs, &jit);
+
   // set up stack (used to pass parameters and results and
   // to execute the stack machine inside functions)
   pwasm_val_t stack_vals[10];
@@ -172,12 +149,9 @@ int main(void) {
     .len = 10,
   };
 
-  // get interpreter callbacks
-  const pwasm_env_cbs_t * const interp_cbs = pwasm_new_interpreter_get_cbs();
-
-  // create interpreter environment, check for error
+  // create execution environment, check for error
   pwasm_env_t env;
-  if (!pwasm_env_init(&env, &mem_ctx, interp_cbs, &stack, NULL)) {
+  if (!pwasm_env_init(&env, &mem_ctx, &cbs, &stack, NULL)) {
     errx(EXIT_FAILURE, "pwasm_env_init() failed");
   }
 
@@ -187,40 +161,21 @@ int main(void) {
     errx(EXIT_FAILURE, "pythag: pwasm_env_add_mod() failed");
   }
 
-  // call "f32" function
+  // call "pythag.f32" function and print result
   test_pythag_f32(&env);
 
-  // call "f64" function
+  // call "pythag.f64" function and print result
   test_pythag_f64(&env);
 
-  // finalize interpreter environment and parsed module
+  // finalize environment, jit, and parsed module
   pwasm_env_fini(&env);
+  pwasm_jit_fini(&jit);
   pwasm_mod_fini(&mod);
 
   // return success
   return EXIT_SUCCESS;
 }
 ```
-
-## API Documentation
-
-The [API][] documentation covers the [PWASM][] library [API][].
-
-The latest [PWASM][] [API][] documentation is always available online at
-the following URL:
-
-<https://pwasm.org/docs/latest/api/>
-
-The [PWASM][] [API][] documentation is generated from annotations in the
-`pwasm.h` header file.  You can build the [API][] documentation yourself
-with [Doxygen][] by doing the following:
-
-1. Clone the [PWASM Git repository][pwasm-git].
-2. Switch to the directory of the cloned Git repository.
-3. Run `doxygen` to generate the [API][] documentation in the
-   `api-docs/` directory.
-
-**Note:** The [API][] documentation is currently incomplete.
 
 [pwasm]: https://pwasm.org/
   "PWASM"
@@ -246,6 +201,8 @@ with [Doxygen][] by doing the following:
   "My GitHub page"
 [mit]: https://opensource.org/licenses/MIT
   "MIT license"
+[markdown]: https://en.wikipedia.org/wiki/Markdown
+  "Markdown markup language"
 [doxygen]: http://www.doxygen.nl/
   "Doxygen API documentation generator"
 [api]: https://en.wikipedia.org/wiki/Application_programming_interface

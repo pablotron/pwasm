@@ -8,6 +8,7 @@ See the "Tag Definitions" section below for a brief description of each
 tag.
 
 * [ ] doc: document `pwasm-dynasm-jit.c` build
+* [ ] code: add `get_handle` to replace `get_*_index` env cbs
 * [ ] code, test: add tests with random values for math ops
 * [ ] code: cache 0xFF... in xmm7 (e.g. pcmpeqd xmm7, xmm7) for negating
       v128 ops
@@ -24,7 +25,7 @@ tag.
 * [ ] code, test: unify testing code in `cli/tests/{wasm,compile.c}`
 * [ ] code, test: fix memory leaks on parse/validation/exec errors
 * [ ] code: remove redundant validation checks in interp/env calls
-* [ ] code, jit: add jit modes (lazy, aot, optimize, etc)
+* [ ] code, jit: add jit modes (lazy, optimize, etc)
 * [ ] doc: add internal documentation
 * [ ] doc, test: document v128 `avgr_u` rounding
 * [ ] doc, test: investigate/document rounding mode for `f32/f64.div` (fenv)
@@ -50,8 +51,6 @@ tag.
 * [ ] code: add `uint64_t pwasm_platform_get_value()` (e.g. compile-time limits, flags, etc)
 
 ## In Progress
-* [ ] code, jit: add jit (added all of dynasm JIT except `store`, `call`,
-  and `call_indirect`)
 
 ## Done
 
@@ -126,6 +125,7 @@ Items in this section have been completed.
   `pwasm_ctrl_stack_t`)
 * [x] code: switch compile function to `compiler_t`, and do cpuid checks
       in `compiler_init`
+* [x] code, jit: add jit (added dynasm sysv x86-64 JIT)
 
 ## Tag Definitions
 
