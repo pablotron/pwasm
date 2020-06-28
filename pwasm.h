@@ -2328,8 +2328,6 @@ typedef struct {
     const uint32_t // memory handle
   );
 
-  // _Bool (*call_func)(pwasm_env_t *, uint32_t);
-
   /**
    * Invoke function.
    *
@@ -2435,6 +2433,21 @@ typedef struct {
     pwasm_env_t *env, // env
     const uint32_t mod_id, // module instance handle
     const uint32_t global_ofs // global index in module
+  );
+
+  /**
+   * Call function within module instance.
+   *
+   * @param[in]   env         Execution environment
+   * @param[in]   mod_id      Module instance handle
+   * @param[in]   func_ofs    Function offset in module
+   *
+   * @return `true` on success or `false` on error.
+   */
+  _Bool (*call_func)(
+    pwasm_env_t *env, // env
+    const uint32_t mod_id, // module instance handle
+    const uint32_t func_ofs // global index in module
   );
 
   pwasm_jit_t *jit; ///< JIT compiler
@@ -2713,6 +2726,35 @@ uint32_t pwasm_env_find_table(
 _Bool pwasm_env_call(
   pwasm_env_t *env,
   const uint32_t func_id
+);
+
+/**
+ * Call function by module handle and function offset.
+ *
+ * Calls the function at offset `func_ofs` in module `mod_id`  with the
+ * parameters stord on the stack in the given execution environment
+ * `env`.
+ *
+ * If `pwasm_env_call_func()` returns successfully, then the results of
+ * the function call (if any) will be stored in the stack.
+ *
+ * @ingroup env-low
+ *
+ * @param env     Execution environment.
+ * @param func_id Function handle.
+ *
+ * @return `true` on success, or `false` if an error occurred.
+ *
+ * @note This is a low-level execution environment function; see
+ * `pwasm_call()` for the high-level equivalent.
+ *
+ * @see pwasm_call()
+ * @see pwasm_env_find_func()
+ */
+_Bool pwasm_env_call_func(
+  pwasm_env_t * const env,
+  const uint32_t mod_id,
+  const uint32_t func_ofs
 );
 
 /**

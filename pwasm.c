@@ -12042,6 +12042,17 @@ pwasm_env_call(
 }
 
 bool
+pwasm_env_call_func(
+  pwasm_env_t * const env,
+  const uint32_t mod_id,
+  const uint32_t func_ofs
+) {
+  const pwasm_env_cbs_t * const cbs = env->cbs;
+  // D("env = %p, func_id = %u", (void*) env, func_id);
+  return (cbs && cbs->call_func) ? cbs->call_func(env, mod_id, func_ofs) : false;
+}
+
+bool
 pwasm_env_mem_load(
   pwasm_env_t * const env,
   const uint32_t mem_id,
@@ -25674,6 +25685,18 @@ pwasm_aot_jit_on_call(
   return pwasm_aot_jit_call(env, func_id);
 }
 
+static bool
+pwasm_aot_jit_on_call_func(
+  pwasm_env_t * const env,
+  const uint32_t mod_id,
+  const uint32_t func_ofs
+) {
+  // FIXME
+  pwasm_aot_jit_t * const interp = env->env_data;
+  pwasm_aot_jit_mod_t *rows = (pwasm_aot_jit_mod_t*) pwasm_vec_get_data(&(interp->mods));
+  return pwasm_aot_jit_call_func(env, rows + (mod_id - 1), func_ofs);
+}
+
 static uint32_t
 pwasm_aot_jit_on_get_global_index(
   pwasm_env_t * const env,
@@ -25708,6 +25731,7 @@ PWASM_AOT_JIT_CBS = {
   .get_global   = pwasm_aot_jit_on_get_global,
   .set_global   = pwasm_aot_jit_on_set_global,
   .call         = pwasm_aot_jit_on_call,
+  .call_func    = pwasm_aot_jit_on_call_func,
   .get_global_index = pwasm_aot_jit_on_get_global_index,
 };
 
