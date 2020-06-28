@@ -2927,7 +2927,7 @@ _Bool pwasm_env_set_global(
  *
  * @return `true` on success, or `false` on error.
  */
-_Bool pasm_env_get_elem(
+_Bool pwasm_env_get_elem(
   pwasm_env_t * const env, ///< Execution environment
   const uint32_t table_id, ///< table handle (or id?)
   const uint32_t elem_ofs, ///< Element offset in table

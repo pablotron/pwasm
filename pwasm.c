@@ -12102,7 +12102,7 @@ pwasm_env_mem_grow(
 }
 
 bool
-pasm_env_get_elem(
+pwasm_env_get_elem(
   pwasm_env_t * const env,
   const uint32_t table_id,
   const uint32_t elem_ofs,
