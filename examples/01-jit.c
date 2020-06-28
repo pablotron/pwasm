@@ -5,7 +5,7 @@
  *   # compile examples/01-jit.c and pwasm.c
  *   cc -c -W -Wall -Wextra -Werror -pedantic -std=c11 -I. -O3 examples/01-jit.c
  *   cc -c -W -Wall -Wextra -Werror -pedantic -std=c11 -I. -O3 pwasm.c
- *   cc -c -W -Wall -Wextra -Werror -pedantic -std=c11 -I. -O3 pwasm-dynasm-jit.c
+ *   cc -c -W -Wall -Wextra -Werror -pedantic -std=c11 -I. -Ipath/to/luajit-2.0 -O3 pwasm-dynasm-jit.c
  *
  *   # link and build as ./example-01-jit
  *   cc -o ./example-01-jit {01-jit,pwasm,pwasm-dynasm-jit}.o -ldl -lm
@@ -13,8 +13,8 @@
  * Output:
  *   # run example-01-jit
  *   > ./example-01-jit
- *   f32.pythag(3.0, 4.0) = 5.000000
- *   f64.pythag(5.0, 6.0) = 7.810250
+ *   pythag.f32(3.0, 4.0) = 5.000000
+ *   pythag.f64(5.0, 6.0) = 7.810250
  *
  */
 

@@ -12,8 +12,8 @@
  * Output:
  *   # run example-00-pythag
  *   > ./example-00-pythag
- *   f32.pythag(3.0, 4.0) = 5.000000
- *   f64.pythag(5.0, 6.0) = 7.810250
+ *   pythag.f32(3.0, 4.0) = 5.000000
+ *   pythag.f64(5.0, 6.0) = 7.810250
  *
  */
 
