@@ -12052,6 +12052,17 @@ pwasm_env_call_func(
   return (cbs && cbs->call_func) ? cbs->call_func(env, mod_id, func_ofs) : false;
 }
 
+uint32_t
+pwasm_env_get_table_index(
+  pwasm_env_t * const env,
+  const uint32_t mod_id,
+  const uint32_t table_ofs
+) {
+  const pwasm_env_cbs_t * const cbs = env->cbs;
+  // D("env = %p, func_id = %u", (void*) env, func_id);
+  return (cbs && cbs->get_table_index) ? cbs->get_table_index(env, mod_id, table_ofs) : false;
+}
+
 bool
 pwasm_env_mem_load(
   pwasm_env_t * const env,

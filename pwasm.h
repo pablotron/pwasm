@@ -2957,6 +2957,23 @@ _Bool pwasm_env_get_elem(
 );
 
 /**
+ * Get table handle from module handle and table offset.
+ *
+ * @ingroup env-low
+ *
+ * @param[in]   env       Execution environment
+ * @param[in]   mod_id    Module handle
+ * @param[in]   table_ofs Table offset in module
+ *
+ * @return Table handle on success, or `0` on error.
+ */
+uint32_t pwasm_env_get_table_index(
+  pwasm_env_t * const env,  ///< Execution environment
+  const uint32_t mod_id,    ///< Module handle
+  const uint32_t table_ofs  ///< Table offset in module
+);
+
+/**
  * Get handle to import.
  *
  * Find import by module handle, import type, and import name, and then
