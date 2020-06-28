@@ -1535,6 +1535,28 @@ _Bool pwasm_block_type_results_get_nth(
   uint32_t * const ret_type
 );
 
+
+/**
+ * Compare parameters and results of two block types.
+ *
+ * @ingroup type
+ *
+ * @param[in]   mod         Module
+ * @param[in]   a           First type
+ * @param[in]   b           Second type
+ * @param[out]  ret_same    Comparison result
+ *
+ * @return Returns `false` on error.  On success, returns `true` and
+ * sets `ret_same` to the comparison result (`true` if the parameters
+ * and results of the block types are the same, and `false` otherwise).
+ */
+_Bool pwasm_block_type_compare(
+  const pwasm_mod_t * const mod, ///< Module
+  const int32_t a, ///< First type
+  const int32_t b, ///< Second type
+  _Bool * const ret_same ///< Comparison result
+);
+
 /**
  * Module builder state.
  * @ingroup mod
