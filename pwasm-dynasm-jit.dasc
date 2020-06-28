@@ -397,6 +397,50 @@ pwasm_dynasm_jit_mem_store(
   return pwasm_env_mem_store(env, mem_id, in, ofs, vals[1]);
 }
 
+/**
+ * Verify type, then call function indirectly.
+ */
+static bool
+pwasm_dynasm_jit_call_indirect(
+  pwasm_env_t * const env,
+  const uint32_t mod_id,
+  const uint32_t table_id,
+  const uint32_t type_ofs,
+  const uint32_t elem_ofs
+) {
+  // get element value, check for error
+  uint32_t func_ofs;
+  if (!pwasm_env_get_elem(env, table_id, elem_ofs, &func_ofs)) {
+    // return failure
+    return false;
+  }
+
+  // get parsed module, check for error
+  const pwasm_mod_t *mod = pwasm_env_get_mod(env, mod_id);
+  if (!mod) {
+    // return failure
+    return false;
+  }
+
+  // compare types, check for error
+  const uint32_t func_type_ofs = mod->funcs[func_ofs];
+  bool same;
+  if (!pwasm_block_type_compare(mod, type_ofs, func_type_ofs, &same)) {
+    // return failure
+    return false;
+  }
+
+  // check comparison result
+  if (!same) {
+    // log error, return failure
+    fail(env, "call_indirect: function type mismatch");
+    return false;
+  }
+
+  // call function, return result
+  return pwasm_env_call_func(env, mod_id, func_ofs);
+}
+
 //
 // control stack: used by compiler to manage control frames
 //
@@ -948,7 +992,37 @@ pwasm_dynasm_jit_on_compile(
       | stack_reg_init
 
       break;
-    // TODO: case PWASM_OP_CALL_INDIRECT:
+    case PWASM_OP_CALL_INDIRECT:
+      // get element offset, pop stack
+      | mov r_arg4d, [r_stack - sizeof(pwasm_val_t)] // get element
+      | stack_dec
+
+      // save stack position, push registers
+      | stack_save_depth
+      | save_regs
+
+      // set parameters
+      | mov r_arg0, r_env       // environment
+      | mov r_arg1, mod_id      // mod handle
+      | mov r_arg2, 0           // TODO: get table handle at build-time
+      | mov r_arg3, in.v_index  // type ID
+      // r_arg4d stored above   // elem offset
+
+      // call func
+      | mov64 rax, (uintptr_t) pwasm_dynasm_jit_call_indirect
+      | call rax
+
+      // restore frame
+      | restore_regs
+
+      // check for error
+      | cmp eax, 0
+      | je ->exit_failure
+
+      // restore stack register
+      | stack_reg_init
+
+      break;
     case PWASM_OP_DROP:
       | stack_dec
 
