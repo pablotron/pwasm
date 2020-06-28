@@ -29,7 +29,7 @@ plugins:
       minify_html: true
 
 nav:
-  - "About": about.md
+  - "About": index.md
   - "Command": command.md
   - "Library": library.md
   - "JIT Compiler": jit.md
